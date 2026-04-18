@@ -142,8 +142,7 @@ class AppLocalizationsJa extends AppLocalizations {
       'Choose which tab opens first for new search results.';
 
   @override
-  String get optionsSwitchBack =>
-      'Tap Deezer or Spotify to switch back from extension';
+  String get optionsSwitchBack => '現在の拡張の使用をやめるには、下から別のプロバイダーを選択してください';
 
   @override
   String get optionsAutoFallback => 'Auto Fallback';
@@ -159,7 +158,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get optionsUseExtensionProvidersOn => '最初に拡張で試みます';
 
   @override
-  String get optionsUseExtensionProvidersOff => '内蔵のプロバイダーのみを使用する';
+  String get optionsUseExtensionProvidersOff => '拡張はオフです';
 
   @override
   String get optionsEmbedLyrics => '歌詞を埋め込む';
@@ -2906,11 +2905,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get downloadSelectServiceToEnable =>
-      'Select a built-in service to enable';
+      'Select a compatible download provider to enable quality options';
 
   @override
   String get downloadSelectTidalQobuz =>
-      'Select Tidal or Qobuz above to configure quality';
+      'Select a compatible provider above to configure quality';
 
   @override
   String get downloadEmbedLyricsDisabled =>

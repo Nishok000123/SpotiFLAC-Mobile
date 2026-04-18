@@ -376,10 +376,10 @@ abstract class AppLocalizations {
   /// **'Choose which tab opens first for new search results.'**
   String get optionsDefaultSearchTabSubtitle;
 
-  /// Hint to switch back to built-in providers
+  /// Hint to switch away from the current provider selection
   ///
   /// In en, this message translates to:
-  /// **'Tap Deezer or Spotify to switch back from extension'**
+  /// **'Choose another provider below to stop using the current extension'**
   String get optionsSwitchBack;
 
   /// Auto-retry with other services
@@ -406,10 +406,10 @@ abstract class AppLocalizations {
   /// **'Extensions will be tried first'**
   String get optionsUseExtensionProvidersOn;
 
-  /// Status when extension providers disabled
+  /// Status when extension providers are disabled
   ///
   /// In en, this message translates to:
-  /// **'Using built-in providers only'**
+  /// **'Extensions are turned off'**
   String get optionsUseExtensionProvidersOff;
 
   /// Embed lyrics in audio files
@@ -5073,16 +5073,16 @@ abstract class AppLocalizations {
   /// **'Off: strict HTTPS certificate validation (recommended)'**
   String get downloadNetworkCompatibilityModeDisabled;
 
-  /// Hint shown instead of Ask-quality subtitle when no built-in service selected
+  /// Hint shown instead of Ask-quality subtitle when the selected provider does not expose built-in quality controls
   ///
   /// In en, this message translates to:
-  /// **'Select a built-in service to enable'**
+  /// **'Select a compatible download provider to enable quality options'**
   String get downloadSelectServiceToEnable;
 
-  /// Info hint when non-Tidal/Qobuz service is selected
+  /// Info hint when the selected provider does not expose built-in quality controls
   ///
   /// In en, this message translates to:
-  /// **'Select Tidal or Qobuz above to configure quality'**
+  /// **'Select a compatible provider above to configure quality'**
   String get downloadSelectTidalQobuz;
 
   /// Subtitle for Embed Lyrics when Embed Metadata is disabled

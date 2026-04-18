@@ -288,6 +288,85 @@ List<String> get builtInDownloadProviderIds => List<String>.unmodifiable(
   builtInDownloadProviderSpecs.map((provider) => provider.id),
 );
 
+String resolveEffectiveDownloadService(
+  String requestedService,
+  ExtensionState extensionState,
+) {
+  final normalizedRequested = requestedService.trim().toLowerCase();
+  final builtInDownloadIds = extensionState.builtInProviders
+      .where((provider) => provider.supportsDownload)
+      .map((provider) => provider.id.trim().toLowerCase())
+      .where((providerId) => providerId.isNotEmpty)
+      .toSet();
+  final enabledDownloadExtensions = extensionState.extensions
+      .where((ext) => ext.enabled && ext.hasDownloadProvider)
+      .toList(growable: false);
+
+  if (normalizedRequested.isNotEmpty) {
+    if (builtInDownloadIds.contains(normalizedRequested)) {
+      return normalizedRequested;
+    }
+
+    final matchingExtension = enabledDownloadExtensions
+        .where((ext) => ext.id.trim().toLowerCase() == normalizedRequested)
+        .firstOrNull;
+    if (matchingExtension != null) {
+      return matchingExtension.id;
+    }
+
+    final replacementExtension = enabledDownloadExtensions
+        .where(
+          (ext) => ext.replacesBuiltInProviders.contains(normalizedRequested),
+        )
+        .firstOrNull;
+    if (replacementExtension != null) {
+      return replacementExtension.id;
+    }
+  }
+
+  const preferredBuiltInOrder = ['tidal', 'qobuz', 'deezer'];
+  for (final builtInId in preferredBuiltInOrder) {
+    final replacement = enabledDownloadExtensions
+        .where((ext) => ext.replacesBuiltInProviders.contains(builtInId))
+        .firstOrNull;
+    if (replacement != null) {
+      return replacement.id;
+    }
+    if (builtInDownloadIds.contains(builtInId)) {
+      return builtInId;
+    }
+  }
+
+  return enabledDownloadExtensions.firstOrNull?.id ??
+      extensionState.builtInProviders
+          .where((provider) => provider.supportsDownload)
+          .map((provider) => provider.id)
+          .firstOrNull ??
+      '';
+}
+
+bool isDeezerCompatibleDownloadService(
+  String service,
+  ExtensionState extensionState,
+) {
+  final normalizedService = service.trim().toLowerCase();
+  if (normalizedService.isEmpty) {
+    return false;
+  }
+
+  if (normalizedService == 'deezer') {
+    return true;
+  }
+
+  return extensionState.extensions.any(
+    (ext) =>
+        ext.enabled &&
+        ext.hasDownloadProvider &&
+        ext.id.trim().toLowerCase() == normalizedService &&
+        ext.replacesBuiltInProviders.contains('deezer'),
+  );
+}
+
 bool isBuiltInSearchProvider(String? providerId) =>
     builtInProviderSpecForId(providerId)?.supportsSearch ?? false;
 

@@ -5,6 +5,7 @@ import 'package:spotiflac_android/services/cover_cache_manager.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
+import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/recent_access_provider.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
@@ -644,9 +645,20 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
         },
       );
     } else {
+      final extensionState = ref.read(extensionProvider);
+      final service = resolveEffectiveDownloadService(
+        settings.defaultService,
+        extensionState,
+      );
+      if (service.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.extensionsNoDownloadProvider)),
+        );
+        return;
+      }
       ref
           .read(downloadQueueProvider.notifier)
-          .addToQueue(track, settings.defaultService);
+          .addToQueue(track, service);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.snackbarAddedToQueue(track.name))),
       );
@@ -716,9 +728,20 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen> {
         },
       );
     } else {
+      final extensionState = ref.read(extensionProvider);
+      final service = resolveEffectiveDownloadService(
+        settings.defaultService,
+        extensionState,
+      );
+      if (service.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.extensionsNoDownloadProvider)),
+        );
+        return;
+      }
       ref
           .read(downloadQueueProvider.notifier)
-          .addMultipleToQueue(tracksToQueue, settings.defaultService);
+          .addMultipleToQueue(tracksToQueue, service);
       _showQueuedSnackbar(context, tracksToQueue.length, skippedCount);
     }
   }

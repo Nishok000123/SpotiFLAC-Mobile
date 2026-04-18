@@ -1845,10 +1845,24 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     if (confirmed != true || !context.mounted) return;
 
     final settings = ref.read(settingsProvider);
+    final extensionState = ref.read(extensionProvider);
     final queueNotifier = ref.read(downloadQueueProvider.notifier);
 
     void enqueueAll({String? qualityOverride, String? service}) {
-      final svc = service ?? settings.defaultService;
+      final svc =
+          service ??
+          resolveEffectiveDownloadService(
+            settings.defaultService,
+            extensionState,
+          );
+      if (svc.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.l10n.extensionsNoDownloadProvider)),
+          );
+        }
+        return;
+      }
       for (final playlist in selectedPlaylists) {
         final tracks = playlist.tracks.map((e) => e.track).toList();
         queueNotifier.addMultipleToQueue(
@@ -5218,10 +5232,18 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         );
     final targetService = LocalTrackRedownloadService.preferredFlacService(
       settings,
+      extensionState,
     );
+    if (targetService.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.extensionsNoDownloadProvider)),
+      );
+      return;
+    }
     final targetQuality =
         LocalTrackRedownloadService.preferredFlacQualityForService(
           targetService,
+          extensionState,
         );
 
     final matchedTracks = <Track>[];

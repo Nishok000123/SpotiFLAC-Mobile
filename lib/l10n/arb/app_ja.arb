@@ -150,9 +150,9 @@
       }
     }
   },
-  "optionsSwitchBack": "Tap Deezer or Spotify to switch back from extension",
+  "optionsSwitchBack": "現在の拡張の使用をやめるには、下から別のプロバイダーを選択してください",
   "@optionsSwitchBack": {
-    "description": "Hint to switch back to built-in providers"
+    "description": "Hint to switch away from the current provider selection"
   },
   "optionsAutoFallback": "Auto Fallback",
   "@optionsAutoFallback": {
@@ -170,9 +170,9 @@
   "@optionsUseExtensionProvidersOn": {
     "description": "Status when extension providers enabled"
   },
-  "optionsUseExtensionProvidersOff": "内蔵のプロバイダーのみを使用する",
+  "optionsUseExtensionProvidersOff": "拡張はオフです",
   "@optionsUseExtensionProvidersOff": {
-    "description": "Status when extension providers disabled"
+    "description": "Status when extension providers are disabled"
   },
   "optionsEmbedLyrics": "歌詞を埋め込む",
   "@optionsEmbedLyrics": {

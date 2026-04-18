@@ -1,5 +1,6 @@
 import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/models/track.dart';
+import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/services/library_database.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 
@@ -101,19 +102,26 @@ class LocalTrackRedownloadService {
     );
   }
 
-  static String preferredFlacService(AppSettings settings) {
-    switch (settings.defaultService.toLowerCase()) {
-      case 'tidal':
-      case 'qobuz':
-      case 'deezer':
-        return settings.defaultService.toLowerCase();
-      default:
-        return '';
-    }
+  static String preferredFlacService(
+    AppSettings settings,
+    ExtensionState extensionState,
+  ) {
+    return resolveEffectiveDownloadService(
+      settings.defaultService,
+      extensionState,
+    );
   }
 
-  static String preferredFlacQualityForService(String service) {
-    return service.toLowerCase() == 'deezer' ? 'FLAC' : 'LOSSLESS';
+  static String preferredFlacQualityForService(
+    String service,
+    ExtensionState extensionState,
+  ) {
+    if (service.trim().isEmpty) {
+      return 'LOSSLESS';
+    }
+    return isDeezerCompatibleDownloadService(service, extensionState)
+        ? 'FLAC'
+        : 'LOSSLESS';
   }
 
   static String _buildSearchQuery(LocalLibraryItem item) {

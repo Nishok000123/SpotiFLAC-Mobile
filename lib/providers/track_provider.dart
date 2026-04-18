@@ -599,7 +599,6 @@ class TrackNotifier extends Notifier<TrackState> {
     if (effectiveBuiltInProvider == null || effectiveBuiltInProvider.isEmpty) {
       state = TrackState(
         isLoading: false,
-        error: 'No active search provider available',
         hasSearchText: state.hasSearchText,
         isShowingRecentAccess: state.isShowingRecentAccess,
         selectedSearchFilter: currentFilter,

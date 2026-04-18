@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:spotiflac_android/services/cover_cache_manager.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/track.dart';
+import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/providers/track_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
@@ -1627,7 +1628,18 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       return;
     }
 
-    enqueue(settings.defaultService);
+    final extensionState = ref.read(extensionProvider);
+    final service = resolveEffectiveDownloadService(
+      settings.defaultService,
+      extensionState,
+    );
+    if (service.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.extensionsNoDownloadProvider)),
+      );
+      return;
+    }
+    enqueue(service);
   }
 
   Widget _buildAlbumSection(

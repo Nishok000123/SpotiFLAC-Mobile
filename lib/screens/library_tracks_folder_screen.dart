@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
+import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/providers/library_collections_provider.dart';
 import 'package:spotiflac_android/providers/playback_provider.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
@@ -214,12 +215,23 @@ class _LibraryTracksFolderScreenState
 
   void _downloadSelected(List<CollectionTrackEntry> entries) {
     final settings = ref.read(settingsProvider);
+    final extensionState = ref.read(extensionProvider);
+    final service = resolveEffectiveDownloadService(
+      settings.defaultService,
+      extensionState,
+    );
+    if (service.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.extensionsNoDownloadProvider)),
+      );
+      return;
+    }
     final queueNotifier = ref.read(downloadQueueProvider.notifier);
     var count = 0;
 
     for (final entry in entries) {
       if (!_selectedKeys.contains(entry.key)) continue;
-      queueNotifier.addToQueue(entry.track, settings.defaultService);
+      queueNotifier.addToQueue(entry.track, service);
       count++;
     }
 
@@ -1349,9 +1361,20 @@ class _CollectionTrackTile extends ConsumerWidget {
         },
       );
     } else {
+      final extensionState = ref.read(extensionProvider);
+      final service = resolveEffectiveDownloadService(
+        settings.defaultService,
+        extensionState,
+      );
+      if (service.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.extensionsNoDownloadProvider)),
+        );
+        return;
+      }
       ref
           .read(downloadQueueProvider.notifier)
-          .addToQueue(track, settings.defaultService);
+          .addToQueue(track, service);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.snackbarAddedToQueue(track.name))),
       );

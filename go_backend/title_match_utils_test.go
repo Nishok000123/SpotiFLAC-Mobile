@@ -69,18 +69,3 @@ func TestTitlesMatch_EmojiStrict(t *testing.T) {
 		t.Fatal("expected identical emoji titles to match")
 	}
 }
-
-func TestQobuzTitlesMatch_SeparatorVariants(t *testing.T) {
-	if !qobuzTitlesMatch("Doctor / Cops", "Doctor _ Cops") {
-		t.Fatal("expected qobuzTitlesMatch to accept / vs _ variant")
-	}
-}
-
-func TestQobuzTitlesMatch_EmojiStrict(t *testing.T) {
-	if qobuzTitlesMatch("🪐", "Higher Power") {
-		t.Fatal("expected emoji title not to match unrelated textual title")
-	}
-	if !qobuzTitlesMatch("🪐", "🪐") {
-		t.Fatal("expected identical emoji titles to match")
-	}
-}

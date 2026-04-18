@@ -174,9 +174,9 @@
   "@optionsDefaultSearchTabSubtitle": {
     "description": "Subtitle for the preferred default search tab setting"
   },
-  "optionsSwitchBack": "Tap Deezer or Spotify to switch back from extension",
+  "optionsSwitchBack": "Choose another provider below to stop using the current extension",
   "@optionsSwitchBack": {
-    "description": "Hint to switch back to built-in providers"
+    "description": "Hint to switch away from the current provider selection"
   },
   "optionsAutoFallback": "Auto Fallback",
   "@optionsAutoFallback": {
@@ -194,9 +194,9 @@
   "@optionsUseExtensionProvidersOn": {
     "description": "Status when extension providers enabled"
   },
-  "optionsUseExtensionProvidersOff": "Using built-in providers only",
+  "optionsUseExtensionProvidersOff": "Extensions are turned off",
   "@optionsUseExtensionProvidersOff": {
-    "description": "Status when extension providers disabled"
+    "description": "Status when extension providers are disabled"
   },
   "optionsEmbedLyrics": "Embed Lyrics",
   "@optionsEmbedLyrics": {
@@ -3867,14 +3867,14 @@
   "@downloadNetworkCompatibilityModeDisabled": {
     "description": "Subtitle when network compatibility mode is disabled"
   },
-  "downloadSelectServiceToEnable": "Select a built-in service to enable",
+  "downloadSelectServiceToEnable": "Select a compatible download provider to enable quality options",
   "@downloadSelectServiceToEnable": {
-    "description": "Hint shown instead of Ask-quality subtitle when no built-in service selected"
+    "description": "Hint shown instead of Ask-quality subtitle when the selected provider does not expose built-in quality controls"
   },
 
-  "downloadSelectTidalQobuz": "Select Tidal or Qobuz above to configure quality",
+  "downloadSelectTidalQobuz": "Select a compatible provider above to configure quality",
   "@downloadSelectTidalQobuz": {
-    "description": "Info hint when non-Tidal/Qobuz service is selected"
+    "description": "Info hint when the selected provider does not expose built-in quality controls"
   },
   "downloadEmbedLyricsDisabled": "Disabled while Embed Metadata is turned off",
   "@downloadEmbedLyricsDisabled": {

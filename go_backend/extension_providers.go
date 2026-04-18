@@ -158,27 +158,6 @@ func downloadWithBuiltInProvider(providerID string, req DownloadRequest) (Downlo
 	return spec.Download(req)
 }
 
-func downloadWithBuiltInQobuz(req DownloadRequest) (DownloadResult, error) {
-	result, err := downloadFromQobuz(req)
-	if err != nil {
-		return DownloadResult{}, err
-	}
-	return DownloadResult{
-		FilePath:    result.FilePath,
-		BitDepth:    result.BitDepth,
-		SampleRate:  result.SampleRate,
-		Title:       result.Title,
-		Artist:      result.Artist,
-		Album:       result.Album,
-		ReleaseDate: result.ReleaseDate,
-		TrackNumber: result.TrackNumber,
-		DiscNumber:  result.DiscNumber,
-		ISRC:        result.ISRC,
-		CoverURL:    result.CoverURL,
-		LyricsLRC:   result.LyricsLRC,
-	}, nil
-}
-
 func normalizeExtensionDownloadResult(result *ExtDownloadResult) (DownloadResult, bool) {
 	if result == nil {
 		return DownloadResult{}, false

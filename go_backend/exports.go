@@ -1955,21 +1955,6 @@ func ClearTrackIDCache() {
 	ClearTrackCache()
 }
 
-func SearchQobuzAll(query string, trackLimit, artistLimit int, filter string) (string, error) {
-	downloader := NewQobuzDownloader()
-	results, err := downloader.SearchAll(query, trackLimit, artistLimit, filter)
-	if err != nil {
-		return "", err
-	}
-
-	jsonBytes, err := json.Marshal(results)
-	if err != nil {
-		return "", err
-	}
-
-	return string(jsonBytes), nil
-}
-
 func SearchProviderAllJSON(
 	providerID,
 	query string,
@@ -2033,36 +2018,6 @@ func GetDeezerMetadata(resourceType, resourceID string) (string, error) {
 		return "", fmt.Errorf("unsupported Deezer resource type: %s", resourceType)
 	}
 
-	if err != nil {
-		return "", err
-	}
-
-	jsonBytes, err := json.Marshal(data)
-	if err != nil {
-		return "", err
-	}
-
-	return string(jsonBytes), nil
-}
-
-func GetQobuzMetadata(resourceType, resourceID string) (string, error) {
-	downloader := NewQobuzDownloader()
-
-	var data interface{}
-	var err error
-
-	switch resourceType {
-	case "track":
-		data, err = downloader.GetTrackMetadata(resourceID)
-	case "album":
-		data, err = downloader.GetAlbumMetadata(resourceID)
-	case "artist":
-		data, err = downloader.GetArtistMetadata(resourceID)
-	case "playlist":
-		data, err = downloader.GetPlaylistMetadata(resourceID)
-	default:
-		return "", fmt.Errorf("unsupported Qobuz resource type: %s", resourceType)
-	}
 	if err != nil {
 		return "", err
 	}
@@ -2316,25 +2271,6 @@ func GetProviderMetadataJSON(providerID, resourceType, resourceID string) (strin
 
 func ParseDeezerURLExport(url string) (string, error) {
 	resourceType, resourceID, err := parseDeezerURL(url)
-	if err != nil {
-		return "", err
-	}
-
-	result := map[string]string{
-		"type": resourceType,
-		"id":   resourceID,
-	}
-
-	jsonBytes, err := json.Marshal(result)
-	if err != nil {
-		return "", err
-	}
-
-	return string(jsonBytes), nil
-}
-
-func ParseQobuzURLExport(url string) (string, error) {
-	resourceType, resourceID, err := parseQobuzURL(url)
 	if err != nil {
 		return "", err
 	}

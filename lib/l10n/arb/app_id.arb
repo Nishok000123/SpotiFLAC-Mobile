@@ -158,9 +158,9 @@
   "@optionsDefaultSearchTabSubtitle": {
     "description": "Subtitle for the preferred default search tab setting"
   },
-  "optionsSwitchBack": "Ketuk Deezer atau Spotify untuk beralih dari ekstensi",
+  "optionsSwitchBack": "Pilih provider lain di bawah untuk berhenti memakai ekstensi saat ini",
   "@optionsSwitchBack": {
-    "description": "Hint to switch back to built-in providers"
+    "description": "Hint to switch away from the current provider selection"
   },
   "optionsAutoFallback": "Cadangan Otomatis",
   "@optionsAutoFallback": {
@@ -178,9 +178,9 @@
   "@optionsUseExtensionProvidersOn": {
     "description": "Status when extension providers enabled"
   },
-  "optionsUseExtensionProvidersOff": "Hanya menggunakan provider bawaan",
+  "optionsUseExtensionProvidersOff": "Ekstensi dimatikan",
   "@optionsUseExtensionProvidersOff": {
-    "description": "Status when extension providers disabled"
+    "description": "Status when extension providers are disabled"
   },
   "optionsEmbedLyrics": "Sematkan Lirik",
   "@optionsEmbedLyrics": {

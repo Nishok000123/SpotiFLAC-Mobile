@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/services/cover_cache_manager.dart';
 import 'package:spotiflac_android/models/track.dart';
+import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/providers/track_provider.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
@@ -49,9 +50,20 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   void _downloadTrack(Track track) {
     final settings = ref.read(settingsProvider);
+    final extensionState = ref.read(extensionProvider);
+    final service = resolveEffectiveDownloadService(
+      settings.defaultService,
+      extensionState,
+    );
+    if (service.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.extensionsNoDownloadProvider)),
+      );
+      return;
+    }
     ref
         .read(downloadQueueProvider.notifier)
-        .addToQueue(track, settings.defaultService);
+        .addToQueue(track, service);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(context.l10n.snackbarAddedToQueue(track.name))),
     );

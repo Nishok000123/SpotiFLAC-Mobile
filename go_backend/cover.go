@@ -19,6 +19,8 @@ var deezerSizeRegex = regexp.MustCompile(`/(\d+)x(\d+)-\d+-\d+-\d+-\d+\.jpg$`)
 
 var tidalSizeRegex = regexp.MustCompile(`/\d+x\d+\.jpg$`)
 
+var qobuzSizeRegex = regexp.MustCompile(`_\d+\.jpg$`)
+
 func convertSmallToMedium(imageURL string) string {
 	if strings.Contains(imageURL, spotifySize300) {
 		return strings.Replace(imageURL, spotifySize300, spotifySize640, 1)
@@ -135,7 +137,7 @@ func upgradeQobuzCover(coverURL string) string {
 		return coverURL
 	}
 
-	upgraded := qobuzImageSizeRe.ReplaceAllString(coverURL, "_max.jpg")
+	upgraded := qobuzSizeRegex.ReplaceAllString(coverURL, "_max.jpg")
 	if upgraded != coverURL {
 		GoLog("[Cover] Qobuz: upgraded to max resolution")
 	}

@@ -143,7 +143,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get optionsSwitchBack =>
-      'Tap Deezer or Spotify to switch back from extension';
+      'Choose another provider below to stop using the current extension';
 
   @override
   String get optionsAutoFallback => 'Auto Fallback';
@@ -159,7 +159,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get optionsUseExtensionProvidersOn => 'Extensions will be tried first';
 
   @override
-  String get optionsUseExtensionProvidersOff => 'Using built-in providers only';
+  String get optionsUseExtensionProvidersOff => 'Extensions are turned off';
 
   @override
   String get optionsEmbedLyrics => 'Embed Lyrics';
@@ -2920,11 +2920,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadSelectServiceToEnable =>
-      'Select a built-in service to enable';
+      'Select a compatible download provider to enable quality options';
 
   @override
   String get downloadSelectTidalQobuz =>
-      'Select Tidal or Qobuz above to configure quality';
+      'Select a compatible provider above to configure quality';
 
   @override
   String get downloadEmbedLyricsDisabled =>

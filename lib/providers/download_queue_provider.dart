@@ -4815,7 +4815,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         String payloadTidalId = '';
         if (trackToDownload.id.startsWith('qobuz:')) {
           payloadQobuzId = trackToDownload.id.substring(6);
-          if (item.service == 'qobuz') {
+          if (_usesBuiltInCompatibleDownloadProvider(item.service, 'qobuz')) {
             payloadSpotifyId = '';
           }
         }

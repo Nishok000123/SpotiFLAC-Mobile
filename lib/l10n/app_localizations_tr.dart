@@ -146,7 +146,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get optionsSwitchBack =>
-      'Eklentiden çıkıp varsayılana dönmek için Deezer veya Spotify\'a dokunun';
+      'Geçerli eklentiyi bırakmak için aşağıdan başka bir sağlayıcı seçin';
 
   @override
   String get optionsAutoFallback => 'Otomatik Geçiş';
@@ -163,8 +163,7 @@ class AppLocalizationsTr extends AppLocalizations {
       'İndirme için önce eklentiler denenecek';
 
   @override
-  String get optionsUseExtensionProvidersOff =>
-      'Sadece yerleşik sağlayıcılar kullanılıyor';
+  String get optionsUseExtensionProvidersOff => 'Eklentiler kapalı';
 
   @override
   String get optionsEmbedLyrics => 'Şarkı Sözlerini Gömer';
@@ -2979,11 +2978,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get downloadSelectServiceToEnable =>
-      'Seçenekleri açmak için yerleşik bir sağlayıcı seçin';
+      'Kalite seçeneklerini açmak için uyumlu bir indirme sağlayıcısı seçin';
 
   @override
   String get downloadSelectTidalQobuz =>
-      'Kaliteyi ayarlamak için lütfen yukarıdan Tidal veya Qobuz seçin';
+      'Kaliteyi ayarlamak için yukarıdan uyumlu bir sağlayıcı seçin';
 
   @override
   String get downloadEmbedLyricsDisabled =>

@@ -150,9 +150,9 @@
       }
     }
   },
-  "optionsSwitchBack": "Eklentiden çıkıp varsayılana dönmek için Deezer veya Spotify'a dokunun",
+  "optionsSwitchBack": "Geçerli eklentiyi bırakmak için aşağıdan başka bir sağlayıcı seçin",
   "@optionsSwitchBack": {
-    "description": "Hint to switch back to built-in providers"
+    "description": "Hint to switch away from the current provider selection"
   },
   "optionsAutoFallback": "Otomatik Geçiş",
   "@optionsAutoFallback": {
@@ -170,9 +170,9 @@
   "@optionsUseExtensionProvidersOn": {
     "description": "Status when extension providers enabled"
   },
-  "optionsUseExtensionProvidersOff": "Sadece yerleşik sağlayıcılar kullanılıyor",
+  "optionsUseExtensionProvidersOff": "Eklentiler kapalı",
   "@optionsUseExtensionProvidersOff": {
-    "description": "Status when extension providers disabled"
+    "description": "Status when extension providers are disabled"
   },
   "optionsEmbedLyrics": "Şarkı Sözlerini Gömer",
   "@optionsEmbedLyrics": {
@@ -3689,13 +3689,13 @@
   "@downloadNetworkCompatibilityModeDisabled": {
     "description": "Subtitle when network compatibility mode is disabled"
   },
-  "downloadSelectServiceToEnable": "Seçenekleri açmak için yerleşik bir sağlayıcı seçin",
+  "downloadSelectServiceToEnable": "Kalite seçeneklerini açmak için uyumlu bir indirme sağlayıcısı seçin",
   "@downloadSelectServiceToEnable": {
-    "description": "Hint shown instead of Ask-quality subtitle when no built-in service selected"
+    "description": "Hint shown instead of Ask-quality subtitle when the selected provider does not expose built-in quality controls"
   },
-  "downloadSelectTidalQobuz": "Kaliteyi ayarlamak için lütfen yukarıdan Tidal veya Qobuz seçin",
+  "downloadSelectTidalQobuz": "Kaliteyi ayarlamak için yukarıdan uyumlu bir sağlayıcı seçin",
   "@downloadSelectTidalQobuz": {
-    "description": "Info hint when non-Tidal/Qobuz service is selected"
+    "description": "Info hint when the selected provider does not expose built-in quality controls"
   },
   "downloadEmbedLyricsDisabled": "Şarkı Verilerini Dosyaya Gömme ayarı kapalıyken kullanılamaz",
   "@downloadEmbedLyricsDisabled": {

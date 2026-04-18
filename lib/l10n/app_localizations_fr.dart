@@ -2921,11 +2921,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get downloadSelectServiceToEnable =>
-      'Select a built-in service to enable';
+      'Select a compatible download provider to enable quality options';
 
   @override
   String get downloadSelectTidalQobuz =>
-      'Select Tidal or Qobuz above to configure quality';
+      'Select a compatible provider above to configure quality';
 
   @override
   String get downloadEmbedLyricsDisabled =>

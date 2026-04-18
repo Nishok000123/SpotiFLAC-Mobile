@@ -965,10 +965,18 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen> {
         );
     final targetService = LocalTrackRedownloadService.preferredFlacService(
       settings,
+      extensionState,
     );
+    if (targetService.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.extensionsNoDownloadProvider)),
+      );
+      return;
+    }
     final targetQuality =
         LocalTrackRedownloadService.preferredFlacQualityForService(
           targetService,
+          extensionState,
         );
 
     final matchedTracks = <Track>[];

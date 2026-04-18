@@ -145,7 +145,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get optionsSwitchBack =>
-      'Ketuk Deezer atau Spotify untuk beralih dari ekstensi';
+      'Pilih provider lain di bawah untuk berhenti memakai ekstensi saat ini';
 
   @override
   String get optionsAutoFallback => 'Cadangan Otomatis';
@@ -162,8 +162,7 @@ class AppLocalizationsId extends AppLocalizations {
       'Ekstensi akan dicoba terlebih dahulu';
 
   @override
-  String get optionsUseExtensionProvidersOff =>
-      'Hanya menggunakan provider bawaan';
+  String get optionsUseExtensionProvidersOff => 'Ekstensi dimatikan';
 
   @override
   String get optionsEmbedLyrics => 'Sematkan Lirik';
@@ -2930,11 +2929,11 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get downloadSelectServiceToEnable =>
-      'Select a built-in service to enable';
+      'Select a compatible download provider to enable quality options';
 
   @override
   String get downloadSelectTidalQobuz =>
-      'Select Tidal or Qobuz above to configure quality';
+      'Select a compatible provider above to configure quality';
 
   @override
   String get downloadEmbedLyricsDisabled =>

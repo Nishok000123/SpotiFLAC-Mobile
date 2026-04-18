@@ -1004,9 +1004,20 @@ class _HomeTabState extends ConsumerState<HomeTab>
           },
         );
       } else {
+        final extensionState = ref.read(extensionProvider);
+        final service = resolveEffectiveDownloadService(
+          settings.defaultService,
+          extensionState,
+        );
+        if (service.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.l10n.extensionsNoDownloadProvider)),
+          );
+          return;
+        }
         ref
             .read(downloadQueueProvider.notifier)
-            .addToQueue(track, settings.defaultService);
+            .addToQueue(track, service);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(context.l10n.snackbarAddedToQueue(track.name)),
@@ -1227,9 +1238,24 @@ class _HomeTabState extends ConsumerState<HomeTab>
             },
           );
         } else {
+          final extensionState = ref.read(extensionProvider);
+          final service = resolveEffectiveDownloadService(
+            settings.defaultService,
+            extensionState,
+          );
+          if (service.isEmpty) {
+            if (mounted) {
+              ScaffoldMessenger.of(this.context).showSnackBar(
+                SnackBar(
+                  content: Text(this.context.l10n.extensionsNoDownloadProvider),
+                ),
+              );
+            }
+            return;
+          }
           ref
               .read(downloadQueueProvider.notifier)
-              .addMultipleToQueue(tracksToQueue, settings.defaultService);
+              .addMultipleToQueue(tracksToQueue, service);
           if (mounted) {
             ScaffoldMessenger.of(this.context).showSnackBar(
               SnackBar(
@@ -2139,9 +2165,20 @@ class _HomeTabState extends ConsumerState<HomeTab>
         },
       );
     } else {
+      final extensionState = ref.read(extensionProvider);
+      final service = resolveEffectiveDownloadService(
+        settings.defaultService,
+        extensionState,
+      );
+      if (service.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.extensionsNoDownloadProvider)),
+        );
+        return;
+      }
       ref
           .read(downloadQueueProvider.notifier)
-          .addToQueue(track, settings.defaultService);
+          .addToQueue(track, service);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.snackbarAddedToQueue(track.name))),
       );
