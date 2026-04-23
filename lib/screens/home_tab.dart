@@ -509,6 +509,27 @@ class _HomeTabState extends ConsumerState<HomeTab>
         defaultBuiltInSearchProviderId;
   }
 
+  bool _hasSearchProvider(
+    String? explicitSearchProvider,
+    List<Extension> extensions,
+    List<BuiltInProviderSpec> builtInProviders,
+  ) {
+    final explicit = explicitSearchProvider?.trim();
+    if (explicit != null && explicit.isNotEmpty) {
+      if (builtInProviders.any((p) => p.supportsSearch && p.id == explicit)) {
+        return true;
+      }
+      if (extensions.any(
+        (ext) => ext.enabled && ext.hasCustomSearch && ext.id == explicit,
+      )) {
+        return true;
+      }
+    }
+
+    return extensions.any((ext) => ext.enabled && ext.hasCustomSearch) ||
+        builtInProviders.any((provider) => provider.supportsSearch);
+  }
+
   String? _sanitizeSearchFilterForProvider(
     String? filter,
     String? currentSearchProvider,
@@ -707,6 +728,8 @@ class _HomeTabState extends ConsumerState<HomeTab>
   bool _isLiveSearchEnabled() {
     final settings = ref.read(settingsProvider);
     final extState = ref.read(extensionProvider);
+    if (!extState.isInitialized && extState.error == null) return true;
+
     final searchProvider = _resolveSearchProvider(
       settings.searchProvider,
       extState.extensions,
@@ -774,8 +797,13 @@ class _HomeTabState extends ConsumerState<HomeTab>
   }
 
   Future<void> _performSearch(String query, {String? filterOverride}) async {
+    var extState = ref.read(extensionProvider);
+    if (!extState.isInitialized && extState.error == null) {
+      await ref.read(extensionProvider.notifier).waitForInitialization();
+      extState = ref.read(extensionProvider);
+    }
+
     final settings = ref.read(settingsProvider);
-    final extState = ref.read(extensionProvider);
     final searchProvider = _resolveSearchProvider(
       settings.searchProvider,
       extState.extensions,
@@ -1015,9 +1043,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
           );
           return;
         }
-        ref
-            .read(downloadQueueProvider.notifier)
-            .addToQueue(track, service);
+        ref.read(downloadQueueProvider.notifier).addToQueue(track, service);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(context.l10n.snackbarAddedToQueue(track.name)),
@@ -1299,6 +1325,15 @@ class _HomeTabState extends ConsumerState<HomeTab>
       settingsProvider.select((s) => s.defaultSearchTab),
     );
     final extensions = ref.watch(extensionProvider.select((s) => s.extensions));
+    final extensionReadiness = ref.watch(
+      extensionProvider.select(
+        (s) => (
+          isInitialized: s.isInitialized,
+          error: s.error,
+          builtInProviders: s.builtInProviders,
+        ),
+      ),
+    );
 
     final hasExploreContent = ref.watch(
       exploreProvider.select((s) => s.sections.isNotEmpty),
@@ -1336,9 +1371,14 @@ class _HomeTabState extends ConsumerState<HomeTab>
         recentModeRequested &&
         (!hasSearchInput || hasShortSearchInput || !hasActualResults) &&
         !isLoading;
-    final hasSearchProvider =
-        (_resolveSearchProvider(explicitSearchProvider, extensions) ?? '')
-            .isNotEmpty;
+    final isSearchProviderLoading =
+        !extensionReadiness.isInitialized && extensionReadiness.error == null;
+    final hasSearchProvider = _hasSearchProvider(
+      explicitSearchProvider,
+      extensions,
+      extensionReadiness.builtInProviders,
+    );
+    final showSearchBar = hasSearchProvider || isSearchProviderLoading;
     final hasResults =
         hasSearchInput || hasActualResults || isLoading || showRecentAccess;
     final showExplore =
@@ -1349,6 +1389,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
         (hasHomeFeedExtension || hasExploreContent) &&
         hasExploreContent;
     final showEmptyHomeState =
+        !isSearchProviderLoading &&
         !hasSearchProvider &&
         !hasHomeFeedExtension &&
         !hasExploreContent &&
@@ -1442,56 +1483,15 @@ class _HomeTabState extends ConsumerState<HomeTab>
                   curve: Curves.easeOut,
                   child: (hasResults || showExplore)
                       ? const SizedBox.shrink()
-                      : Column(
-                          children: [
-                            SizedBox(height: screenHeight * 0.06),
-                            Container(
-                              width: 96,
-                              height: 96,
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Image.asset(
-                                'assets/images/logo-transparant.png',
-                                color: colorScheme.onPrimary,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, _, _) => ClipRRect(
-                                  borderRadius: BorderRadius.circular(24),
-                                  child: Image.asset(
-                                    'assets/images/logo.png',
-                                    width: 96,
-                                    height: 96,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              showEmptyHomeState
-                                  ? context.l10n.homeEmptyTitle
-                                  : 'SpotiFLAC Mobile',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              showEmptyHomeState
-                                  ? context.l10n.homeEmptySubtitle
-                                  : context.l10n.homeSubtitle,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                            ),
-                          ],
+                      : _buildHomeIntro(
+                          colorScheme: colorScheme,
+                          screenHeight: screenHeight,
+                          showEmptyHomeState: showEmptyHomeState,
                         ),
                 ),
               ),
 
-              if (hasSearchProvider)
+              if (showSearchBar)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
@@ -1686,6 +1686,98 @@ class _HomeTabState extends ConsumerState<HomeTab>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHomeIntro({
+    required ColorScheme colorScheme,
+    required double screenHeight,
+    required bool showEmptyHomeState,
+  }) {
+    if (showEmptyHomeState) {
+      final emptyHeight = (screenHeight - 220).clamp(280.0, 520.0).toDouble();
+      return SizedBox(
+        height: emptyHeight,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.extension_outlined,
+                  size: 56,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  context.l10n.homeEmptyTitle,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  context.l10n.homeEmptySubtitle,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          SizedBox(height: screenHeight * 0.06),
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              color: colorScheme.primary,
+              shape: BoxShape.circle,
+            ),
+            child: Image.asset(
+              'assets/images/logo-transparant.png',
+              color: colorScheme.onPrimary,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 96,
+                  height: 96,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'SpotiFLAC Mobile',
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            context.l10n.homeSubtitle,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2176,9 +2268,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
         );
         return;
       }
-      ref
-          .read(downloadQueueProvider.notifier)
-          .addToQueue(track, service);
+      ref.read(downloadQueueProvider.notifier).addToQueue(track, service);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.snackbarAddedToQueue(track.name))),
       );
@@ -3636,13 +3726,45 @@ class _SearchProviderDropdown extends ConsumerWidget {
     final rawCurrentProvider = ref.watch(
       settingsProvider.select((s) => s.searchProvider),
     );
-    final extensions = ref.watch(extensionProvider.select((s) => s.extensions));
+    final extensionState = ref.watch(extensionProvider);
+    final extensions = extensionState.extensions;
     final colorScheme = Theme.of(context).colorScheme;
 
     final searchProviders = extensions
         .where((ext) => ext.enabled && ext.hasCustomSearch)
         .toList();
     final builtInProviders = builtInSearchProviderSpecs;
+    final hasAnyProvider =
+        searchProviders.isNotEmpty || builtInProviders.isNotEmpty;
+    final isProviderLoading =
+        !extensionState.isInitialized && extensionState.error == null;
+
+    if (!hasAnyProvider) {
+      return Padding(
+        padding: const EdgeInsets.only(left: 12, right: 8),
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: Center(
+            child: isProviderLoading
+                ? SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: colorScheme.primary,
+                    ),
+                  )
+                : Icon(
+                    Icons.search_off,
+                    size: 20,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+          ),
+        ),
+      );
+    }
+
     final resolvedCurrentProvider =
         rawCurrentProvider != null &&
             rawCurrentProvider.isNotEmpty &&

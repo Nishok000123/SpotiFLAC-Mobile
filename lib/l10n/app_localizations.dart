@@ -169,13 +169,13 @@ abstract class AppLocalizations {
   /// Title shown on home when no providers are available yet
   ///
   /// In en, this message translates to:
-  /// **'Home is empty'**
+  /// **'No search providers yet'**
   String get homeEmptyTitle;
 
   /// Subtitle shown on home when no providers are available yet
   ///
   /// In en, this message translates to:
-  /// **'Install your first extension to unlock search and browsing.'**
+  /// **'Install an extension to continue.'**
   String get homeEmptySubtitle;
 
   /// Info text about supported URL types

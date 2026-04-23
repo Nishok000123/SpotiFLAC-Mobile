@@ -1592,6 +1592,7 @@ type AudioQuality struct {
 	BitDepth     int   `json:"bit_depth"`
 	SampleRate   int   `json:"sample_rate"`
 	TotalSamples int64 `json:"total_samples"`
+	Duration     int   `json:"duration"`
 }
 
 func GetAudioQuality(filePath string) (AudioQuality, error) {
@@ -1632,10 +1633,16 @@ func GetAudioQuality(filePath string) (AudioQuality, error) {
 			int64(streamInfo[16])<<8 |
 			int64(streamInfo[17])
 
+		duration := 0
+		if sampleRate > 0 && totalSamples > 0 {
+			duration = int(totalSamples / int64(sampleRate))
+		}
+
 		return AudioQuality{
 			BitDepth:     bitsPerSample,
 			SampleRate:   sampleRate,
 			TotalSamples: totalSamples,
+			Duration:     duration,
 		}, nil
 	}
 
@@ -1676,6 +1683,7 @@ func GetM4AQuality(filePath string) (AudioQuality, error) {
 
 	moovStart := moovHeader.offset
 	moovEnd := moovHeader.offset + moovHeader.size
+	duration := readM4ADurationSeconds(f, moovHeader, fileSize)
 
 	sampleOffset, atomType, err := findAudioSampleEntry(f, moovStart, moovEnd, fileSize)
 	if err != nil {
@@ -1715,7 +1723,46 @@ func GetM4AQuality(filePath string) (AudioQuality, error) {
 		bitDepth = 16
 	}
 
-	return AudioQuality{BitDepth: bitDepth, SampleRate: sampleRate}, nil
+	return AudioQuality{BitDepth: bitDepth, SampleRate: sampleRate, Duration: duration}, nil
+}
+
+func readM4ADurationSeconds(f *os.File, moovHeader atomHeader, fileSize int64) int {
+	childStart := moovHeader.offset + moovHeader.headerSize
+	childSize := moovHeader.size - moovHeader.headerSize
+	mvhdHeader, found, err := findAtomInRange(f, childStart, childSize, "mvhd", fileSize)
+	if err != nil || !found {
+		return 0
+	}
+
+	payloadOffset := mvhdHeader.offset + mvhdHeader.headerSize
+	versionBuf := make([]byte, 1)
+	if _, err := f.ReadAt(versionBuf, payloadOffset); err != nil {
+		return 0
+	}
+
+	if versionBuf[0] == 1 {
+		buf := make([]byte, 32)
+		if _, err := f.ReadAt(buf, payloadOffset); err != nil {
+			return 0
+		}
+		timescale := binary.BigEndian.Uint32(buf[20:24])
+		duration := binary.BigEndian.Uint64(buf[24:32])
+		if timescale == 0 || duration == 0 {
+			return 0
+		}
+		return int(math.Round(float64(duration) / float64(timescale)))
+	}
+
+	buf := make([]byte, 20)
+	if _, err := f.ReadAt(buf, payloadOffset); err != nil {
+		return 0
+	}
+	timescale := binary.BigEndian.Uint32(buf[12:16])
+	duration := binary.BigEndian.Uint32(buf[16:20])
+	if timescale == 0 || duration == 0 {
+		return 0
+	}
+	return int(math.Round(float64(duration) / float64(timescale)))
 }
 
 func readALACSpecificConfig(f *os.File, sampleOffset, fileSize int64) (int, int, bool) {

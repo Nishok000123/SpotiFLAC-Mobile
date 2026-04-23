@@ -1397,6 +1397,7 @@ func ReadFileMetadata(filePath string) (string, error) {
 		if qualityErr == nil {
 			result["bit_depth"] = quality.BitDepth
 			result["sample_rate"] = quality.SampleRate
+			result["duration"] = quality.Duration
 		}
 	} else if isMp3 {
 		meta, err := ReadID3Tags(filePath)

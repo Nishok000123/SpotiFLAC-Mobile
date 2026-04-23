@@ -29,11 +29,11 @@
   "@homeSubtitle": {
     "description": "Subtitle shown below search box"
   },
-  "homeEmptyTitle": "Home is empty",
+  "homeEmptyTitle": "No search providers yet",
   "@homeEmptyTitle": {
     "description": "Title shown on home when no providers are available yet"
   },
-  "homeEmptySubtitle": "Install your first extension to unlock search and browsing.",
+  "homeEmptySubtitle": "Install an extension to continue.",
   "@homeEmptySubtitle": {
     "description": "Subtitle shown on home when no providers are available yet"
   },

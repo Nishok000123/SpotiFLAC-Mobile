@@ -31,11 +31,10 @@ class AppLocalizationsId extends AppLocalizations {
       'Tempel URL yang didukung atau cari berdasarkan nama';
 
   @override
-  String get homeEmptyTitle => 'Home is empty';
+  String get homeEmptyTitle => 'Belum ada provider pencarian';
 
   @override
-  String get homeEmptySubtitle =>
-      'Install your first extension to unlock search and browsing.';
+  String get homeEmptySubtitle => 'Pasang ekstensi untuk melanjutkan.';
 
   @override
   String get homeSupports => 'Mendukung: URL Track, Album, Playlist, Artis';

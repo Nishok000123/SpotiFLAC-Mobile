@@ -29,6 +29,14 @@
   "@homeSubtitle": {
     "description": "Subtitle shown below search box"
   },
+  "homeEmptyTitle": "Belum ada provider pencarian",
+  "@homeEmptyTitle": {
+    "description": "Title shown on home when no providers are available yet"
+  },
+  "homeEmptySubtitle": "Pasang ekstensi untuk melanjutkan.",
+  "@homeEmptySubtitle": {
+    "description": "Subtitle shown on home when no providers are available yet"
+  },
   "homeSupports": "Mendukung: URL Track, Album, Playlist, Artis",
   "@homeSupports": {
     "description": "Info text about supported URL types"

@@ -30,11 +30,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get homeSubtitle => 'Spotify-Link einfügen oder nach Namen suchen';
 
   @override
-  String get homeEmptyTitle => 'Home is empty';
+  String get homeEmptyTitle => 'No search providers yet';
 
   @override
-  String get homeEmptySubtitle =>
-      'Install your first extension to unlock search and browsing.';
+  String get homeEmptySubtitle => 'Install an extension to continue.';
 
   @override
   String get homeSupports =>

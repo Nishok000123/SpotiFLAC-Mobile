@@ -30,11 +30,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeSubtitle => 'Paste a supported URL or search by name';
 
   @override
-  String get homeEmptyTitle => 'Home is empty';
+  String get homeEmptyTitle => 'No search providers yet';
 
   @override
-  String get homeEmptySubtitle =>
-      'Install your first extension to unlock search and browsing.';
+  String get homeEmptySubtitle => 'Install an extension to continue.';
 
   @override
   String get homeSupports => 'Supports: Track, Album, Playlist, Artist URLs';

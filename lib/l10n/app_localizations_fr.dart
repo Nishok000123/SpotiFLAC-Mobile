@@ -30,11 +30,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get homeSubtitle => 'Coller un lien Spotify ou rechercher par nom';
 
   @override
-  String get homeEmptyTitle => 'Home is empty';
+  String get homeEmptyTitle => 'No search providers yet';
 
   @override
-  String get homeEmptySubtitle =>
-      'Install your first extension to unlock search and browsing.';
+  String get homeEmptySubtitle => 'Install an extension to continue.';
 
   @override
   String get homeSupports => 'Supports: Piste, Album, Playlist, Artiste URLs';

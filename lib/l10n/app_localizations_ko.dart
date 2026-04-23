@@ -30,11 +30,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get homeSubtitle => 'Spotify URL을 붙여 넣거나 검색';
 
   @override
-  String get homeEmptyTitle => 'Home is empty';
+  String get homeEmptyTitle => 'No search providers yet';
 
   @override
-  String get homeEmptySubtitle =>
-      'Install your first extension to unlock search and browsing.';
+  String get homeEmptySubtitle => 'Install an extension to continue.';
 
   @override
   String get homeSupports => '지원 항목: 트랙, 앨범, 플레이리스트, 아티스트 URLs';

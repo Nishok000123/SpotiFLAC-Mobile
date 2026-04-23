@@ -406,6 +406,7 @@ func (r *extensionRuntime) RegisterGoBackendAPIs(vm *goja.Runtime) {
 			"bitDepth":     quality.BitDepth,
 			"sampleRate":   quality.SampleRate,
 			"totalSamples": quality.TotalSamples,
+			"duration":     quality.Duration,
 		})
 	})
 

@@ -941,10 +941,10 @@ func (p *extensionProviderWrapper) EnrichTrackForItemID(track *ExtTrackMetadata,
 }
 
 func (p *extensionProviderWrapper) CheckAvailability(isrc, trackName, artistName, spotifyID, deezerID, tidalID, qobuzID string) (*ExtAvailabilityResult, error) {
-	return p.CheckAvailabilityForItemID(isrc, trackName, artistName, spotifyID, deezerID, tidalID, qobuzID, "")
+	return p.CheckAvailabilityForItemID(isrc, trackName, artistName, spotifyID, deezerID, tidalID, qobuzID, 0, "")
 }
 
-func (p *extensionProviderWrapper) CheckAvailabilityForItemID(isrc, trackName, artistName, spotifyID, deezerID, tidalID, qobuzID string, itemID string) (*ExtAvailabilityResult, error) {
+func (p *extensionProviderWrapper) CheckAvailabilityForItemID(isrc, trackName, artistName, spotifyID, deezerID, tidalID, qobuzID string, durationMS int, itemID string) (*ExtAvailabilityResult, error) {
 	if !p.extension.Manifest.IsDownloadProvider() {
 		return nil, fmt.Errorf("extension '%s' is not a download provider", p.extension.ID)
 	}
@@ -975,12 +975,13 @@ func (p *extensionProviderWrapper) CheckAvailabilityForItemID(isrc, trackName, a
 					spotify_id: %q,
 					deezer_id: %q,
 					tidal_id: %q,
-					qobuz_id: %q
+					qobuz_id: %q,
+					duration_ms: %d
 				});
 			}
 			return null;
 		})()
-	`, isrc, trackName, artistName, spotifyID, deezerID, tidalID, qobuzID)
+	`, isrc, trackName, artistName, spotifyID, deezerID, tidalID, qobuzID, durationMS)
 
 	result, err := RunWithTimeoutAndRecover(p.vm, script, DefaultJSTimeout)
 	if err != nil {
@@ -1707,7 +1708,7 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 		ext, err := extManager.GetExtension(req.Source)
 		if err == nil && ext.Enabled && ext.Error == "" && ext.Manifest.IsDownloadProvider() {
 			provider := newExtensionProviderWrapper(ext)
-			availability, availErr := provider.CheckAvailabilityForItemID(req.ISRC, req.TrackName, req.ArtistName, req.SpotifyID, req.DeezerID, req.TidalID, req.QobuzID, req.ItemID)
+			availability, availErr := provider.CheckAvailabilityForItemID(req.ISRC, req.TrackName, req.ArtistName, req.SpotifyID, req.DeezerID, req.TidalID, req.QobuzID, req.DurationMS, req.ItemID)
 			if shouldAbortCancelledFallback(req.ItemID, availErr) {
 				return nil, ErrDownloadCancelled
 			}
@@ -2119,7 +2120,7 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 
 			provider := newExtensionProviderWrapper(ext)
 
-			availability, err := provider.CheckAvailabilityForItemID(req.ISRC, req.TrackName, req.ArtistName, req.SpotifyID, req.DeezerID, req.TidalID, req.QobuzID, req.ItemID)
+			availability, err := provider.CheckAvailabilityForItemID(req.ISRC, req.TrackName, req.ArtistName, req.SpotifyID, req.DeezerID, req.TidalID, req.QobuzID, req.DurationMS, req.ItemID)
 			if shouldAbortCancelledFallback(req.ItemID, err) {
 				return nil, ErrDownloadCancelled
 			}
