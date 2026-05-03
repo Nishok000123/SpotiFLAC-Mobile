@@ -312,6 +312,14 @@ func (r *extensionRuntime) isDownloadCancelled(call goja.FunctionCall) goja.Valu
 	return r.vm.ToValue(isDownloadCancelled(itemID))
 }
 
+func (r *extensionRuntime) isRequestCancelled(call goja.FunctionCall) goja.Value {
+	requestID := r.getActiveRequestID()
+	if requestID == "" {
+		return r.vm.ToValue(false)
+	}
+	return r.vm.ToValue(isExtensionRequestCancelled(requestID))
+}
+
 func (r *extensionRuntime) setDownloadStatus(call goja.FunctionCall) goja.Value {
 	itemID := r.getActiveDownloadItemID()
 	if itemID == "" || len(call.Arguments) < 1 {

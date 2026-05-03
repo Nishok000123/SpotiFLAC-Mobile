@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
-import 'package:spotiflac_android/services/cover_cache_manager.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
@@ -24,6 +22,7 @@ import 'package:spotiflac_android/widgets/download_service_picker.dart';
 import 'package:spotiflac_android/widgets/track_collection_quick_actions.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
 import 'package:spotiflac_android/utils/clickable_metadata.dart';
+import 'package:spotiflac_android/widgets/cached_cover_image.dart';
 
 class _ArtistCache {
   static final Map<String, _CacheEntry> _cache = {};
@@ -1164,12 +1163,11 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
           fit: StackFit.expand,
           children: [
             if (hasValidImage)
-              CachedNetworkImage(
+              CachedCoverImage(
                 imageUrl: imageUrl,
                 fit: BoxFit.cover,
                 alignment: Alignment.topCenter,
                 memCacheWidth: 800,
-                cacheManager: CoverCacheManager.instance,
                 placeholder: (context, url) =>
                     Container(color: colorScheme.surfaceContainerHighest),
                 errorWidget: (context, url, error) => Container(
@@ -1477,33 +1475,18 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: track.coverUrl != null
-                      ? CachedNetworkImage(
-                          imageUrl: track.coverUrl!,
+                track.coverUrl != null
+                    ? CachedCoverImage(
+                        imageUrl: track.coverUrl!,
+                        width: 48,
+                        height: 48,
+                        borderRadius: BorderRadius.circular(4),
+                        placeholder: (context, url) => Container(
                           width: 48,
                           height: 48,
-                          fit: BoxFit.cover,
-                          memCacheWidth: 96,
-                          cacheManager: CoverCacheManager.instance,
-                          placeholder: (context, url) => Container(
-                            width: 48,
-                            height: 48,
-                            color: colorScheme.surfaceContainerHighest,
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            width: 48,
-                            height: 48,
-                            color: colorScheme.surfaceContainerHighest,
-                            child: Icon(
-                              Icons.music_note,
-                              color: colorScheme.onSurfaceVariant,
-                              size: 24,
-                            ),
-                          ),
-                        )
-                      : Container(
+                          color: colorScheme.surfaceContainerHighest,
+                        ),
+                        errorWidget: (context, url, error) => Container(
                           width: 48,
                           height: 48,
                           color: colorScheme.surfaceContainerHighest,
@@ -1513,7 +1496,17 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                             size: 24,
                           ),
                         ),
-                ),
+                      )
+                    : Container(
+                        width: 48,
+                        height: 48,
+                        color: colorScheme.surfaceContainerHighest,
+                        child: Icon(
+                          Icons.music_note,
+                          color: colorScheme.onSurfaceVariant,
+                          size: 24,
+                        ),
+                      ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -1801,13 +1794,12 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: album.coverUrl != null
-                        ? CachedNetworkImage(
+                        ? CachedCoverImage(
                             imageUrl: album.coverUrl!,
                             width: tileSize,
                             height: tileSize,
                             fit: BoxFit.cover,
                             memCacheWidth: (tileSize * 2).round(),
-                            cacheManager: CoverCacheManager.instance,
                             placeholder: (context, url) => Container(
                               width: tileSize,
                               height: tileSize,

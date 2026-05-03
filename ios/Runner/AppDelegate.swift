@@ -7,10 +7,13 @@ import Gobackend  // Import Go framework
     private let CHANNEL = "com.zarz.spotiflac/backend"
     private let DOWNLOAD_PROGRESS_STREAM_CHANNEL = "com.zarz.spotiflac/download_progress_stream"
     private let LIBRARY_SCAN_PROGRESS_STREAM_CHANNEL = "com.zarz.spotiflac/library_scan_progress_stream"
+    private let LARGE_JSON_RESULT_FILE_KEY = "__json_file"
+    private let LARGE_JSON_RESULT_FILE_THRESHOLD_BYTES = 256 * 1024
     private let streamQueue = DispatchQueue(label: "com.zarz.spotiflac.progress_stream", qos: .utility)
     private var downloadProgressTimer: DispatchSourceTimer?
     private var downloadProgressEventSink: FlutterEventSink?
     private var lastDownloadProgressPayload: String?
+    private var lastDownloadProgressSeq: Int64 = 0
     private var libraryScanProgressTimer: DispatchSourceTimer?
     private var libraryScanProgressEventSink: FlutterEventSink?
     private var lastLibraryScanProgressPayload: String?
@@ -131,15 +134,17 @@ import Gobackend  // Import Go framework
         stopDownloadProgressStream()
         downloadProgressEventSink = eventSink
         lastDownloadProgressPayload = nil
+        lastDownloadProgressSeq = 0
 
         let timer = DispatchSource.makeTimerSource(queue: streamQueue)
         timer.schedule(deadline: .now(), repeating: .milliseconds(800))
         timer.setEventHandler { [weak self] in
             guard let self else { return }
-            let payload = GobackendGetAllDownloadProgress() as String? ?? "{}"
-            if payload == self.lastDownloadProgressPayload {
+            let payload = GobackendGetAllDownloadProgressDelta(self.lastDownloadProgressSeq) as String? ?? ""
+            if payload.isEmpty || payload == self.lastDownloadProgressPayload {
                 return
             }
+            self.updateDownloadProgressSeq(payload)
             self.lastDownloadProgressPayload = payload
             DispatchQueue.main.async { [weak self] in
                 self?.downloadProgressEventSink?(self?.parseJsonPayload(payload))
@@ -155,6 +160,7 @@ import Gobackend  // Import Go framework
         downloadProgressTimer = nil
         downloadProgressEventSink = nil
         lastDownloadProgressPayload = nil
+        lastDownloadProgressSeq = 0
     }
 
     private func startLibraryScanProgressStream(_ eventSink: @escaping FlutterEventSink) {
@@ -194,6 +200,34 @@ import Gobackend  // Import Go framework
         do {
             return try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
         } catch {
+            return payload
+        }
+    }
+
+    private func updateDownloadProgressSeq(_ payload: String) {
+        guard let data = payload.data(using: .utf8) else { return }
+        do {
+            if let obj = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) as? [String: Any],
+               let seq = obj["seq"] as? NSNumber,
+               seq.int64Value > lastDownloadProgressSeq {
+                lastDownloadProgressSeq = seq.int64Value
+            }
+        } catch {
+        }
+    }
+
+    private func bridgeJsonResult(_ payload: String) -> Any {
+        if payload.utf8.count < LARGE_JSON_RESULT_FILE_THRESHOLD_BYTES {
+            return payload
+        }
+
+        do {
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent("bridge_json_\(UUID().uuidString).json")
+            try payload.write(to: url, atomically: true, encoding: .utf8)
+            return [LARGE_JSON_RESULT_FILE_KEY: url.path]
+        } catch {
+            NSLog("SpotiFLAC: failed to spill large bridge JSON result to file: \(error.localizedDescription)")
             return payload
         }
     }
@@ -784,10 +818,17 @@ import Gobackend  // Import Go framework
             let extensionId = args["extension_id"] as! String
             let query = args["query"] as! String
             let optionsJson = args["options"] as? String ?? ""
-            let response = GobackendCustomSearchWithExtensionJSON(extensionId, query, optionsJson, &error)
+            let requestId = args["request_id"] as? String ?? ""
+            let response = GobackendCustomSearchWithExtensionJSONWithRequestID(extensionId, query, optionsJson, requestId, &error)
             if let error = error { throw error }
             return response
-            
+
+        case "cancelExtensionRequest":
+            let args = call.arguments as! [String: Any]
+            let requestId = args["request_id"] as? String ?? ""
+            GobackendCancelExtensionRequestJSON(requestId)
+            return nil
+
         case "getSearchProviders":
             let response = GobackendGetSearchProvidersJSON(&error)
             if let error = error { throw error }
@@ -896,7 +937,8 @@ import Gobackend  // Import Go framework
         case "getExtensionHomeFeed":
             let args = call.arguments as! [String: Any]
             let extensionId = args["extension_id"] as! String
-            let response = GobackendGetExtensionHomeFeedJSON(extensionId, &error)
+            let requestId = args["request_id"] as? String ?? ""
+            let response = GobackendGetExtensionHomeFeedJSONWithRequestID(extensionId, requestId, &error)
             if let error = error { throw error }
             return response
             
@@ -919,7 +961,7 @@ import Gobackend  // Import Go framework
             let folderPath = args["folder_path"] as! String
             let response = GobackendScanLibraryFolderJSON(folderPath, &error)
             if let error = error { throw error }
-            return response
+            return bridgeJsonResult(response as String? ?? "[]")
             
         case "scanLibraryFolderIncremental":
             let args = call.arguments as! [String: Any]
@@ -927,7 +969,7 @@ import Gobackend  // Import Go framework
             let existingFiles = args["existing_files"] as? String ?? "{}"
             let response = GobackendScanLibraryFolderIncrementalJSON(folderPath, existingFiles, &error)
             if let error = error { throw error }
-            return response
+            return bridgeJsonResult(response as String? ?? "{}")
             
         case "getLibraryScanProgress":
             let response = GobackendGetLibraryScanProgressJSON()

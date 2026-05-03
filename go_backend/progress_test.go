@@ -1,6 +1,9 @@
 package gobackend
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestItemProgressPreparingAndDownloadingStatuses(t *testing.T) {
 	const itemID = "progress-phase-item"
@@ -55,5 +58,52 @@ func TestItemProgressFinalizingAndCompletedStatuses(t *testing.T) {
 		t.Fatal("expected item progress entry to exist after completion")
 	} else if item.Status != itemProgressStatusCompleted {
 		t.Fatalf("status = %q, want %q", item.Status, itemProgressStatusCompleted)
+	}
+}
+
+func TestMultiProgressDeltaResetChangedAndRemoved(t *testing.T) {
+	ClearAllItemProgress()
+	defer ClearAllItemProgress()
+
+	StartItemProgress("item-a")
+	SetItemBytesTotal("item-a", 1000)
+
+	var initial MultiProgressDelta
+	if err := json.Unmarshal([]byte(GetMultiProgressDelta(0)), &initial); err != nil {
+		t.Fatalf("initial delta parse failed: %v", err)
+	}
+	if !initial.Reset {
+		t.Fatal("initial delta should reset")
+	}
+	if initial.Seq <= 0 {
+		t.Fatalf("initial seq = %d, want > 0", initial.Seq)
+	}
+	if _, ok := initial.Items["item-a"]; !ok {
+		t.Fatal("initial delta missing item-a")
+	}
+
+	if delta := GetMultiProgressDelta(initial.Seq); delta != "" {
+		t.Fatalf("delta after same seq = %q, want empty", delta)
+	}
+
+	SetItemBytesReceivedWithSpeed("item-a", 256*1024, 2.5)
+	var changed MultiProgressDelta
+	if err := json.Unmarshal([]byte(GetMultiProgressDelta(initial.Seq)), &changed); err != nil {
+		t.Fatalf("changed delta parse failed: %v", err)
+	}
+	if changed.Reset {
+		t.Fatal("changed delta should not reset")
+	}
+	if _, ok := changed.Items["item-a"]; !ok {
+		t.Fatal("changed delta missing item-a")
+	}
+
+	RemoveItemProgress("item-a")
+	var removed MultiProgressDelta
+	if err := json.Unmarshal([]byte(GetMultiProgressDelta(changed.Seq)), &removed); err != nil {
+		t.Fatalf("removed delta parse failed: %v", err)
+	}
+	if len(removed.Removed) != 1 || removed.Removed[0] != "item-a" {
+		t.Fatalf("removed = %#v, want item-a", removed.Removed)
 	}
 }

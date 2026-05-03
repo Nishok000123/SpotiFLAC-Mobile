@@ -2,6 +2,7 @@ package gobackend
 
 import (
 	"encoding/json"
+	"math"
 	"sync"
 	"time"
 )
@@ -24,6 +25,7 @@ type ItemProgress struct {
 	SpeedMBps     float64 `json:"speed_mbps"`
 	IsDownloading bool    `json:"is_downloading"`
 	Status        string  `json:"status"`
+	revision      int64
 }
 
 const (
@@ -37,6 +39,22 @@ type MultiProgress struct {
 	Items map[string]*ItemProgress `json:"items"`
 }
 
+type MultiProgressDelta struct {
+	Seq     int64                    `json:"seq"`
+	Reset   bool                     `json:"reset,omitempty"`
+	Items   map[string]*ItemProgress `json:"items,omitempty"`
+	Removed []string                 `json:"removed,omitempty"`
+}
+
+type progressBridgeState struct {
+	bytesBucket   int64
+	bytesTotal    int64
+	progressPct   int64
+	speedDeciMBps int64
+	downloading   bool
+	status        string
+}
+
 var (
 	downloadDir   string
 	downloadDirMu sync.RWMutex
@@ -45,10 +63,48 @@ var (
 	multiMu             sync.RWMutex
 	multiProgressDirty  = true
 	cachedMultiProgress = "{\"items\":{}}"
+	multiProgressSeq    int64
+	multiProgressReset  int64
+	removedProgressSeq  = make(map[string]int64)
 )
 
 func markMultiProgressDirtyLocked() {
 	multiProgressDirty = true
+}
+
+func nextMultiProgressSeqLocked() int64 {
+	multiProgressSeq++
+	return multiProgressSeq
+}
+
+func itemProgressBridgeState(item *ItemProgress) progressBridgeState {
+	progress := item.Progress
+	if math.IsNaN(progress) || progress <= 0 {
+		progress = 0
+	} else if progress >= 1 {
+		progress = 1
+	}
+
+	speed := item.SpeedMBps
+	if math.IsNaN(speed) || speed <= 0 {
+		speed = 0
+	}
+
+	return progressBridgeState{
+		bytesBucket:   item.BytesReceived / progressUpdateThreshold,
+		bytesTotal:    item.BytesTotal,
+		progressPct:   int64(math.Round(progress * 100)),
+		speedDeciMBps: int64(math.Round(speed * 10)),
+		downloading:   item.IsDownloading,
+		status:        item.Status,
+	}
+}
+
+func markMultiProgressDirtyIfChangedLocked(item *ItemProgress, before progressBridgeState) {
+	if itemProgressBridgeState(item) != before {
+		item.revision = nextMultiProgressSeqLocked()
+		markMultiProgressDirtyLocked()
+	}
 }
 
 func getProgress() DownloadProgress {
@@ -92,6 +148,54 @@ func GetMultiProgress() string {
 	return cachedMultiProgress
 }
 
+func GetMultiProgressDelta(sinceSeq int64) string {
+	multiMu.RLock()
+	currentSeq := multiProgressSeq
+	if sinceSeq >= currentSeq {
+		multiMu.RUnlock()
+		return ""
+	}
+
+	reset := sinceSeq <= 0 || sinceSeq < multiProgressReset
+	delta := MultiProgressDelta{
+		Seq:   currentSeq,
+		Reset: reset,
+	}
+	if reset {
+		if len(multiProgress.Items) > 0 {
+			delta.Items = make(map[string]*ItemProgress, len(multiProgress.Items))
+			for id, item := range multiProgress.Items {
+				copy := *item
+				copy.revision = 0
+				delta.Items[id] = &copy
+			}
+		}
+	} else {
+		for id, item := range multiProgress.Items {
+			if item.revision > sinceSeq {
+				if delta.Items == nil {
+					delta.Items = make(map[string]*ItemProgress)
+				}
+				copy := *item
+				copy.revision = 0
+				delta.Items[id] = &copy
+			}
+		}
+		for id, revision := range removedProgressSeq {
+			if revision > sinceSeq {
+				delta.Removed = append(delta.Removed, id)
+			}
+		}
+	}
+	multiMu.RUnlock()
+
+	jsonBytes, err := json.Marshal(delta)
+	if err != nil {
+		return ""
+	}
+	return string(jsonBytes)
+}
+
 func GetItemProgress(itemID string) string {
 	multiMu.RLock()
 	defer multiMu.RUnlock()
@@ -114,7 +218,9 @@ func StartItemProgress(itemID string) {
 		Progress:      0,
 		IsDownloading: true,
 		Status:        itemProgressStatusDownloading,
+		revision:      nextMultiProgressSeqLocked(),
 	}
+	delete(removedProgressSeq, itemID)
 	markMultiProgressDirtyLocked()
 }
 
@@ -123,13 +229,14 @@ func SetItemPreparing(itemID string) {
 	defer multiMu.Unlock()
 
 	if item, ok := multiProgress.Items[itemID]; ok {
+		before := itemProgressBridgeState(item)
 		item.Progress = 0
 		item.BytesReceived = 0
 		item.BytesTotal = 0
 		item.SpeedMBps = 0
 		item.IsDownloading = true
 		item.Status = itemProgressStatusPreparing
-		markMultiProgressDirtyLocked()
+		markMultiProgressDirtyIfChangedLocked(item, before)
 	}
 }
 
@@ -138,9 +245,10 @@ func SetItemDownloading(itemID string) {
 	defer multiMu.Unlock()
 
 	if item, ok := multiProgress.Items[itemID]; ok {
+		before := itemProgressBridgeState(item)
 		item.IsDownloading = true
 		item.Status = itemProgressStatusDownloading
-		markMultiProgressDirtyLocked()
+		markMultiProgressDirtyIfChangedLocked(item, before)
 	}
 }
 
@@ -149,8 +257,9 @@ func SetItemBytesTotal(itemID string, total int64) {
 	defer multiMu.Unlock()
 
 	if item, ok := multiProgress.Items[itemID]; ok {
+		before := itemProgressBridgeState(item)
 		item.BytesTotal = total
-		markMultiProgressDirtyLocked()
+		markMultiProgressDirtyIfChangedLocked(item, before)
 	}
 }
 
@@ -159,11 +268,12 @@ func SetItemBytesReceived(itemID string, received int64) {
 	defer multiMu.Unlock()
 
 	if item, ok := multiProgress.Items[itemID]; ok {
+		before := itemProgressBridgeState(item)
 		item.BytesReceived = received
 		if item.BytesTotal > 0 {
 			item.Progress = float64(received) / float64(item.BytesTotal)
 		}
-		markMultiProgressDirtyLocked()
+		markMultiProgressDirtyIfChangedLocked(item, before)
 	}
 }
 
@@ -172,12 +282,13 @@ func SetItemBytesReceivedWithSpeed(itemID string, received int64, speedMBps floa
 	defer multiMu.Unlock()
 
 	if item, ok := multiProgress.Items[itemID]; ok {
+		before := itemProgressBridgeState(item)
 		item.BytesReceived = received
 		item.SpeedMBps = speedMBps
 		if item.BytesTotal > 0 {
 			item.Progress = float64(received) / float64(item.BytesTotal)
 		}
-		markMultiProgressDirtyLocked()
+		markMultiProgressDirtyIfChangedLocked(item, before)
 	}
 }
 
@@ -186,10 +297,11 @@ func CompleteItemProgress(itemID string) {
 	defer multiMu.Unlock()
 
 	if item, ok := multiProgress.Items[itemID]; ok {
+		before := itemProgressBridgeState(item)
 		item.Progress = 1.0
 		item.IsDownloading = false
 		item.Status = itemProgressStatusCompleted
-		markMultiProgressDirtyLocked()
+		markMultiProgressDirtyIfChangedLocked(item, before)
 	}
 }
 
@@ -198,6 +310,7 @@ func SetItemProgress(itemID string, progress float64, bytesReceived, bytesTotal 
 	defer multiMu.Unlock()
 
 	if item, ok := multiProgress.Items[itemID]; ok {
+		before := itemProgressBridgeState(item)
 		item.Progress = progress
 		if bytesReceived > 0 {
 			item.BytesReceived = bytesReceived
@@ -205,7 +318,7 @@ func SetItemProgress(itemID string, progress float64, bytesReceived, bytesTotal 
 		if bytesTotal > 0 {
 			item.BytesTotal = bytesTotal
 		}
-		markMultiProgressDirtyLocked()
+		markMultiProgressDirtyIfChangedLocked(item, before)
 	}
 }
 
@@ -214,9 +327,10 @@ func SetItemFinalizing(itemID string) {
 	defer multiMu.Unlock()
 
 	if item, ok := multiProgress.Items[itemID]; ok {
+		before := itemProgressBridgeState(item)
 		item.Progress = 1.0
 		item.Status = itemProgressStatusFinalizing
-		markMultiProgressDirtyLocked()
+		markMultiProgressDirtyIfChangedLocked(item, before)
 	}
 }
 
@@ -224,7 +338,10 @@ func RemoveItemProgress(itemID string) {
 	multiMu.Lock()
 	defer multiMu.Unlock()
 
-	delete(multiProgress.Items, itemID)
+	if _, ok := multiProgress.Items[itemID]; ok {
+		delete(multiProgress.Items, itemID)
+		removedProgressSeq[itemID] = nextMultiProgressSeqLocked()
+	}
 	markMultiProgressDirtyLocked()
 }
 
@@ -233,6 +350,8 @@ func ClearAllItemProgress() {
 	defer multiMu.Unlock()
 
 	multiProgress.Items = make(map[string]*ItemProgress)
+	removedProgressSeq = make(map[string]int64)
+	multiProgressReset = nextMultiProgressSeqLocked()
 	markMultiProgressDirtyLocked()
 }
 
@@ -253,7 +372,7 @@ type ItemProgressWriter struct {
 	lastBytes    int64
 }
 
-const progressUpdateThreshold = 64 * 1024
+const progressUpdateThreshold = 128 * 1024
 
 func NewItemProgressWriter(w interface{ Write([]byte) (int, error) }, itemID string) *ItemProgressWriter {
 	now := time.Now()

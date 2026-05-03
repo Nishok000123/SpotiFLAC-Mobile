@@ -43,6 +43,8 @@ class MainActivity: FlutterFragmentActivity() {
         "com.zarz.spotiflac/library_scan_progress_stream"
     private val DOWNLOAD_PROGRESS_STREAM_POLLING_INTERVAL_MS = 1200L
     private val LIBRARY_SCAN_PROGRESS_STREAM_POLLING_INTERVAL_MS = 200L
+    private val LARGE_JSON_RESULT_FILE_KEY = "__json_file"
+    private val LARGE_JSON_RESULT_FILE_THRESHOLD_BYTES = 256 * 1024
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var pendingSafTreeResult: MethodChannel.Result? = null
     private val safScanLock = Any()
@@ -51,6 +53,7 @@ class MainActivity: FlutterFragmentActivity() {
     private var downloadProgressStreamJob: Job? = null
     private var downloadProgressEventSink: EventChannel.EventSink? = null
     private var lastDownloadProgressPayload: String? = null
+    private var lastDownloadProgressSeq = 0L
     private var libraryScanProgressStreamJob: Job? = null
     private var libraryScanProgressEventSink: EventChannel.EventSink? = null
     private var lastLibraryScanProgressPayload: String? = null
@@ -504,17 +507,46 @@ class MainActivity: FlutterFragmentActivity() {
         }
     }
 
+    private fun bridgeJsonResult(payload: String): Any {
+        if (payload.toByteArray(Charsets.UTF_8).size < LARGE_JSON_RESULT_FILE_THRESHOLD_BYTES) {
+            return payload
+        }
+
+        return try {
+            val file = File(cacheDir, "bridge_json_${System.nanoTime()}.json")
+            file.writeText(payload, Charsets.UTF_8)
+            mapOf(LARGE_JSON_RESULT_FILE_KEY to file.absolutePath)
+        } catch (e: Exception) {
+            android.util.Log.w(
+                "SpotiFLAC",
+                "Failed to spill large bridge JSON result to file: ${e.message}",
+            )
+            payload
+        }
+    }
+
+    private fun updateDownloadProgressSeq(payload: String) {
+        try {
+            val seq = JSONObject(payload).optLong("seq", lastDownloadProgressSeq)
+            if (seq > lastDownloadProgressSeq) {
+                lastDownloadProgressSeq = seq
+            }
+        } catch (_: Exception) {}
+    }
+
     private fun startDownloadProgressStream(sink: EventChannel.EventSink) {
         stopDownloadProgressStream()
         downloadProgressEventSink = sink
         lastDownloadProgressPayload = null
+        lastDownloadProgressSeq = 0L
         downloadProgressStreamJob = scope.launch {
             while (isActive && downloadProgressEventSink === sink) {
                 try {
                     val payload = withContext(Dispatchers.IO) {
-                        Gobackend.getAllDownloadProgress()
+                        Gobackend.getAllDownloadProgressDelta(lastDownloadProgressSeq)
                     }
-                    if (payload != lastDownloadProgressPayload) {
+                    if (payload.isNotEmpty() && payload != lastDownloadProgressPayload) {
+                        updateDownloadProgressSeq(payload)
                         lastDownloadProgressPayload = payload
                         sink.success(parseJsonPayload(payload))
                     }
@@ -534,6 +566,7 @@ class MainActivity: FlutterFragmentActivity() {
         downloadProgressStreamJob = null
         downloadProgressEventSink = null
         lastDownloadProgressPayload = null
+        lastDownloadProgressSeq = 0L
     }
 
     private fun startLibraryScanProgressStream(sink: EventChannel.EventSink) {
@@ -580,17 +613,17 @@ class MainActivity: FlutterFragmentActivity() {
         lastLibraryScanProgressPayload = null
     }
 
-    private fun loadExistingFilesJsonFromSnapshot(snapshotPath: String): String {
+    private fun loadExistingFilesFromSnapshot(snapshotPath: String): MutableMap<String, Long> {
+        val result = mutableMapOf<String, Long>()
         if (snapshotPath.isBlank()) {
-            return "{}"
+            return result
         }
 
         val snapshotFile = File(snapshotPath)
         if (!snapshotFile.exists()) {
-            return "{}"
+            return result
         }
 
-        val result = JSONObject()
         snapshotFile.forEachLine { line ->
             if (line.isBlank()) return@forEachLine
             val separatorIndex = line.indexOf('\t')
@@ -600,10 +633,10 @@ class MainActivity: FlutterFragmentActivity() {
             val modTime = line.substring(0, separatorIndex).toLongOrNull() ?: 0L
             val filePath = line.substring(separatorIndex + 1)
             if (filePath.isNotEmpty()) {
-                result.put(filePath, modTime)
+                result[filePath] = modTime
             }
         }
-        return result.toString()
+        return result
     }
 
     private fun resolveSafFile(treeUriStr: String, relativeDir: String, fileName: String): String {
@@ -1452,6 +1485,22 @@ class MainActivity: FlutterFragmentActivity() {
      * @return JSON object with new/changed files and removed URIs
      */
     private fun scanSafTreeIncremental(treeUriStr: String, existingFilesJson: String): String {
+        val existingFiles = mutableMapOf<String, Long>()
+        try {
+            val obj = JSONObject(existingFilesJson)
+            val keys = obj.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                existingFiles[key] = obj.optLong(key, 0)
+            }
+        } catch (_: Exception) {}
+        return scanSafTreeIncremental(treeUriStr, existingFiles)
+    }
+
+    private fun scanSafTreeIncremental(
+        treeUriStr: String,
+        existingFiles: Map<String, Long>,
+    ): String {
         if (treeUriStr.isBlank()) {
             val result = JSONObject()
             result.put("files", JSONArray())
@@ -1470,16 +1519,6 @@ class MainActivity: FlutterFragmentActivity() {
             result.put("totalFiles", 0)
             return result.toString()
         }
-
-        val existingFiles = mutableMapOf<String, Long>()
-        try {
-            val obj = JSONObject(existingFilesJson)
-            val keys = obj.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                existingFiles[key] = obj.optLong(key, 0)
-            }
-        } catch (_: Exception) {}
 
         resetSafScanProgress()
         safScanCancel = false
@@ -3222,10 +3261,18 @@ class MainActivity: FlutterFragmentActivity() {
                             val extensionId = call.argument<String>("extension_id") ?: ""
                             val query = call.argument<String>("query") ?: ""
                             val optionsJson = call.argument<String>("options") ?: ""
+                            val requestId = call.argument<String>("request_id") ?: ""
                             val response = withContext(Dispatchers.IO) {
-                                Gobackend.customSearchWithExtensionJSON(extensionId, query, optionsJson)
+                                Gobackend.customSearchWithExtensionJSONWithRequestID(extensionId, query, optionsJson, requestId)
                             }
                             result.success(response)
+                        }
+                        "cancelExtensionRequest" -> {
+                            val requestId = call.argument<String>("request_id") ?: ""
+                            withContext(Dispatchers.IO) {
+                                Gobackend.cancelExtensionRequestJSON(requestId)
+                            }
+                            result.success(null)
                         }
                         "getSearchProviders" -> {
                             val response = withContext(Dispatchers.IO) {
@@ -3359,8 +3406,9 @@ class MainActivity: FlutterFragmentActivity() {
                         }
                         "getExtensionHomeFeed" -> {
                             val extensionId = call.argument<String>("extension_id") ?: ""
+                            val requestId = call.argument<String>("request_id") ?: ""
                             val response = withContext(Dispatchers.IO) {
-                                Gobackend.getExtensionHomeFeedJSON(extensionId)
+                                Gobackend.getExtensionHomeFeedJSONWithRequestID(extensionId, requestId)
                             }
                             result.success(response)
                         }
@@ -3382,7 +3430,7 @@ class MainActivity: FlutterFragmentActivity() {
                             val folderPath = call.argument<String>("folder_path") ?: ""
                             val response = withContext(Dispatchers.IO) {
                                 safScanActive = false
-                                Gobackend.scanLibraryFolderJSON(folderPath)
+                                bridgeJsonResult(Gobackend.scanLibraryFolderJSON(folderPath))
                             }
                             result.success(response)
                         }
@@ -3391,7 +3439,9 @@ class MainActivity: FlutterFragmentActivity() {
                             val existingFiles = call.argument<String>("existing_files") ?: "{}"
                             val response = withContext(Dispatchers.IO) {
                                 safScanActive = false
-                                Gobackend.scanLibraryFolderIncrementalJSON(folderPath, existingFiles)
+                                bridgeJsonResult(
+                                    Gobackend.scanLibraryFolderIncrementalJSON(folderPath, existingFiles)
+                                )
                             }
                             result.success(response)
                         }
@@ -3400,9 +3450,11 @@ class MainActivity: FlutterFragmentActivity() {
                             val snapshotPath = call.argument<String>("snapshot_path") ?: ""
                             val response = withContext(Dispatchers.IO) {
                                 safScanActive = false
-                                Gobackend.scanLibraryFolderIncrementalFromSnapshotJSON(
-                                    folderPath,
-                                    snapshotPath,
+                                bridgeJsonResult(
+                                    Gobackend.scanLibraryFolderIncrementalFromSnapshotJSON(
+                                        folderPath,
+                                        snapshotPath,
+                                    )
                                 )
                             }
                             result.success(response)
@@ -3410,7 +3462,7 @@ class MainActivity: FlutterFragmentActivity() {
                         "scanSafTree" -> {
                             val treeUri = call.argument<String>("tree_uri") ?: ""
                             val response = withContext(Dispatchers.IO) {
-                                scanSafTree(treeUri)
+                                bridgeJsonResult(scanSafTree(treeUri))
                             }
                             result.success(response)
                         }
@@ -3418,7 +3470,7 @@ class MainActivity: FlutterFragmentActivity() {
                             val treeUri = call.argument<String>("tree_uri") ?: ""
                             val existingFiles = call.argument<String>("existing_files") ?: "{}"
                             val response = withContext(Dispatchers.IO) {
-                                scanSafTreeIncremental(treeUri, existingFiles)
+                                bridgeJsonResult(scanSafTreeIncremental(treeUri, existingFiles))
                             }
                             result.success(response)
                         }
@@ -3426,9 +3478,9 @@ class MainActivity: FlutterFragmentActivity() {
                             val treeUri = call.argument<String>("tree_uri") ?: ""
                             val snapshotPath = call.argument<String>("snapshot_path") ?: ""
                             val response = withContext(Dispatchers.IO) {
-                                val existingFilesJson =
-                                    loadExistingFilesJsonFromSnapshot(snapshotPath)
-                                scanSafTreeIncremental(treeUri, existingFilesJson)
+                                val existingFiles =
+                                    loadExistingFilesFromSnapshot(snapshotPath)
+                                bridgeJsonResult(scanSafTreeIncremental(treeUri, existingFiles))
                             }
                             result.success(response)
                         }

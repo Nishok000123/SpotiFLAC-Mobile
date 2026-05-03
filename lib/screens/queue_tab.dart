@@ -4,10 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:spotiflac_android/services/cover_cache_manager.dart';
 import 'package:spotiflac_android/services/ffmpeg_service.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
@@ -31,6 +29,7 @@ import 'package:spotiflac_android/screens/favorite_artists_screen.dart';
 import 'package:spotiflac_android/screens/downloaded_album_screen.dart';
 import 'package:spotiflac_android/widgets/re_enrich_field_dialog.dart';
 import 'package:spotiflac_android/widgets/batch_progress_dialog.dart';
+import 'package:spotiflac_android/widgets/cached_cover_image.dart';
 import 'package:spotiflac_android/screens/library_tracks_folder_screen.dart';
 import 'package:spotiflac_android/screens/local_album_screen.dart';
 import 'package:spotiflac_android/utils/clickable_metadata.dart';
@@ -1841,10 +1840,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     final targetSize = (360 * dpr).round().clamp(512, 1024).toInt();
     precacheImage(
       ResizeImage(
-        CachedNetworkImageProvider(
-          url,
-          cacheManager: CoverCacheManager.instance,
-        ),
+        cachedCoverImageProvider(url),
         width: targetSize,
         height: targetSize,
       ),
@@ -2166,18 +2162,14 @@ class _QueueTabState extends ConsumerState<QueueTab> {
           ),
         );
       }
-      return ClipRRect(
+      return CachedCoverImage(
+        imageUrl: firstCoverUrl,
+        width: size,
+        height: size,
+        memCacheWidth: cacheExtent,
         borderRadius: borderRadius,
-        child: CachedNetworkImage(
-          imageUrl: firstCoverUrl,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          memCacheWidth: cacheExtent,
-          cacheManager: CoverCacheManager.instance,
-          placeholder: (_, _) => placeholder,
-          errorWidget: (_, _, _) => placeholder,
-        ),
+        placeholder: (_, _) => placeholder,
+        errorWidget: (_, _, _) => placeholder,
       );
     }
 
@@ -3799,14 +3791,13 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                       _albumPlaceholder(colorScheme),
                 )
               : album.coverUrl != null
-              ? CachedNetworkImage(
+              ? CachedCoverImage(
                   imageUrl: album.coverUrl!,
                   fit: BoxFit.cover,
                   width: double.infinity,
                   height: double.infinity,
                   memCacheWidth: 300,
                   memCacheHeight: 300,
-                  cacheManager: CoverCacheManager.instance,
                 )
               : null,
           badgeColor: colorScheme.primaryContainer,
@@ -5383,20 +5374,13 @@ class _QueueTabState extends ConsumerState<QueueTab> {
 
   Widget _buildCoverArt(DownloadItem item, ColorScheme colorScheme) {
     final coverSize = _queueCoverSize();
-    final memCacheSize = (coverSize * 2).round();
 
     return item.track.coverUrl != null
-        ? ClipRRect(
+        ? CachedCoverImage(
+            imageUrl: item.track.coverUrl!,
+            width: coverSize,
+            height: coverSize,
             borderRadius: BorderRadius.circular(8),
-            child: CachedNetworkImage(
-              imageUrl: item.track.coverUrl!,
-              width: coverSize,
-              height: coverSize,
-              fit: BoxFit.cover,
-              memCacheWidth: memCacheSize,
-              memCacheHeight: memCacheSize,
-              cacheManager: CoverCacheManager.instance,
-            ),
           )
         : Container(
             width: coverSize,
@@ -5651,19 +5635,15 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     }
 
     if (item.coverUrl != null) {
-      return ClipRRect(
+      return CachedCoverImage(
+        imageUrl: item.coverUrl!,
+        width: size,
+        height: size,
+        memCacheWidth: cacheSize,
+        memCacheHeight: cacheSize,
         borderRadius: BorderRadius.circular(8),
-        child: CachedNetworkImage(
-          imageUrl: item.coverUrl!,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          memCacheWidth: cacheSize,
-          memCacheHeight: cacheSize,
-          cacheManager: CoverCacheManager.instance,
-          placeholder: (context, url) => buildPlaceholder(),
-          errorWidget: (context, url, error) => buildPlaceholder(),
-        ),
+        placeholder: (context, url) => buildPlaceholder(),
+        errorWidget: (context, url, error) => buildPlaceholder(),
       );
     }
 

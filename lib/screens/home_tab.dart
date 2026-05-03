@@ -4,8 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:spotiflac_android/services/cover_cache_manager.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/models/track.dart';
@@ -33,6 +31,7 @@ import 'package:spotiflac_android/widgets/animation_utils.dart';
 import 'package:spotiflac_android/utils/clickable_metadata.dart';
 import 'package:spotiflac_android/utils/provider_ui_utils.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
+import 'package:spotiflac_android/widgets/cached_cover_image.dart';
 
 part 'home_tab_helpers.dart';
 part 'home_tab_widgets.dart';
@@ -1182,7 +1181,9 @@ class _HomeTabState extends ConsumerState<HomeTab>
     final mediaQuery = MediaQuery.of(context);
     final screenHeight = mediaQuery.size.height;
     final topPadding = normalizedHeaderTopPadding(context);
-    final historyItems = ref.watch(_homeHistoryPreviewProvider);
+    final hasHistoryItems = ref.watch(
+      _homeHistoryPreviewProvider.select((items) => items.isNotEmpty),
+    );
 
     final recentModeRequested = isShowingRecentAccess || isSearchFocused;
     final showRecentAccess =
@@ -1212,7 +1213,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
         !hasHomeFeedExtension &&
         !hasExploreContent &&
         !hasResults &&
-        historyItems.isEmpty;
+        !hasHistoryItems;
 
     ref.listen<String>(settingsProvider.select((s) => s.defaultSearchTab), (
       previous,
@@ -1393,18 +1394,25 @@ class _HomeTabState extends ConsumerState<HomeTab>
                                       ),
                                 ),
                               ),
-                            if (historyItems.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  24,
-                                  32,
-                                  24,
-                                  24,
-                                ),
-                                child: _buildRecentDownloads(
-                                  historyItems,
-                                  colorScheme,
-                                ),
+                            if (hasHistoryItems)
+                              Consumer(
+                                builder: (context, ref, _) {
+                                  final historyItems = ref.watch(
+                                    _homeHistoryPreviewProvider,
+                                  );
+                                  return Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      24,
+                                      32,
+                                      24,
+                                      24,
+                                    ),
+                                    child: _buildRecentDownloads(
+                                      historyItems,
+                                      colorScheme,
+                                    ),
+                                  );
+                                },
                               ),
                           ],
                         ),
@@ -1717,7 +1725,11 @@ class _HomeTabState extends ConsumerState<HomeTab>
 
           final sectionIndex = index - sectionOffset;
           if (sectionIndex < sections.length) {
-            return _buildExploreSection(sections[sectionIndex], colorScheme);
+            final section = sections[sectionIndex];
+            return KeyedSubtree(
+              key: ValueKey('explore-section-${section.uri}-${section.title}'),
+              child: _buildExploreSection(section, colorScheme),
+            );
           }
 
           return const SizedBox(height: 24);
@@ -1753,6 +1765,9 @@ class _HomeTabState extends ConsumerState<HomeTab>
             itemBuilder: (context, index) {
               final item = section.items[index];
               return StaggeredListItem(
+                key: ValueKey(
+                  'explore-item-${item.type}-${item.id}-${item.uri}',
+                ),
                 index: index,
                 staggerDelay: const Duration(milliseconds: 50),
                 child: _buildExploreItem(item, colorScheme),
@@ -1806,14 +1821,11 @@ class _HomeTabState extends ConsumerState<HomeTab>
                     isArtist ? cardSize / 2 : 10,
                   ),
                   child: item.coverUrl != null && item.coverUrl!.isNotEmpty
-                      ? CachedNetworkImage(
+                      ? CachedCoverImage(
                           imageUrl: item.coverUrl!,
                           width: cardSize,
                           height: cardSize,
                           fit: BoxFit.cover,
-                          memCacheWidth: (cardSize * 2).round(),
-                          memCacheHeight: (cardSize * 2).round(),
-                          cacheManager: CoverCacheManager.instance,
                           errorWidget: (context, url, error) => Container(
                             width: cardSize,
                             height: cardSize,
@@ -1968,13 +1980,11 @@ class _HomeTabState extends ConsumerState<HomeTab>
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: item.coverUrl != null && item.coverUrl!.isNotEmpty
-                        ? CachedNetworkImage(
+                        ? CachedCoverImage(
                             imageUrl: item.coverUrl!,
                             width: 64,
                             height: 64,
                             fit: BoxFit.cover,
-                            memCacheWidth: 128,
-                            cacheManager: CoverCacheManager.instance,
                           )
                         : Container(
                             width: 64,
@@ -2474,10 +2484,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
     final targetSize = (360 * dpr).round().clamp(512, 1024).toInt();
     precacheImage(
       ResizeImage(
-        CachedNetworkImageProvider(
-          url,
-          cacheManager: CoverCacheManager.instance,
-        ),
+        cachedCoverImageProvider(url),
         width: targetSize,
         height: targetSize,
       ),

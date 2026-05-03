@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:spotiflac_android/services/cover_cache_manager.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/track.dart';
@@ -19,6 +17,7 @@ import 'package:spotiflac_android/widgets/playlist_picker_sheet.dart';
 import 'package:spotiflac_android/widgets/track_collection_quick_actions.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
+import 'package:spotiflac_android/widgets/cached_cover_image.dart';
 
 class PlaylistScreen extends ConsumerStatefulWidget {
   final String playlistName;
@@ -297,11 +296,10 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
               fit: StackFit.expand,
               children: [
                 if (_coverUrl != null)
-                  CachedNetworkImage(
+                  CachedCoverImage(
                     imageUrl: _highResCoverUrl(_coverUrl) ?? _coverUrl!,
                     fit: BoxFit.cover,
                     memCacheWidth: cacheWidth,
-                    cacheManager: CoverCacheManager.instance,
                     placeholder: (_, _) =>
                         Container(color: colorScheme.surface),
                     errorWidget: (_, _, _) =>
@@ -838,16 +836,11 @@ class _PlaylistTrackItem extends ConsumerWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           leading: track.coverUrl != null
-              ? ClipRRect(
+              ? CachedCoverImage(
+                  imageUrl: track.coverUrl!,
+                  width: 48,
+                  height: 48,
                   borderRadius: BorderRadius.circular(8),
-                  child: CachedNetworkImage(
-                    imageUrl: track.coverUrl!,
-                    width: 48,
-                    height: 48,
-                    fit: BoxFit.cover,
-                    memCacheWidth: 96,
-                    cacheManager: CoverCacheManager.instance,
-                  ),
                 )
               : Container(
                   width: 48,

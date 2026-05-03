@@ -778,6 +778,7 @@ class TrackNotifier extends Notifier<TrackState> {
         extensionId,
         query,
         options: options,
+        cancelPrevious: true,
       );
 
       if (!_isRequestValid(requestId)) {

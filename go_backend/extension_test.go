@@ -1,6 +1,8 @@
 package gobackend
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"path/filepath"
 	"testing"
@@ -376,6 +378,48 @@ func TestExtensionRuntime_BindDownloadCancelContextPreservesPreCancelledState(t 
 
 	if req.Context().Err() == nil {
 		t.Fatal("Expected request context error for pre-cancelled item")
+	}
+}
+
+func TestRunWithTimeoutContextCancelsExecution(t *testing.T) {
+	vm := goja.New()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := RunWithTimeoutContextAndRecover(ctx, vm, `while (true) {}`, 5*time.Second)
+	if !errors.Is(err, ErrExtensionRequestCancelled) {
+		t.Fatalf("expected extension request cancellation, got %v", err)
+	}
+}
+
+func TestExtensionRuntime_BindExtensionRequestCancelContext(t *testing.T) {
+	ext := &loadedExtension{
+		ID: "test-ext",
+		Manifest: &ExtensionManifest{
+			Name: "test-ext",
+		},
+		DataDir: t.TempDir(),
+	}
+	runtime := newExtensionRuntime(ext)
+
+	const requestID = "test-extension-request"
+	clearExtensionRequestCancel(requestID)
+	defer clearExtensionRequestCancel(requestID)
+
+	runtime.setActiveRequestID(requestID)
+	defer runtime.clearActiveRequestID()
+
+	req, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req = runtime.bindDownloadCancelContext(req)
+
+	cancelExtensionRequest(requestID)
+	select {
+	case <-req.Context().Done():
+	case <-time.After(time.Second):
+		t.Fatal("expected request context to be cancelled")
 	}
 }
 

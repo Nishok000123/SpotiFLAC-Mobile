@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
-import 'package:spotiflac_android/services/cover_cache_manager.dart';
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/providers/track_provider.dart';
@@ -12,6 +10,7 @@ import 'package:spotiflac_android/widgets/track_collection_quick_actions.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
 import 'package:spotiflac_android/utils/clickable_metadata.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
+import 'package:spotiflac_android/widgets/cached_cover_image.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   final String query;
@@ -49,30 +48,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
   }
 
-  void _downloadTrack(Track track) {
-    final settings = ref.read(settingsProvider);
-    final extensionState = ref.read(extensionProvider);
-    final service = resolveEffectiveDownloadService(
-      settings.defaultService,
-      extensionState,
-    );
-    if (service.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.extensionsNoDownloadProvider)),
-      );
-      return;
-    }
-    ref.read(downloadQueueProvider.notifier).addToQueue(track, service);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.snackbarAddedToQueue(track.name))),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final tracks = ref.watch(trackProvider.select((s) => s.tracks));
-    final isLoading = ref.watch(trackProvider.select((s) => s.isLoading));
-    final error = ref.watch(trackProvider.select((s) => s.error));
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -98,36 +75,61 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          if (isLoading) LinearProgressIndicator(color: colorScheme.primary),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(error, style: TextStyle(color: colorScheme.error)),
-            ),
-          Expanded(
-            child: AnimatedStateSwitcher(
-              child: isLoading && tracks.isEmpty
-                  ? const TrackListSkeleton(key: ValueKey('loading'))
-                  : tracks.isEmpty
-                  ? _buildEmptyState(colorScheme)
-                  : ListView.builder(
-                      key: const ValueKey('results'),
-                      itemCount: tracks.length,
-                      itemBuilder: (context, index) => StaggeredListItem(
-                        index: index,
-                        child: _buildTrackTile(tracks[index], colorScheme),
-                      ),
-                    ),
-            ),
-          ),
-        ],
-      ),
+      body: const _SearchResultsBody(),
     );
   }
+}
 
-  Widget _buildEmptyState(ColorScheme colorScheme) {
+class _SearchResultsBody extends ConsumerWidget {
+  const _SearchResultsBody();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tracks = ref.watch(trackProvider.select((s) => s.tracks));
+    final isLoading = ref.watch(trackProvider.select((s) => s.isLoading));
+    final error = ref.watch(trackProvider.select((s) => s.error));
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      children: [
+        if (isLoading) LinearProgressIndicator(color: colorScheme.primary),
+        if (error != null)
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(error, style: TextStyle(color: colorScheme.error)),
+          ),
+        Expanded(
+          child: AnimatedStateSwitcher(
+            child: isLoading && tracks.isEmpty
+                ? const TrackListSkeleton(key: ValueKey('loading'))
+                : tracks.isEmpty
+                ? _SearchEmptyState(
+                    key: const ValueKey('empty'),
+                    colorScheme: colorScheme,
+                  )
+                : ListView.builder(
+                    key: const ValueKey('results'),
+                    itemCount: tracks.length,
+                    itemBuilder: (context, index) => StaggeredListItem(
+                      key: ValueKey('search-track-${tracks[index].id}-$index'),
+                      index: index,
+                      child: _SearchTrackTile(track: tracks[index]),
+                    ),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SearchEmptyState extends StatelessWidget {
+  final ColorScheme colorScheme;
+
+  const _SearchEmptyState({super.key, required this.colorScheme});
+
+  @override
+  Widget build(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -144,20 +146,41 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       ),
     );
   }
+}
 
-  Widget _buildTrackTile(Track track, ColorScheme colorScheme) {
+class _SearchTrackTile extends ConsumerWidget {
+  final Track track;
+
+  const _SearchTrackTile({required this.track});
+
+  void _downloadTrack(BuildContext context, WidgetRef ref) {
+    final settings = ref.read(settingsProvider);
+    final extensionState = ref.read(extensionProvider);
+    final service = resolveEffectiveDownloadService(
+      settings.defaultService,
+      extensionState,
+    );
+    if (service.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.extensionsNoDownloadProvider)),
+      );
+      return;
+    }
+    ref.read(downloadQueueProvider.notifier).addToQueue(track, service);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.snackbarAddedToQueue(track.name))),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
     final coverWidget = track.coverUrl != null
-        ? ClipRRect(
+        ? CachedCoverImage(
+            imageUrl: track.coverUrl!,
+            width: 48,
+            height: 48,
             borderRadius: BorderRadius.circular(8),
-            child: CachedNetworkImage(
-              imageUrl: track.coverUrl!,
-              width: 48,
-              height: 48,
-              fit: BoxFit.cover,
-              memCacheWidth: 144,
-              memCacheHeight: 144,
-              cacheManager: CoverCacheManager.instance,
-            ),
           )
         : Container(
             width: 48,
@@ -218,11 +241,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           IconButton(
             icon: const Icon(Icons.download_rounded),
             tooltip: context.l10n.dialogDownload,
-            onPressed: () => _downloadTrack(track),
+            onPressed: () => _downloadTrack(context, ref),
           ),
         ],
       ),
-      onTap: () => _downloadTrack(track),
+      onTap: () => _downloadTrack(context, ref),
     );
   }
 }

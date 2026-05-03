@@ -1,19 +1,61 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotiflac_android/services/download_request_payload.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 
 final _log = AppLogger('PlatformBridge');
 
+class _BridgeCacheEntry {
+  final Map<String, dynamic> value;
+  final DateTime expiresAt;
+
+  const _BridgeCacheEntry({required this.value, required this.expiresAt});
+
+  bool get isExpired => DateTime.now().isAfter(expiresAt);
+}
+
+class _BridgeInFlight<T> {
+  final String requestId;
+  final String scopeKey;
+  final Future<T> future;
+
+  const _BridgeInFlight({
+    required this.requestId,
+    required this.scopeKey,
+    required this.future,
+  });
+}
+
 class PlatformBridge {
   static const _channel = MethodChannel('com.zarz.spotiflac/backend');
+  static const _jsonResultFileKey = '__json_file';
+  static const _metadataCacheTtl = Duration(minutes: 20);
+  static const _availabilityCacheTtl = Duration(minutes: 15);
+  static const _bridgeCacheMaxEntries = 256;
+  static const _metadataPersistentCacheKey = 'bridge_metadata_lookup_cache_v1';
+  static const _availabilityPersistentCacheKey =
+      'bridge_availability_lookup_cache_v1';
   static const _downloadProgressEvents = EventChannel(
     'com.zarz.spotiflac/download_progress_stream',
   );
   static const _libraryScanProgressEvents = EventChannel(
     'com.zarz.spotiflac/library_scan_progress_stream',
   );
+  static final Map<String, _BridgeCacheEntry> _metadataCache = {};
+  static final Map<String, _BridgeCacheEntry> _availabilityCache = {};
+  static final Map<String, Future<Map<String, dynamic>>> _metadataInFlight = {};
+  static final Map<String, Future<Map<String, dynamic>>> _availabilityInFlight =
+      {};
+  static final Map<String, _BridgeInFlight<List<Map<String, dynamic>>>>
+  _customSearchInFlight = {};
+  static final Map<String, _BridgeInFlight<Map<String, dynamic>?>>
+  _homeFeedInFlight = {};
+  static Future<void>? _persistentLookupCacheLoadFuture;
+  static int _lookupCacheGeneration = 0;
+  static int _extensionRequestSequence = 0;
 
   static bool get supportsCoreBackend => Platform.isAndroid || Platform.isIOS;
 
@@ -24,12 +66,324 @@ class PlatformBridge {
     String spotifyId,
     String isrc,
   ) async {
-    _log.d('checkAvailability: $spotifyId (ISRC: $isrc)');
-    final result = await _channel.invokeMethod('checkAvailability', {
-      'spotify_id': spotifyId,
-      'isrc': isrc,
+    final cacheKey = _availabilityCacheKey(spotifyId, isrc);
+    if (cacheKey.isEmpty) {
+      _log.d('checkAvailability: $spotifyId (ISRC: $isrc)');
+      final result = await _channel.invokeMethod('checkAvailability', {
+        'spotify_id': spotifyId,
+        'isrc': isrc,
+      });
+      return _decodeRequiredMapResult(result, 'checkAvailability');
+    }
+    await _ensurePersistentLookupCachesLoaded();
+    final cached = _getCachedMap(_availabilityCache, cacheKey);
+    if (cached != null) return cached;
+
+    final inFlight = _availabilityInFlight[cacheKey];
+    if (inFlight != null) return _copyStringMap(await inFlight);
+
+    final generation = _lookupCacheGeneration;
+    final future = _invokeCachedMap(
+      cacheKey,
+      _availabilityCache,
+      () async {
+        _log.d('checkAvailability: $spotifyId (ISRC: $isrc)');
+        final result = await _channel.invokeMethod('checkAvailability', {
+          'spotify_id': spotifyId,
+          'isrc': isrc,
+        });
+        return _decodeRequiredMapResult(result, 'checkAvailability');
+      },
+      _availabilityCacheTtl,
+      generation,
+      _availabilityPersistentCacheKey,
+    );
+    _availabilityInFlight[cacheKey] = future;
+    try {
+      return _copyStringMap(await future);
+    } finally {
+      _availabilityInFlight.remove(cacheKey);
+    }
+  }
+
+  static Future<Map<String, dynamic>> _invokeCachedMap(
+    String key,
+    Map<String, _BridgeCacheEntry> cache,
+    Future<Map<String, dynamic>> Function() loader,
+    Duration ttl,
+    int generation,
+    String persistentCacheKey,
+  ) async {
+    final value = await loader();
+    if (generation == _lookupCacheGeneration) {
+      _putCachedMap(cache, key, value, ttl, persistentCacheKey);
+    }
+    return _copyStringMap(value);
+  }
+
+  static String _availabilityCacheKey(String spotifyId, String isrc) {
+    final normalizedIsrc = isrc.trim().toUpperCase();
+    if (normalizedIsrc.isNotEmpty) {
+      return 'isrc:$normalizedIsrc';
+    }
+    final normalizedSpotifyId = spotifyId.trim();
+    if (normalizedSpotifyId.isEmpty) return '';
+    return 'spotify:$normalizedSpotifyId';
+  }
+
+  static String _providerMetadataCacheKey(
+    String providerId,
+    String resourceType,
+    String resourceId,
+  ) {
+    return [
+      providerId.trim().toLowerCase(),
+      resourceType.trim().toLowerCase(),
+      resourceId.trim(),
+    ].join(':');
+  }
+
+  static Map<String, dynamic>? _getCachedMap(
+    Map<String, _BridgeCacheEntry> cache,
+    String key,
+  ) {
+    _pruneExpiredBridgeCache(cache);
+    final entry = cache[key];
+    if (entry == null) return null;
+    if (entry.isExpired) {
+      cache.remove(key);
+      return null;
+    }
+    return _copyStringMap(entry.value);
+  }
+
+  static void _putCachedMap(
+    Map<String, _BridgeCacheEntry> cache,
+    String key,
+    Map<String, dynamic> value,
+    Duration ttl,
+    String persistentCacheKey,
+  ) {
+    _pruneExpiredBridgeCache(cache);
+    while (cache.length >= _bridgeCacheMaxEntries && cache.isNotEmpty) {
+      cache.remove(cache.keys.first);
+    }
+    cache[key] = _BridgeCacheEntry(
+      value: _copyStringMap(value),
+      expiresAt: DateTime.now().add(ttl),
+    );
+    unawaited(
+      _persistLookupCache(cache, persistentCacheKey, _lookupCacheGeneration),
+    );
+  }
+
+  static void _pruneExpiredBridgeCache(Map<String, _BridgeCacheEntry> cache) {
+    if (cache.isEmpty) return;
+    final now = DateTime.now();
+    cache.removeWhere((_, entry) => now.isAfter(entry.expiresAt));
+  }
+
+  static dynamic _copyJsonLike(dynamic value) {
+    if (value is Map) {
+      return <String, dynamic>{
+        for (final entry in value.entries)
+          entry.key.toString(): _copyJsonLike(entry.value),
+      };
+    }
+    if (value is List) {
+      return value.map(_copyJsonLike).toList(growable: false);
+    }
+    return value;
+  }
+
+  static Map<String, dynamic> _copyStringMap(Map<String, dynamic> value) {
+    return <String, dynamic>{
+      for (final entry in value.entries) entry.key: _copyJsonLike(entry.value),
+    };
+  }
+
+  static Map<String, dynamic>? _copyNullableStringMap(
+    Map<String, dynamic>? value,
+  ) {
+    if (value == null) return null;
+    return _copyStringMap(value);
+  }
+
+  static List<Map<String, dynamic>> _copyMapList(
+    List<Map<String, dynamic>> value,
+  ) {
+    return value.map(_copyStringMap).toList(growable: false);
+  }
+
+  static dynamic _canonicalizeJsonLike(dynamic value) {
+    if (value is Map) {
+      final entries = value.entries.toList()
+        ..sort((a, b) => a.key.toString().compareTo(b.key.toString()));
+      return <String, dynamic>{
+        for (final entry in entries)
+          entry.key.toString(): _canonicalizeJsonLike(entry.value),
+      };
+    }
+    if (value is List) {
+      return value.map(_canonicalizeJsonLike).toList(growable: false);
+    }
+    return value;
+  }
+
+  static Future<void> _ensurePersistentLookupCachesLoaded() {
+    return _persistentLookupCacheLoadFuture ??= _loadPersistentLookupCaches(
+      _lookupCacheGeneration,
+    );
+  }
+
+  static Future<void> _loadPersistentLookupCaches(int generation) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (generation != _lookupCacheGeneration) return;
+      _restorePersistentCache(
+        prefs,
+        _metadataPersistentCacheKey,
+        _metadataCache,
+      );
+      _restorePersistentCache(
+        prefs,
+        _availabilityPersistentCacheKey,
+        _availabilityCache,
+      );
+    } catch (e) {
+      _log.w('Failed to load bridge lookup cache: $e');
+    }
+  }
+
+  static void _restorePersistentCache(
+    SharedPreferences prefs,
+    String prefsKey,
+    Map<String, _BridgeCacheEntry> target,
+  ) {
+    final raw = prefs.getString(prefsKey);
+    if (raw == null || raw.isEmpty) return;
+
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) return;
+
+    final now = DateTime.now();
+    for (final entry in decoded.entries) {
+      if (target.length >= _bridgeCacheMaxEntries) break;
+      final key = entry.key.toString();
+      final rawEntry = entry.value;
+      if (key.isEmpty || rawEntry is! Map) continue;
+
+      final expiresAtMs = rawEntry['expires_at'];
+      final value = rawEntry['value'];
+      if (expiresAtMs is! int || value is! Map) continue;
+
+      final expiresAt = DateTime.fromMillisecondsSinceEpoch(expiresAtMs);
+      if (!expiresAt.isAfter(now)) continue;
+
+      target[key] = _BridgeCacheEntry(
+        value: _copyStringMap(Map<String, dynamic>.from(value)),
+        expiresAt: expiresAt,
+      );
+    }
+  }
+
+  static Future<void> _persistLookupCache(
+    Map<String, _BridgeCacheEntry> cache,
+    String prefsKey,
+    int generation,
+  ) async {
+    try {
+      _pruneExpiredBridgeCache(cache);
+      final data = <String, dynamic>{
+        for (final entry in cache.entries)
+          entry.key: {
+            'expires_at': entry.value.expiresAt.millisecondsSinceEpoch,
+            'value': entry.value.value,
+          },
+      };
+      final prefs = await SharedPreferences.getInstance();
+      if (generation != _lookupCacheGeneration) return;
+      await prefs.setString(prefsKey, jsonEncode(data));
+    } catch (e) {
+      _log.w('Failed to persist bridge lookup cache: $e');
+    }
+  }
+
+  static Future<void> _clearPersistentLookupCaches() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_metadataPersistentCacheKey);
+      await prefs.remove(_availabilityPersistentCacheKey);
+    } catch (e) {
+      _log.w('Failed to clear bridge lookup cache: $e');
+    }
+  }
+
+  static Future<void> _clearLookupCaches() async {
+    _lookupCacheGeneration++;
+    _persistentLookupCacheLoadFuture = null;
+    _metadataCache.clear();
+    _availabilityCache.clear();
+    _metadataInFlight.clear();
+    _availabilityInFlight.clear();
+    for (final inFlight in _customSearchInFlight.values) {
+      _cancelExtensionRequestUnawaited(inFlight.requestId);
+    }
+    for (final inFlight in _homeFeedInFlight.values) {
+      _cancelExtensionRequestUnawaited(inFlight.requestId);
+    }
+    _customSearchInFlight.clear();
+    _homeFeedInFlight.clear();
+    await _clearPersistentLookupCaches();
+  }
+
+  static String _nextExtensionRequestId(String kind, String extensionId) {
+    _extensionRequestSequence++;
+    return [
+      kind,
+      DateTime.now().microsecondsSinceEpoch,
+      _extensionRequestSequence,
+      extensionId.trim(),
+    ].join(':');
+  }
+
+  static void _cancelExtensionRequestUnawaited(String requestId) {
+    if (requestId.isEmpty) return;
+    unawaited(
+      cancelExtensionRequest(requestId).catchError((Object e) {
+        _log.w('Failed to cancel extension request $requestId: $e');
+      }),
+    );
+  }
+
+  static Future<void> cancelExtensionRequest(String requestId) async {
+    if (requestId.isEmpty) return;
+    await _channel.invokeMethod('cancelExtensionRequest', {
+      'request_id': requestId,
     });
-    return _decodeRequiredMapResult(result, 'checkAvailability');
+  }
+
+  static void _cancelCustomSearchInFlightForScope(
+    String scopeKey, {
+    String? exceptKey,
+  }) {
+    for (final entry in _customSearchInFlight.entries.toList()) {
+      if (entry.key == exceptKey || entry.value.scopeKey != scopeKey) continue;
+      _cancelExtensionRequestUnawaited(entry.value.requestId);
+    }
+  }
+
+  static void cancelExtensionHomeFeedRequests() {
+    for (final inFlight in _homeFeedInFlight.values) {
+      _cancelExtensionRequestUnawaited(inFlight.requestId);
+    }
+    _homeFeedInFlight.clear();
+  }
+
+  static int _lookupCacheSize() {
+    _pruneExpiredBridgeCache(_metadataCache);
+    _pruneExpiredBridgeCache(_availabilityCache);
+    return _metadataCache.length + _availabilityCache.length;
   }
 
   static Future<Map<String, dynamic>> _invokeDownloadMethod(
@@ -485,11 +839,13 @@ class PlatformBridge {
   }
 
   static Future<int> getTrackCacheSize() async {
+    await _ensurePersistentLookupCachesLoaded();
     final result = await _channel.invokeMethod('getTrackCacheSize');
-    return result as int;
+    return (result as int) + _lookupCacheSize();
   }
 
   static Future<void> clearTrackCache() async {
+    await _clearLookupCaches();
     await _channel.invokeMethod('clearTrackCache');
   }
 
@@ -533,17 +889,45 @@ class PlatformBridge {
     String resourceType,
     String resourceId,
   ) async {
-    final result = await _channel.invokeMethod('getProviderMetadata', {
-      'provider_id': providerId,
-      'resource_type': resourceType,
-      'resource_id': resourceId,
-    });
-    if (result == null) {
-      throw Exception(
-        'getProviderMetadata returned null for $providerId:$resourceType:$resourceId',
-      );
+    final cacheKey = _providerMetadataCacheKey(
+      providerId,
+      resourceType,
+      resourceId,
+    );
+    await _ensurePersistentLookupCachesLoaded();
+    final cached = _getCachedMap(_metadataCache, cacheKey);
+    if (cached != null) return cached;
+
+    final inFlight = _metadataInFlight[cacheKey];
+    if (inFlight != null) return _copyStringMap(await inFlight);
+
+    final generation = _lookupCacheGeneration;
+    final future = _invokeCachedMap(
+      cacheKey,
+      _metadataCache,
+      () async {
+        final result = await _channel.invokeMethod('getProviderMetadata', {
+          'provider_id': providerId,
+          'resource_type': resourceType,
+          'resource_id': resourceId,
+        });
+        if (result == null) {
+          throw Exception(
+            'getProviderMetadata returned null for $providerId:$resourceType:$resourceId',
+          );
+        }
+        return _decodeRequiredMapResult(result, 'getProviderMetadata');
+      },
+      _metadataCacheTtl,
+      generation,
+      _metadataPersistentCacheKey,
+    );
+    _metadataInFlight[cacheKey] = future;
+    try {
+      return _copyStringMap(await future);
+    } finally {
+      _metadataInFlight.remove(cacheKey);
     }
-    return _decodeRequiredMapResult(result, 'getProviderMetadata');
   }
 
   static Future<Map<String, dynamic>> searchDeezerByISRC(
@@ -584,11 +968,39 @@ class PlatformBridge {
     String resourceType,
     String spotifyId,
   ) async {
-    final result = await _channel.invokeMethod('convertSpotifyToDeezer', {
-      'resource_type': resourceType,
-      'spotify_id': spotifyId,
-    });
-    return _decodeRequiredMapResult(result, 'convertSpotifyToDeezer');
+    final cacheKey = _providerMetadataCacheKey(
+      'spotify-to-deezer',
+      resourceType,
+      spotifyId,
+    );
+    await _ensurePersistentLookupCachesLoaded();
+    final cached = _getCachedMap(_metadataCache, cacheKey);
+    if (cached != null) return cached;
+
+    final inFlight = _metadataInFlight[cacheKey];
+    if (inFlight != null) return _copyStringMap(await inFlight);
+
+    final generation = _lookupCacheGeneration;
+    final future = _invokeCachedMap(
+      cacheKey,
+      _metadataCache,
+      () async {
+        final result = await _channel.invokeMethod('convertSpotifyToDeezer', {
+          'resource_type': resourceType,
+          'spotify_id': spotifyId,
+        });
+        return _decodeRequiredMapResult(result, 'convertSpotifyToDeezer');
+      },
+      _metadataCacheTtl,
+      generation,
+      _metadataPersistentCacheKey,
+    );
+    _metadataInFlight[cacheKey] = future;
+    try {
+      return _copyStringMap(await future);
+    } finally {
+      _metadataInFlight.remove(cacheKey);
+    }
   }
 
   static Future<List<Map<String, dynamic>>> getGoLogs() async {
@@ -641,6 +1053,7 @@ class PlatformBridge {
     String filePath,
   ) async {
     _log.d('loadExtensionFromPath: $filePath');
+    await _clearLookupCaches();
     final result = await _channel.invokeMethod('loadExtensionFromPath', {
       'file_path': filePath,
     });
@@ -649,6 +1062,7 @@ class PlatformBridge {
 
   static Future<void> unloadExtension(String extensionId) async {
     _log.d('unloadExtension: $extensionId');
+    await _clearLookupCaches();
     await _channel.invokeMethod('unloadExtension', {
       'extension_id': extensionId,
     });
@@ -656,6 +1070,7 @@ class PlatformBridge {
 
   static Future<void> removeExtension(String extensionId) async {
     _log.d('removeExtension: $extensionId');
+    await _clearLookupCaches();
     await _channel.invokeMethod('removeExtension', {
       'extension_id': extensionId,
     });
@@ -663,6 +1078,7 @@ class PlatformBridge {
 
   static Future<Map<String, dynamic>> upgradeExtension(String filePath) async {
     _log.d('upgradeExtension: $filePath');
+    await _clearLookupCaches();
     final result = await _channel.invokeMethod('upgradeExtension', {
       'file_path': filePath,
     });
@@ -689,6 +1105,7 @@ class PlatformBridge {
     bool enabled,
   ) async {
     _log.d('setExtensionEnabled: $extensionId = $enabled');
+    await _clearLookupCaches();
     await _channel.invokeMethod('setExtensionEnabled', {
       'extension_id': extensionId,
       'enabled': enabled,
@@ -697,6 +1114,7 @@ class PlatformBridge {
 
   static Future<void> setProviderPriority(List<String> providerIds) async {
     _log.d('setProviderPriority: $providerIds');
+    await _clearLookupCaches();
     await _channel.invokeMethod('setProviderPriority', {
       'priority': jsonEncode(providerIds),
     });
@@ -711,6 +1129,7 @@ class PlatformBridge {
     List<String>? extensionIds,
   ) async {
     _log.d('setDownloadFallbackExtensionIds: $extensionIds');
+    await _clearLookupCaches();
     await _channel.invokeMethod('setDownloadFallbackExtensionIds', {
       'extension_ids': extensionIds == null ? '' : jsonEncode(extensionIds),
     });
@@ -720,6 +1139,7 @@ class PlatformBridge {
     List<String> providerIds,
   ) async {
     _log.d('setMetadataProviderPriority: $providerIds');
+    await _clearLookupCaches();
     await _channel.invokeMethod('setMetadataProviderPriority', {
       'priority': jsonEncode(providerIds),
     });
@@ -744,6 +1164,7 @@ class PlatformBridge {
     Map<String, dynamic> settings,
   ) async {
     _log.d('setExtensionSettings: $extensionId');
+    await _clearLookupCaches();
     await _channel.invokeMethod('setExtensionSettings', {
       'extension_id': extensionId,
       'settings': jsonEncode(settings),
@@ -883,13 +1304,45 @@ class PlatformBridge {
     String extensionId,
     String query, {
     Map<String, dynamic>? options,
+    bool cancelPrevious = false,
   }) async {
-    final result = await _channel.invokeMethod('customSearchWithExtension', {
-      'extension_id': extensionId,
-      'query': query,
-      'options': options != null ? jsonEncode(options) : '',
-    });
-    return _decodeMapListResult(result, 'customSearchWithExtension');
+    final optionsJson = options != null ? jsonEncode(options) : '';
+    final scopeKey = 'customSearch:${extensionId.trim()}';
+    final cacheKey = [
+      scopeKey,
+      query,
+      jsonEncode(_canonicalizeJsonLike(options ?? const <String, dynamic>{})),
+    ].join('\n');
+    final inFlight = _customSearchInFlight[cacheKey];
+    if (inFlight != null) return _copyMapList(await inFlight.future);
+    if (cancelPrevious) {
+      _cancelCustomSearchInFlightForScope(scopeKey, exceptKey: cacheKey);
+    }
+
+    final requestId = _nextExtensionRequestId('customSearch', extensionId);
+    final future = (() async {
+      final result = await _channel.invokeMethod('customSearchWithExtension', {
+        'extension_id': extensionId,
+        'query': query,
+        'options': optionsJson,
+        'request_id': requestId,
+      });
+      return _decodeMapListResult(result, 'customSearchWithExtension');
+    })();
+
+    final entry = _BridgeInFlight<List<Map<String, dynamic>>>(
+      requestId: requestId,
+      scopeKey: scopeKey,
+      future: future,
+    );
+    _customSearchInFlight[cacheKey] = entry;
+    try {
+      return _copyMapList(await future);
+    } finally {
+      if (identical(_customSearchInFlight[cacheKey], entry)) {
+        _customSearchInFlight.remove(cacheKey);
+      }
+    }
   }
 
   static Future<List<Map<String, dynamic>>> getSearchProviders() async {
@@ -927,16 +1380,44 @@ class PlatformBridge {
   }
 
   static Future<Map<String, dynamic>?> getExtensionHomeFeed(
-    String extensionId,
-  ) async {
+    String extensionId, {
+    bool cancelPrevious = false,
+  }) async {
+    final cacheKey = 'homeFeed:${extensionId.trim()}';
+    final inFlight = _homeFeedInFlight[cacheKey];
+    if (inFlight != null) {
+      if (!cancelPrevious) {
+        return _copyNullableStringMap(await inFlight.future);
+      }
+      _cancelExtensionRequestUnawaited(inFlight.requestId);
+      _homeFeedInFlight.remove(cacheKey);
+    }
+
+    final requestId = _nextExtensionRequestId('homeFeed', extensionId);
+    final future = (() async {
+      try {
+        final result = await _channel.invokeMethod('getExtensionHomeFeed', {
+          'extension_id': extensionId,
+          'request_id': requestId,
+        });
+        return _decodeNullableMapResult(result, 'getExtensionHomeFeed');
+      } catch (e) {
+        _log.e('getExtensionHomeFeed failed: $e');
+        return null;
+      }
+    })();
+    final entry = _BridgeInFlight<Map<String, dynamic>?>(
+      requestId: requestId,
+      scopeKey: cacheKey,
+      future: future,
+    );
+    _homeFeedInFlight[cacheKey] = entry;
     try {
-      final result = await _channel.invokeMethod('getExtensionHomeFeed', {
-        'extension_id': extensionId,
-      });
-      return _decodeNullableMapResult(result, 'getExtensionHomeFeed');
-    } catch (e) {
-      _log.e('getExtensionHomeFeed failed: $e');
-      return null;
+      return _copyNullableStringMap(await future);
+    } finally {
+      if (identical(_homeFeedInFlight[cacheKey], entry)) {
+        _homeFeedInFlight.remove(cacheKey);
+      }
     }
   }
 
@@ -969,7 +1450,7 @@ class PlatformBridge {
     final result = await _channel.invokeMethod('scanLibraryFolder', {
       'folder_path': folderPath,
     });
-    return _decodeMapListResult(result, 'scanLibraryFolder');
+    return _decodeMapListResultAsync(result, 'scanLibraryFolder');
   }
 
   static Future<Map<String, dynamic>> scanLibraryFolderIncremental(
@@ -983,7 +1464,10 @@ class PlatformBridge {
       'folder_path': folderPath,
       'existing_files': jsonEncode(existingFiles),
     });
-    return _decodeRequiredMapResult(result, 'scanLibraryFolderIncremental');
+    return _decodeRequiredMapResultAsync(
+      result,
+      'scanLibraryFolderIncremental',
+    );
   }
 
   static Future<Map<String, dynamic>> scanLibraryFolderIncrementalFromSnapshot(
@@ -994,7 +1478,7 @@ class PlatformBridge {
       'scanLibraryFolderIncrementalFromSnapshot',
       {'folder_path': folderPath, 'snapshot_path': snapshotPath},
     );
-    return _decodeRequiredMapResult(
+    return _decodeRequiredMapResultAsync(
       result,
       'scanLibraryFolderIncrementalFromSnapshot',
     );
@@ -1005,7 +1489,7 @@ class PlatformBridge {
     final result = await _channel.invokeMethod('scanSafTree', {
       'tree_uri': treeUri,
     });
-    return _decodeMapListResult(result, 'scanSafTree');
+    return _decodeMapListResultAsync(result, 'scanSafTree');
   }
 
   static Future<Map<String, dynamic>> scanSafTreeIncremental(
@@ -1019,7 +1503,7 @@ class PlatformBridge {
       'tree_uri': treeUri,
       'existing_files': jsonEncode(existingFiles),
     });
-    return _decodeRequiredMapResult(result, 'scanSafTreeIncremental');
+    return _decodeRequiredMapResultAsync(result, 'scanSafTreeIncremental');
   }
 
   static Future<Map<String, dynamic>> scanSafTreeIncrementalFromSnapshot(
@@ -1030,7 +1514,7 @@ class PlatformBridge {
       'scanSafTreeIncrementalFromSnapshot',
       {'tree_uri': treeUri, 'snapshot_path': snapshotPath},
     );
-    return _decodeRequiredMapResult(
+    return _decodeRequiredMapResultAsync(
       result,
       'scanSafTreeIncrementalFromSnapshot',
     );
@@ -1067,6 +1551,22 @@ class PlatformBridge {
     return result;
   }
 
+  static Future<Object?> _decodeJsonResultAsync(dynamic result) async {
+    if (result is Map && result[_jsonResultFileKey] is String) {
+      final file = File(result[_jsonResultFileKey] as String);
+      try {
+        final contents = await file.readAsString();
+        if (contents.isEmpty) return null;
+        return jsonDecode(contents);
+      } finally {
+        try {
+          await file.delete();
+        } catch (_) {}
+      }
+    }
+    return _decodeJsonResult(result);
+  }
+
   static Map<String, dynamic> _decodeRequiredMapResult(
     dynamic result,
     String method,
@@ -1094,6 +1594,19 @@ class PlatformBridge {
     );
   }
 
+  static Future<Map<String, dynamic>> _decodeRequiredMapResultAsync(
+    dynamic result,
+    String method,
+  ) async {
+    final decoded = await _decodeJsonResultAsync(result);
+    if (decoded is Map) {
+      return decoded.cast<String, dynamic>();
+    }
+    throw FormatException(
+      'Expected map result from $method, got ${decoded.runtimeType}',
+    );
+  }
+
   static List<dynamic> _decodeRequiredListResult(
     dynamic result,
     String method,
@@ -1105,11 +1618,35 @@ class PlatformBridge {
     );
   }
 
+  static Future<List<dynamic>> _decodeRequiredListResultAsync(
+    dynamic result,
+    String method,
+  ) async {
+    final decoded = await _decodeJsonResultAsync(result);
+    if (decoded is List) return decoded;
+    throw FormatException(
+      'Expected list result from $method, got ${decoded.runtimeType}',
+    );
+  }
+
   static List<Map<String, dynamic>> _decodeMapListResult(
     dynamic result,
     String method,
   ) {
     return _decodeRequiredListResult(result, method).map((entry) {
+      if (entry is Map) return entry.cast<String, dynamic>();
+      throw FormatException(
+        'Expected map entry from $method, got ${entry.runtimeType}',
+      );
+    }).toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> _decodeMapListResultAsync(
+    dynamic result,
+    String method,
+  ) async {
+    final decoded = await _decodeRequiredListResultAsync(result, method);
+    return decoded.map((entry) {
       if (entry is Map) return entry.cast<String, dynamic>();
       throw FormatException(
         'Expected map entry from $method, got ${entry.runtimeType}',

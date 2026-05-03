@@ -213,6 +213,7 @@ List<ExploreSection> _buildExploreSectionsFromNormalizedPayload(
 class ExploreNotifier extends Notifier<ExploreState> {
   static const _cacheKey = 'explore_home_feed_cache';
   static const _cacheTsKey = 'explore_home_feed_ts';
+  int _homeFeedRequestId = 0;
 
   @override
   ExploreState build() {
@@ -281,6 +282,8 @@ class ExploreNotifier extends Notifier<ExploreState> {
     if (ref.read(settingsProvider).homeFeedProvider ==
         AppSettings.homeFeedProviderOff) {
       _log.d('Home feed disabled by user setting');
+      _homeFeedRequestId++;
+      PlatformBridge.cancelExtensionHomeFeedRequests();
       state = const ExploreState();
       return;
     }
@@ -293,11 +296,12 @@ class ExploreNotifier extends Notifier<ExploreState> {
       return;
     }
 
-    if (state.isLoading) {
+    if (state.isLoading && !forceRefresh) {
       _log.d('Home feed fetch already in progress');
       return;
     }
 
+    final requestId = ++_homeFeedRequestId;
     final showLoading = !state.hasContent;
     state = state.copyWith(isLoading: showLoading, error: null);
 
@@ -330,6 +334,7 @@ class ExploreNotifier extends Notifier<ExploreState> {
 
       if (targetExt == null) {
         _log.w('No extension with homeFeed capability found');
+        if (requestId != _homeFeedRequestId) return;
         state = state.copyWith(
           isLoading: false,
           error: 'No extension with home feed support enabled',
@@ -338,7 +343,11 @@ class ExploreNotifier extends Notifier<ExploreState> {
       }
 
       _log.i('Fetching home feed from ${targetExt.id}...');
-      final result = await PlatformBridge.getExtensionHomeFeed(targetExt.id);
+      final result = await PlatformBridge.getExtensionHomeFeed(
+        targetExt.id,
+        cancelPrevious: forceRefresh,
+      );
+      if (requestId != _homeFeedRequestId) return;
 
       if (result == null) {
         state = state.copyWith(
@@ -362,6 +371,7 @@ class ExploreNotifier extends Notifier<ExploreState> {
         _normalizeExploreSectionsPayload,
         sectionsData,
       );
+      if (requestId != _homeFeedRequestId) return;
       final sections = _buildExploreSectionsFromNormalizedPayload(
         normalizedSections,
       );
@@ -388,11 +398,14 @@ class ExploreNotifier extends Notifier<ExploreState> {
       _saveToCache(normalizedSections);
     } catch (e, stack) {
       _log.e('Error fetching home feed: $e', e, stack);
+      if (requestId != _homeFeedRequestId) return;
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
   void clear() {
+    _homeFeedRequestId++;
+    PlatformBridge.cancelExtensionHomeFeedRequests();
     state = const ExploreState();
   }
 

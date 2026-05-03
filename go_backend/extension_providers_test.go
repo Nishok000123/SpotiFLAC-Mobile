@@ -13,6 +13,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dop251/goja"
 )
 
 func TestSetMetadataProviderPriorityStripsRetiredBuiltIns(t *testing.T) {
@@ -394,5 +396,245 @@ func TestSearchTracksWithMetadataProvidersIgnoresRetiredBuiltIns(t *testing.T) {
 	}
 	if len(calls) != 0 {
 		t.Fatalf("expected retired built-in provider not to be queried, got %v", calls)
+	}
+}
+
+func TestParseExtensionSearchResultAcceptsObjectAndArrayShapes(t *testing.T) {
+	vm := goja.New()
+	value, err := vm.RunString(`({
+		tracks: [{
+			id: "track-1",
+			name: "Song",
+			artists: "Artist",
+			album_name: "Album",
+			duration_ms: 123000,
+			cover_url: "https://img.test/cover.jpg",
+			external_links: { spotify: "spotify:track:1" },
+			audio_quality: "LOSSLESS"
+		}],
+		total: 9
+	})`)
+	if err != nil {
+		t.Fatalf("build object search result: %v", err)
+	}
+
+	result, err := parseExtensionSearchResult(vm, value)
+	if err != nil {
+		t.Fatalf("parse object search result: %v", err)
+	}
+	if result.Total != 9 || len(result.Tracks) != 1 {
+		t.Fatalf("unexpected object result: %+v", result)
+	}
+	track := result.Tracks[0]
+	if track.ID != "track-1" ||
+		track.AlbumName != "Album" ||
+		track.DurationMS != 123000 ||
+		track.CoverURL != "https://img.test/cover.jpg" ||
+		track.ExternalLinks["spotify"] != "spotify:track:1" ||
+		track.AudioQuality != "LOSSLESS" {
+		t.Fatalf("unexpected parsed track: %+v", track)
+	}
+
+	arrayValue, err := vm.RunString(`[
+		{id: "track-2", name: "Other Song", artists: "Other Artist", albumName: "Other Album", durationMs: 456000}
+	]`)
+	if err != nil {
+		t.Fatalf("build array search result: %v", err)
+	}
+
+	arrayResult, err := parseExtensionSearchResult(vm, arrayValue)
+	if err != nil {
+		t.Fatalf("parse array search result: %v", err)
+	}
+	if arrayResult.Total != 1 ||
+		len(arrayResult.Tracks) != 1 ||
+		arrayResult.Tracks[0].AlbumName != "Other Album" ||
+		arrayResult.Tracks[0].DurationMS != 456000 {
+		t.Fatalf("unexpected array result: %+v", arrayResult)
+	}
+}
+
+func TestParseExtensionMetadataAndDownloadResults(t *testing.T) {
+	vm := goja.New()
+	value, err := vm.RunString(`({
+		id: "album-1",
+		name: "Album",
+		artists: "Artist",
+		artistId: "artist-1",
+		coverUrl: "https://img.test/album.jpg",
+		releaseDate: "2024-02-03",
+		totalTracks: 2,
+		albumType: "album",
+		tracks: [
+			{id: "track-1", name: "Song 1", artists: "Artist", durationMs: 180000},
+			{id: "track-2", name: "Song 2", artists: "Artist", duration_ms: 181000}
+		]
+	})`)
+	if err != nil {
+		t.Fatalf("build album value: %v", err)
+	}
+
+	album, err := parseExtensionAlbumValue(vm, value)
+	if err != nil {
+		t.Fatalf("parse album: %v", err)
+	}
+	if album.ID != "album-1" ||
+		album.ArtistID != "artist-1" ||
+		album.CoverURL != "https://img.test/album.jpg" ||
+		album.TotalTracks != 2 ||
+		len(album.Tracks) != 2 ||
+		album.Tracks[0].DurationMS != 180000 ||
+		album.Tracks[1].DurationMS != 181000 {
+		t.Fatalf("unexpected album: %+v", album)
+	}
+
+	artistValue, err := vm.RunString(`({
+		id: "artist-1",
+		name: "Artist",
+		imageUrl: "https://img.test/artist.jpg",
+		headerImage: "https://img.test/header.jpg",
+		listeners: 1234,
+		albums: [{id: "album-1", name: "Album", tracks: [{id: "track-1", name: "Song"}]}],
+		releases: [{id: "single-1", name: "Single"}],
+		topTracks: [{id: "top-1", name: "Top Song"}]
+	})`)
+	if err != nil {
+		t.Fatalf("build artist value: %v", err)
+	}
+
+	artist, err := parseExtensionArtistValue(vm, artistValue)
+	if err != nil {
+		t.Fatalf("parse artist: %v", err)
+	}
+	if artist.ID != "artist-1" ||
+		artist.ImageURL != "https://img.test/artist.jpg" ||
+		artist.HeaderImage != "https://img.test/header.jpg" ||
+		artist.Listeners != 1234 ||
+		len(artist.Albums) != 1 ||
+		len(artist.Albums[0].Tracks) != 1 ||
+		len(artist.Releases) != 1 ||
+		len(artist.TopTracks) != 1 {
+		t.Fatalf("unexpected artist: %+v", artist)
+	}
+
+	downloadValue, err := vm.RunString(`({
+		success: true,
+		filePath: "/tmp/song.flac",
+		alreadyExists: true,
+		bitDepth: 24,
+		sampleRate: 96000,
+		title: "Song",
+		albumArtist: "Album Artist",
+		lyricsLrc: "[00:00.00]Line",
+		decryptionKey: "001122",
+		decryption: {
+			strategy: "mp4_decryption_key",
+			key: "001122",
+			inputFormat: "m4a",
+			options: { map: "0:a" }
+		}
+	})`)
+	if err != nil {
+		t.Fatalf("build download value: %v", err)
+	}
+
+	download := parseExtensionDownloadResultValue(vm, downloadValue)
+	if !download.Success ||
+		download.FilePath != "/tmp/song.flac" ||
+		!download.AlreadyExists ||
+		download.BitDepth != 24 ||
+		download.SampleRate != 96000 ||
+		download.AlbumArtist != "Album Artist" ||
+		download.LyricsLRC != "[00:00.00]Line" ||
+		download.Decryption == nil ||
+		download.Decryption.InputFormat != "m4a" ||
+		download.Decryption.Options["map"] != "0:a" {
+		t.Fatalf("unexpected download result: %+v", download)
+	}
+
+	availabilityValue, err := vm.RunString(`({ available: true, trackId: "track-1", skipFallback: true, reason: "direct" })`)
+	if err != nil {
+		t.Fatalf("build availability value: %v", err)
+	}
+	availability := parseExtensionAvailabilityValue(vm, availabilityValue)
+	if !availability.Available || availability.TrackID != "track-1" || !availability.SkipFallback || availability.Reason != "direct" {
+		t.Fatalf("unexpected availability: %+v", availability)
+	}
+}
+
+func TestParseExtensionURLHandleResult(t *testing.T) {
+	vm := goja.New()
+	value, err := vm.RunString(`({
+		type: "album",
+		name: "Shared Album",
+		coverUrl: "https://img.test/shared.jpg",
+		track: { id: "track-1", name: "Song" },
+		tracks: [{ id: "track-2", name: "Song 2" }],
+		album: { id: "album-1", name: "Album", tracks: [{ id: "track-3", name: "Song 3" }] },
+		artist: { id: "artist-1", name: "Artist", topTracks: [{ id: "track-4", name: "Song 4" }] }
+	})`)
+	if err != nil {
+		t.Fatalf("build URL handle value: %v", err)
+	}
+
+	result, err := parseExtensionURLHandleValue(vm, value)
+	if err != nil {
+		t.Fatalf("parse URL handle: %v", err)
+	}
+	if result.Type != "album" ||
+		result.CoverURL != "https://img.test/shared.jpg" ||
+		result.Track == nil ||
+		result.Track.ID != "track-1" ||
+		len(result.Tracks) != 1 ||
+		result.Album == nil ||
+		len(result.Album.Tracks) != 1 ||
+		result.Artist == nil ||
+		len(result.Artist.TopTracks) != 1 {
+		t.Fatalf("unexpected URL handle result: %+v", result)
+	}
+}
+
+func TestParseExtensionAuxiliaryResults(t *testing.T) {
+	vm := goja.New()
+
+	matchValue, err := vm.RunString(`({ matched: true, trackId: "track-1", confidence: 0.92, reason: "isrc" })`)
+	if err != nil {
+		t.Fatalf("build match value: %v", err)
+	}
+	match := parseExtensionMatchTrackValue(vm, matchValue)
+	if !match.Matched || match.TrackID != "track-1" || match.Confidence != 0.92 || match.Reason != "isrc" {
+		t.Fatalf("unexpected match result: %+v", match)
+	}
+
+	postValue, err := vm.RunString(`({ success: true, newFilePath: "/tmp/new.flac", newFileUri: "content://new", bitDepth: 24, sampleRate: 96000 })`)
+	if err != nil {
+		t.Fatalf("build post-process value: %v", err)
+	}
+	post := parseExtensionPostProcessValue(vm, postValue)
+	if !post.Success || post.NewFilePath != "/tmp/new.flac" || post.NewFileURI != "content://new" || post.BitDepth != 24 || post.SampleRate != 96000 {
+		t.Fatalf("unexpected post-process result: %+v", post)
+	}
+
+	lyricsValue, err := vm.RunString(`({
+		syncType: "LINE_SYNCED",
+		instrumental: false,
+		plainLyrics: "Line",
+		provider: "Lyrics Provider",
+		lines: [{ startTimeMs: 1000, words: "Line", endTimeMs: 2000 }]
+	})`)
+	if err != nil {
+		t.Fatalf("build lyrics value: %v", err)
+	}
+	lyrics, err := parseExtensionLyricsValue(vm, lyricsValue)
+	if err != nil {
+		t.Fatalf("parse lyrics: %v", err)
+	}
+	if lyrics.SyncType != "LINE_SYNCED" ||
+		lyrics.PlainLyrics != "Line" ||
+		lyrics.Provider != "Lyrics Provider" ||
+		len(lyrics.Lines) != 1 ||
+		lyrics.Lines[0].StartTimeMs != 1000 ||
+		lyrics.Lines[0].EndTimeMs != 2000 {
+		t.Fatalf("unexpected lyrics result: %+v", lyrics)
 	}
 }

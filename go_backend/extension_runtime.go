@@ -94,6 +94,9 @@ type extensionRuntime struct {
 	activeDownloadMu     sync.RWMutex
 	activeDownloadItemID string
 
+	activeRequestMu sync.RWMutex
+	activeRequestID string
+
 	storageMu      sync.RWMutex
 	storageCache   map[string]interface{}
 	storageLoaded  bool
@@ -209,6 +212,24 @@ func (r *extensionRuntime) getActiveDownloadItemID() string {
 	return r.activeDownloadItemID
 }
 
+func (r *extensionRuntime) setActiveRequestID(requestID string) {
+	r.activeRequestMu.Lock()
+	defer r.activeRequestMu.Unlock()
+	r.activeRequestID = strings.TrimSpace(requestID)
+}
+
+func (r *extensionRuntime) clearActiveRequestID() {
+	r.activeRequestMu.Lock()
+	defer r.activeRequestMu.Unlock()
+	r.activeRequestID = ""
+}
+
+func (r *extensionRuntime) getActiveRequestID() string {
+	r.activeRequestMu.RLock()
+	defer r.activeRequestMu.RUnlock()
+	return r.activeRequestID
+}
+
 func (r *extensionRuntime) bindDownloadCancelContext(req *http.Request) *http.Request {
 	if req == nil {
 		return nil
@@ -216,7 +237,11 @@ func (r *extensionRuntime) bindDownloadCancelContext(req *http.Request) *http.Re
 
 	itemID := r.getActiveDownloadItemID()
 	if itemID == "" {
-		return req
+		requestID := r.getActiveRequestID()
+		if requestID == "" {
+			return req
+		}
+		return req.WithContext(initExtensionRequestCancel(requestID))
 	}
 
 	return req.WithContext(initDownloadCancel(itemID))
@@ -479,6 +504,7 @@ func (r *extensionRuntime) RegisterAPIs(vm *goja.Runtime) {
 	utilsObj.Set("appUserAgent", r.appUserAgent)
 	utilsObj.Set("sleep", r.sleep)
 	utilsObj.Set("isDownloadCancelled", r.isDownloadCancelled)
+	utilsObj.Set("isRequestCancelled", r.isRequestCancelled)
 	utilsObj.Set("setDownloadStatus", r.setDownloadStatus)
 	vm.Set("utils", utilsObj)
 

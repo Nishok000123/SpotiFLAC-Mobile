@@ -15,6 +15,15 @@ const _metadataProviderPriorityKey = 'metadata_provider_priority';
 const _providerPriorityKey = 'provider_priority';
 const _spotifyWebExtensionId = 'spotify-web';
 
+bool _stringListEquals(List<String> a, List<String> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
 class BuiltInProviderSpec {
   final String id;
   final String displayName;
@@ -1033,7 +1042,7 @@ class ExtensionNotifier extends Notifier<ExtensionState> {
     }
 
     final sanitized = _sanitizeDownloadProviderPriority(state.providerPriority);
-    if (jsonEncode(sanitized) == jsonEncode(state.providerPriority)) {
+    if (_stringListEquals(sanitized, state.providerPriority)) {
       return;
     }
 
@@ -1053,7 +1062,7 @@ class ExtensionNotifier extends Notifier<ExtensionState> {
       state.metadataProviderPriority,
     );
     final sanitized = _sanitizeMetadataProviderPriority(replaced);
-    if (jsonEncode(sanitized) == jsonEncode(state.metadataProviderPriority)) {
+    if (_stringListEquals(sanitized, state.metadataProviderPriority)) {
       return;
     }
 

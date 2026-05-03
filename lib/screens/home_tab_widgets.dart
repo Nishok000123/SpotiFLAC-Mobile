@@ -25,8 +25,12 @@ class _SearchProviderDropdown extends ConsumerWidget {
     final rawCurrentProvider = ref.watch(
       settingsProvider.select((s) => s.searchProvider),
     );
-    final extensionState = ref.watch(extensionProvider);
-    final extensions = extensionState.extensions;
+    final extensions = ref.watch(extensionProvider.select((s) => s.extensions));
+    final providerReadiness = ref.watch(
+      extensionProvider.select(
+        (s) => (isInitialized: s.isInitialized, error: s.error),
+      ),
+    );
     final colorScheme = Theme.of(context).colorScheme;
 
     final searchProviders = extensions
@@ -36,7 +40,7 @@ class _SearchProviderDropdown extends ConsumerWidget {
     final hasAnyProvider =
         searchProviders.isNotEmpty || builtInProviders.isNotEmpty;
     final isProviderLoading =
-        !extensionState.isInitialized && extensionState.error == null;
+        !providerReadiness.isInitialized && providerReadiness.error == null;
 
     if (!hasAnyProvider) {
       return Padding(
@@ -324,14 +328,11 @@ class _TrackItemWithStatus extends ConsumerWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: track.coverUrl != null
-                      ? CachedNetworkImage(
+                      ? CachedCoverImage(
                           imageUrl: track.coverUrl!,
                           width: thumbWidth,
                           height: thumbHeight,
                           fit: BoxFit.cover,
-                          memCacheWidth: (thumbWidth * 2).toInt(),
-                          memCacheHeight: (thumbHeight * 2).toInt(),
-                          cacheManager: CoverCacheManager.instance,
                         )
                       : Container(
                           width: thumbWidth,
@@ -518,14 +519,11 @@ class _CollectionItemWidget extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(isArtist ? 28 : 10),
                   child: item.coverUrl != null && item.coverUrl!.isNotEmpty
-                      ? CachedNetworkImage(
+                      ? CachedCoverImage(
                           imageUrl: item.coverUrl!,
                           width: 56,
                           height: 56,
                           fit: BoxFit.cover,
-                          memCacheWidth: 112,
-                          memCacheHeight: 112,
-                          cacheManager: CoverCacheManager.instance,
                         )
                       : Container(
                           width: 56,
@@ -623,14 +621,11 @@ class _SearchArtistItemWidget extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(28),
                   child: hasValidImage
-                      ? CachedNetworkImage(
+                      ? CachedCoverImage(
                           imageUrl: artist.imageUrl!,
                           width: 56,
                           height: 56,
                           fit: BoxFit.cover,
-                          memCacheWidth: 112,
-                          memCacheHeight: 112,
-                          cacheManager: CoverCacheManager.instance,
                         )
                       : Container(
                           width: 56,
@@ -724,14 +719,11 @@ class _SearchAlbumItemWidget extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: hasValidImage
-                      ? CachedNetworkImage(
+                      ? CachedCoverImage(
                           imageUrl: album.imageUrl!,
                           width: 56,
                           height: 56,
                           fit: BoxFit.cover,
-                          memCacheWidth: 112,
-                          memCacheHeight: 112,
-                          cacheManager: CoverCacheManager.instance,
                         )
                       : Container(
                           width: 56,
@@ -828,14 +820,11 @@ class _SearchPlaylistItemWidget extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: hasValidImage
-                      ? CachedNetworkImage(
+                      ? CachedCoverImage(
                           imageUrl: playlist.imageUrl!,
                           width: 56,
                           height: 56,
                           fit: BoxFit.cover,
-                          memCacheWidth: 112,
-                          memCacheHeight: 112,
-                          cacheManager: CoverCacheManager.instance,
                         )
                       : Container(
                           width: 56,
@@ -996,14 +985,13 @@ class _DownloadedOrRemoteCoverState extends State<_DownloadedOrRemoteCover> {
         errorBuilder: (_, _, _) => _fallback(),
       );
     } else if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) {
-      child = CachedNetworkImage(
+      child = CachedCoverImage(
         imageUrl: widget.imageUrl!,
         width: widget.width,
         height: widget.height,
         fit: BoxFit.cover,
         memCacheWidth: cacheWidth,
         memCacheHeight: cacheHeight,
-        cacheManager: CoverCacheManager.instance,
         errorWidget: (_, _, _) => _fallback(),
       );
     } else {
@@ -1617,7 +1605,12 @@ class _QuickPicksPageViewState extends State<_QuickPicksPageView> {
               return Column(
                 children: List.generate(pageItemCount, (index) {
                   final item = widget.section.items[startIndex + index];
-                  return _buildQuickPickItem(item);
+                  return KeyedSubtree(
+                    key: ValueKey(
+                      'quick-pick-${item.type}-${item.id}-${item.uri}',
+                    ),
+                    child: _buildQuickPickItem(item),
+                  );
                 }),
               );
             },
@@ -1661,14 +1654,11 @@ class _QuickPicksPageViewState extends State<_QuickPicksPageView> {
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: item.coverUrl != null && item.coverUrl!.isNotEmpty
-                  ? CachedNetworkImage(
+                  ? CachedCoverImage(
                       imageUrl: item.coverUrl!,
                       width: 48,
                       height: 48,
                       fit: BoxFit.cover,
-                      memCacheWidth: 96,
-                      memCacheHeight: 96,
-                      cacheManager: CoverCacheManager.instance,
                       errorWidget: (context, url, error) => Container(
                         width: 48,
                         height: 48,

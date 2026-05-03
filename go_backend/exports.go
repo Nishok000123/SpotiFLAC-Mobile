@@ -3,6 +3,7 @@ package gobackend
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -1057,6 +1058,10 @@ func GetDownloadProgress() string {
 
 func GetAllDownloadProgress() string {
 	return GetMultiProgress()
+}
+
+func GetAllDownloadProgressDelta(sinceSeq int64) string {
+	return GetMultiProgressDelta(sinceSeq)
 }
 
 func InitItemProgress(itemID string) {
@@ -3217,6 +3222,10 @@ func EnrichTrackWithExtensionJSON(extensionID, trackJSON string) (string, error)
 }
 
 func CustomSearchWithExtensionJSON(extensionID, query string, optionsJSON string) (string, error) {
+	return CustomSearchWithExtensionJSONWithRequestID(extensionID, query, optionsJSON, "")
+}
+
+func CustomSearchWithExtensionJSONWithRequestID(extensionID, query string, optionsJSON string, requestID string) (string, error) {
 	manager := getExtensionManager()
 	ext, err := manager.GetExtension(extensionID)
 	if err != nil {
@@ -3235,7 +3244,7 @@ func CustomSearchWithExtensionJSON(extensionID, query string, optionsJSON string
 	}
 
 	provider := newExtensionProviderWrapper(ext)
-	tracks, err := provider.CustomSearch(query, options)
+	tracks, err := provider.CustomSearchForRequestID(query, options, requestID)
 	if err != nil {
 		return "", err
 	}
@@ -3714,6 +3723,10 @@ func ClearStoreCacheJSON() error {
 }
 
 func callExtensionFunctionJSON(extensionID, functionName string, timeout time.Duration) (string, error) {
+	return callExtensionFunctionJSONWithRequestID(extensionID, functionName, timeout, "")
+}
+
+func callExtensionFunctionJSONWithRequestID(extensionID, functionName string, timeout time.Duration, requestID string) (string, error) {
 	manager := getExtensionManager()
 	ext, err := manager.GetExtension(extensionID)
 	if err != nil {
@@ -3723,11 +3736,27 @@ func callExtensionFunctionJSON(extensionID, functionName string, timeout time.Du
 	if !ext.Enabled {
 		return "", fmt.Errorf("extension '%s' is disabled", extensionID)
 	}
+	perf := newExtensionCallPerf(extensionID, functionName)
+	defer perf.finish()
+	initStartedAt := time.Now()
 	vm, err := ext.lockReadyVM()
 	if err != nil {
 		return "", err
 	}
+	perf.recordInit(time.Since(initStartedAt))
 	defer ext.VMMu.Unlock()
+	requestCtx := context.Background()
+	if requestID != "" {
+		if ext.runtime != nil {
+			ext.runtime.setActiveRequestID(requestID)
+			defer ext.runtime.clearActiveRequestID()
+		}
+		requestCtx = initExtensionRequestCancel(requestID)
+		defer clearExtensionRequestCancel(requestID)
+		if isExtensionRequestCancelled(requestID) {
+			return "", ErrExtensionRequestCancelled
+		}
+	}
 
 	// Goja runtime is not thread-safe; guard direct extension.*() calls with VMMu
 	// to avoid races with other provider calls (e.g. getAlbum/getPlaylist).
@@ -3740,20 +3769,31 @@ func callExtensionFunctionJSON(extensionID, functionName string, timeout time.Du
 		})()
 	`, functionName, functionName)
 
-	result, err := RunWithTimeoutAndRecover(vm, script, timeout)
+	jsStartedAt := time.Now()
+	result, err := RunWithTimeoutContextAndRecover(requestCtx, vm, script, timeout)
+	perf.recordJS(time.Since(jsStartedAt))
 	if err != nil {
+		if isExtensionRequestCancelled(requestID) || errors.Is(err, ErrExtensionRequestCancelled) {
+			return "", ErrExtensionRequestCancelled
+		}
 		return "", fmt.Errorf("%s failed: %w", functionName, err)
+	}
+	if isExtensionRequestCancelled(requestID) {
+		return "", ErrExtensionRequestCancelled
 	}
 
 	if result == nil || goja.IsUndefined(result) || goja.IsNull(result) {
 		return "", fmt.Errorf("%s returned null", functionName)
 	}
 
-	exported := result.Export()
-	jsonBytes, err := json.Marshal(exported)
+	parseStartedAt := time.Now()
+	jsonBytes, err := json.Marshal(result)
+	perf.recordParse(time.Since(parseStartedAt))
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal result: %w", err)
 	}
+	perf.setPayloadBytes(len(jsonBytes))
+	perf.setItems(countExtensionTopLevelItems(vm, result))
 
 	return string(jsonBytes), nil
 }
@@ -3762,8 +3802,16 @@ func GetExtensionHomeFeedJSON(extensionID string) (string, error) {
 	return callExtensionFunctionJSON(extensionID, "getHomeFeed", 60*time.Second)
 }
 
+func GetExtensionHomeFeedJSONWithRequestID(extensionID, requestID string) (string, error) {
+	return callExtensionFunctionJSONWithRequestID(extensionID, "getHomeFeed", 60*time.Second, requestID)
+}
+
 func GetExtensionBrowseCategoriesJSON(extensionID string) (string, error) {
 	return callExtensionFunctionJSON(extensionID, "getBrowseCategories", 30*time.Second)
+}
+
+func CancelExtensionRequestJSON(requestID string) {
+	cancelExtensionRequest(requestID)
 }
 
 func SetLibraryCoverCacheDirJSON(cacheDir string) {
