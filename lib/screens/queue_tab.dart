@@ -61,6 +61,9 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   final _FileExistsListenableCache _fileExistsCache =
       _FileExistsListenableCache();
   static const int _maxSearchIndexCacheSize = 4000;
+  static const double _libraryGridMinExtent = 92;
+  static const double _libraryGridDefaultExtent = 126;
+  static const double _libraryGridMaxExtent = 190;
   bool _embeddedCoverRefreshScheduled = false;
   // Version counter to trigger targeted cover image rebuilds
   // without rebuilding the entire widget tree via setState.
@@ -142,6 +145,8 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   String? _filterFormat;
   String? _filterMetadata;
   String _sortMode = 'latest';
+  double _libraryGridExtent = _libraryGridDefaultExtent;
+  double? _libraryGridScaleStartExtent;
 
   double _effectiveTextScale() {
     final textScale = MediaQuery.textScalerOf(context).scale(1.0);
@@ -155,6 +160,30 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     final scale = (shortestSide / 390).clamp(0.82, 1.0);
     final textScale = _effectiveTextScale();
     return (56 * scale * (1 + ((textScale - 1) * 0.12))).clamp(46.0, 56.0);
+  }
+
+  double get _libraryAlbumGridExtent =>
+      (_libraryGridExtent * 1.45).clamp(150.0, 300.0);
+
+  void _handleLibraryGridScaleStart(ScaleStartDetails details) {
+    if (details.pointerCount < 2) return;
+    _libraryGridScaleStartExtent = _libraryGridExtent;
+  }
+
+  void _handleLibraryGridScaleUpdate(ScaleUpdateDetails details) {
+    final startExtent = _libraryGridScaleStartExtent;
+    if (startExtent == null || details.pointerCount < 2) return;
+
+    final nextExtent = (startExtent * details.scale).clamp(
+      _libraryGridMinExtent,
+      _libraryGridMaxExtent,
+    );
+    if ((nextExtent - _libraryGridExtent).abs() < 0.5) return;
+    setState(() => _libraryGridExtent = nextExtent);
+  }
+
+  void _handleLibraryGridScaleEnd(ScaleEndDetails details) {
+    _libraryGridScaleStartExtent = null;
   }
 
   @override
@@ -1655,6 +1684,43 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                                     tempMetadata == 'missing-album-artist',
                                 onSelected: (_) => setSheetState(
                                   () => tempMetadata = 'missing-album-artist',
+                                ),
+                              ),
+                              FilterChip(
+                                label: const Text('Missing track number'),
+                                selected:
+                                    tempMetadata == 'missing-track-number',
+                                onSelected: (_) => setSheetState(
+                                  () => tempMetadata = 'missing-track-number',
+                                ),
+                              ),
+                              FilterChip(
+                                label: const Text('Missing disc number'),
+                                selected: tempMetadata == 'missing-disc-number',
+                                onSelected: (_) => setSheetState(
+                                  () => tempMetadata = 'missing-disc-number',
+                                ),
+                              ),
+                              FilterChip(
+                                label: const Text('Missing artist'),
+                                selected: tempMetadata == 'missing-artist',
+                                onSelected: (_) => setSheetState(
+                                  () => tempMetadata = 'missing-artist',
+                                ),
+                              ),
+                              FilterChip(
+                                label: const Text('Incorrect ISRC format'),
+                                selected:
+                                    tempMetadata == 'incorrect-isrc-format',
+                                onSelected: (_) => setSheetState(
+                                  () => tempMetadata = 'incorrect-isrc-format',
+                                ),
+                              ),
+                              FilterChip(
+                                label: const Text('Missing label'),
+                                selected: tempMetadata == 'missing-label',
+                                onSelected: (_) => setSheetState(
+                                  () => tempMetadata = 'missing-label',
                                 ),
                               ),
                             ],
@@ -3221,7 +3287,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       }
     }
 
-    return CustomScrollView(
+    final content = CustomScrollView(
       slivers: [
         if (totalTrackCount > 0 && filterMode == 'all')
           SliverToBoxAdapter(
@@ -3367,13 +3433,11 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                 filteredGroupedLocalAlbums.isNotEmpty))
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.75,
-              ),
+            sliver: _AnimatedLibrarySliverGrid(
+              maxCrossAxisExtent: _libraryAlbumGridExtent,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.72,
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
                   if (index < filteredGroupedAlbums.length) {
@@ -3406,13 +3470,11 @@ class _QueueTabState extends ConsumerState<QueueTab> {
           if (historyViewMode == 'grid')
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  childAspectRatio: 0.75,
-                ),
+              sliver: _AnimatedLibrarySliverGrid(
+                maxCrossAxisExtent: _libraryGridExtent,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 0.66,
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     final collectionEntries = _getVisibleCollectionEntries(
@@ -3578,14 +3640,11 @@ class _QueueTabState extends ConsumerState<QueueTab> {
           historyViewMode == 'grid'
               ? SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
-                          childAspectRatio: 0.75,
-                        ),
+                  sliver: _AnimatedLibrarySliverGrid(
+                    maxCrossAxisExtent: _libraryGridExtent,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 0.66,
                     delegate: SliverChildBuilderDelegate((context, index) {
                       final item = filteredUnifiedItems[index];
                       return KeyedSubtree(
@@ -3640,6 +3699,15 @@ class _QueueTabState extends ConsumerState<QueueTab> {
             child: SizedBox(height: _isSelectionMode ? 100 : 16),
           ),
       ],
+    );
+
+    if (historyViewMode != 'grid') return content;
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onScaleStart: _handleLibraryGridScaleStart,
+      onScaleUpdate: _handleLibraryGridScaleUpdate,
+      onScaleEnd: _handleLibraryGridScaleEnd,
+      child: content,
     );
   }
 
@@ -5381,6 +5449,8 @@ class _QueueTabState extends ConsumerState<QueueTab> {
             width: coverSize,
             height: coverSize,
             borderRadius: BorderRadius.circular(8),
+            fadeInDuration: const Duration(milliseconds: 180),
+            fadeOutDuration: const Duration(milliseconds: 90),
           )
         : Container(
             width: coverSize,
@@ -5614,6 +5684,24 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       );
     }
 
+    Widget fadeInFileImage(Widget child, int? frame, bool wasSync) {
+      if (wasSync) return child;
+      final animated = Stack(
+        fit: StackFit.expand,
+        children: [
+          buildPlaceholder(isLocal: !isDownloaded),
+          AnimatedOpacity(
+            opacity: frame == null ? 0.0 : 1.0,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            child: child,
+          ),
+        ],
+      );
+      if (size == null) return animated;
+      return SizedBox(width: size, height: size, child: animated);
+    }
+
     if (isDownloaded) {
       final embeddedCoverPath = _resolveDownloadedEmbeddedCoverPath(
         item.filePath,
@@ -5628,6 +5716,9 @@ class _QueueTabState extends ConsumerState<QueueTab> {
             fit: BoxFit.cover,
             cacheWidth: cacheSize,
             cacheHeight: cacheSize,
+            gaplessPlayback: true,
+            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) =>
+                fadeInFileImage(child, frame, wasSynchronouslyLoaded),
             errorBuilder: (context, error, stackTrace) => buildPlaceholder(),
           ),
         );
@@ -5644,6 +5735,8 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         borderRadius: BorderRadius.circular(8),
         placeholder: (context, url) => buildPlaceholder(),
         errorWidget: (context, url, error) => buildPlaceholder(),
+        fadeInDuration: const Duration(milliseconds: 180),
+        fadeOutDuration: const Duration(milliseconds: 90),
       );
     }
 
@@ -5657,6 +5750,9 @@ class _QueueTabState extends ConsumerState<QueueTab> {
           fit: BoxFit.cover,
           cacheWidth: cacheSize,
           cacheHeight: cacheSize,
+          gaplessPlayback: true,
+          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) =>
+              fadeInFileImage(child, frame, wasSynchronouslyLoaded),
           errorBuilder: (context, error, stackTrace) =>
               buildPlaceholder(isLocal: true),
         ),
@@ -6098,6 +6194,83 @@ class _QueueTabState extends ConsumerState<QueueTab> {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _AnimatedLibrarySliverGrid extends StatefulWidget {
+  final double maxCrossAxisExtent;
+  final double mainAxisSpacing;
+  final double crossAxisSpacing;
+  final double childAspectRatio;
+  final SliverChildDelegate delegate;
+
+  const _AnimatedLibrarySliverGrid({
+    required this.maxCrossAxisExtent,
+    required this.mainAxisSpacing,
+    required this.crossAxisSpacing,
+    required this.childAspectRatio,
+    required this.delegate,
+  });
+
+  @override
+  State<_AnimatedLibrarySliverGrid> createState() =>
+      _AnimatedLibrarySliverGridState();
+}
+
+class _AnimatedLibrarySliverGridState extends State<_AnimatedLibrarySliverGrid>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final CurvedAnimation _curve;
+  late double _beginExtent;
+  late double _endExtent;
+
+  @override
+  void initState() {
+    super.initState();
+    _beginExtent = widget.maxCrossAxisExtent;
+    _endExtent = widget.maxCrossAxisExtent;
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 130),
+    )..value = 1;
+    _curve = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedLibrarySliverGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if ((widget.maxCrossAxisExtent - _endExtent).abs() < 0.1) return;
+    _beginExtent = _currentExtent;
+    _endExtent = widget.maxCrossAxisExtent;
+    _controller.forward(from: 0);
+  }
+
+  double get _currentExtent =>
+      _beginExtent + ((_endExtent - _beginExtent) * _curve.value);
+
+  @override
+  void dispose() {
+    _curve.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return SliverGrid(
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: _currentExtent,
+            mainAxisSpacing: widget.mainAxisSpacing,
+            crossAxisSpacing: widget.crossAxisSpacing,
+            childAspectRatio: widget.childAspectRatio,
+          ),
+          delegate: widget.delegate,
+        );
+      },
     );
   }
 }

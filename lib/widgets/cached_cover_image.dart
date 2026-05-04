@@ -17,6 +17,8 @@ class CachedCoverImage extends StatelessWidget {
   final Widget Function(BuildContext, String)? placeholder;
   final BorderRadius? borderRadius;
   final bool resizeDiskCache;
+  final Duration fadeInDuration;
+  final Duration fadeOutDuration;
 
   const CachedCoverImage({
     super.key,
@@ -31,6 +33,8 @@ class CachedCoverImage extends StatelessWidget {
     this.placeholder,
     this.borderRadius,
     this.resizeDiskCache = false,
+    this.fadeInDuration = Duration.zero,
+    this.fadeOutDuration = Duration.zero,
   });
 
   @override
@@ -52,8 +56,8 @@ class CachedCoverImage extends StatelessWidget {
       maxWidthDiskCache: diskCacheWidth,
       maxHeightDiskCache: diskCacheHeight,
       cacheManager: CoverCacheManager.instance,
-      fadeInDuration: Duration.zero,
-      fadeOutDuration: Duration.zero,
+      fadeInDuration: fadeInDuration,
+      fadeOutDuration: fadeOutDuration,
       useOldImageOnUrlChange: true,
       filterQuality: FilterQuality.low,
       errorWidget: errorWidget,

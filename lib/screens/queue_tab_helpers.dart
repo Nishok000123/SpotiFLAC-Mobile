@@ -93,6 +93,14 @@ class UnifiedLibraryItem {
 
   String? get genre => historyItem?.genre ?? localItem?.genre;
 
+  int? get trackNumber => historyItem?.trackNumber ?? localItem?.trackNumber;
+
+  int? get discNumber => historyItem?.discNumber ?? localItem?.discNumber;
+
+  String? get isrc => historyItem?.isrc ?? localItem?.isrc;
+
+  String? get label => historyItem?.label ?? localItem?.label;
+
   String get searchKey =>
       '${trackName.toLowerCase()}|${artistName.toLowerCase()}|${albumName.toLowerCase()}';
   String get albumKey =>
@@ -451,18 +459,36 @@ DateTime? _queueParseReleaseDate(String? value) {
 
 bool _queueMatchesMetadataFilter({
   required String? filterMetadata,
+  required String? artistName,
   required String? albumArtist,
   required String? releaseDate,
   required String? genre,
+  required int? trackNumber,
+  required int? discNumber,
+  required String? isrc,
+  required String? label,
 }) {
   if (filterMetadata == null) {
     return true;
   }
 
+  final hasArtist = _queueHasMetadataValue(artistName);
   final hasAlbumArtist = _queueHasMetadataValue(albumArtist);
   final hasReleaseDate = _queueParseReleaseDate(releaseDate) != null;
   final hasGenre = _queueHasMetadataValue(genre);
-  final isComplete = hasAlbumArtist && hasReleaseDate && hasGenre;
+  final hasTrackNumber = trackNumber != null && trackNumber > 0;
+  final hasDiscNumber = discNumber != null && discNumber > 0;
+  final hasLabel = _queueHasMetadataValue(label);
+  final hasIncorrectIsrc = _queueHasIncorrectIsrcFormat(isrc);
+  final isComplete =
+      hasArtist &&
+      hasAlbumArtist &&
+      hasReleaseDate &&
+      hasGenre &&
+      hasTrackNumber &&
+      hasDiscNumber &&
+      hasLabel &&
+      !hasIncorrectIsrc;
 
   switch (filterMetadata) {
     case 'complete':
@@ -475,9 +501,26 @@ bool _queueMatchesMetadataFilter({
       return !hasGenre;
     case 'missing-album-artist':
       return !hasAlbumArtist;
+    case 'missing-track-number':
+      return !hasTrackNumber;
+    case 'missing-disc-number':
+      return !hasDiscNumber;
+    case 'missing-artist':
+      return !hasArtist;
+    case 'incorrect-isrc-format':
+      return hasIncorrectIsrc;
+    case 'missing-label':
+      return !hasLabel;
     default:
       return true;
   }
+}
+
+bool _queueHasIncorrectIsrcFormat(String? isrc) {
+  final raw = isrc?.trim() ?? '';
+  if (raw.isEmpty) return false;
+  final normalized = raw.toUpperCase().replaceAll(RegExp(r'[-\s]'), '');
+  return !RegExp(r'^[A-Z]{2}[A-Z0-9]{3}\d{7}$').hasMatch(normalized);
 }
 
 bool _queueUnifiedItemMatchesMetadataFilter(
@@ -486,9 +529,14 @@ bool _queueUnifiedItemMatchesMetadataFilter(
 ) {
   return _queueMatchesMetadataFilter(
     filterMetadata: filterMetadata,
+    artistName: item.artistName,
     albumArtist: item.albumArtist,
     releaseDate: item.releaseDate,
     genre: item.genre,
+    trackNumber: item.trackNumber,
+    discNumber: item.discNumber,
+    isrc: item.isrc,
+    label: item.label,
   );
 }
 
@@ -773,9 +821,14 @@ List<_GroupedAlbum> _queueFilterGroupedAlbums(
         }
         if (!_queueMatchesMetadataFilter(
           filterMetadata: request.filterMetadata,
+          artistName: track.artistName,
           albumArtist: track.albumArtist,
           releaseDate: track.releaseDate,
           genre: track.genre,
+          trackNumber: track.trackNumber,
+          discNumber: track.discNumber,
+          isrc: track.isrc,
+          label: track.label,
         )) {
           continue;
         }
@@ -925,9 +978,14 @@ List<_GroupedLocalAlbum> _queueFilterGroupedLocalAlbums(
         }
         if (!_queueMatchesMetadataFilter(
           filterMetadata: request.filterMetadata,
+          artistName: track.artistName,
           albumArtist: track.albumArtist,
           releaseDate: track.releaseDate,
           genre: track.genre,
+          trackNumber: track.trackNumber,
+          discNumber: track.discNumber,
+          isrc: track.isrc,
+          label: track.label,
         )) {
           continue;
         }

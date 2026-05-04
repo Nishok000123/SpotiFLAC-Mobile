@@ -1306,6 +1306,12 @@ class _CollectionTrackTile extends ConsumerWidget {
     final isLocal =
         !coverUrl.startsWith('http://') && !coverUrl.startsWith('https://');
     final colorScheme = Theme.of(context).colorScheme;
+    Widget placeholder() => Container(
+      width: size,
+      height: size,
+      color: colorScheme.surfaceContainerHighest,
+      child: Icon(Icons.music_note, color: colorScheme.onSurfaceVariant),
+    );
 
     if (isLocal) {
       return Image.file(
@@ -1313,12 +1319,27 @@ class _CollectionTrackTile extends ConsumerWidget {
         width: size,
         height: size,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => Container(
-          width: size,
-          height: size,
-          color: colorScheme.surfaceContainerHighest,
-          child: Icon(Icons.music_note, color: colorScheme.onSurfaceVariant),
-        ),
+        gaplessPlayback: true,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded) return child;
+          return SizedBox(
+            width: size,
+            height: size,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                placeholder(),
+                AnimatedOpacity(
+                  opacity: frame == null ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  child: child,
+                ),
+              ],
+            ),
+          );
+        },
+        errorBuilder: (_, _, _) => placeholder(),
       );
     }
 
@@ -1329,12 +1350,10 @@ class _CollectionTrackTile extends ConsumerWidget {
       fit: BoxFit.cover,
       memCacheWidth: (size * 2).toInt(),
       cacheManager: CoverCacheManager.instance,
-      errorWidget: (_, _, _) => Container(
-        width: size,
-        height: size,
-        color: colorScheme.surfaceContainerHighest,
-        child: Icon(Icons.music_note, color: colorScheme.onSurfaceVariant),
-      ),
+      fadeInDuration: const Duration(milliseconds: 180),
+      fadeOutDuration: const Duration(milliseconds: 90),
+      placeholder: (_, _) => placeholder(),
+      errorWidget: (_, _, _) => placeholder(),
     );
   }
 

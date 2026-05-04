@@ -869,14 +869,13 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
     if (targetIndex < 0 || targetIndex >= _navigationLength) return;
 
     _isTrackSwipeNavigationInFlight = true;
-    final result = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).pushReplacement<bool, bool>(
       adjacentHorizontalPageRoute<bool>(
         page: _buildSiblingTrackScreen(targetIndex),
         fromRight: offset > 0,
       ),
+      result: _hasMetadataChanges ? true : null,
     );
-    if (!mounted) return;
-    Navigator.pop(context, result == true || _hasMetadataChanges ? true : null);
   }
 
   TrackMetadataScreen _buildSiblingTrackScreen(int targetIndex) {
