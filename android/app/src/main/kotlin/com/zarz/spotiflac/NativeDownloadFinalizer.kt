@@ -28,7 +28,7 @@ object NativeDownloadFinalizer {
     const val NATIVE_WORKER_CONTRACT_VERSION = 1
     // Native finalizer owns background-safe history writes while Flutter may be suspended.
     // Keep this schema contract in sync with Dart HistoryDatabase before bumping either side.
-    private const val HISTORY_SCHEMA_VERSION = 5
+    private const val HISTORY_SCHEMA_VERSION = 8
     private val activeFFmpegSessionIds = mutableSetOf<Long>()
     private val nativeFFmpegSessionIds = mutableSetOf<Long>()
     private val activeFFmpegSessionLock = Any()
@@ -75,6 +75,25 @@ object NativeDownloadFinalizer {
         "composer",
         "label",
         "copyright",
+        "spotify_id_norm",
+        "isrc_norm",
+        "match_key",
+    )
+    private val androidStoragePathAliases = listOf(
+        "/storage/emulated/0",
+        "/storage/emulated/legacy",
+        "/storage/self/primary",
+        "/sdcard",
+        "/mnt/sdcard",
+    )
+    private val audioExtensions = listOf(
+        ".flac",
+        ".m4a",
+        ".mp3",
+        ".opus",
+        ".ogg",
+        ".wav",
+        ".aac",
     )
 
     private data class FinalizeInput(
@@ -1415,6 +1434,7 @@ object NativeDownloadFinalizer {
         values.put("composer", normalizeOptional(resultString(input, "composer").ifBlank { trackString(input, "composer", requestString(input, "composer")) }))
         values.put("label", normalizeOptional(result.optString("label", "").ifBlank { input.request.optString("label", "") }))
         values.put("copyright", normalizeOptional(result.optString("copyright", "").ifBlank { input.request.optString("copyright", "") }))
+        putNormalizedHistoryColumns(values)
         return values
     }
 
@@ -1429,17 +1449,18 @@ object NativeDownloadFinalizer {
                 SQLiteDatabase.ENABLE_WRITE_AHEAD_LOGGING,
         )
         try {
-            configureHistoryDatabase(db)
-            db.beginTransaction()
-            try {
-                if (db.version > HISTORY_SCHEMA_VERSION) {
-                    throw IllegalStateException(
-                        "history schema v${db.version} is newer than native finalizer contract v$HISTORY_SCHEMA_VERSION"
-                    )
-                }
-                db.execSQL(
-                    """
-                    CREATE TABLE IF NOT EXISTS history (
+	            configureHistoryDatabase(db)
+	            db.beginTransaction()
+	            try {
+	                if (db.version > HISTORY_SCHEMA_VERSION) {
+	                    throw IllegalStateException(
+	                        "history schema v${db.version} is newer than native finalizer contract v$HISTORY_SCHEMA_VERSION"
+	                    )
+	                }
+	                val needsBackfill = db.version < HISTORY_SCHEMA_VERSION
+	                db.execSQL(
+	                    """
+	                    CREATE TABLE IF NOT EXISTS history (
                       id TEXT PRIMARY KEY,
                       track_name TEXT NOT NULL,
                       artist_name TEXT NOT NULL,
@@ -1477,20 +1498,33 @@ object NativeDownloadFinalizer {
                 ensureHistoryColumn(db, "saf_relative_dir", "ALTER TABLE history ADD COLUMN saf_relative_dir TEXT")
                 ensureHistoryColumn(db, "saf_file_name", "ALTER TABLE history ADD COLUMN saf_file_name TEXT")
                 ensureHistoryColumn(db, "saf_repaired", "ALTER TABLE history ADD COLUMN saf_repaired INTEGER")
-                ensureHistoryColumn(db, "composer", "ALTER TABLE history ADD COLUMN composer TEXT")
-                ensureHistoryColumn(db, "total_tracks", "ALTER TABLE history ADD COLUMN total_tracks INTEGER")
-                ensureHistoryColumn(db, "total_discs", "ALTER TABLE history ADD COLUMN total_discs INTEGER")
-                validateHistorySchema(db)
-                db.execSQL("CREATE INDEX IF NOT EXISTS idx_spotify_id ON history(spotify_id)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS idx_isrc ON history(isrc)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS idx_downloaded_at ON history(downloaded_at DESC)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS idx_album ON history(album_name, album_artist)")
-                if (db.version < HISTORY_SCHEMA_VERSION) db.version = HISTORY_SCHEMA_VERSION
-                deleteDuplicateHistoryRows(db, values)
-                db.insertWithOnConflict("history", null, values, SQLiteDatabase.CONFLICT_REPLACE)
-                db.setTransactionSuccessful()
-            } finally {
-                db.endTransaction()
+	                ensureHistoryColumn(db, "composer", "ALTER TABLE history ADD COLUMN composer TEXT")
+	                ensureHistoryColumn(db, "total_tracks", "ALTER TABLE history ADD COLUMN total_tracks INTEGER")
+	                ensureHistoryColumn(db, "total_discs", "ALTER TABLE history ADD COLUMN total_discs INTEGER")
+	                ensureHistoryColumn(db, "spotify_id_norm", "ALTER TABLE history ADD COLUMN spotify_id_norm TEXT")
+	                ensureHistoryColumn(db, "isrc_norm", "ALTER TABLE history ADD COLUMN isrc_norm TEXT")
+	                ensureHistoryColumn(db, "match_key", "ALTER TABLE history ADD COLUMN match_key TEXT")
+	                ensureHistoryPathKeyTable(db)
+	                if (needsBackfill) {
+	                    backfillNormalizedHistoryColumns(db)
+	                    backfillHistoryPathKeys(db)
+	                }
+	                validateHistorySchema(db)
+	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_spotify_id ON history(spotify_id)")
+	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_isrc ON history(isrc)")
+	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_downloaded_at ON history(downloaded_at DESC)")
+	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_album ON history(album_name, album_artist)")
+	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_track_artist ON history(track_name, artist_name)")
+	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_spotify_id_norm ON history(spotify_id_norm)")
+	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_isrc_norm ON history(isrc_norm)")
+	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_match_key ON history(match_key)")
+	                if (db.version < HISTORY_SCHEMA_VERSION) db.version = HISTORY_SCHEMA_VERSION
+	                deleteDuplicateHistoryRows(db, values)
+	                db.insertWithOnConflict("history", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+	                replaceHistoryPathKeys(db, values.getAsString("id"), values.getAsString("file_path"))
+	                db.setTransactionSuccessful()
+	            } finally {
+	                db.endTransaction()
             }
         } finally {
             db.close()
@@ -1532,38 +1566,269 @@ object NativeDownloadFinalizer {
         }
     }
 
-    private fun deleteDuplicateHistoryRows(db: SQLiteDatabase, values: ContentValues) {
-        val id = values.getAsString("id") ?: return
-        val spotifyId = values.getAsString("spotify_id")?.trim().orEmpty()
-        if (spotifyId.isNotEmpty()) {
-            db.delete(
-                "history",
-                "spotify_id = ? AND id <> ?",
-                arrayOf(spotifyId, id),
-            )
-        }
+	    private fun deleteDuplicateHistoryRows(db: SQLiteDatabase, values: ContentValues) {
+	        val id = values.getAsString("id") ?: return
+	        val duplicateIds = linkedSetOf<String>()
+	        val spotifyId = values.getAsString("spotify_id")?.trim().orEmpty()
+	        val spotifyIdNorm = values.getAsString("spotify_id_norm")?.trim().orEmpty()
+	        if (spotifyId.isNotEmpty() || spotifyIdNorm.isNotEmpty()) {
+	            duplicateIds.addAll(
+	                historyIdsForWhere(
+	                    db,
+	                    "(spotify_id = ? OR spotify_id_norm = ?) AND id <> ?",
+	                    arrayOf(spotifyId, spotifyIdNorm, id),
+	                )
+	            )
+	        }
 
-        val isrc = values.getAsString("isrc")?.trim().orEmpty()
-        if (isrc.isNotEmpty()) {
-            db.delete(
-                "history",
-                "isrc = ? AND id <> ?",
-                arrayOf(isrc, id),
-            )
-        }
+	        val isrc = values.getAsString("isrc")?.trim().orEmpty()
+	        val isrcNorm = values.getAsString("isrc_norm")?.trim().orEmpty()
+	        if (isrc.isNotEmpty() || isrcNorm.isNotEmpty()) {
+	            duplicateIds.addAll(
+	                historyIdsForWhere(
+	                    db,
+	                    "(isrc = ? OR isrc_norm = ?) AND id <> ?",
+	                    arrayOf(isrc, isrcNorm, id),
+	                )
+	            )
+	        }
 
-        if (spotifyId.isEmpty() && isrc.isEmpty()) {
-            val trackName = values.getAsString("track_name")?.trim().orEmpty()
-            val artistName = values.getAsString("artist_name")?.trim().orEmpty()
-            if (trackName.isNotEmpty() && artistName.isNotEmpty()) {
-                db.delete(
-                    "history",
-                    "track_name = ? COLLATE NOCASE AND artist_name = ? COLLATE NOCASE AND id <> ?",
-                    arrayOf(trackName, artistName, id),
-                )
-            }
-        }
-    }
+	        if (spotifyIdNorm.isEmpty() && isrcNorm.isEmpty()) {
+	            val matchKey = values.getAsString("match_key")?.trim().orEmpty()
+	            if (matchKey.isNotEmpty()) {
+	                duplicateIds.addAll(
+	                    historyIdsForWhere(
+	                        db,
+	                        "match_key = ? AND id <> ?",
+	                        arrayOf(matchKey, id),
+	                    )
+	                )
+	            }
+	        }
+	        if (duplicateIds.isEmpty()) return
+	        deleteHistoryPathKeys(db, duplicateIds)
+	        val placeholders = duplicateIds.joinToString(",") { "?" }
+	        db.delete("history", "id IN ($placeholders)", duplicateIds.toTypedArray())
+	    }
+
+	    private fun historyIdsForWhere(db: SQLiteDatabase, where: String, args: Array<String>): List<String> {
+	        val ids = mutableListOf<String>()
+	        db.query("history", arrayOf("id"), where, args, null, null, null).use { cursor ->
+	            val idIndex = cursor.getColumnIndex("id")
+	            while (cursor.moveToNext()) {
+	                if (idIndex >= 0) ids.add(cursor.getString(idIndex))
+	            }
+	        }
+	        return ids
+	    }
+
+	    private fun deleteHistoryPathKeys(db: SQLiteDatabase, ids: Collection<String>) {
+	        if (ids.isEmpty()) return
+	        val placeholders = ids.joinToString(",") { "?" }
+	        db.delete("history_path_keys", "item_id IN ($placeholders)", ids.toTypedArray())
+	    }
+
+	    private fun ensureHistoryPathKeyTable(db: SQLiteDatabase) {
+	        db.execSQL(
+	            """
+	            CREATE TABLE IF NOT EXISTS history_path_keys (
+	              item_id TEXT NOT NULL,
+	              path_key TEXT NOT NULL,
+	              PRIMARY KEY (item_id, path_key)
+	            )
+	            """.trimIndent()
+	        )
+	        db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_path_keys_key ON history_path_keys(path_key)")
+	    }
+
+	    private fun backfillNormalizedHistoryColumns(db: SQLiteDatabase) {
+	        db.query(
+	            "history",
+	            arrayOf("id", "spotify_id", "isrc", "track_name", "artist_name"),
+	            "spotify_id_norm IS NULL OR isrc_norm IS NULL OR match_key IS NULL",
+	            null,
+	            null,
+	            null,
+	            null,
+	        ).use { cursor ->
+	            val idIndex = cursor.getColumnIndex("id")
+	            val spotifyIndex = cursor.getColumnIndex("spotify_id")
+	            val isrcIndex = cursor.getColumnIndex("isrc")
+	            val trackIndex = cursor.getColumnIndex("track_name")
+	            val artistIndex = cursor.getColumnIndex("artist_name")
+	            while (cursor.moveToNext()) {
+	                if (idIndex < 0) continue
+	                val values = ContentValues()
+	                val spotifyId = cursor.getNullableString(spotifyIndex)
+	                val isrc = cursor.getNullableString(isrcIndex)
+	                val trackName = cursor.getNullableString(trackIndex)
+	                val artistName = cursor.getNullableString(artistIndex)
+	                values.put("spotify_id_norm", normalizeSpotifyId(spotifyId))
+	                values.put("isrc_norm", normalizeIsrc(isrc))
+	                values.put("match_key", matchKeyFor(trackName, artistName))
+	                db.update("history", values, "id = ?", arrayOf(cursor.getString(idIndex)))
+	            }
+	        }
+	    }
+
+	    private fun backfillHistoryPathKeys(db: SQLiteDatabase) {
+	        db.query("history", arrayOf("id", "file_path"), null, null, null, null, null).use { cursor ->
+	            val idIndex = cursor.getColumnIndex("id")
+	            val pathIndex = cursor.getColumnIndex("file_path")
+	            while (cursor.moveToNext()) {
+	                if (idIndex >= 0) {
+	                    replaceHistoryPathKeys(db, cursor.getString(idIndex), cursor.getNullableString(pathIndex))
+	                }
+	            }
+	        }
+	    }
+
+	    private fun replaceHistoryPathKeys(db: SQLiteDatabase, itemId: String?, filePath: String?) {
+	        val id = itemId?.trim().orEmpty()
+	        if (id.isEmpty()) return
+	        db.delete("history_path_keys", "item_id = ?", arrayOf(id))
+	        for (key in buildPathMatchKeys(filePath)) {
+	            val values = ContentValues()
+	            values.put("item_id", id)
+	            values.put("path_key", key)
+	            db.insertWithOnConflict("history_path_keys", null, values, SQLiteDatabase.CONFLICT_IGNORE)
+	        }
+	    }
+
+	    private fun putNormalizedHistoryColumns(values: ContentValues) {
+	        values.put("spotify_id_norm", normalizeSpotifyId(values.getAsString("spotify_id")))
+	        values.put("isrc_norm", normalizeIsrc(values.getAsString("isrc")))
+	        values.put(
+	            "match_key",
+	            matchKeyFor(values.getAsString("track_name"), values.getAsString("artist_name")),
+	        )
+	    }
+
+	    private fun normalizeLookupText(value: String?): String =
+	        cleanMetadataString(value).lowercase(Locale.ROOT)
+
+	    private fun normalizeSpotifyId(value: String?): String =
+	        cleanMetadataString(value).lowercase(Locale.ROOT)
+
+	    private fun normalizeIsrc(value: String?): String =
+	        cleanMetadataString(value)
+	            .uppercase(Locale.ROOT)
+	            .replace(Regex("[-\\s]"), "")
+
+	    private fun matchKeyFor(trackName: String?, artistName: String?): String {
+	        val track = normalizeLookupText(trackName)
+	        if (track.isEmpty()) return ""
+	        return "$track|${normalizeLookupText(artistName)}"
+	    }
+
+	    private fun buildPathMatchKeys(filePath: String?): Set<String> {
+	        val raw = filePath?.trim().orEmpty()
+	        if (raw.isEmpty()) return emptySet()
+	        val cleaned = if (raw.startsWith("EXISTS:")) raw.substring(7).trim() else raw
+	        if (cleaned.isEmpty()) return emptySet()
+
+	        val keys = linkedSetOf<String>()
+	        val visited = linkedSetOf<String>()
+
+	        fun addNormalized(value: String) {
+	            val trimmed = value.trim()
+	            if (trimmed.isEmpty()) return
+	            if (!visited.add(trimmed)) return
+
+	            keys.add(trimmed)
+	            keys.add(trimmed.lowercase(Locale.ROOT))
+
+	            if (trimmed.contains('\\')) {
+	                val slash = trimmed.replace('\\', '/')
+	                if (slash != trimmed) addNormalized(slash)
+	            }
+
+	            if (trimmed.contains('%')) {
+	                try {
+	                    val decoded = Uri.decode(trimmed)
+	                    if (decoded != trimmed) addNormalized(decoded)
+	                } catch (_: Throwable) {
+	                }
+	            }
+
+	            val parsed = try {
+	                Uri.parse(trimmed)
+	            } catch (_: Throwable) {
+	                null
+	            }
+	            if (parsed != null && !parsed.scheme.isNullOrEmpty()) {
+	                val stripped = stripUriQueryAndFragment(trimmed)
+	                keys.add(stripped)
+	                keys.add(stripped.lowercase(Locale.ROOT))
+	                if (parsed.scheme.equals("file", ignoreCase = true)) {
+	                    parsed.path?.let { addNormalized(it) }
+	                }
+	            } else if (trimmed.startsWith("/")) {
+	                try {
+	                    val asFileUri = Uri.fromFile(File(trimmed)).toString()
+	                    keys.add(asFileUri)
+	                    keys.add(asFileUri.lowercase(Locale.ROOT))
+	                } catch (_: Throwable) {
+	                }
+	            }
+
+	            for (alias in androidEquivalentPaths(trimmed)) {
+	                if (alias != trimmed) addNormalized(alias)
+	            }
+	        }
+
+	        addNormalized(cleaned)
+
+	        val extensionStripped = linkedSetOf<String>()
+	        for (key in keys) {
+	            stripAudioExtension(key)?.let {
+	                if (it.isNotEmpty()) extensionStripped.add(it)
+	            }
+	        }
+	        keys.addAll(extensionStripped)
+	        return keys
+	    }
+
+	    private fun stripUriQueryAndFragment(value: String): String {
+	        val queryIndex = value.indexOf('?').let { if (it >= 0) it else value.length }
+	        val fragmentIndex = value.indexOf('#').let { if (it >= 0) it else value.length }
+	        val cut = minOf(queryIndex, fragmentIndex)
+	        return value.substring(0, cut)
+	    }
+
+	    private fun stripAudioExtension(path: String): String? {
+	        val lower = path.lowercase(Locale.ROOT)
+	        for (ext in audioExtensions) {
+	            if (lower.endsWith(ext)) {
+	                return path.substring(0, path.length - ext.length)
+	            }
+	        }
+	        return null
+	    }
+
+	    private fun androidEquivalentPaths(path: String): List<String> {
+	        val normalized = path.replace('\\', '/')
+	        val lower = normalized.lowercase(Locale.ROOT)
+	        var suffix: String? = null
+	        for (prefix in androidStoragePathAliases) {
+	            if (lower == prefix) {
+	                suffix = ""
+	                break
+	            }
+	            val withSlash = "$prefix/"
+	            if (lower.startsWith(withSlash)) {
+	                suffix = normalized.substring(prefix.length)
+	                break
+	            }
+	        }
+	        val resolvedSuffix = suffix ?: return emptyList()
+	        return androidStoragePathAliases.map { "$it$resolvedSuffix" }
+	    }
+
+	    private fun android.database.Cursor.getNullableString(index: Int): String? {
+	        if (index < 0 || isNull(index)) return null
+	        return getString(index)
+	    }
 
     private fun ensureHistoryColumn(db: SQLiteDatabase, column: String, alterSql: String) {
         db.rawQuery("PRAGMA table_info(history)", null).use { cursor ->
