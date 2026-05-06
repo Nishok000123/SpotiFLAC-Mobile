@@ -2472,6 +2472,12 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     final hasQueueItems = ref.watch(
       downloadQueueLookupProvider.select((lookup) => lookup.itemIds.isNotEmpty),
     );
+    final historyTotalCount = ref.watch(
+      downloadHistoryProvider.select((state) => state.totalCount),
+    );
+    final localLibraryTotalCount = ref.watch(
+      localLibraryProvider.select((state) => state.totalCount),
+    );
     final localLibraryEnabled = ref.watch(
       settingsProvider.select((s) => s.localLibraryEnabled),
     );
@@ -2565,6 +2571,13 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         (pageValues[historyFilterMode]?.isLoading ?? false);
     final hasAnyLibraryItems =
         queueCounts.allTrackCount > 0 || queueCounts.albumCount > 0;
+    final hasLibraryContent =
+        historyTotalCount > 0 ||
+        (localLibraryEnabled && localLibraryTotalCount > 0);
+    final hasActiveSearch =
+        _searchQuery.isNotEmpty || _searchController.text.trim().isNotEmpty;
+    final shouldShowLibraryControls =
+        hasLibraryContent || hasAnyLibraryItems || hasActiveSearch;
 
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
     final selectionItems = getFilterData(
@@ -2644,7 +2657,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                   ),
                 ),
 
-                if (hasAnyLibraryItems || hasQueueItems)
+                if (shouldShowLibraryControls || hasQueueItems)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -2709,7 +2722,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
 
                 if (hasQueueItems) _buildQueueItemsSliver(context, colorScheme),
 
-                if (hasAnyLibraryItems)
+                if (shouldShowLibraryControls)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -3809,12 +3822,13 @@ class _QueueTabState extends ConsumerState<QueueTab> {
             (filterMode != 'albums' ||
                 (filteredGroupedAlbums.isEmpty &&
                     filteredGroupedLocalAlbums.isEmpty)) &&
-            !showFilteringIndicator)
+            !showFilteringIndicator &&
+            !isPageLoading)
           SliverFillRemaining(
             hasScrollBody: false,
             child: _buildEmptyState(context, colorScheme, filterMode),
           )
-        else if (isPageLoading && filterMode != 'albums')
+        else if (isPageLoading)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
