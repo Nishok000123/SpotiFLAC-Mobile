@@ -4372,6 +4372,31 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     return null;
   }
 
+  bool _isUsableIndex(int? number, int? total) {
+    if (number == null || number <= 0) return false;
+    return total == null || total <= 0 || number <= total;
+  }
+
+  int? _resolvePositiveMetadataInt(int? sourceValue, int? backendValue) {
+    if (sourceValue != null && sourceValue > 0) return sourceValue;
+    return backendValue;
+  }
+
+  int? _resolveMetadataIndex({
+    required int? sourceValue,
+    required int? backendValue,
+    required int? total,
+  }) {
+    if (_isUsableIndex(sourceValue, total)) return sourceValue;
+    if (_isUsableIndex(backendValue, total)) return backendValue;
+    return sourceValue != null && sourceValue > 0 ? sourceValue : backendValue;
+  }
+
+  String? _resolveMetadataText(String? sourceValue, String? backendValue) {
+    return normalizeOptionalString(sourceValue) ??
+        normalizeOptionalString(backendValue);
+  }
+
   Track _buildTrackForMetadataEmbedding(
     Track baseTrack,
     Map<String, dynamic> backendResult,
@@ -4401,18 +4426,44 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     final backendComposer = normalizeOptionalString(
       backendResult['composer']?.toString(),
     );
+    final sourceAlbumName = normalizeOptionalString(baseTrack.albumName);
+    final sourceAlbumArtist = normalizeOptionalString(baseTrack.albumArtist);
+    final sourceIsrc = normalizeOptionalString(baseTrack.isrc);
+    final sourceReleaseDate = normalizeOptionalString(baseTrack.releaseDate);
+    final sourceComposer = normalizeOptionalString(baseTrack.composer);
+    final resolvedTotalTracks = _resolvePositiveMetadataInt(
+      baseTrack.totalTracks,
+      backendTotalTracks,
+    );
+    final resolvedTotalDiscs = _resolvePositiveMetadataInt(
+      baseTrack.totalDiscs,
+      backendTotalDiscs,
+    );
+    final resolvedTrackNumber = _resolveMetadataIndex(
+      sourceValue: baseTrack.trackNumber,
+      backendValue: backendTrackNum,
+      total: resolvedTotalTracks,
+    );
+    final resolvedDiscNumber = _resolveMetadataIndex(
+      sourceValue: baseTrack.discNumber,
+      backendValue: backendDiscNum,
+      total: resolvedTotalDiscs,
+    );
 
     final hasOverrides =
-        backendTrackNum != null ||
-        backendDiscNum != null ||
-        backendYear != null ||
-        backendAlbum != null ||
-        backendIsrc != null ||
+        resolvedTrackNumber != baseTrack.trackNumber ||
+        resolvedDiscNumber != baseTrack.discNumber ||
+        resolvedTotalTracks != baseTrack.totalTracks ||
+        resolvedTotalDiscs != baseTrack.totalDiscs ||
+        resolvedAlbumArtist != sourceAlbumArtist ||
+        (sourceReleaseDate == null && backendYear != null) ||
+        (sourceAlbumName == null && backendAlbum != null) ||
+        (sourceIsrc == null && backendIsrc != null) ||
         (baseCoverUrl == null && backendCoverUrl != null) ||
-        backendAlbumArtist != null ||
-        backendComposer != null ||
-        backendTotalTracks != null ||
-        backendTotalDiscs != null;
+        (sourceAlbumArtist == null &&
+            resolvedAlbumArtist == null &&
+            backendAlbumArtist != null) ||
+        (sourceComposer == null && backendComposer != null);
 
     if (!hasOverrides) {
       return baseTrack;
@@ -4422,22 +4473,23 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       id: baseTrack.id,
       name: baseTrack.name,
       artistName: baseTrack.artistName,
-      albumName: backendAlbum ?? baseTrack.albumName,
-      albumArtist: backendAlbumArtist ?? resolvedAlbumArtist,
+      albumName: sourceAlbumName ?? backendAlbum ?? baseTrack.albumName,
+      albumArtist:
+          resolvedAlbumArtist ?? sourceAlbumArtist ?? backendAlbumArtist,
       artistId: baseTrack.artistId,
       albumId: baseTrack.albumId,
       coverUrl: resolvedCoverUrl,
       duration: baseTrack.duration,
-      isrc: backendIsrc ?? baseTrack.isrc,
-      trackNumber: backendTrackNum ?? baseTrack.trackNumber,
-      discNumber: backendDiscNum ?? baseTrack.discNumber,
-      totalDiscs: backendTotalDiscs ?? baseTrack.totalDiscs,
-      releaseDate: backendYear ?? baseTrack.releaseDate,
+      isrc: sourceIsrc ?? backendIsrc,
+      trackNumber: resolvedTrackNumber,
+      discNumber: resolvedDiscNumber,
+      totalDiscs: resolvedTotalDiscs,
+      releaseDate: sourceReleaseDate ?? backendYear,
       deezerId: baseTrack.deezerId,
       availability: baseTrack.availability,
       albumType: baseTrack.albumType,
-      totalTracks: backendTotalTracks ?? baseTrack.totalTracks,
-      composer: backendComposer ?? baseTrack.composer,
+      totalTracks: resolvedTotalTracks,
+      composer: sourceComposer ?? backendComposer,
       source: baseTrack.source,
     );
   }
@@ -5710,10 +5762,10 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     final backendArtist = result['artist'] as String?;
     final backendAlbum = result['album'] as String?;
     final backendYear = result['release_date'] as String?;
-    final backendTrackNum = result['track_number'] as int?;
-    final backendDiscNum = result['disc_number'] as int?;
-    final backendTotalTracks = result['total_tracks'] as int?;
-    final backendTotalDiscs = result['total_discs'] as int?;
+    final backendTrackNum = _parsePositiveInt(result['track_number']);
+    final backendDiscNum = _parsePositiveInt(result['disc_number']);
+    final backendTotalTracks = _parsePositiveInt(result['total_tracks']);
+    final backendTotalDiscs = _parsePositiveInt(result['total_discs']);
     final backendISRC = result['isrc'] as String?;
     final backendGenre = result['genre'] as String?;
     final backendLabel = result['label'] as String?;
@@ -5725,21 +5777,51 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         lowerFilePath.endsWith('.mp3') ||
         lowerFilePath.endsWith('.opus') ||
         lowerFilePath.endsWith('.ogg');
+    final historyTotalTracks = _resolvePositiveMetadataInt(
+      trackToDownload.totalTracks,
+      backendTotalTracks,
+    );
+    final historyTotalDiscs = _resolvePositiveMetadataInt(
+      trackToDownload.totalDiscs,
+      backendTotalDiscs,
+    );
+    final historyTrackNumber = _resolveMetadataIndex(
+      sourceValue: trackToDownload.trackNumber,
+      backendValue: backendTrackNum,
+      total: historyTotalTracks,
+    );
+    final historyDiscNumber = _resolveMetadataIndex(
+      sourceValue: trackToDownload.discNumber,
+      backendValue: backendDiscNum,
+      total: historyTotalDiscs,
+    );
+    final historyTitle =
+        _resolveMetadataText(trackToDownload.name, backendTitle) ??
+        item.track.name;
+    final historyArtist =
+        _resolveMetadataText(trackToDownload.artistName, backendArtist) ??
+        item.track.artistName;
+    final historyAlbum =
+        _resolveMetadataText(trackToDownload.albumName, backendAlbum) ??
+        item.track.albumName;
+    final historyIsrc = _resolveMetadataText(trackToDownload.isrc, backendISRC);
+    final historyReleaseDate = _resolveMetadataText(
+      trackToDownload.releaseDate,
+      backendYear,
+    );
+    final historyComposer = _resolveMetadataText(
+      trackToDownload.composer,
+      backendComposer,
+    );
 
     ref
         .read(downloadHistoryProvider.notifier)
         .addToHistory(
           DownloadHistoryItem(
             id: item.id,
-            trackName: (backendTitle != null && backendTitle.isNotEmpty)
-                ? backendTitle
-                : trackToDownload.name,
-            artistName: (backendArtist != null && backendArtist.isNotEmpty)
-                ? backendArtist
-                : trackToDownload.artistName,
-            albumName: (backendAlbum != null && backendAlbum.isNotEmpty)
-                ? backendAlbum
-                : trackToDownload.albumName,
+            trackName: historyTitle,
+            artistName: historyArtist,
+            albumName: historyAlbum,
             albumArtist: normalizeOptionalString(trackToDownload.albumArtist),
             coverUrl: normalizeCoverReference(trackToDownload.coverUrl),
             filePath: filePath,
@@ -5758,33 +5840,19 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
             safRepaired: false,
             service: result['service'] as String? ?? item.service,
             downloadedAt: DateTime.now(),
-            isrc: (backendISRC != null && backendISRC.isNotEmpty)
-                ? backendISRC
-                : trackToDownload.isrc,
+            isrc: historyIsrc,
             spotifyId: trackToDownload.id,
-            trackNumber: (backendTrackNum != null && backendTrackNum > 0)
-                ? backendTrackNum
-                : trackToDownload.trackNumber,
-            totalTracks: (backendTotalTracks != null && backendTotalTracks > 0)
-                ? backendTotalTracks
-                : trackToDownload.totalTracks,
-            discNumber: (backendDiscNum != null && backendDiscNum > 0)
-                ? backendDiscNum
-                : trackToDownload.discNumber,
-            totalDiscs: (backendTotalDiscs != null && backendTotalDiscs > 0)
-                ? backendTotalDiscs
-                : trackToDownload.totalDiscs,
+            trackNumber: historyTrackNumber,
+            totalTracks: historyTotalTracks,
+            discNumber: historyDiscNumber,
+            totalDiscs: historyTotalDiscs,
             duration: trackToDownload.duration,
-            releaseDate: (backendYear != null && backendYear.isNotEmpty)
-                ? backendYear
-                : trackToDownload.releaseDate,
+            releaseDate: historyReleaseDate,
             quality: actualQuality,
             bitDepth: isLossyOutput ? null : actualBitDepth,
             sampleRate: isLossyOutput ? null : actualSampleRate,
             genre: normalizeOptionalString(backendGenre),
-            composer: (backendComposer != null && backendComposer.isNotEmpty)
-                ? backendComposer
-                : trackToDownload.composer,
+            composer: historyComposer,
             label: normalizeOptionalString(backendLabel),
             copyright: normalizeOptionalString(backendCopyright),
           ),
@@ -8003,10 +8071,10 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
           final backendArtist = result['artist'] as String?;
           final backendAlbum = result['album'] as String?;
           final backendYear = result['release_date'] as String?;
-          final backendTrackNum = result['track_number'] as int?;
-          final backendDiscNum = result['disc_number'] as int?;
-          final backendTotalTracks = result['total_tracks'] as int?;
-          final backendTotalDiscs = result['total_discs'] as int?;
+          final backendTrackNum = _parsePositiveInt(result['track_number']);
+          final backendDiscNum = _parsePositiveInt(result['disc_number']);
+          final backendTotalTracks = _parsePositiveInt(result['total_tracks']);
+          final backendTotalDiscs = _parsePositiveInt(result['total_discs']);
           final backendBitDepth = result['actual_bit_depth'] as int?;
           final backendSampleRate = result['actual_sample_rate'] as int?;
           final backendBitrateKbps = _readPositiveBitrateKbps(
@@ -8097,22 +8165,54 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
               lowerFilePath.endsWith('.ogg');
           final historyBitDepth = isLossyOutput ? null : finalBitDepth;
           final historySampleRate = isLossyOutput ? null : finalSampleRate;
+          final historyTotalTracks = _resolvePositiveMetadataInt(
+            trackToDownload.totalTracks,
+            backendTotalTracks,
+          );
+          final historyTotalDiscs = _resolvePositiveMetadataInt(
+            trackToDownload.totalDiscs,
+            backendTotalDiscs,
+          );
+          final historyTrackNumber = _resolveMetadataIndex(
+            sourceValue: trackToDownload.trackNumber,
+            backendValue: backendTrackNum,
+            total: historyTotalTracks,
+          );
+          final historyDiscNumber = _resolveMetadataIndex(
+            sourceValue: trackToDownload.discNumber,
+            backendValue: backendDiscNum,
+            total: historyTotalDiscs,
+          );
+          final historyTitle =
+              _resolveMetadataText(trackToDownload.name, backendTitle) ??
+              item.track.name;
+          final historyArtist =
+              _resolveMetadataText(trackToDownload.artistName, backendArtist) ??
+              item.track.artistName;
+          final historyAlbum =
+              _resolveMetadataText(trackToDownload.albumName, backendAlbum) ??
+              item.track.albumName;
+          final historyIsrc = _resolveMetadataText(
+            trackToDownload.isrc,
+            backendISRC,
+          );
+          final historyReleaseDate = _resolveMetadataText(
+            trackToDownload.releaseDate,
+            backendYear,
+          );
+          final historyComposer = _resolveMetadataText(
+            trackToDownload.composer,
+            backendComposer,
+          );
 
           ref
               .read(downloadHistoryProvider.notifier)
               .addToHistory(
                 DownloadHistoryItem(
                   id: item.id,
-                  trackName: (backendTitle != null && backendTitle.isNotEmpty)
-                      ? backendTitle
-                      : trackToDownload.name,
-                  artistName:
-                      (backendArtist != null && backendArtist.isNotEmpty)
-                      ? backendArtist
-                      : trackToDownload.artistName,
-                  albumName: (backendAlbum != null && backendAlbum.isNotEmpty)
-                      ? backendAlbum
-                      : trackToDownload.albumName,
+                  trackName: historyTitle,
+                  artistName: historyArtist,
+                  albumName: historyAlbum,
                   albumArtist: historyAlbumArtist,
                   coverUrl: normalizeCoverReference(trackToDownload.coverUrl),
                   filePath: filePath,
@@ -8127,36 +8227,19 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
                   safRepaired: false,
                   service: result['service'] as String? ?? item.service,
                   downloadedAt: DateTime.now(),
-                  isrc: (backendISRC != null && backendISRC.isNotEmpty)
-                      ? backendISRC
-                      : trackToDownload.isrc,
+                  isrc: historyIsrc,
                   spotifyId: trackToDownload.id,
-                  trackNumber: (backendTrackNum != null && backendTrackNum > 0)
-                      ? backendTrackNum
-                      : trackToDownload.trackNumber,
-                  totalTracks:
-                      (backendTotalTracks != null && backendTotalTracks > 0)
-                      ? backendTotalTracks
-                      : trackToDownload.totalTracks,
-                  discNumber: (backendDiscNum != null && backendDiscNum > 0)
-                      ? backendDiscNum
-                      : trackToDownload.discNumber,
-                  totalDiscs:
-                      (backendTotalDiscs != null && backendTotalDiscs > 0)
-                      ? backendTotalDiscs
-                      : trackToDownload.totalDiscs,
+                  trackNumber: historyTrackNumber,
+                  totalTracks: historyTotalTracks,
+                  discNumber: historyDiscNumber,
+                  totalDiscs: historyTotalDiscs,
                   duration: trackToDownload.duration,
-                  releaseDate: (backendYear != null && backendYear.isNotEmpty)
-                      ? backendYear
-                      : trackToDownload.releaseDate,
+                  releaseDate: historyReleaseDate,
                   quality: actualQuality,
                   bitDepth: historyBitDepth,
                   sampleRate: historySampleRate,
                   genre: effectiveGenre,
-                  composer:
-                      (backendComposer != null && backendComposer.isNotEmpty)
-                      ? backendComposer
-                      : trackToDownload.composer,
+                  composer: historyComposer,
                   label: effectiveLabel,
                   copyright: effectiveCopyright,
                 ),

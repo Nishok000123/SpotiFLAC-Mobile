@@ -91,6 +91,13 @@ class AboutPage extends StatelessWidget {
                     name: 'Amonoman',
                     description: context.l10n.aboutLogoArtist,
                     githubUsername: 'Amonoman',
+                    showDivider: true,
+                  ),
+                  _ContributorItem(
+                    name: 'Ruubiiiii',
+                    description:
+                        'Provided many APIs and backend resources. A huge help for the project!',
+                    githubUsername: 'Ruubiiiii',
                     showDivider: false,
                   ),
                 ],
@@ -136,12 +143,6 @@ class AboutPage extends StatelessWidget {
                     subtitle:
                         'Partner lyrics proxy for Apple Music and QQ Music sources',
                     onTap: () => _launchUrl('https://lyrics.paxsenix.org'),
-                    showDivider: true,
-                  ),
-                  _ContributorItem(
-                    name: 'Ruubiiiii',
-                    description: 'Provided Qobuz & Deezer API for the project',
-                    githubUsername: 'Ruubiiiii',
                     showDivider: false,
                   ),
                 ],
