@@ -283,6 +283,28 @@ class FFmpegService {
     }.contains(normalized);
   }
 
+  /// Returns `true` when [filePath] starts with the native FLAC magic bytes
+  /// (`fLaC`). Useful to distinguish a real FLAC file from a FLAC-in-MP4
+  /// container that carries a `.flac` extension or claims codec=flac.
+  static Future<bool> isNativeFlacFile(String filePath) async {
+    try {
+      final raf = await File(filePath).open();
+      try {
+        final header = await raf.read(4);
+        return header.length == 4 &&
+            header[0] == 0x66 && // 'f'
+            header[1] == 0x4C && // 'L'
+            header[2] == 0x61 && // 'a'
+            header[3] == 0x43;   // 'C'
+      } finally {
+        await raf.close();
+      }
+    } catch (e) {
+      _log.w('Native FLAC magic probe failed for $filePath: $e');
+      return false;
+    }
+  }
+
   static Future<String?> convertM4aToFlac(String inputPath) async {
     final outputPath = _buildOutputPath(inputPath, '.flac');
 
@@ -435,7 +457,16 @@ class FFmpegService {
       // Force MOV demuxer: -decryption_key is only supported by the MOV/MP4
       // demuxer. The input may carry a .flac extension (SAF mode) while actually
       // containing an encrypted M4A stream, so we must override auto-detection.
-      return '-v error -decryption_key "$key" -f $demuxerFormat -i "$inputPath" $audioMap-c copy "$outputPath" -y';
+      //
+      // When the requested output is a native .flac we also force the flac
+      // muxer (-f flac). Without it, FFmpeg infers the muxer from the output
+      // extension AND keeps the input container's stream layout, which for
+      // FLAC-in-MP4 sources would still emit an ISO-BMFF payload under a
+      // .flac filename. That file fails native FLAC tag writers later on.
+      final muxerOverride = outputPath.toLowerCase().endsWith('.flac')
+          ? '-f flac '
+          : '';
+      return '-v error -decryption_key "$key" -f $demuxerFormat -i "$inputPath" $audioMap-c copy $muxerOverride"$outputPath" -y';
     }
 
     final keyCandidates = _buildDecryptionKeyCandidates(decryptionKey);

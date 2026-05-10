@@ -6160,9 +6160,13 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       String? flacPath;
       try {
         final codec = await FFmpegService.probePrimaryAudioCodec(tempPath);
-        if (!FFmpegService.isLosslessAudioCodec(codec) || codec == 'flac') {
+        final isAlreadyNativeFlac =
+            codec == 'flac' && await FFmpegService.isNativeFlacFile(tempPath);
+        if (!FFmpegService.isLosslessAudioCodec(codec) || isAlreadyNativeFlac) {
           _log.d(
-            'Preserving native container; audio codec is ${codec ?? 'unknown'}, not a lossless source needing FLAC conversion.',
+            'Preserving native container; audio codec is ${codec ?? 'unknown'}'
+            '${isAlreadyNativeFlac ? ' (native FLAC)' : ''}, '
+            'no FLAC container conversion needed.',
           );
           return filePath;
         }
@@ -6203,9 +6207,13 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     }
 
     final codec = await FFmpegService.probePrimaryAudioCodec(filePath);
-    if (!FFmpegService.isLosslessAudioCodec(codec) || codec == 'flac') {
+    final isAlreadyNativeFlac =
+        codec == 'flac' && await FFmpegService.isNativeFlacFile(filePath);
+    if (!FFmpegService.isLosslessAudioCodec(codec) || isAlreadyNativeFlac) {
       _log.d(
-        'Preserving native container; audio codec is ${codec ?? 'unknown'}, not a lossless source needing FLAC conversion.',
+        'Preserving native container; audio codec is ${codec ?? 'unknown'}'
+        '${isAlreadyNativeFlac ? ' (native FLAC)' : ''}, '
+        'no FLAC container conversion needed.',
       );
       return filePath;
     }

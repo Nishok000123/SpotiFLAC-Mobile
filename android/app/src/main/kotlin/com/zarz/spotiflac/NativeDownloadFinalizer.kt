@@ -16,6 +16,7 @@ import com.antonkarpenko.ffmpegkit.ReturnCode
 import gobackend.Gobackend
 import org.json.JSONObject
 import java.io.File
+import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.util.Locale
 import java.util.concurrent.CancellationException
@@ -419,7 +420,13 @@ object NativeDownloadFinalizer {
                 for ((candidateOutput, mapAudioOnly) in attempts) {
                     try {
                         val audioMap = if (mapAudioOnly) "-map 0:a " else ""
-                        val command = "-v error -decryption_key ${q(candidate)} -f $inputFormat -i ${q(localInput)} ${audioMap}-c copy ${q(candidateOutput)} -y"
+                        // Force the flac muxer when the target extension is
+                        // .flac. Without this override FFmpeg keeps the ISO-BMFF
+                        // stream layout, producing FLAC-in-MP4 under a .flac
+                        // filename which downstream native FLAC tag writers
+                        // cannot read.
+                        val muxerOverride = if (candidateOutput.lowercase(Locale.ROOT).endsWith(".flac")) "-f flac " else ""
+                        val command = "-v error -decryption_key ${q(candidate)} -f $inputFormat -i ${q(localInput)} ${audioMap}-c copy ${muxerOverride}${q(candidateOutput)} -y"
                         val result = runFFmpeg(command, shouldCancel)
                         lastOutput = result.second
                         if (result.first && File(candidateOutput).exists()) {
@@ -514,8 +521,10 @@ object NativeDownloadFinalizer {
         var adoptedOutput = false
         try {
             val codec = probePrimaryAudioCodec(localInput, shouldCancel)
-            if (!isLosslessAudioCodec(codec) || codec == "flac") {
-                Log.d(TAG, "Preserving native container; audio codec is ${codec.ifBlank { "unknown" }}")
+            val isAlreadyNativeFlac = codec == "flac" && isNativeFlacFile(localInput)
+            if (!isLosslessAudioCodec(codec) || isAlreadyNativeFlac) {
+                val suffix = if (isAlreadyNativeFlac) " (native FLAC)" else ""
+                Log.d(TAG, "Preserving native container; audio codec is ${codec.ifBlank { "unknown" }}$suffix")
                 return
             }
             val result = runFFmpeg(
@@ -1337,6 +1346,30 @@ object NativeDownloadFinalizer {
             ?.lowercase(Locale.ROOT)
             ?.replace('-', '_')
             .orEmpty()
+    }
+
+    /**
+     * Returns true when the file on [path] starts with the native FLAC magic
+     * bytes (`fLaC`). A file may contain a FLAC audio stream yet live inside
+     * an MP4/fMP4 container (e.g. some Amazon Music downloads); native FLAC
+     * tag writers require the raw fLaC header, so we must detect that mismatch
+     * before skipping the container conversion step.
+     */
+    private fun isNativeFlacFile(path: String): Boolean {
+        return try {
+            RandomAccessFile(path, "r").use { raf ->
+                if (raf.length() < 4L) return false
+                val header = ByteArray(4)
+                raf.readFully(header)
+                header[0] == 0x66.toByte() && // 'f'
+                    header[1] == 0x4C.toByte() && // 'L'
+                    header[2] == 0x61.toByte() && // 'a'
+                    header[3] == 0x43.toByte() // 'C'
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Native FLAC magic probe failed for $path: ${e.message}")
+            false
+        }
     }
 
     private fun isLosslessAudioCodec(codec: String): Boolean {
