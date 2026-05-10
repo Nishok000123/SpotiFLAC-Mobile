@@ -29,11 +29,11 @@
   "@homeSubtitle": {
     "description": "Subtitle shown below search box"
   },
-  "homeEmptyTitle": "No search providers yet",
+  "homeEmptyTitle": "Henüz arama sağlayıcısı yok",
   "@homeEmptyTitle": {
     "description": "Title shown on home when no providers are available yet"
   },
-  "homeEmptySubtitle": "Install an extension to continue.",
+  "homeEmptySubtitle": "Devam etmek için bir eklenti yükleyin.",
   "@homeEmptySubtitle": {
     "description": "Subtitle shown on home when no providers are available yet"
   },
@@ -153,7 +153,7 @@
   "@optionsPrimaryProvider": {
     "description": "Main search provider setting"
   },
-  "optionsPrimaryProviderSubtitle": "Service used for searching by track or album name",
+  "optionsPrimaryProviderSubtitle": "Parça veya albüm adına göre arama yapmak için kullanılan hizmet",
   "@optionsPrimaryProviderSubtitle": {
     "description": "Subtitle for primary provider"
   },
@@ -166,11 +166,11 @@
       }
     }
   },
-  "optionsDefaultSearchTab": "Default Search Tab",
+  "optionsDefaultSearchTab": "Varsayılan Arama Sekmesi",
   "@optionsDefaultSearchTab": {
     "description": "Title for the preferred default search tab setting"
   },
-  "optionsDefaultSearchTabSubtitle": "Choose which tab opens first for new search results.",
+  "optionsDefaultSearchTabSubtitle": "Yeni arama sonuçları için hangi sekmenin önce açılacağını seçin.",
   "@optionsDefaultSearchTabSubtitle": {
     "description": "Subtitle for the preferred default search tab setting"
   },
@@ -202,7 +202,7 @@
   "@optionsEmbedLyrics": {
     "description": "Embed lyrics in audio files"
   },
-  "optionsEmbedLyricsSubtitle": "Save synced lyrics alongside your downloaded tracks",
+  "optionsEmbedLyricsSubtitle": "İndirdiğiniz parçaların yanına senkronize edilmiş şarkı sözlerini kaydedin",
   "@optionsEmbedLyricsSubtitle": {
     "description": "Subtitle for embed lyrics"
   },
@@ -327,7 +327,7 @@
   "@optionsSpotifyCredentials": {
     "description": "Spotify API credentials setting"
   },
-  "optionsSpotifyCredentialsConfigured": "Client ID: {clientId}...",
+  "optionsSpotifyCredentialsConfigured": "Müşteri Kimliği: {clientId}...",
   "@optionsSpotifyCredentialsConfigured": {
     "description": "Shows configured client ID preview",
     "placeholders": {
@@ -438,7 +438,7 @@
   "@aboutPCSource": {
     "description": "Link to PC GitHub repo"
   },
-  "aboutKeepAndroidOpen": "Keep Android Open",
+  "aboutKeepAndroidOpen": "Android'i Açık Tutun",
   "@aboutKeepAndroidOpen": {
     "description": "Link to Keep Android Open campaign website"
   },
@@ -691,15 +691,15 @@
   "@setupAllowAccessToManageFiles": {
     "description": "Instruction for file access permission"
   },
-  "setupLanguageTitle": "Choose Language",
+  "setupLanguageTitle": "Dil Seçin",
   "@setupLanguageTitle": {
     "description": "Title for the language selection step in setup"
   },
-  "setupLanguageDescription": "Select your preferred language for the app. You can change this later in Settings.",
+  "setupLanguageDescription": "Uygulama için tercih ettiğiniz dili seçin. Bunu daha sonra Ayarlar'dan değiştirebilirsiniz.",
   "@setupLanguageDescription": {
     "description": "Description for the language selection step in setup"
   },
-  "setupLanguageSystemDefault": "System Default",
+  "setupLanguageSystemDefault": "Sistem Varsayılanı",
   "@setupLanguageSystemDefault": {
     "description": "Option to use the system language"
   },
@@ -1223,7 +1223,7 @@
   "@providerPriorityFallbackExtensionsTitle": {
     "description": "Section title for choosing which download extensions can be used as fallback providers"
   },
-  "providerPriorityFallbackExtensionsDescription": "Choose which installed download extensions can be used during automatic fallback.",
+  "providerPriorityFallbackExtensionsDescription": "Otomatik geri dönüş sırasında hangi yüklü indirme uzantılarının kullanılabileceğini seçin.",
   "@providerPriorityFallbackExtensionsDescription": {
     "description": "Section description for extension fallback selection"
   },
@@ -1333,7 +1333,7 @@
   "@credentialsDescription": {
     "description": "Credentials dialog explanation"
   },
-  "credentialsClientId": "Client ID",
+  "credentialsClientId": "Müşteri Kimliği",
   "@credentialsClientId": {
     "description": "Client ID field label - DO NOT TRANSLATE"
   },
@@ -1341,7 +1341,7 @@
   "@credentialsClientIdHint": {
     "description": "Client ID placeholder"
   },
-  "credentialsClientSecret": "Client Secret",
+  "credentialsClientSecret": "Müşteri Sırrı",
   "@credentialsClientSecret": {
     "description": "Client Secret field label - DO NOT TRANSLATE"
   },
@@ -1453,11 +1453,11 @@
   "@settingsAppearanceSubtitle": {
     "description": "Appearance settings description"
   },
-  "settingsDownloadSubtitle": "Service, quality, fallback",
+  "settingsDownloadSubtitle": "Hizmet, kalite, yedekleme",
   "@settingsDownloadSubtitle": {
     "description": "Download settings description"
   },
-  "settingsOptionsSubtitle": "Fallback, metadata, lyrics, cover art",
+  "settingsOptionsSubtitle": "Yedek plan, meta veriler, şarkı sözleri, kapak resmi",
   "@settingsOptionsSubtitle": {
     "description": "Options settings description"
   },
@@ -1758,7 +1758,7 @@
   "@extensionAuthor": {
     "description": "Extension detail - author"
   },
-  "extensionId": "ID",
+  "extensionId": "Kimlik",
   "@extensionId": {
     "description": "Extension detail - unique ID"
   },
@@ -1877,7 +1877,7 @@
   "@extensionsInstalledSuccess": {
     "description": "Success message after install"
   },
-  "extensionsInstalledCount": "{count} extensions installed successfully",
+  "extensionsInstalledCount": "{count} uzantı başarıyla yüklendi",
   "@extensionsInstalledCount": {
     "description": "Success message after installing multiple extensions",
     "placeholders": {
@@ -1887,7 +1887,7 @@
       }
     }
   },
-  "extensionsInstallPartialSuccess": "Installed {installed} of {attempted} extensions",
+  "extensionsInstallPartialSuccess": "Yüklenen uzantı sayısı: {installed} / {attempted}",
   "@extensionsInstallPartialSuccess": {
     "description": "Message when installing multiple extensions partially succeeds",
     "placeholders": {
@@ -2502,7 +2502,7 @@
   "@libraryAboutDescription": {
     "description": "Description of local library feature"
   },
-  "libraryTracksUnit": "{count, plural, =1{track} other{tracks}}",
+  "libraryTracksUnit": "{count, plural, =1{parça} other{parçalar}}",
   "@libraryTracksUnit": {
     "description": "Unit label for tracks count (without the number itself)",
     "placeholders": {
@@ -2511,7 +2511,7 @@
       }
     }
   },
-  "libraryFilesUnit": "{count, plural, =1{file} other{files}}",
+  "libraryFilesUnit": "{count, plural, =1{dosya} other{dosyalar}}",
   "@libraryFilesUnit": {
     "description": "Unit label for files count during library scanning",
     "placeholders": {
@@ -2520,7 +2520,7 @@
       }
     }
   },
-  "libraryLastScanned": "Last scanned: {time}",
+  "libraryLastScanned": "Son tarama tarihi: {time}",
   "@libraryLastScanned": {
     "description": "Last scan time display",
     "placeholders": {
@@ -2529,19 +2529,19 @@
       }
     }
   },
-  "libraryLastScannedNever": "Never",
+  "libraryLastScannedNever": "Asla",
   "@libraryLastScannedNever": {
     "description": "Shown when library has never been scanned"
   },
-  "libraryScanning": "Scanning...",
+  "libraryScanning": "Taranıyor...",
   "@libraryScanning": {
     "description": "Status during scan"
   },
-  "libraryScanFinalizing": "Finalizing library...",
+  "libraryScanFinalizing": "Kütüphane sonlandırılıyor...",
   "@libraryScanFinalizing": {
     "description": "Status shown after file scanning finishes but library persistence is still running"
   },
-  "libraryScanProgress": "{progress}% of {total} files",
+  "libraryScanProgress": "{total} dosyanın {progress}%'si",
   "@libraryScanProgress": {
     "description": "Scan progress display",
     "placeholders": {
@@ -2553,11 +2553,11 @@
       }
     }
   },
-  "libraryInLibrary": "In Library",
+  "libraryInLibrary": "Kütüphanede",
   "@libraryInLibrary": {
     "description": "Badge shown on tracks that exist in local library"
   },
-  "libraryRemovedMissingFiles": "Removed {count} missing files from library",
+  "libraryRemovedMissingFiles": "Kütüphaneden {count} adet eksik dosya kaldırıldı",
   "@libraryRemovedMissingFiles": {
     "description": "Snackbar after cleanup",
     "placeholders": {
@@ -2566,39 +2566,39 @@
       }
     }
   },
-  "libraryCleared": "Library cleared",
+  "libraryCleared": "Kütüphane temizlendi",
   "@libraryCleared": {
     "description": "Snackbar after clearing library"
   },
-  "libraryStorageAccessRequired": "Storage Access Required",
+  "libraryStorageAccessRequired": "Depolama Alanına Erişim Gereklidir",
   "@libraryStorageAccessRequired": {
     "description": "Dialog title for storage permission"
   },
-  "libraryStorageAccessMessage": "SpotiFLAC needs storage access to scan your music library. Please grant permission in settings.",
+  "libraryStorageAccessMessage": "SpotiFLAC, müzik kitaplığınızı tarayabilmek için depolama alanına erişime ihtiyaç duyar. Lütfen ayarlar bölümünden izin verin.",
   "@libraryStorageAccessMessage": {
     "description": "Dialog message for storage permission"
   },
-  "libraryFolderNotExist": "Selected folder does not exist",
+  "libraryFolderNotExist": "Seçilen klasör mevcut değil",
   "@libraryFolderNotExist": {
     "description": "Error when folder doesn't exist"
   },
-  "librarySourceDownloaded": "Downloaded",
+  "librarySourceDownloaded": "İndirildi",
   "@librarySourceDownloaded": {
     "description": "Badge for tracks downloaded via SpotiFLAC"
   },
-  "librarySourceLocal": "Local",
+  "librarySourceLocal": "Yerel",
   "@librarySourceLocal": {
     "description": "Badge for tracks from local library scan"
   },
-  "libraryFilterAll": "All",
+  "libraryFilterAll": "Tümü",
   "@libraryFilterAll": {
     "description": "Filter chip - show all library items"
   },
-  "libraryFilterDownloaded": "Downloaded",
+  "libraryFilterDownloaded": "İndirildi",
   "@libraryFilterDownloaded": {
     "description": "Filter chip - show only downloaded items"
   },
-  "libraryFilterLocal": "Local",
+  "libraryFilterLocal": "Yerel",
   "@libraryFilterLocal": {
     "description": "Filter chip - show only local library items"
   },
@@ -2606,19 +2606,19 @@
   "@libraryFilterTitle": {
     "description": "Filter bottom sheet title"
   },
-  "libraryFilterReset": "Reset",
+  "libraryFilterReset": "Sıfırla",
   "@libraryFilterReset": {
     "description": "Reset all filters button"
   },
-  "libraryFilterApply": "Apply",
+  "libraryFilterApply": "Uygula",
   "@libraryFilterApply": {
     "description": "Apply filters button"
   },
-  "libraryFilterSource": "Source",
+  "libraryFilterSource": "Kaynak",
   "@libraryFilterSource": {
     "description": "Filter section - source type"
   },
-  "libraryFilterQuality": "Quality",
+  "libraryFilterQuality": "Kalite",
   "@libraryFilterQuality": {
     "description": "Filter section - audio quality"
   },
