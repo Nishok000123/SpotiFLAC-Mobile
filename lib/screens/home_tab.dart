@@ -1304,6 +1304,13 @@ class _HomeTabState extends ConsumerState<HomeTab>
                     child: _buildSearchBar(colorScheme),
                   ),
                 ),
+              if (showSearchBar &&
+                  isSearchFocused &&
+                  !hasSearchInput &&
+                  _searchHistory.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: _buildSearchHistoryChips(colorScheme),
+                ),
 
               if (hasActualResults && !showRecentAccess)
                 Consumer(

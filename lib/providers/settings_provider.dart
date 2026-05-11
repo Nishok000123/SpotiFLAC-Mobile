@@ -593,6 +593,28 @@ class SettingsNotifier extends Notifier<AppSettings> {
     state = state.copyWith(deduplicateDownloads: enabled);
     _saveSettings();
   }
+
+  void setMaxDownloadRetries(int count) {
+    final clamped = count.clamp(0, 5);
+    state = state.copyWith(maxDownloadRetries: clamped);
+    _saveSettings();
+  }
+
+  void setHapticFeedback(bool enabled) {
+    state = state.copyWith(hapticFeedback: enabled);
+    _saveSettings();
+  }
+
+  /// Replaces current settings with [imported] and persists them. This is used
+  /// to restore a settings backup from [BackupRestoreService].
+  void restoreFromBackup(AppSettings imported) {
+    // Always keep useExtensionProviders=true regardless of what the backup has.
+    state = imported.copyWith(useExtensionProviders: true);
+    _saveSettings();
+    _syncLyricsSettingsToBackend();
+    _syncNetworkCompatibilitySettingsToBackend();
+    _syncExtensionFallbackSettingsToBackend();
+  }
 }
 
 final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(
