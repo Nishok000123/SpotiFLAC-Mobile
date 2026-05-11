@@ -915,11 +915,11 @@
   "@snackbarSelectExtFile": {
     "description": "Snackbar - wrong file type selected"
   },
-  "snackbarProviderPrioritySaved": "Provider priority saved",
+  "snackbarProviderPrioritySaved": "Priorité du fournisseur enregistrée",
   "@snackbarProviderPrioritySaved": {
     "description": "Snackbar - provider order saved"
   },
-  "snackbarMetadataProviderSaved": "Metadata provider priority saved",
+  "snackbarMetadataProviderSaved": "Priorité du fournisseur de métadonnées enregistrée",
   "@snackbarMetadataProviderSaved": {
     "description": "Snackbar - metadata provider order saved"
   },
@@ -998,19 +998,19 @@
   "@actionSelectAll": {
     "description": "Action button - select all items"
   },
-  "actionDeselect": "Deselect",
+  "actionDeselect": "Désélectionner",
   "@actionDeselect": {
     "description": "Action button - deselect all"
   },
-  "actionRemoveCredentials": "Remove Credentials",
+  "actionRemoveCredentials": "Supprimer les identifiants",
   "@actionRemoveCredentials": {
     "description": "Action button - delete Spotify credentials"
   },
-  "actionSaveCredentials": "Save Credentials",
+  "actionSaveCredentials": "Enregistrer les identifiants",
   "@actionSaveCredentials": {
     "description": "Action button - save Spotify credentials"
   },
-  "selectionSelected": "{count} selected",
+  "selectionSelected": "{count} sélectionnés",
   "@selectionSelected": {
     "description": "Selection count indicator",
     "placeholders": {
@@ -1019,7 +1019,7 @@
       }
     }
   },
-  "selectionAllSelected": "All tracks selected",
+  "selectionAllSelected": "Toutes les pistes sélectionnées",
   "@selectionAllSelected": {
     "description": "Status - all items selected"
   },
