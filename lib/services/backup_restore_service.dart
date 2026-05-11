@@ -8,6 +8,7 @@ import 'package:spotiflac_android/utils/logger.dart';
 
 final _log = AppLogger('BackupRestoreService');
 const _backupVersion = 1;
+const _supportedBackupVersions = {_backupVersion};
 
 class BackupRestoreService {
   /// Exports [settings] to a JSON file and shares it via the system share sheet.
@@ -45,6 +46,12 @@ class BackupRestoreService {
       final content = await File(result.files.single.path!).readAsString();
       final decoded = jsonDecode(content);
       if (decoded is! Map) return null;
+      final backupVersion = decoded['backup_version'];
+      if (backupVersion is num &&
+          !_supportedBackupVersions.contains(backupVersion.toInt())) {
+        _log.w('Unsupported backup version: ${backupVersion.toInt()}');
+        return null;
+      }
       final settingsJson = decoded['settings'];
       if (settingsJson is! Map) return null;
       return AppSettings.fromJson(Map<String, dynamic>.from(settingsJson));

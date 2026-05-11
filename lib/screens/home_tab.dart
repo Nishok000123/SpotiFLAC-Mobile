@@ -3543,10 +3543,8 @@ class _HomeTabState extends ConsumerState<HomeTab>
 
     if (text.length >= 2) {
       _performSearch(text);
-      SearchHistoryService.add(text).then((_) {
-        SearchHistoryService.load().then((history) {
-          if (mounted) setState(() => _searchHistory = history);
-        });
+      SearchHistoryService.add(text).then((history) {
+        if (mounted) setState(() => _searchHistory = history);
       });
     }
     _searchFocusNode.unfocus();
@@ -3572,8 +3570,8 @@ class _HomeTabState extends ConsumerState<HomeTab>
               const Spacer(),
               TextButton(
                 onPressed: () {
-                  SearchHistoryService.clear().then((_) {
-                    if (mounted) setState(() => _searchHistory = []);
+                  SearchHistoryService.clear().then((history) {
+                    if (mounted) setState(() => _searchHistory = history);
                   });
                 },
                 style: TextButton.styleFrom(
@@ -3608,10 +3606,8 @@ class _HomeTabState extends ConsumerState<HomeTab>
                   color: colorScheme.onSurfaceVariant,
                 ),
                 onDeleted: () {
-                  SearchHistoryService.remove(query).then((_) {
-                    SearchHistoryService.load().then((history) {
-                      if (mounted) setState(() => _searchHistory = history);
-                    });
+                  SearchHistoryService.remove(query).then((history) {
+                    if (mounted) setState(() => _searchHistory = history);
                   });
                 },
                 onPressed: () {

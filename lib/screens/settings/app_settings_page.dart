@@ -90,7 +90,7 @@ class AppSettingsPage extends ConsumerWidget {
                     icon: Icons.vibration,
                     title: 'Haptic Feedback',
                     subtitle: settings.hapticFeedback
-                        ? 'Vibrate on download complete'
+                        ? 'Vibrate on download complete and queue actions'
                         : 'No vibration',
                     value: settings.hapticFeedback,
                     onChanged: (v) => ref
@@ -219,7 +219,10 @@ class AppSettingsPage extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Confirm', style: TextStyle(color: colorScheme.error)),
+            child: Text(
+              context.l10n.dialogClear,
+              style: TextStyle(color: colorScheme.error),
+            ),
           ),
         ],
       ),

@@ -1109,7 +1109,9 @@ class _AutoRetryItem extends StatelessWidget {
       title: 'Auto-Retry Failed Downloads',
       subtitle: currentValue == 0
           ? 'Disabled'
-          : 'Retry up to $currentValue time(s)',
+          : (currentValue == 1
+                ? 'Retry up to $currentValue time'
+                : 'Retry up to $currentValue times'),
       showDivider: showDivider,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,

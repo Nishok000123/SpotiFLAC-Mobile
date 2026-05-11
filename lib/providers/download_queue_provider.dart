@@ -3598,73 +3598,25 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       );
     }
 
-    if (status == DownloadStatus.completed ||
-        status == DownloadStatus.failed ||
-        status == DownloadStatus.skipped) {
-      if (status != DownloadStatus.failed) {
-        _retryCountByItemId.remove(id);
-      }
+    if (status == DownloadStatus.completed || status == DownloadStatus.skipped) {
+      _retryCountByItemId.remove(id);
+      _saveQueueToStorage();
+    } else if (status == DownloadStatus.failed) {
       _saveQueueToStorage();
     }
   }
 
+  /// Returns true only for transient failures that may succeed on retry.
+  /// Permanent failures like not-found/permission are intentionally excluded.
   bool _isAutoRetryEligible(DownloadItem item) {
     if (item.status != DownloadStatus.failed) return false;
-    if (item.errorType == DownloadErrorType.notFound ||
-        item.errorType == DownloadErrorType.permission) {
-      return false;
+    switch (item.errorType) {
+      case DownloadErrorType.network:
+      case DownloadErrorType.rateLimit:
+        return true;
+      default:
+        return false;
     }
-    return true;
-  }
-
-  void _processAutoRetries() {
-    final maxRetries = ref.read(settingsProvider).maxDownloadRetries;
-    if (maxRetries <= 0) return;
-
-    final items = state.items;
-    var updatedItems = items;
-    var changed = false;
-    final changedIndices = <int>[];
-
-    for (var i = 0; i < items.length; i++) {
-      final item = items[i];
-      if (!_isAutoRetryEligible(item)) continue;
-
-      final attempts = _retryCountByItemId[item.id] ?? 0;
-      if (attempts >= maxRetries) continue;
-
-      _retryCountByItemId[item.id] = attempts + 1;
-      final retried = item.copyWith(
-        status: DownloadStatus.queued,
-        progress: 0.0,
-        speedMBps: 0.0,
-        bytesReceived: 0,
-        bytesTotal: 0,
-        error: null,
-        errorType: null,
-      );
-      if (!changed) {
-        updatedItems = List<DownloadItem>.from(items);
-        changed = true;
-      }
-      updatedItems[i] = retried;
-      changedIndices.add(i);
-      _log.i(
-        'Auto-retry ${attempts + 1}/$maxRetries for "${item.track.name}"',
-      );
-    }
-
-    if (!changed) return;
-
-    state = state.copyWith(
-      items: updatedItems,
-      lookup: state.lookup.updatedForIndices(
-        previousItems: items,
-        nextItems: updatedItems,
-        changedIndices: changedIndices,
-      ),
-    );
-    _saveQueueToStorage();
   }
 
   void updateProgress(String id, double progress, {double? speedMBps}) {
@@ -3840,6 +3792,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     }
 
     state = state.copyWith(items: [], isPaused: false, currentDownload: null);
+    _retryCountByItemId.clear();
     if (Platform.isAndroid &&
         ref.read(settingsProvider).nativeDownloadWorkerEnabled) {
       PlatformBridge.cancelNativeDownloadWorker().catchError((_) {});
@@ -3919,6 +3872,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
 
     _log.i('Retrying item: ${item.track.name} (id: $id)');
     _locallyCancelledItemIds.remove(id);
+    _retryCountByItemId.remove(id);
 
     // Purge stale ReplayGain entry for this track so a re-scan doesn't
     // produce duplicate entries that bias album gain.
@@ -3955,6 +3909,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   void removeItem(String id) {
     final removedItem = state.items.where((item) => item.id == id).firstOrNull;
     _locallyCancelledItemIds.remove(id);
+    _retryCountByItemId.remove(id);
     final items = state.items.where((item) => item.id != id).toList();
     state = state.copyWith(items: items);
     _saveQueueToStorage();
@@ -6363,7 +6318,6 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
 
   Future<void> _processQueue() async {
     if (state.isProcessing) return;
-    _processAutoRetries();
 
     final settings = ref.read(settingsProvider);
     updateSettings(settings);
