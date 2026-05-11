@@ -222,6 +222,12 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
                     onChanged: (value) => ref
                         .read(settingsProvider.notifier)
                         .setNetworkCompatibilityMode(value),
+                  ),
+                  _AutoRetryItem(
+                    currentValue: settings.maxDownloadRetries,
+                    onChanged: (value) => ref
+                        .read(settingsProvider.notifier)
+                        .setMaxDownloadRetries(value),
                     showDivider: false,
                   ),
                 ],
@@ -1081,6 +1087,56 @@ class _ConcurrentDownloadsItem extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AutoRetryItem extends StatelessWidget {
+  final int currentValue;
+  final ValueChanged<int> onChanged;
+  final bool showDivider;
+
+  const _AutoRetryItem({
+    required this.currentValue,
+    required this.onChanged,
+    this.showDivider = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingsItem(
+      icon: Icons.refresh,
+      title: 'Auto-Retry Failed Downloads',
+      subtitle: currentValue == 0
+          ? 'Disabled'
+          : (currentValue == 1
+                ? 'Retry up to $currentValue time'
+                : 'Retry up to $currentValue times'),
+      showDivider: showDivider,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.remove),
+            onPressed: currentValue > 0
+                ? () => onChanged(currentValue - 1)
+                : null,
+            iconSize: 20,
+          ),
+          Text(
+            currentValue.toString(),
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: currentValue < 5
+                ? () => onChanged(currentValue + 1)
+                : null,
+            iconSize: 20,
+          ),
+        ],
+      ),
+      onTap: null,
     );
   }
 }

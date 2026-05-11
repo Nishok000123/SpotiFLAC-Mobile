@@ -89,6 +89,10 @@ class AppSettings {
 
   final bool
   deduplicateDownloads; // Skip downloading tracks already present in history
+  final int
+  maxDownloadRetries; // Number of automatic retry attempts before marking as failed (0 = disabled)
+  final bool
+  hapticFeedback; // Vibrate on download complete and other key actions
 
   const AppSettings({
     this.defaultService = '',
@@ -149,6 +153,8 @@ class AppSettings {
     this.musixmatchLanguage = '',
     this.lastSeenVersion = '',
     this.deduplicateDownloads = true,
+    this.maxDownloadRetries = 0,
+    this.hapticFeedback = true,
   });
 
   AppSettings copyWith({
@@ -213,6 +219,8 @@ class AppSettings {
     String? musixmatchLanguage,
     String? lastSeenVersion,
     bool? deduplicateDownloads,
+    int? maxDownloadRetries,
+    bool? hapticFeedback,
   }) {
     return AppSettings(
       defaultService: defaultService ?? this.defaultService,
@@ -294,6 +302,8 @@ class AppSettings {
       musixmatchLanguage: musixmatchLanguage ?? this.musixmatchLanguage,
       lastSeenVersion: lastSeenVersion ?? this.lastSeenVersion,
       deduplicateDownloads: deduplicateDownloads ?? this.deduplicateDownloads,
+      maxDownloadRetries: maxDownloadRetries ?? this.maxDownloadRetries,
+      hapticFeedback: hapticFeedback ?? this.hapticFeedback,
     );
   }
 

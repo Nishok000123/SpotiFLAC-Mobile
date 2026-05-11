@@ -18,6 +18,7 @@ import 'package:spotiflac_android/screens/track_metadata_screen.dart';
 import 'package:spotiflac_android/screens/album_screen.dart';
 import 'package:spotiflac_android/screens/artist_screen.dart';
 import 'package:spotiflac_android/services/csv_import_service.dart';
+import 'package:spotiflac_android/services/search_history_service.dart';
 import 'package:spotiflac_android/services/downloaded_embedded_cover_resolver.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/app_bar_layout.dart';
@@ -45,6 +46,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
     with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
   final _urlController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  List<String> _searchHistory = [];
   String? _lastSearchQuery;
   late final ProviderSubscription<TrackState> _trackStateSub;
   late final ProviderSubscription<bool> _extensionInitSub;
@@ -142,6 +144,10 @@ class _HomeTabState extends ConsumerState<HomeTab>
     super.initState();
     _urlController.addListener(_onSearchChanged);
     _searchFocusNode.addListener(_onSearchFocusChanged);
+
+    SearchHistoryService.load().then((history) {
+      if (mounted) setState(() => _searchHistory = history);
+    });
 
     // Run an initial fetch check in case extensions were already initialized
     // before HomeTab was mounted (e.g. auto-installed during first setup).
@@ -1297,6 +1303,13 @@ class _HomeTabState extends ConsumerState<HomeTab>
                     ),
                     child: _buildSearchBar(colorScheme),
                   ),
+                ),
+              if (showSearchBar &&
+                  isSearchFocused &&
+                  !hasSearchInput &&
+                  _searchHistory.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: _buildSearchHistoryChips(colorScheme),
                 ),
 
               if (hasActualResults && !showRecentAccess)
@@ -3530,7 +3543,88 @@ class _HomeTabState extends ConsumerState<HomeTab>
 
     if (text.length >= 2) {
       _performSearch(text);
+      SearchHistoryService.add(text).then((history) {
+        if (mounted) setState(() => _searchHistory = history);
+      });
     }
     _searchFocusNode.unfocus();
+  }
+
+  Widget _buildSearchHistoryChips(ColorScheme colorScheme) {
+    if (_searchHistory.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Recent Searches',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () {
+                  SearchHistoryService.clear().then((history) {
+                    if (mounted) setState(() => _searchHistory = history);
+                  });
+                },
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  'Clear all',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: _searchHistory.map((query) {
+              return InputChip(
+                label: Text(query),
+                avatar: Icon(
+                  Icons.history,
+                  size: 16,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                deleteIcon: Icon(
+                  Icons.close,
+                  size: 16,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                onDeleted: () {
+                  SearchHistoryService.remove(query).then((history) {
+                    if (mounted) setState(() => _searchHistory = history);
+                  });
+                },
+                onPressed: () {
+                  _urlController.text = query;
+                  _searchFocusNode.unfocus();
+                  if (query.startsWith('http') ||
+                      query.startsWith('spotify:')) {
+                    _fetchMetadata();
+                  } else if (query.length >= 2) {
+                    _performSearch(query);
+                  }
+                },
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
   }
 }

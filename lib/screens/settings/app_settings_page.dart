@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
+import 'package:spotiflac_android/services/backup_restore_service.dart';
+import 'package:spotiflac_android/services/m3u_export_service.dart';
 import 'package:spotiflac_android/utils/app_bar_layout.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 
@@ -83,6 +85,17 @@ class AppSettingsPage extends ConsumerWidget {
                     onChanged: (v) => ref
                         .read(settingsProvider.notifier)
                         .setCheckForUpdates(v),
+                  ),
+                  SettingsSwitchItem(
+                    icon: Icons.vibration,
+                    title: 'Haptic Feedback',
+                    subtitle: settings.hapticFeedback
+                        ? 'Vibrate on download complete and queue actions'
+                        : 'No vibration',
+                    value: settings.hapticFeedback,
+                    onChanged: (v) => ref
+                        .read(settingsProvider.notifier)
+                        .setHapticFeedback(v),
                     showDivider: settings.checkForUpdates,
                   ),
                   if (settings.checkForUpdates)
@@ -92,6 +105,29 @@ class AppSettingsPage extends ConsumerWidget {
                           .read(settingsProvider.notifier)
                           .setUpdateChannel(v),
                     ),
+                ],
+              ),
+            ),
+
+            SliverToBoxAdapter(
+              child: SettingsSectionHeader(title: 'Backup & Restore'),
+            ),
+            SliverToBoxAdapter(
+              child: SettingsGroup(
+                children: [
+                  SettingsItem(
+                    icon: Icons.backup_outlined,
+                    title: 'Backup Settings',
+                    subtitle: 'Export all settings to a JSON file',
+                    onTap: () => _backupSettings(context, ref),
+                  ),
+                  SettingsItem(
+                    icon: Icons.restore_outlined,
+                    title: 'Restore Settings',
+                    subtitle: 'Import settings from a backup file',
+                    onTap: () => _restoreSettings(context, ref, colorScheme),
+                    showDivider: false,
+                  ),
                 ],
               ),
             ),
@@ -107,6 +143,12 @@ class AppSettingsPage extends ConsumerWidget {
                     title: context.l10n.cleanupOrphanedDownloads,
                     subtitle: context.l10n.cleanupOrphanedDownloadsSubtitle,
                     onTap: () => _cleanupOrphanedDownloads(context, ref),
+                  ),
+                  SettingsItem(
+                    icon: Icons.playlist_add_check_outlined,
+                    title: 'Export Library as M3U Playlist',
+                    subtitle: 'Save all downloaded tracks as a .m3u file',
+                    onTap: () => _exportM3u(context, ref),
                   ),
                   SettingsItem(
                     icon: Icons.delete_forever,
@@ -146,6 +188,81 @@ class AppSettingsPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _backupSettings(BuildContext context, WidgetRef ref) async {
+    final settings = ref.read(settingsProvider);
+    final success = await BackupRestoreService.exportSettings(settings);
+    if (!success && context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Backup failed')));
+    }
+  }
+
+  Future<void> _restoreSettings(
+    BuildContext context,
+    WidgetRef ref,
+    ColorScheme colorScheme,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Restore Settings?'),
+        content: const Text(
+          'This will overwrite your current settings. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.l10n.dialogCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              context.l10n.dialogClear,
+              style: TextStyle(color: colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final imported = await BackupRestoreService.importSettings();
+    if (imported == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to restore settings')),
+        );
+      }
+      return;
+    }
+
+    ref.read(settingsProvider.notifier).restoreFromBackup(imported);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Settings restored successfully')),
+      );
+    }
+  }
+
+  Future<void> _exportM3u(BuildContext context, WidgetRef ref) async {
+    final history = ref.read(downloadHistoryProvider).items;
+    if (history.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No downloaded tracks to export')),
+        );
+      }
+      return;
+    }
+    final success = await M3uExportService.exportAndShare(history);
+    if (!success && context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Export failed')));
+    }
   }
 
   void _showClearHistoryDialog(

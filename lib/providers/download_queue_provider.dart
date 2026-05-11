@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -1786,6 +1787,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   bool _hasReceivedProgressStreamEvent = false;
   bool _usingProgressStream = false;
   bool _networkPausedByWifiOnly = false;
+  final Map<String, int> _retryCountByItemId = {};
   String? _lastServiceTrackName;
   String? _lastServiceArtistName;
   String? _lastServiceStatus;
@@ -3534,7 +3536,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     if (index == -1) return;
 
     final current = items[index];
-    final next = current.copyWith(
+    var next = current.copyWith(
       status: status,
       progress: progress ?? current.progress,
       speedMBps: speedMBps ?? current.speedMBps,
@@ -3542,6 +3544,26 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       error: error,
       errorType: errorType,
     );
+
+    if (_isAutoRetryEligible(next)) {
+      final maxRetries = ref.read(settingsProvider).maxDownloadRetries;
+      final attempts = _retryCountByItemId[id] ?? 0;
+      if (maxRetries > 0 && attempts < maxRetries) {
+        _retryCountByItemId[id] = attempts + 1;
+        next = next.copyWith(
+          status: DownloadStatus.queued,
+          progress: 0.0,
+          speedMBps: 0.0,
+          bytesReceived: 0,
+          bytesTotal: 0,
+          error: null,
+          errorType: null,
+        );
+        _log.i(
+          'Auto-retry ${attempts + 1}/$maxRetries for "${next.track.name}"',
+        );
+      }
+    }
 
     if (current.status == next.status &&
         current.progress == next.progress &&
@@ -3576,10 +3598,24 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       );
     }
 
-    if (status == DownloadStatus.completed ||
-        status == DownloadStatus.failed ||
-        status == DownloadStatus.skipped) {
+    if (status == DownloadStatus.completed || status == DownloadStatus.skipped) {
+      _retryCountByItemId.remove(id);
       _saveQueueToStorage();
+    } else if (status == DownloadStatus.failed) {
+      _saveQueueToStorage();
+    }
+  }
+
+  /// Returns true only for transient failures that may succeed on retry.
+  /// Permanent failures like not-found/permission are intentionally excluded.
+  bool _isAutoRetryEligible(DownloadItem item) {
+    if (item.status != DownloadStatus.failed) return false;
+    switch (item.errorType) {
+      case DownloadErrorType.network:
+      case DownloadErrorType.rateLimit:
+        return true;
+      default:
+        return false;
     }
   }
 
@@ -3756,6 +3792,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     }
 
     state = state.copyWith(items: [], isPaused: false, currentDownload: null);
+    _retryCountByItemId.clear();
     if (Platform.isAndroid &&
         ref.read(settingsProvider).nativeDownloadWorkerEnabled) {
       PlatformBridge.cancelNativeDownloadWorker().catchError((_) {});
@@ -3835,6 +3872,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
 
     _log.i('Retrying item: ${item.track.name} (id: $id)');
     _locallyCancelledItemIds.remove(id);
+    _retryCountByItemId.remove(id);
 
     // Purge stale ReplayGain entry for this track so a re-scan doesn't
     // produce duplicate entries that bias album gain.
@@ -3871,6 +3909,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   void removeItem(String id) {
     final removedItem = state.items.where((item) => item.id == id).firstOrNull;
     _locallyCancelledItemIds.remove(id);
+    _retryCountByItemId.remove(id);
     final items = state.items.where((item) => item.id != id).toList();
     state = state.copyWith(items: items);
     _saveQueueToStorage();
@@ -5630,6 +5669,9 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         await ref.read(downloadHistoryProvider.notifier).reloadFromStorage();
       }
       _completedInSession++;
+      if (settings.hapticFeedback) {
+        HapticFeedback.mediumImpact();
+      }
       await _notificationService.showDownloadComplete(
         trackName: item.track.name,
         artistName: item.track.artistName,
@@ -5749,6 +5791,9 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       filePath: filePath,
     );
     _completedInSession++;
+    if (settings.hapticFeedback) {
+      HapticFeedback.mediumImpact();
+    }
 
     await _notificationService.showDownloadComplete(
       trackName: item.track.name,
@@ -8037,6 +8082,9 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         }
 
         _completedInSession++;
+        if (settings.hapticFeedback) {
+          HapticFeedback.mediumImpact();
+        }
 
         final historyNotifier = ref.read(downloadHistoryProvider.notifier);
         final existingInHistory =
