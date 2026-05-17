@@ -2570,7 +2570,7 @@
       }
     }
   },
-  "libraryInLibrary": "In Library",
+  "libraryInLibrary": "En la biblioteca",
   "@libraryInLibrary": {
     "description": "Badge shown on tracks that exist in local library"
   },
@@ -2607,7 +2607,7 @@
   "@librarySourceLocal": {
     "description": "Badge for tracks from local library scan"
   },
-  "libraryFilterAll": "All",
+  "libraryFilterAll": "Todos",
   "@libraryFilterAll": {
     "description": "Filter chip - show all library items"
   },
@@ -2647,15 +2647,15 @@
   "@libraryFilterQualityCD": {
     "description": "Filter option - CD quality audio"
   },
-  "libraryFilterQualityLossy": "Lossy",
+  "libraryFilterQualityLossy": "Con pérdida",
   "@libraryFilterQualityLossy": {
     "description": "Filter option - lossy compressed audio"
   },
-  "libraryFilterFormat": "Format",
+  "libraryFilterFormat": "Formato",
   "@libraryFilterFormat": {
     "description": "Filter section - file format"
   },
-  "libraryFilterMetadata": "Metadata",
+  "libraryFilterMetadata": "Metadatos",
   "@libraryFilterMetadata": {
     "description": "Filter section - metadata completeness"
   },
@@ -2679,7 +2679,7 @@
   "@libraryFilterMetadataMissingAlbumArtist": {
     "description": "Filter option - items missing album artist"
   },
-  "libraryFilterSort": "Sort",
+  "libraryFilterSort": "Ordenar",
   "@libraryFilterSort": {
     "description": "Filter section - sort order"
   },
@@ -2691,23 +2691,23 @@
   "@libraryFilterSortOldest": {
     "description": "Sort option - oldest first"
   },
-  "libraryFilterSortAlbumAsc": "Album (A-Z)",
+  "libraryFilterSortAlbumAsc": "Álbum (A-Z)",
   "@libraryFilterSortAlbumAsc": {
     "description": "Sort option - album ascending"
   },
-  "libraryFilterSortAlbumDesc": "Album (Z-A)",
+  "libraryFilterSortAlbumDesc": "Álbum (Z-A)",
   "@libraryFilterSortAlbumDesc": {
     "description": "Sort option - album descending"
   },
-  "libraryFilterSortGenreAsc": "Genre (A-Z)",
+  "libraryFilterSortGenreAsc": "Género (A-Z)",
   "@libraryFilterSortGenreAsc": {
     "description": "Sort option - genre ascending"
   },
-  "libraryFilterSortGenreDesc": "Genre (Z-A)",
+  "libraryFilterSortGenreDesc": "Género (Z-A)",
   "@libraryFilterSortGenreDesc": {
     "description": "Sort option - genre descending"
   },
-  "timeJustNow": "Just now",
+  "timeJustNow": "Hace un momento",
   "@timeJustNow": {
     "description": "Relative time - less than a minute ago"
   },
@@ -2765,11 +2765,11 @@
   "@tutorialDownloadDesc": {
     "description": "Tutorial download page description"
   },
-  "tutorialLibraryTitle": "Your Library",
+  "tutorialLibraryTitle": "Tu biblioteca",
   "@tutorialLibraryTitle": {
     "description": "Tutorial library page title"
   },
-  "tutorialLibraryDesc": "All your downloaded music is organized in the Library tab.",
+  "tutorialLibraryDesc": "Toda tu música descargada está organizada en la pestaña Biblioteca.",
   "@tutorialLibraryDesc": {
     "description": "Tutorial library page description"
   },
@@ -2785,7 +2785,7 @@
   "@tutorialLibraryTip3": {
     "description": "Tutorial library tip 3"
   },
-  "tutorialExtensionsTitle": "Extensions",
+  "tutorialExtensionsTitle": "Extensiones",
   "@tutorialExtensionsTitle": {
     "description": "Tutorial extensions page title"
   },
@@ -2805,23 +2805,23 @@
   "@tutorialExtensionsTip3": {
     "description": "Tutorial extensions tip 3"
   },
-  "tutorialSettingsTitle": "Customize Your Experience",
+  "tutorialSettingsTitle": "Personaliza tu experiencia",
   "@tutorialSettingsTitle": {
     "description": "Tutorial settings page title"
   },
-  "tutorialSettingsDesc": "Personalize the app in Settings to match your preferences.",
+  "tutorialSettingsDesc": "Personaliza la aplicación en Ajustes según tus preferencias.",
   "@tutorialSettingsDesc": {
     "description": "Tutorial settings page description"
   },
-  "tutorialSettingsTip1": "Change download location and folder organization",
+  "tutorialSettingsTip1": "Cambia la ubicación de las descargas y la organización de las carpetas",
   "@tutorialSettingsTip1": {
     "description": "Tutorial settings tip 1"
   },
-  "tutorialSettingsTip2": "Set default audio quality and format preferences",
+  "tutorialSettingsTip2": "Configura la calidad de audio predeterminada y las preferencias de formato",
   "@tutorialSettingsTip2": {
     "description": "Tutorial settings tip 2"
   },
-  "tutorialSettingsTip3": "Customize app theme and appearance",
+  "tutorialSettingsTip3": "Personaliza el tema y el aspecto de la aplicación",
   "@tutorialSettingsTip3": {
     "description": "Tutorial settings tip 3"
   },
@@ -4419,7 +4419,7 @@
       }
     }
   },
-  "cancelDownloadKeep": "Keep",
+  "cancelDownloadKeep": "Mantener",
   "@cancelDownloadKeep": {
     "description": "Dialog button - keep the active download (do not cancel)"
   },
@@ -4670,7 +4670,7 @@
       }
     }
   },
-  "notifUpdateReady": "Update Ready",
+  "notifUpdateReady": "Actualización preparada",
   "@notifUpdateReady": {
     "description": "Notification title when app update download is complete"
   },
@@ -4691,7 +4691,7 @@
   "@notifUpdateFailedBody": {
     "description": "Notification body when app update download fails"
   },
-  "searchTracks": "Tracks",
+  "searchTracks": "Pistas",
   "@searchTracks": {
     "description": "Search filter label - tracks"
   },
@@ -4708,7 +4708,7 @@
       }
     }
   },
-  "homeImportCsvTooltip": "Import CSV",
+  "homeImportCsvTooltip": "Importar CSV",
   "@homeImportCsvTooltip": {
     "description": "Tooltip for importing a CSV file into Home search"
   },
@@ -4716,11 +4716,11 @@
   "@homeChangeSearchProviderTooltip": {
     "description": "Tooltip for the Home search provider picker"
   },
-  "actionPaste": "Paste",
+  "actionPaste": "Pegar",
   "@actionPaste": {
     "description": "Generic action - paste from clipboard"
   },
-  "searchTracksHint": "Search tracks...",
+  "searchTracksHint": "Buscar canciones...",
   "@searchTracksHint": {
     "description": "Placeholder for the search screen input"
   },
@@ -4728,11 +4728,11 @@
   "@searchTracksEmptyPrompt": {
     "description": "Empty-state prompt on the search screen"
   },
-  "tutorialSearchHint": "Paste or search...",
+  "tutorialSearchHint": "Pegar o buscar...",
   "@tutorialSearchHint": {
     "description": "Placeholder shown in the tutorial search demo"
   },
-  "tutorialDownloadCompletedSemantics": "Download completed",
+  "tutorialDownloadCompletedSemantics": "Descarga completada",
   "@tutorialDownloadCompletedSemantics": {
     "description": "Accessibility label for completed download state in tutorial demo"
   },
@@ -4784,7 +4784,7 @@
   "@trackCoverCurrent": {
     "description": "Label for the currently embedded cover preview"
   },
-  "trackCoverSelected": "Selected cover",
+  "trackCoverSelected": "Carátula seleccionada",
   "@trackCoverSelected": {
     "description": "Label for the newly selected cover preview"
   },
@@ -4792,11 +4792,11 @@
   "@trackCoverReplaceNotice": {
     "description": "Notice shown when a new cover has been selected but not saved yet"
   },
-  "actionStop": "Stop",
+  "actionStop": "Detener",
   "@actionStop": {
     "description": "Generic action - stop"
   },
-  "queueFinalizingDownload": "Finalizing download",
+  "queueFinalizingDownload": "Finalizando descarga",
   "@queueFinalizingDownload": {
     "description": "Accessibility label for a queue item that is finalizing"
   },
@@ -4804,7 +4804,7 @@
   "@queueDownloadedFileMissing": {
     "description": "Accessibility label when a downloaded file is missing from disk"
   },
-  "queueDownloadCompleted": "Download completed",
+  "queueDownloadCompleted": "Descarga completada",
   "@queueDownloadCompleted": {
     "description": "Accessibility label for completed download state in queue"
   },
@@ -4829,7 +4829,7 @@
   "@logCopyLogs": {
     "description": "Tooltip for copying logs"
   },
-  "logClearSearch": "Clear search",
+  "logClearSearch": "Limpiar búsqueda",
   "@logClearSearch": {
     "description": "Tooltip for clearing the log search field"
   },
@@ -4894,11 +4894,11 @@
       }
     }
   },
-  "extensionDetailsTags": "Tags",
+  "extensionDetailsTags": "Etiquetas",
   "@extensionDetailsTags": {
     "description": "Section title for extension tags"
   },
-  "extensionDetailsInformation": "Information",
+  "extensionDetailsInformation": "Información",
   "@extensionDetailsInformation": {
     "description": "Section title for extension metadata information"
   },
@@ -4906,7 +4906,7 @@
   "@extensionUtilityFunctions": {
     "description": "Capability label for utility-only extensions"
   },
-  "actionDismiss": "Dismiss",
+  "actionDismiss": "Descartar",
   "@actionDismiss": {
     "description": "Generic action - dismiss"
   },
@@ -5011,7 +5011,7 @@
   "@settingsFilesSubtitle": {
     "description": "Subtitle for files & folders settings"
   },
-  "settingsMetadata": "Metadata",
+  "settingsMetadata": "Metadatos",
   "@settingsMetadata": {
     "description": "Settings menu item - metadata settings"
   },
@@ -5027,7 +5027,7 @@
   "@settingsLyricsSubtitle": {
     "description": "Subtitle for lyrics settings"
   },
-  "settingsApp": "App",
+  "settingsApp": "Aplicación",
   "@settingsApp": {
     "description": "Settings menu item - app settings"
   },
@@ -5071,7 +5071,7 @@
   "@downloadFallbackExtensions": {
     "description": "Settings item for configuring fallback extension providers"
   },
-  "downloadFallbackExtensionsSubtitle": "Choose which extensions can be used as fallback",
+  "downloadFallbackExtensionsSubtitle": "Elige qué extensiones se pueden utilizar como alternativa",
   "@downloadFallbackExtensionsSubtitle": {
     "description": "Subtitle for fallback extensions item"
   },
@@ -5079,23 +5079,23 @@
   "@editMetadataFieldDateHint": {
     "description": "Hint text for the edit metadata date field"
   },
-  "editMetadataFieldTrackTotal": "Track Total",
+  "editMetadataFieldTrackTotal": "Total de pistas",
   "@editMetadataFieldTrackTotal": {
     "description": "Label for total tracks field in the edit metadata sheet"
   },
-  "editMetadataFieldDiscTotal": "Disc Total",
+  "editMetadataFieldDiscTotal": "Total de discos",
   "@editMetadataFieldDiscTotal": {
     "description": "Label for total discs field in the edit metadata sheet"
   },
-  "editMetadataFieldComposer": "Composer",
+  "editMetadataFieldComposer": "Compositor",
   "@editMetadataFieldComposer": {
     "description": "Label for composer field in the edit metadata sheet"
   },
-  "editMetadataFieldComment": "Comment",
+  "editMetadataFieldComment": "Comentario",
   "@editMetadataFieldComment": {
     "description": "Label for comment field in the edit metadata sheet"
   },
-  "editMetadataAdvanced": "Advanced",
+  "editMetadataAdvanced": "Avanzado",
   "@editMetadataAdvanced": {
     "description": "Expandable section label for advanced metadata fields"
   },
@@ -5206,7 +5206,7 @@
       }
     }
   },
-  "queueDownloadStarting": "Starting...",
+  "queueDownloadStarting": "Comenzando...",
   "@queueDownloadStarting": {
     "description": "Queue status before download progress is available"
   },
