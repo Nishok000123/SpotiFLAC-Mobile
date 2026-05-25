@@ -9,7 +9,7 @@
   "@navHome": {
     "description": "Bottom navigation - Home tab"
   },
-  "navLibrary": "Bibliothèques",
+  "navLibrary": "Bibliothèque",
   "@navLibrary": {
     "description": "Bottom navigation - Library tab"
   },
@@ -532,7 +532,7 @@
   "@trackMetadataService": {
     "description": "Metadata field - download service used"
   },
-  "trackMetadataPlay": "Jouer",
+  "trackMetadataPlay": "Lire",
   "@trackMetadataPlay": {
     "description": "Action button - play track"
   },
@@ -719,7 +719,7 @@
   "@dialogRetry": {
     "description": "Dialog button - retry action"
   },
-  "dialogClear": "Clear",
+  "dialogClear": "Effacer",
   "@dialogClear": {
     "description": "Dialog button - clear items"
   },
@@ -739,7 +739,7 @@
   "@dialogDiscard": {
     "description": "Dialog button - discard changes"
   },
-  "dialogRemove": "Remove",
+  "dialogRemove": "Supprimer",
   "@dialogRemove": {
     "description": "Dialog button - remove item"
   },
@@ -897,7 +897,7 @@
   "@snackbarViewQueue": {
     "description": "Snackbar action - view download queue"
   },
-  "snackbarUrlCopied": "{platform} URL copied to clipboard",
+  "snackbarUrlCopied": "L'URL de {platform} a été copiée dans le presse-papiers",
   "@snackbarUrlCopied": {
     "description": "Snackbar - URL copied",
     "placeholders": {
@@ -5366,51 +5366,51 @@
   "@extensionHealthDegraded": {
     "description": "Extension service health status - degraded"
   },
-  "extensionHealthOffline": "Offline",
+  "extensionHealthOffline": "Hors ligne",
   "@extensionHealthOffline": {
     "description": "Extension service health status - offline"
   },
-  "extensionHealthNotConfigured": "Not configured",
+  "extensionHealthNotConfigured": "Non configuré",
   "@extensionHealthNotConfigured": {
     "description": "Extension service health status - not configured"
   },
-  "extensionHealthUnknown": "Unknown",
+  "extensionHealthUnknown": "Inconnu",
   "@extensionHealthUnknown": {
     "description": "Extension service health status - unknown"
   },
-  "extensionHealthRequired": "required",
+  "extensionHealthRequired": "requis",
   "@extensionHealthRequired": {
     "description": "Label for a required extension service health check"
   },
-  "extensionSettingNotSet": "Not set",
+  "extensionSettingNotSet": "Non défini",
   "@extensionSettingNotSet": {
     "description": "Value shown when an extension setting has no value"
   },
-  "extensionActionFailed": "Action failed",
+  "extensionActionFailed": "L'action a échoué",
   "@extensionActionFailed": {
     "description": "Fallback error when an extension action fails without details"
   },
-  "extensionEnterValue": "Enter value",
+  "extensionEnterValue": "Saisir une valeur",
   "@extensionEnterValue": {
     "description": "Hint for editing an extension setting value"
   },
-  "extensionHealthServiceOnline": "Service online",
+  "extensionHealthServiceOnline": "Service en ligne",
   "@extensionHealthServiceOnline": {
     "description": "Tooltip for online extension service"
   },
-  "extensionHealthServiceDegraded": "Service degraded",
+  "extensionHealthServiceDegraded": "Service perturbé",
   "@extensionHealthServiceDegraded": {
     "description": "Tooltip for degraded extension service"
   },
-  "extensionHealthServiceOffline": "Service offline",
+  "extensionHealthServiceOffline": "Service hors ligne",
   "@extensionHealthServiceOffline": {
     "description": "Tooltip for offline extension service"
   },
-  "extensionHealthServiceUnknown": "Service status unknown",
+  "extensionHealthServiceUnknown": "État du service inconnu",
   "@extensionHealthServiceUnknown": {
     "description": "Tooltip for unknown extension service health"
   },
-  "audioAnalysisStereo": "Stereo",
+  "audioAnalysisStereo": "Stéréo",
   "@audioAnalysisStereo": {
     "description": "Audio channel layout label - stereo"
   },
@@ -5418,7 +5418,7 @@
   "@audioAnalysisMono": {
     "description": "Audio channel layout label - mono"
   },
-  "trackOpenInService": "Open in {serviceName}",
+  "trackOpenInService": "Ouvrir dans {serviceName}",
   "@trackOpenInService": {
     "description": "Button label to open a track in a named music service",
     "placeholders": {
@@ -5427,15 +5427,15 @@
       }
     }
   },
-  "trackLyricsEmbeddedSource": "Embedded",
+  "trackLyricsEmbeddedSource": "Intégré",
   "@trackLyricsEmbeddedSource": {
     "description": "Lyrics source label for embedded lyrics"
   },
-  "unknownAlbum": "Unknown Album",
+  "unknownAlbum": "Album inconnu",
   "@unknownAlbum": {
     "description": "Fallback album name when metadata is missing"
   },
-  "unknownArtist": "Unknown Artist",
+  "unknownArtist": "Artiste inconnu",
   "@unknownArtist": {
     "description": "Fallback artist name when metadata is missing"
   },
@@ -5443,7 +5443,7 @@
   "@permissionAudio": {
     "description": "Audio permission type label"
   },
-  "permissionStorage": "Storage",
+  "permissionStorage": "Stockage",
   "@permissionStorage": {
     "description": "Storage permission type label"
   },
@@ -5451,39 +5451,39 @@
   "@permissionNotification": {
     "description": "Notification permission type label"
   },
-  "errorInvalidFolderSelected": "Invalid folder selected",
+  "errorInvalidFolderSelected": "Dossier non valide sélectionné",
   "@errorInvalidFolderSelected": {
     "description": "Error when the selected folder is invalid"
   },
-  "errorCouldNotKeepFolderAccess": "Could not keep access to the selected folder",
+  "errorCouldNotKeepFolderAccess": "Impossible de conserver l'accès au dossier sélectionné",
   "@errorCouldNotKeepFolderAccess": {
     "description": "Error when persistent folder access cannot be saved"
   },
-  "storeAnyVersion": "Any",
+  "storeAnyVersion": "N'importe lequel",
   "@storeAnyVersion": {
     "description": "Store detail value when any app version is accepted"
   },
-  "storeCategoryMetadata": "Metadata",
+  "storeCategoryMetadata": "Métadonnées",
   "@storeCategoryMetadata": {
     "description": "Store extension category - metadata"
   },
-  "storeCategoryDownload": "Download",
+  "storeCategoryDownload": "Télécharger",
   "@storeCategoryDownload": {
     "description": "Store extension category - download"
   },
-  "storeCategoryUtility": "Utility",
+  "storeCategoryUtility": "Utilitaire",
   "@storeCategoryUtility": {
     "description": "Store extension category - utility"
   },
-  "storeCategoryLyrics": "Lyrics",
+  "storeCategoryLyrics": "Paroles",
   "@storeCategoryLyrics": {
     "description": "Store extension category - lyrics"
   },
-  "storeCategoryIntegration": "Integration",
+  "storeCategoryIntegration": "Intégration",
   "@storeCategoryIntegration": {
     "description": "Store extension category - integration"
   },
-  "artistReleases": "Releases",
+  "artistReleases": "Sorties",
   "@artistReleases": {
     "description": "Section header for all artist releases"
   }
