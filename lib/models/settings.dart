@@ -46,7 +46,7 @@ class AppSettings {
   final String locale;
   final String lyricsMode;
   final String
-  tidalHighFormat; // Format for Tidal HIGH quality: 'mp3_320', 'aac_320', 'opus_256', or 'opus_128'
+  tidalHighFormat; // Legacy key for 320kbps lossy output format: 'mp3_320', 'aac_320', 'opus_256', or 'opus_128'
   final bool
   useAllFilesAccess; // Android 13+ only: enable MANAGE_EXTERNAL_STORAGE
   final bool

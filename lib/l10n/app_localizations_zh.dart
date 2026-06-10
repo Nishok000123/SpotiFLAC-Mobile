@@ -142,7 +142,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get optionsSwitchBack =>
-      'Tap Deezer or Spotify to switch back from extension';
+      'Choose the default search provider to switch back from an extension';
 
   @override
   String get optionsAutoFallback => 'Auto Fallback';
@@ -155,10 +155,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get optionsUseExtensionProviders => 'Use Extension Providers';
 
   @override
-  String get optionsUseExtensionProvidersOn => 'Extensions will be tried first';
+  String get optionsUseExtensionProvidersOn =>
+      'Extension providers are enabled';
 
   @override
-  String get optionsUseExtensionProvidersOff => 'Using built-in providers only';
+  String get optionsUseExtensionProvidersOff =>
+      'Extension providers are required';
 
   @override
   String get optionsEmbedLyrics => 'Embed Lyrics';
@@ -370,11 +372,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutBinimumDesc =>
-      'The creator of QQDL & HiFi API. Without this API, Tidal downloads wouldn\'t exist!';
+      'The creator of QQDL & HiFi API. This project helped shape lossless download support.';
 
   @override
   String get aboutSachinsenalDesc =>
-      'The original HiFi project creator. The foundation of Tidal integration!';
+      'The original HiFi project creator. A foundation for lossless-source integration.';
 
   @override
   String get aboutSjdonadoDesc =>
@@ -938,7 +940,7 @@ class AppLocalizationsZh extends AppLocalizations {
       'Only enabled extensions with download-provider capability are listed here.';
 
   @override
-  String get providerBuiltIn => 'Built-in';
+  String get providerBuiltIn => 'Legacy';
 
   @override
   String get providerExtension => 'Extension';
@@ -1331,10 +1333,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get storeEmptyNoResults => 'No extensions found';
 
   @override
-  String get extensionDefaultProvider => 'Default (Deezer/Spotify)';
+  String get extensionDefaultProvider => 'Default Search';
 
   @override
-  String get extensionDefaultProviderSubtitle => 'Use built-in search';
+  String get extensionDefaultProviderSubtitle =>
+      'Use the default metadata search';
 
   @override
   String get extensionAuthor => 'Author';
@@ -1508,7 +1511,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get downloadLossy320FormatDesc =>
-      'Choose the output format for Tidal 320kbps lossy downloads. The original AAC stream will be converted to your selected format.';
+      'Choose the output format for 320kbps lossy downloads. The original stream will be converted to your selected format when needed.';
 
   @override
   String get downloadLossyMp3 => 'MP3 320kbps';
@@ -2078,7 +2081,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get tutorialWelcomeTip2 =>
-      'Get FLAC quality audio from Tidal, Qobuz, or Deezer';
+      'Get FLAC quality audio from installed download extensions';
 
   @override
   String get tutorialWelcomeTip3 =>
@@ -2776,7 +2779,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get lyricsProvidersInfoText =>
-      'Extension lyrics providers always run before built-in providers. At least one provider must remain enabled.';
+      'Extension lyrics providers run before built-in lyrics providers. At least one provider must remain enabled.';
 
   @override
   String lyricsProvidersEnabledSection(int count) {
@@ -2972,11 +2975,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get downloadSelectServiceToEnable =>
-      'Select Tidal or Qobuz to enable this option';
+      'Select a provider with quality options to enable this option';
 
   @override
   String get downloadSelectTidalQobuz =>
-      'Select Tidal or Qobuz to choose audio quality';
+      'Select a provider with quality options to choose audio quality';
 
   @override
   String get downloadEmbedLyricsDisabled => 'Enable metadata embedding first';
@@ -4360,7 +4363,8 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get optionsDefaultSearchTabSubtitle => '选择新搜索结果首先打开的标签页。';
 
   @override
-  String get optionsSwitchBack => '点击 Deezer 或 Spotify 即可从扩展程序切换回来';
+  String get optionsSwitchBack =>
+      'Choose the default search provider to switch back from an extension';
 
   @override
   String get optionsAutoFallback => '自动回退';
@@ -4372,10 +4376,12 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get optionsUseExtensionProviders => '使用扩展提供商';
 
   @override
-  String get optionsUseExtensionProvidersOn => '扩展会被最先尝试';
+  String get optionsUseExtensionProvidersOn =>
+      'Extension providers are enabled';
 
   @override
-  String get optionsUseExtensionProvidersOff => '仅使用内置提供商';
+  String get optionsUseExtensionProvidersOff =>
+      'Extension providers are required';
 
   @override
   String get optionsEmbedLyrics => '内嵌歌词';
@@ -4579,11 +4585,11 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get aboutBinimumDesc =>
-      'The creator of QQDL & HiFi API. Without this API, Tidal downloads wouldn\'t exist!';
+      'The creator of QQDL & HiFi API. This project helped shape lossless download support.';
 
   @override
   String get aboutSachinsenalDesc =>
-      'The original HiFi project creator. The foundation of Tidal integration!';
+      'The original HiFi project creator. A foundation for lossless-source integration.';
 
   @override
   String get aboutSjdonadoDesc =>
@@ -5145,7 +5151,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
       'Only enabled extensions with download-provider capability are listed here.';
 
   @override
-  String get providerBuiltIn => 'Built-in';
+  String get providerBuiltIn => 'Legacy';
 
   @override
   String get providerExtension => 'Extension';
@@ -5538,10 +5544,11 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get storeEmptyNoResults => 'No extensions found';
 
   @override
-  String get extensionDefaultProvider => 'Default (Deezer)';
+  String get extensionDefaultProvider => 'Default Search';
 
   @override
-  String get extensionDefaultProviderSubtitle => 'Use built-in search';
+  String get extensionDefaultProviderSubtitle =>
+      'Use the default metadata search';
 
   @override
   String get extensionAuthor => 'Author';
@@ -5715,7 +5722,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get downloadLossy320FormatDesc =>
-      'Choose the output format for Tidal 320kbps lossy downloads. The original AAC stream will be converted to your selected format.';
+      'Choose the output format for 320kbps lossy downloads. The original stream will be converted to your selected format when needed.';
 
   @override
   String get downloadLossyMp3 => 'MP3 320kbps';
@@ -6285,7 +6292,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get tutorialWelcomeTip2 =>
-      'Get FLAC quality audio from Tidal, Qobuz, or Deezer';
+      'Get FLAC quality audio from installed download extensions';
 
   @override
   String get tutorialWelcomeTip3 =>
@@ -6983,7 +6990,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get lyricsProvidersInfoText =>
-      'Extension lyrics providers always run before built-in providers. At least one provider must remain enabled.';
+      'Extension lyrics providers run before built-in lyrics providers. At least one provider must remain enabled.';
 
   @override
   String lyricsProvidersEnabledSection(int count) {
@@ -7179,11 +7186,11 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get downloadSelectServiceToEnable =>
-      'Select Tidal or Qobuz to enable this option';
+      'Select a provider with quality options to enable this option';
 
   @override
   String get downloadSelectTidalQobuz =>
-      'Select Tidal or Qobuz to choose audio quality';
+      'Select a provider with quality options to choose audio quality';
 
   @override
   String get downloadEmbedLyricsDisabled => 'Enable metadata embedding first';
@@ -8577,7 +8584,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get optionsSwitchBack =>
-      'Tap Deezer or Spotify to switch back from extension';
+      'Choose the default search provider to switch back from an extension';
 
   @override
   String get optionsAutoFallback => 'Auto Fallback';
@@ -8590,10 +8597,12 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get optionsUseExtensionProviders => 'Use Extension Providers';
 
   @override
-  String get optionsUseExtensionProvidersOn => 'Extensions will be tried first';
+  String get optionsUseExtensionProvidersOn =>
+      'Extension providers are enabled';
 
   @override
-  String get optionsUseExtensionProvidersOff => 'Using built-in providers only';
+  String get optionsUseExtensionProvidersOff =>
+      'Extension providers are required';
 
   @override
   String get optionsEmbedLyrics => 'Embed Lyrics';
@@ -8805,11 +8814,11 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get aboutBinimumDesc =>
-      'The creator of QQDL & HiFi API. Without this API, Tidal downloads wouldn\'t exist!';
+      'The creator of QQDL & HiFi API. This project helped shape lossless download support.';
 
   @override
   String get aboutSachinsenalDesc =>
-      'The original HiFi project creator. The foundation of Tidal integration!';
+      'The original HiFi project creator. A foundation for lossless-source integration.';
 
   @override
   String get aboutSjdonadoDesc =>
@@ -9373,7 +9382,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
       'Only enabled extensions with download-provider capability are listed here.';
 
   @override
-  String get providerBuiltIn => 'Built-in';
+  String get providerBuiltIn => 'Legacy';
 
   @override
   String get providerExtension => 'Extension';
@@ -9766,10 +9775,11 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get storeEmptyNoResults => 'No extensions found';
 
   @override
-  String get extensionDefaultProvider => 'Default (Deezer)';
+  String get extensionDefaultProvider => 'Default Search';
 
   @override
-  String get extensionDefaultProviderSubtitle => 'Use built-in search';
+  String get extensionDefaultProviderSubtitle =>
+      'Use the default metadata search';
 
   @override
   String get extensionAuthor => 'Author';
@@ -9943,7 +9953,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get downloadLossy320FormatDesc =>
-      'Choose the output format for Tidal 320kbps lossy downloads. The original AAC stream will be converted to your selected format.';
+      'Choose the output format for 320kbps lossy downloads. The original stream will be converted to your selected format when needed.';
 
   @override
   String get downloadLossyMp3 => 'MP3 320kbps';
@@ -10513,7 +10523,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get tutorialWelcomeTip2 =>
-      'Get FLAC quality audio from Tidal, Qobuz, or Deezer';
+      'Get FLAC quality audio from installed download extensions';
 
   @override
   String get tutorialWelcomeTip3 =>
@@ -11211,7 +11221,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get lyricsProvidersInfoText =>
-      'Extension lyrics providers always run before built-in providers. At least one provider must remain enabled.';
+      'Extension lyrics providers run before built-in lyrics providers. At least one provider must remain enabled.';
 
   @override
   String lyricsProvidersEnabledSection(int count) {
@@ -11407,11 +11417,11 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get downloadSelectServiceToEnable =>
-      'Select Tidal or Qobuz to enable this option';
+      'Select a provider with quality options to enable this option';
 
   @override
   String get downloadSelectTidalQobuz =>
-      'Select Tidal or Qobuz to choose audio quality';
+      'Select a provider with quality options to choose audio quality';
 
   @override
   String get downloadEmbedLyricsDisabled => 'Enable metadata embedding first';

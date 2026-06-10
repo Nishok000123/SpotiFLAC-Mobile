@@ -66,6 +66,7 @@ extension/
 AGENTS.md
 
 # Temp/misc
+.tmp/
 nul
 NUL
 network_requests.txt

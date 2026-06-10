@@ -142,9 +142,9 @@
       }
     }
   },
-  "optionsSwitchBack": "Tap Deezer or Spotify to switch back from extension",
+  "optionsSwitchBack": "Choose the default search provider to switch back from an extension",
   "@optionsSwitchBack": {
-    "description": "Hint to switch back to built-in providers"
+    "description": "Hint to switch back from extension search"
   },
   "optionsAutoFallback": "Auto Fallback",
   "@optionsAutoFallback": {
@@ -156,15 +156,15 @@
   },
   "optionsUseExtensionProviders": "Use Extension Providers",
   "@optionsUseExtensionProviders": {
-    "description": "Enable extension download providers"
+    "description": "Legacy setting label for extension download providers"
   },
-  "optionsUseExtensionProvidersOn": "Extensions will be tried first",
+  "optionsUseExtensionProvidersOn": "Extension providers are enabled",
   "@optionsUseExtensionProvidersOn": {
     "description": "Status when extension providers enabled"
   },
-  "optionsUseExtensionProvidersOff": "Using built-in providers only",
+  "optionsUseExtensionProvidersOff": "Extension providers are required",
   "@optionsUseExtensionProvidersOff": {
-    "description": "Status when extension providers disabled"
+    "description": "Legacy status when extension providers would be disabled"
   },
   "optionsEmbedLyrics": "Embed Lyrics",
   "@optionsEmbedLyrics": {
@@ -369,11 +369,11 @@
   "@aboutVersion": {
     "description": "Version info label"
   },
-  "aboutBinimumDesc": "The creator of QQDL & HiFi API. Without this API, Tidal downloads wouldn't exist!",
+  "aboutBinimumDesc": "The creator of QQDL & HiFi API. This project helped shape lossless download support.",
   "@aboutBinimumDesc": {
     "description": "Credit description for binimum"
   },
-  "aboutSachinsenalDesc": "The original HiFi project creator. The foundation of Tidal integration!",
+  "aboutSachinsenalDesc": "The original HiFi project creator. A foundation for lossless-source integration.",
   "@aboutSachinsenalDesc": {
     "description": "Credit description for sachinsenal0x64"
   },
@@ -978,9 +978,9 @@
   "@providerPriorityInfo": {
     "description": "Info tip about fallback behavior"
   },
-  "providerBuiltIn": "Built-in",
+  "providerBuiltIn": "Legacy",
   "@providerBuiltIn": {
-    "description": "Label for built-in providers (Tidal/Qobuz)"
+    "description": "Legacy label retained for old generated localization compatibility"
   },
   "providerExtension": "Extension",
   "@providerExtension": {
@@ -1373,11 +1373,11 @@
   "@storeClearFilters": {
     "description": "Button to clear all filters"
   },
-  "extensionDefaultProvider": "Default (Deezer/Spotify)",
+  "extensionDefaultProvider": "Default Search",
   "@extensionDefaultProvider": {
     "description": "Default search provider option"
   },
-  "extensionDefaultProviderSubtitle": "Use built-in search",
+  "extensionDefaultProviderSubtitle": "Use the default metadata search",
   "@extensionDefaultProviderSubtitle": {
     "description": "Subtitle for default provider"
   },
@@ -2050,43 +2050,43 @@
   },
   "downloadLossy320": "Lossy 320kbps",
   "@downloadLossy320": {
-    "description": "Quality option label for Tidal lossy 320kbps"
+    "description": "Quality option label for lossy 320kbps"
   },
   "downloadLossyFormat": "Lossy Format",
   "@downloadLossyFormat": {
-    "description": "Setting title to pick output format for Tidal lossy downloads"
+    "description": "Setting title to pick output format for lossy downloads"
   },
   "downloadLossy320Format": "Lossy 320kbps Format",
   "@downloadLossy320Format": {
-    "description": "Title of the Tidal lossy format picker bottom sheet"
+    "description": "Title of the lossy format picker bottom sheet"
   },
-  "downloadLossy320FormatDesc": "Choose the output format for Tidal 320kbps lossy downloads. The original AAC stream will be converted to your selected format.",
+  "downloadLossy320FormatDesc": "Choose the output format for 320kbps lossy downloads. The original stream will be converted to your selected format when needed.",
   "@downloadLossy320FormatDesc": {
-    "description": "Description in the Tidal lossy format picker"
+    "description": "Description in the lossy format picker"
   },
   "downloadLossyMp3": "MP3 320kbps",
   "@downloadLossyMp3": {
-    "description": "Tidal lossy format option - MP3 320kbps"
+    "description": "lossy format option - MP3 320kbps"
   },
   "downloadLossyMp3Subtitle": "Best compatibility, ~10MB per track",
   "@downloadLossyMp3Subtitle": {
-    "description": "Subtitle for MP3 320kbps Tidal lossy option"
+    "description": "Subtitle for MP3 320kbps lossy option"
   },
   "downloadLossyOpus256": "Opus 256kbps",
   "@downloadLossyOpus256": {
-    "description": "Tidal lossy format option - Opus 256kbps"
+    "description": "lossy format option - Opus 256kbps"
   },
   "downloadLossyOpus256Subtitle": "Best quality Opus, ~8MB per track",
   "@downloadLossyOpus256Subtitle": {
-    "description": "Subtitle for Opus 256kbps Tidal lossy option"
+    "description": "Subtitle for Opus 256kbps lossy option"
   },
   "downloadLossyOpus128": "Opus 128kbps",
   "@downloadLossyOpus128": {
-    "description": "Tidal lossy format option - Opus 128kbps"
+    "description": "lossy format option - Opus 128kbps"
   },
   "downloadLossyOpus128Subtitle": "Smallest size, ~4MB per track",
   "@downloadLossyOpus128Subtitle": {
-    "description": "Subtitle for Opus 128kbps Tidal lossy option"
+    "description": "Subtitle for Opus 128kbps lossy option"
   },
   "downloadUseAlbumArtistForFolders": "Use Album Artist for folders",
   "@downloadUseAlbumArtistForFolders": {
@@ -2676,7 +2676,7 @@
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
-  "tutorialWelcomeTip2": "Get FLAC quality audio from Tidal, Qobuz, or Deezer",
+  "tutorialWelcomeTip2": "Get FLAC quality audio from installed download extensions",
   "@tutorialWelcomeTip2": {
     "description": "Tutorial welcome tip 2"
   },
@@ -3579,7 +3579,7 @@
   "@lyricsProvidersDescription": {
     "description": "Description on the lyrics provider priority page"
   },
-  "lyricsProvidersInfoText": "Extension lyrics providers always run before built-in providers. At least one provider must remain enabled.",
+  "lyricsProvidersInfoText": "Extension lyrics providers run before built-in lyrics providers. At least one provider must remain enabled.",
   "@lyricsProvidersInfoText": {
     "description": "Info tip on lyrics provider priority page"
   },
@@ -3817,13 +3817,13 @@
   "@downloadNetworkCompatibilityModeDisabled": {
     "description": "Subtitle when network compatibility mode is off"
   },
-  "downloadSelectServiceToEnable": "Select Tidal or Qobuz to enable this option",
+  "downloadSelectServiceToEnable": "Select a provider with quality options to enable this option",
   "@downloadSelectServiceToEnable": {
     "description": "Subtitle when quality picker is disabled due to extension service"
   },
-  "downloadSelectTidalQobuz": "Select Tidal or Qobuz to choose audio quality",
+  "downloadSelectTidalQobuz": "Select a provider with quality options to choose audio quality",
   "@downloadSelectTidalQobuz": {
-    "description": "Info shown when a non-built-in service is selected"
+    "description": "Legacy info shown when a provider does not expose quality options"
   },
   "downloadEmbedLyricsDisabled": "Enable metadata embedding first",
   "@downloadEmbedLyricsDisabled": {
@@ -4185,7 +4185,7 @@
   },
   "extensionsSearchWith": "Search with {providerName}",
   "@extensionsSearchWith": {
-    "description": "Extensions page - subtitle for built-in search provider option",
+    "description": "Extensions page - subtitle for default metadata search provider option",
     "placeholders": {
       "providerName": {
         "type": "String"

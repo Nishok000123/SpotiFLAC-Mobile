@@ -1283,20 +1283,20 @@ class ExtensionNotifier extends Notifier<ExtensionState> {
         .firstOrNull;
   }
 
-  bool downloadProviderMatchesBuiltIn(
+  bool downloadProviderReplacesLegacyProvider(
     String providerId,
-    String builtInProviderId,
+    String legacyProviderId,
   ) {
     final normalizedProvider = providerId.trim().toLowerCase();
-    final normalizedBuiltIn = builtInProviderId.trim().toLowerCase();
-    if (normalizedProvider.isEmpty || normalizedBuiltIn.isEmpty) return false;
-    if (normalizedProvider == normalizedBuiltIn) return true;
+    final normalizedLegacy = legacyProviderId.trim().toLowerCase();
+    if (normalizedProvider.isEmpty || normalizedLegacy.isEmpty) return false;
+    if (normalizedProvider == normalizedLegacy) return true;
 
     final extension = state.extensions
         .where((ext) => ext.enabled && ext.hasDownloadProvider)
         .where((ext) => ext.id.toLowerCase() == normalizedProvider)
         .firstOrNull;
-    return extension?.replacesBuiltInProviders.contains(normalizedBuiltIn) ??
+    return extension?.replacesBuiltInProviders.contains(normalizedLegacy) ??
         false;
   }
 

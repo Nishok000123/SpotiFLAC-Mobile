@@ -59,7 +59,7 @@ Extensions let the community add new music sources and features without waiting 
 ## Related Projects
 
 ### [SpotiFLAC (Desktop)](https://github.com/afkarxyz/SpotiFLAC)
-Download music in true lossless FLAC from Tidal, Qobuz & Amazon Music available for Windows, macOS & Linux.
+Download music in true lossless FLAC from extension-provided sources on Windows, macOS & Linux.
 
 ### [SpotiFLAC (Python Module)](https://github.com/ShuShuzinhuu/SpotiFLAC-Module-Version)
 Python library for SpotiFLAC integration, maintained by [@ShuShuzinhuu](https://github.com/ShuShuzinhuu).
@@ -80,7 +80,7 @@ Starting from version 3.8.0, SpotiFLAC uses a decentralized extension repository
 <summary><b>Why is my download failing with "Song not found"?</b></summary>
 <br>
 
-The track may not be available on the streaming services. Try enabling more providers under **Settings > Download > Provider Priority**, or install additional extensions like Amazon Music from the Store.
+The track may not be available from your enabled providers. Try enabling more providers under **Settings > Extensions > Provider Priority**, or install additional download extensions from the Store.
 
 </details>
 
@@ -88,10 +88,7 @@ The track may not be available on the streaming services. Try enabling more prov
 <summary><b>Why are some tracks downloading in lower quality?</b></summary>
 <br>
 
-Quality depends on what's available from the streaming service and its extensions. Built-in providers:
-- **Tidal** up to 24-bit/192kHz
-- **Qobuz** up to 24-bit/192kHz
-- **Deezer** up to 16-bit/44.1kHz
+Quality depends on what's available from the source and the installed download extension. Check each extension's quality options and service notes in the app.
 
 </details>
 

@@ -380,10 +380,10 @@ abstract class AppLocalizations {
   /// **'Choose which tab opens first for new search results.'**
   String get optionsDefaultSearchTabSubtitle;
 
-  /// Hint to switch back to built-in providers
+  /// Hint to switch back from extension search
   ///
   /// In en, this message translates to:
-  /// **'Tap Deezer or Spotify to switch back from extension'**
+  /// **'Choose the default search provider to switch back from an extension'**
   String get optionsSwitchBack;
 
   /// Auto-retry with other services
@@ -398,7 +398,7 @@ abstract class AppLocalizations {
   /// **'Try other services if download fails'**
   String get optionsAutoFallbackSubtitle;
 
-  /// Enable extension download providers
+  /// Legacy setting label for extension download providers
   ///
   /// In en, this message translates to:
   /// **'Use Extension Providers'**
@@ -407,13 +407,13 @@ abstract class AppLocalizations {
   /// Status when extension providers enabled
   ///
   /// In en, this message translates to:
-  /// **'Extensions will be tried first'**
+  /// **'Extension providers are enabled'**
   String get optionsUseExtensionProvidersOn;
 
-  /// Status when extension providers disabled
+  /// Legacy status when extension providers would be disabled
   ///
   /// In en, this message translates to:
-  /// **'Using built-in providers only'**
+  /// **'Extension providers are required'**
   String get optionsUseExtensionProvidersOff;
 
   /// Embed lyrics in audio files
@@ -797,13 +797,13 @@ abstract class AppLocalizations {
   /// Credit description for binimum
   ///
   /// In en, this message translates to:
-  /// **'The creator of QQDL & HiFi API. Without this API, Tidal downloads wouldn\'t exist!'**
+  /// **'The creator of QQDL & HiFi API. This project helped shape lossless download support.'**
   String get aboutBinimumDesc;
 
   /// Credit description for sachinsenal0x64
   ///
   /// In en, this message translates to:
-  /// **'The original HiFi project creator. The foundation of Tidal integration!'**
+  /// **'The original HiFi project creator. A foundation for lossless-source integration.'**
   String get aboutSachinsenalDesc;
 
   /// Credit description for sjdonado
@@ -1766,10 +1766,10 @@ abstract class AppLocalizations {
   /// **'Only enabled extensions with download-provider capability are listed here.'**
   String get providerPriorityFallbackExtensionsHint;
 
-  /// Label for built-in providers (Tidal/Qobuz)
+  /// Legacy label retained for old generated localization compatibility
   ///
   /// In en, this message translates to:
-  /// **'Built-in'**
+  /// **'Legacy'**
   String get providerBuiltIn;
 
   /// Label for extension-provided providers
@@ -2495,13 +2495,13 @@ abstract class AppLocalizations {
   /// Default search provider option
   ///
   /// In en, this message translates to:
-  /// **'Default (Deezer)'**
+  /// **'Default Search'**
   String get extensionDefaultProvider;
 
   /// Subtitle for default provider
   ///
   /// In en, this message translates to:
-  /// **'Use built-in search'**
+  /// **'Use the default metadata search'**
   String get extensionDefaultProviderSubtitle;
 
   /// Extension detail - author
@@ -2792,73 +2792,73 @@ abstract class AppLocalizations {
   /// **'24-bit / up to 192kHz'**
   String get qualityHiResFlacMaxSubtitle;
 
-  /// Quality option label for Tidal lossy 320kbps
+  /// Quality option label for lossy 320kbps
   ///
   /// In en, this message translates to:
   /// **'Lossy 320kbps'**
   String get downloadLossy320;
 
-  /// Setting title to pick output format for Tidal lossy downloads
+  /// Setting title to pick output format for lossy downloads
   ///
   /// In en, this message translates to:
   /// **'Lossy Format'**
   String get downloadLossyFormat;
 
-  /// Title of the Tidal lossy format picker bottom sheet
+  /// Title of the lossy format picker bottom sheet
   ///
   /// In en, this message translates to:
   /// **'Lossy 320kbps Format'**
   String get downloadLossy320Format;
 
-  /// Description in the Tidal lossy format picker
+  /// Description in the lossy format picker
   ///
   /// In en, this message translates to:
-  /// **'Choose the output format for Tidal 320kbps lossy downloads. The original AAC stream will be converted to your selected format.'**
+  /// **'Choose the output format for 320kbps lossy downloads. The original stream will be converted to your selected format when needed.'**
   String get downloadLossy320FormatDesc;
 
-  /// Tidal lossy format option - MP3 320kbps
+  /// Lossy format option - MP3 320kbps
   ///
   /// In en, this message translates to:
   /// **'MP3 320kbps'**
   String get downloadLossyMp3;
 
-  /// Subtitle for MP3 320kbps Tidal lossy option
+  /// Subtitle for MP3 320kbps lossy option
   ///
   /// In en, this message translates to:
   /// **'Best compatibility, ~10MB per track'**
   String get downloadLossyMp3Subtitle;
 
-  /// Tidal lossy format option - AAC in M4A container at 320kbps
+  /// Lossy format option - AAC in M4A container at 320kbps
   ///
   /// In en, this message translates to:
   /// **'AAC/M4A 320kbps'**
   String get downloadLossyAac;
 
-  /// Subtitle for AAC/M4A 320kbps Tidal lossy option
+  /// Subtitle for AAC/M4A 320kbps lossy option
   ///
   /// In en, this message translates to:
   /// **'Best mobile compatibility, M4A container'**
   String get downloadLossyAacSubtitle;
 
-  /// Tidal lossy format option - Opus 256kbps
+  /// Lossy format option - Opus 256kbps
   ///
   /// In en, this message translates to:
   /// **'Opus 256kbps'**
   String get downloadLossyOpus256;
 
-  /// Subtitle for Opus 256kbps Tidal lossy option
+  /// Subtitle for Opus 256kbps lossy option
   ///
   /// In en, this message translates to:
   /// **'Best quality Opus, ~8MB per track'**
   String get downloadLossyOpus256Subtitle;
 
-  /// Tidal lossy format option - Opus 128kbps
+  /// Lossy format option - Opus 128kbps
   ///
   /// In en, this message translates to:
   /// **'Opus 128kbps'**
   String get downloadLossyOpus128;
 
-  /// Subtitle for Opus 128kbps Tidal lossy option
+  /// Subtitle for Opus 128kbps lossy option
   ///
   /// In en, this message translates to:
   /// **'Smallest size, ~4MB per track'**
@@ -3755,7 +3755,7 @@ abstract class AppLocalizations {
   /// Tutorial welcome tip 2
   ///
   /// In en, this message translates to:
-  /// **'Get FLAC quality audio from Tidal, Qobuz, or Deezer'**
+  /// **'Get FLAC quality audio from installed download extensions'**
   String get tutorialWelcomeTip2;
 
   /// Tutorial welcome tip 3
@@ -4822,7 +4822,7 @@ abstract class AppLocalizations {
   /// Info tip on lyrics provider priority page
   ///
   /// In en, this message translates to:
-  /// **'Extension lyrics providers always run before built-in providers. At least one provider must remain enabled.'**
+  /// **'Extension lyrics providers run before built-in lyrics providers. At least one provider must remain enabled.'**
   String get lyricsProvidersInfoText;
 
   /// Section header for enabled providers
@@ -5142,13 +5142,13 @@ abstract class AppLocalizations {
   /// Subtitle when quality picker is disabled due to extension service
   ///
   /// In en, this message translates to:
-  /// **'Select Tidal or Qobuz to enable this option'**
+  /// **'Select a provider with quality options to enable this option'**
   String get downloadSelectServiceToEnable;
 
-  /// Info shown when a non-built-in service is selected
+  /// Legacy info shown when a provider does not expose quality options
   ///
   /// In en, this message translates to:
-  /// **'Select Tidal or Qobuz to choose audio quality'**
+  /// **'Select a provider with quality options to choose audio quality'**
   String get downloadSelectTidalQobuz;
 
   /// Subtitle when lyrics embedding is blocked by metadata toggle
@@ -5703,7 +5703,7 @@ abstract class AppLocalizations {
   /// **'Re-analyzing audio...'**
   String get audioAnalysisRescanning;
 
-  /// Extensions page - subtitle for built-in search provider option
+  /// Extensions page - subtitle for default metadata search provider option
   ///
   /// In en, this message translates to:
   /// **'Search with {providerName}'**

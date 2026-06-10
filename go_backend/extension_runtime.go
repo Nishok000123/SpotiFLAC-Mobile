@@ -504,6 +504,7 @@ func (r *extensionRuntime) RegisterAPIs(vm *goja.Runtime) {
 	utilsObj.Set("decrypt", r.cryptoDecrypt)
 	utilsObj.Set("encryptBlockCipher", r.encryptBlockCipher)
 	utilsObj.Set("decryptBlockCipher", r.decryptBlockCipher)
+	utilsObj.Set("decryptCTRSegments", r.decryptCTRSegments)
 	utilsObj.Set("generateKey", r.cryptoGenerateKey)
 	utilsObj.Set("randomUserAgent", r.randomUserAgent)
 	utilsObj.Set("appVersion", r.appVersion)

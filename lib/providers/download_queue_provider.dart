@@ -3084,7 +3084,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     if (extensionPreferred != null) {
       return extensionPreferred;
     }
-    if (_usesBuiltInCompatibleDownloadProvider(service, 'tidal') &&
+    if (_downloadProviderReplacesLegacyProvider(service, 'tidal') &&
         quality == 'HIGH') {
       return '.m4a';
     }
@@ -3095,13 +3095,13 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     return '.flac';
   }
 
-  bool _usesBuiltInCompatibleDownloadProvider(
+  bool _downloadProviderReplacesLegacyProvider(
     String service,
-    String builtInProviderId,
+    String legacyProviderId,
   ) {
     return ref
         .read(extensionProvider.notifier)
-        .downloadProviderMatchesBuiltIn(service, builtInProviderId);
+        .downloadProviderReplacesLegacyProvider(service, legacyProviderId);
   }
 
   String _normalizeQueuedService(String service) {
@@ -5594,13 +5594,13 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     String payloadTidalId = '';
     if (trackForPayload.id.startsWith('qobuz:')) {
       payloadQobuzId = trackForPayload.id.substring(6);
-      if (_usesBuiltInCompatibleDownloadProvider(item.service, 'qobuz')) {
+      if (_downloadProviderReplacesLegacyProvider(item.service, 'qobuz')) {
         payloadSpotifyId = '';
       }
     }
     if (trackForPayload.id.startsWith('tidal:')) {
       payloadTidalId = trackForPayload.id.substring(6);
-      if (_usesBuiltInCompatibleDownloadProvider(item.service, 'tidal')) {
+      if (_downloadProviderReplacesLegacyProvider(item.service, 'tidal')) {
         payloadSpotifyId = '';
       }
     }
@@ -7302,13 +7302,13 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         String payloadTidalId = '';
         if (trackToDownload.id.startsWith('qobuz:')) {
           payloadQobuzId = trackToDownload.id.substring(6);
-          if (_usesBuiltInCompatibleDownloadProvider(item.service, 'qobuz')) {
+          if (_downloadProviderReplacesLegacyProvider(item.service, 'qobuz')) {
             payloadSpotifyId = '';
           }
         }
         if (trackToDownload.id.startsWith('tidal:')) {
           payloadTidalId = trackToDownload.id.substring(6);
-          if (_usesBuiltInCompatibleDownloadProvider(item.service, 'tidal')) {
+          if (_downloadProviderReplacesLegacyProvider(item.service, 'tidal')) {
             payloadSpotifyId = '';
           }
         }
@@ -7643,28 +7643,28 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
             (filePath.endsWith('.flac') ||
                 resultOutputExt == '.flac' ||
                 (mimeType != null && mimeType.contains('flac')));
-        final shouldForceTidalSafM4aHandling =
+        final shouldForceDashSafM4aHandling =
             !wasExisting &&
             isContentUriPath &&
             effectiveSafMode &&
-            _usesBuiltInCompatibleDownloadProvider(actualService, 'tidal') &&
+            _downloadProviderReplacesLegacyProvider(actualService, 'tidal') &&
             filePath.endsWith('.flac') &&
             (mimeType == null || mimeType.contains('flac'));
 
-        if (shouldForceTidalSafM4aHandling) {
+        if (shouldForceDashSafM4aHandling) {
           _log.w(
-            'Tidal SAF file is labeled FLAC but backend returned DASH/M4A stream; converting it back to FLAC.',
+            'SAF file is labeled FLAC but backend returned DASH/M4A stream; converting it back to FLAC.',
           );
         }
 
-        if (isM4aFile || shouldForceTidalSafM4aHandling) {
+        if (isM4aFile || shouldForceDashSafM4aHandling) {
           final currentFilePath = filePath;
 
           if (isContentUriPath && effectiveSafMode) {
             if (quality == 'HIGH') {
               final tidalHighFormat = settings.tidalHighFormat;
               _log.i(
-                'Tidal HIGH quality (SAF), converting M4A to $tidalHighFormat...',
+                'Lossy 320kbps quality (SAF), converting M4A to $tidalHighFormat...',
               );
 
               final tempPath = await _copySafToTemp(currentFilePath);
@@ -7982,7 +7982,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
             if (quality == 'HIGH') {
               final tidalHighFormat = settings.tidalHighFormat;
               _log.i(
-                'Tidal HIGH quality download, converting M4A to $tidalHighFormat...',
+                'Lossy 320kbps quality download, converting M4A to $tidalHighFormat...',
               );
 
               try {

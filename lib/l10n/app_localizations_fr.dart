@@ -145,7 +145,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get optionsSwitchBack =>
-      'Appuyez sur Deezer ou Spotify pour revenir à l\'extension';
+      'Choose the default search provider to switch back from an extension';
 
   @override
   String get optionsAutoFallback => 'Récupération automatique';
@@ -160,11 +160,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get optionsUseExtensionProvidersOn =>
-      'Les extensions seront d\'abord essayées';
+      'Extension providers are enabled';
 
   @override
   String get optionsUseExtensionProvidersOff =>
-      'Utilisation exclusive des fournisseurs intégrés';
+      'Extension providers are required';
 
   @override
   String get optionsEmbedLyrics => 'Intégrer les paroles';
@@ -385,11 +385,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get aboutBinimumDesc =>
-      'Le créateur de QQDL et de l\'API HiFi. Sans cette API, les téléchargements depuis Tidal n\'existeraient pas !';
+      'The creator of QQDL & HiFi API. This project helped shape lossless download support.';
 
   @override
   String get aboutSachinsenalDesc =>
-      'Le créateur du projet HiFi original. La base de l\'intégration de Tidal !';
+      'The original HiFi project creator. A foundation for lossless-source integration.';
 
   @override
   String get aboutSjdonadoDesc =>
@@ -963,7 +963,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Seules les extensions activées disposant de la fonctionnalité « fournisseur de téléchargement » sont répertoriées ici.';
 
   @override
-  String get providerBuiltIn => 'Intégré';
+  String get providerBuiltIn => 'Legacy';
 
   @override
   String get providerExtension => 'Extension';
@@ -1369,11 +1369,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get storeEmptyNoResults => 'Aucune extension trouvée';
 
   @override
-  String get extensionDefaultProvider => 'Par défaut (Deezer)';
+  String get extensionDefaultProvider => 'Default Search';
 
   @override
   String get extensionDefaultProviderSubtitle =>
-      'Utiliser la fonction de recherche intégrée';
+      'Use the default metadata search';
 
   @override
   String get extensionAuthor => 'Auteur';
@@ -1553,7 +1553,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get downloadLossy320FormatDesc =>
-      'Choisissez le format de sortie pour les téléchargements Tidal en 320 kbps avec perte. Le flux AAC d\'origine sera converti au format que vous aurez sélectionné.';
+      'Choose the output format for 320kbps lossy downloads. The original stream will be converted to your selected format when needed.';
 
   @override
   String get downloadLossyMp3 => 'MP3 320 kbps';
@@ -2138,7 +2138,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get tutorialWelcomeTip2 =>
-      'Profitez d\'un son de qualité FLAC sur Tidal, Qobuz ou Deezer';
+      'Get FLAC quality audio from installed download extensions';
 
   @override
   String get tutorialWelcomeTip3 =>
@@ -2853,7 +2853,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get lyricsProvidersInfoText =>
-      'Les fournisseurs de paroles des extensions s\'exécutent toujours avant les fournisseurs intégrés. Au moins un fournisseur doit rester activé.';
+      'Extension lyrics providers run before built-in lyrics providers. At least one provider must remain enabled.';
 
   @override
   String lyricsProvidersEnabledSection(int count) {
@@ -3060,11 +3060,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get downloadSelectServiceToEnable =>
-      'Sélectionnez Tidal ou Qobuz pour activer cette option';
+      'Select a provider with quality options to enable this option';
 
   @override
   String get downloadSelectTidalQobuz =>
-      'Sélectionnez Tidal ou Qobuz pour choisir la qualité audio';
+      'Select a provider with quality options to choose audio quality';
 
   @override
   String get downloadEmbedLyricsDisabled =>

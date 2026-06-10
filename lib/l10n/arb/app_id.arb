@@ -166,9 +166,9 @@
   "@optionsDefaultSearchTabSubtitle": {
     "description": "Subtitle for the preferred default search tab setting"
   },
-  "optionsSwitchBack": "Ketuk Deezer atau Spotify untuk beralih dari ekstensi",
+  "optionsSwitchBack": "Choose the default search provider to switch back from an extension",
   "@optionsSwitchBack": {
-    "description": "Hint to switch back to built-in providers"
+    "description": "Hint to switch back from extension search"
   },
   "optionsAutoFallback": "Cadangan Otomatis",
   "@optionsAutoFallback": {
@@ -180,15 +180,15 @@
   },
   "optionsUseExtensionProviders": "Gunakan Provider Ekstensi",
   "@optionsUseExtensionProviders": {
-    "description": "Enable extension download providers"
+    "description": "Legacy setting label for extension download providers"
   },
-  "optionsUseExtensionProvidersOn": "Ekstensi akan dicoba terlebih dahulu",
+  "optionsUseExtensionProvidersOn": "Extension providers are enabled",
   "@optionsUseExtensionProvidersOn": {
     "description": "Status when extension providers enabled"
   },
-  "optionsUseExtensionProvidersOff": "Hanya menggunakan provider bawaan",
+  "optionsUseExtensionProvidersOff": "Extension providers are required",
   "@optionsUseExtensionProvidersOff": {
-    "description": "Status when extension providers disabled"
+    "description": "Legacy status when extension providers would be disabled"
   },
   "optionsEmbedLyrics": "Sematkan Lirik",
   "@optionsEmbedLyrics": {
@@ -425,11 +425,11 @@
   "@aboutVersion": {
     "description": "Version info label"
   },
-  "aboutBinimumDesc": "Pembuat QQDL & HiFi API. Tanpa API ini, unduhan Tidal tidak akan ada!",
+  "aboutBinimumDesc": "The creator of QQDL & HiFi API. This project helped shape lossless download support.",
   "@aboutBinimumDesc": {
     "description": "Credit description for binimum"
   },
-  "aboutSachinsenalDesc": "Pembuat proyek HiFi asli. Fondasi dari integrasi Tidal!",
+  "aboutSachinsenalDesc": "The original HiFi project creator. A foundation for lossless-source integration.",
   "@aboutSachinsenalDesc": {
     "description": "Credit description for sachinsenal0x64"
   },
@@ -1118,9 +1118,9 @@
   "@providerPriorityFallbackExtensionsHint": {
     "description": "Hint below the extension fallback selection list"
   },
-  "providerBuiltIn": "Bawaan",
+  "providerBuiltIn": "Legacy",
   "@providerBuiltIn": {
-    "description": "Label for built-in providers (Tidal/Qobuz)"
+    "description": "Legacy label retained for old generated localization compatibility"
   },
   "providerExtension": "Ekstensi",
   "@providerExtension": {
@@ -1573,11 +1573,11 @@
   "@storeClearFilters": {
     "description": "Button to clear all filters"
   },
-  "extensionDefaultProvider": "Default (Deezer)",
+  "extensionDefaultProvider": "Default Search",
   "@extensionDefaultProvider": {
     "description": "Default search provider option"
   },
-  "extensionDefaultProviderSubtitle": "Gunakan pencarian bawaan",
+  "extensionDefaultProviderSubtitle": "Use the default metadata search",
   "@extensionDefaultProviderSubtitle": {
     "description": "Subtitle for default provider"
   },
@@ -2418,7 +2418,7 @@
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
-  "tutorialWelcomeTip2": "Dapatkan audio berkualitas FLAC dari Tidal, Qobuz, atau Deezer",
+  "tutorialWelcomeTip2": "Get FLAC quality audio from installed download extensions",
   "@tutorialWelcomeTip2": {
     "description": "Tutorial welcome tip 2"
   },
@@ -3432,43 +3432,43 @@
   },
   "downloadLossy320": "Lossy 320kbps",
   "@downloadLossy320": {
-    "description": "Quality option label for Tidal lossy 320kbps"
+    "description": "Quality option label for lossy 320kbps"
   },
   "downloadLossyFormat": "Lossy Format",
   "@downloadLossyFormat": {
-    "description": "Setting title to pick output format for Tidal lossy downloads"
+    "description": "Setting title to pick output format for lossy downloads"
   },
   "downloadLossy320Format": "Lossy 320kbps Format",
   "@downloadLossy320Format": {
-    "description": "Title of the Tidal lossy format picker bottom sheet"
+    "description": "Title of the lossy format picker bottom sheet"
   },
-  "downloadLossy320FormatDesc": "Choose the output format for Tidal 320kbps lossy downloads. The original AAC stream will be converted to your selected format.",
+  "downloadLossy320FormatDesc": "Choose the output format for 320kbps lossy downloads. The original stream will be converted to your selected format when needed.",
   "@downloadLossy320FormatDesc": {
-    "description": "Description in the Tidal lossy format picker"
+    "description": "Description in the lossy format picker"
   },
   "downloadLossyMp3": "MP3 320kbps",
   "@downloadLossyMp3": {
-    "description": "Tidal lossy format option - MP3 320kbps"
+    "description": "lossy format option - MP3 320kbps"
   },
   "downloadLossyMp3Subtitle": "Best compatibility, ~10MB per track",
   "@downloadLossyMp3Subtitle": {
-    "description": "Subtitle for MP3 320kbps Tidal lossy option"
+    "description": "Subtitle for MP3 320kbps lossy option"
   },
   "downloadLossyOpus256": "Opus 256kbps",
   "@downloadLossyOpus256": {
-    "description": "Tidal lossy format option - Opus 256kbps"
+    "description": "lossy format option - Opus 256kbps"
   },
   "downloadLossyOpus256Subtitle": "Best quality Opus, ~8MB per track",
   "@downloadLossyOpus256Subtitle": {
-    "description": "Subtitle for Opus 256kbps Tidal lossy option"
+    "description": "Subtitle for Opus 256kbps lossy option"
   },
   "downloadLossyOpus128": "Opus 128kbps",
   "@downloadLossyOpus128": {
-    "description": "Tidal lossy format option - Opus 128kbps"
+    "description": "lossy format option - Opus 128kbps"
   },
   "downloadLossyOpus128Subtitle": "Smallest size, ~4MB per track",
   "@downloadLossyOpus128Subtitle": {
-    "description": "Subtitle for Opus 128kbps Tidal lossy option"
+    "description": "Subtitle for Opus 128kbps lossy option"
   },
   "albumFolderArtistAlbumFlat": "Artist / Album (Singles flat)",
   "@albumFolderArtistAlbumFlat": {
@@ -3607,7 +3607,7 @@
   "@lyricsProvidersDescription": {
     "description": "Description on the lyrics provider priority page"
   },
-  "lyricsProvidersInfoText": "Extension lyrics providers always run before built-in providers. At least one provider must remain enabled.",
+  "lyricsProvidersInfoText": "Extension lyrics providers run before built-in lyrics providers. At least one provider must remain enabled.",
   "@lyricsProvidersInfoText": {
     "description": "Info tip on lyrics provider priority page"
   },
@@ -3829,11 +3829,11 @@
   "@downloadNetworkCompatibilityModeDisabled": {
     "description": "Subtitle when network compatibility mode is disabled"
   },
-  "downloadSelectServiceToEnable": "Select Tidal or Qobuz to enable this option",
+  "downloadSelectServiceToEnable": "Select a provider with quality options to enable this option",
   "@downloadSelectServiceToEnable": {
-    "description": "Hint shown instead of Ask-quality subtitle when no built-in service selected"
+    "description": "Hint shown instead of Ask-quality subtitle when selected provider has no quality options"
   },
-  "downloadSelectTidalQobuz": "Select Tidal or Qobuz to choose audio quality",
+  "downloadSelectTidalQobuz": "Select a provider with quality options to choose audio quality",
   "@downloadSelectTidalQobuz": {
     "description": "Info hint when non-Tidal/Qobuz service is selected"
   },
@@ -4197,7 +4197,7 @@
   },
   "extensionsSearchWith": "Search with {providerName}",
   "@extensionsSearchWith": {
-    "description": "Extensions page - subtitle for built-in search provider option",
+    "description": "Extensions page - subtitle for default metadata search provider option",
     "placeholders": {
       "providerName": {
         "type": "String"
@@ -4709,11 +4709,11 @@
   },
   "downloadLossyAac": "AAC/M4A 320kbps",
   "@downloadLossyAac": {
-    "description": "Tidal lossy format option - AAC in M4A container at 320kbps"
+    "description": "lossy format option - AAC in M4A container at 320kbps"
   },
   "downloadLossyAacSubtitle": "Best mobile compatibility, M4A container",
   "@downloadLossyAacSubtitle": {
-    "description": "Subtitle for AAC/M4A 320kbps Tidal lossy option"
+    "description": "Subtitle for AAC/M4A 320kbps lossy option"
   },
   "collectionFavoriteArtists": "Favorite Artists",
   "@collectionFavoriteArtists": {

@@ -40,10 +40,13 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
     final qualityOptions =
         selectedDownloadExtension?.qualityOptions ?? const <QualityOption>[];
     final canSelectQuality = qualityOptions.isNotEmpty;
-    final isTidalService = selectedDownloadService.isNotEmpty
+    final usesTidalCompatibilityOptions = selectedDownloadService.isNotEmpty
         ? ref
               .read(extensionProvider.notifier)
-              .downloadProviderMatchesBuiltIn(selectedDownloadService, 'tidal')
+              .downloadProviderReplacesLegacyProvider(
+                selectedDownloadService,
+                'tidal',
+              )
         : false;
     final nativeWorkerAvailable = Platform.isAndroid && hasDownloadExtensions;
     final colorScheme = Theme.of(context).colorScheme;
@@ -148,17 +151,19 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
                             .setAudioQuality(quality.id),
                         showDivider:
                             quality != qualityOptions.last ||
-                            (isTidalService && settings.audioQuality == 'HIGH'),
+                            (usesTidalCompatibilityOptions &&
+                                settings.audioQuality == 'HIGH'),
                       ),
-                    if (isTidalService && settings.audioQuality == 'HIGH')
+                    if (usesTidalCompatibilityOptions &&
+                        settings.audioQuality == 'HIGH')
                       SettingsItem(
                         icon: Icons.tune,
                         title: context.l10n.downloadLossyFormat,
-                        subtitle: _getTidalHighFormatLabel(
+                        subtitle: _getLossyCompatibilityFormatLabel(
                           context,
                           settings.tidalHighFormat,
                         ),
-                        onTap: () => _showTidalHighFormatPicker(
+                        onTap: () => _showLossyCompatibilityFormatPicker(
                           context,
                           ref,
                           settings.tidalHighFormat,
@@ -363,7 +368,7 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
       case 'HI_RES_LOSSLESS':
         return context.l10n.qualityHiResFlacMaxSubtitle;
       case 'HIGH':
-        return _getTidalHighFormatLabel(
+        return _getLossyCompatibilityFormatLabel(
           context,
           ref.read(settingsProvider).tidalHighFormat,
         );
@@ -372,7 +377,10 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
     }
   }
 
-  String _getTidalHighFormatLabel(BuildContext context, String format) {
+  String _getLossyCompatibilityFormatLabel(
+    BuildContext context,
+    String format,
+  ) {
     switch (format) {
       case 'mp3_320':
         return context.l10n.downloadLossyMp3;
@@ -387,7 +395,7 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
     }
   }
 
-  void _showTidalHighFormatPicker(
+  void _showLossyCompatibilityFormatPicker(
     BuildContext context,
     WidgetRef ref,
     String current,

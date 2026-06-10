@@ -140,7 +140,8 @@ class AppLocalizationsKo extends AppLocalizations {
       'Choose which tab opens first for new search results.';
 
   @override
-  String get optionsSwitchBack => 'Deezer 또는 Spotify를 탭하여 확장 기능에서 다시 전환하세요.';
+  String get optionsSwitchBack =>
+      'Choose the default search provider to switch back from an extension';
 
   @override
   String get optionsAutoFallback => '자동 재시도';
@@ -152,10 +153,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get optionsUseExtensionProviders => '확장 기능 사용';
 
   @override
-  String get optionsUseExtensionProvidersOn => '확장 기능을 우선적으로 사용합니다';
+  String get optionsUseExtensionProvidersOn =>
+      'Extension providers are enabled';
 
   @override
-  String get optionsUseExtensionProvidersOff => '기본으로 제공되는 기능만 사용';
+  String get optionsUseExtensionProvidersOff =>
+      'Extension providers are required';
 
   @override
   String get optionsEmbedLyrics => '가사 삽입';
@@ -362,10 +365,11 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get aboutBinimumDesc =>
-      'QQDL 및 HiFi API 개발자입니다. 이 API가 없었다면 Tidal 다운로드는 불가능했을 것입니다!';
+      'The creator of QQDL & HiFi API. This project helped shape lossless download support.';
 
   @override
-  String get aboutSachinsenalDesc => '최초의 하이파이 프로젝트 창시자. 타이달 연동의 기반을 마련한 사람!';
+  String get aboutSachinsenalDesc =>
+      'The original HiFi project creator. A foundation for lossless-source integration.';
 
   @override
   String get aboutSjdonadoDesc =>
@@ -923,7 +927,7 @@ class AppLocalizationsKo extends AppLocalizations {
       'Only enabled extensions with download-provider capability are listed here.';
 
   @override
-  String get providerBuiltIn => 'Built-in';
+  String get providerBuiltIn => 'Legacy';
 
   @override
   String get providerExtension => 'Extension';
@@ -1314,10 +1318,11 @@ class AppLocalizationsKo extends AppLocalizations {
   String get storeEmptyNoResults => 'No extensions found';
 
   @override
-  String get extensionDefaultProvider => 'Default (Deezer)';
+  String get extensionDefaultProvider => 'Default Search';
 
   @override
-  String get extensionDefaultProviderSubtitle => 'Use built-in search';
+  String get extensionDefaultProviderSubtitle =>
+      'Use the default metadata search';
 
   @override
   String get extensionAuthor => 'Author';
@@ -1491,7 +1496,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get downloadLossy320FormatDesc =>
-      'Choose the output format for Tidal 320kbps lossy downloads. The original AAC stream will be converted to your selected format.';
+      'Choose the output format for 320kbps lossy downloads. The original stream will be converted to your selected format when needed.';
 
   @override
   String get downloadLossyMp3 => 'MP3 320kbps';
@@ -2061,7 +2066,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get tutorialWelcomeTip2 =>
-      'Get FLAC quality audio from Tidal, Qobuz, or Deezer';
+      'Get FLAC quality audio from installed download extensions';
 
   @override
   String get tutorialWelcomeTip3 =>
@@ -2759,7 +2764,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get lyricsProvidersInfoText =>
-      'Extension lyrics providers always run before built-in providers. At least one provider must remain enabled.';
+      'Extension lyrics providers run before built-in lyrics providers. At least one provider must remain enabled.';
 
   @override
   String lyricsProvidersEnabledSection(int count) {
@@ -2955,11 +2960,11 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get downloadSelectServiceToEnable =>
-      'Select Tidal or Qobuz to enable this option';
+      'Select a provider with quality options to enable this option';
 
   @override
   String get downloadSelectTidalQobuz =>
-      'Select Tidal or Qobuz to choose audio quality';
+      'Select a provider with quality options to choose audio quality';
 
   @override
   String get downloadEmbedLyricsDisabled => 'Enable metadata embedding first';

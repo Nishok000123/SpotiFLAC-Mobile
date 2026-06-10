@@ -617,7 +617,7 @@ class FFmpegService {
     }
   }
 
-  static Future<String?> prepareTidalDashManifestForNativePlayback({
+  static Future<String?> prepareDashManifestForNativePlayback({
     required String manifestPayload,
     bool registerAsActive = true,
   }) async {
@@ -630,7 +630,7 @@ class FFmpegService {
 
     final manifestPath = await _writeTempManifestFile(payload);
     if (manifestPath == null) {
-      _log.e('Failed to prepare Tidal DASH manifest for native playback');
+      _log.e('Failed to prepare DASH manifest for native playback');
       return null;
     }
 
@@ -739,7 +739,7 @@ class FFmpegService {
     }
   }
 
-  static Future<LiveDecryptedStreamResult?> startTidalDashLiveStream({
+  static Future<LiveDecryptedStreamResult?> startDashLiveStream({
     required String manifestPayload,
     String preferredFormat = 'm4a',
   }) async {
@@ -752,7 +752,7 @@ class FFmpegService {
 
     final manifestPath = await _writeTempManifestFile(payload);
     if (manifestPath == null) {
-      _log.e('Failed to prepare Tidal DASH manifest for live stream');
+      _log.e('Failed to prepare DASH manifest for live stream');
       return null;
     }
 
@@ -797,7 +797,7 @@ class FFmpegService {
 
     final tempDir = await getTemporaryDirectory();
     final manifestPath =
-        '${tempDir.path}${Platform.pathSeparator}tidal_dash_${DateTime.now().microsecondsSinceEpoch}.mpd';
+        '${tempDir.path}${Platform.pathSeparator}dash_${DateTime.now().microsecondsSinceEpoch}.mpd';
     await File(manifestPath).writeAsString(manifestText, flush: true);
     return manifestPath;
   }
@@ -875,7 +875,7 @@ class FFmpegService {
     ];
 
     _log.d(
-      'Starting Tidal DASH tunnel: ${_previewCommandForLog(commandArguments.join(' '))}',
+      'Starting DASH tunnel: ${_previewCommandForLog(commandArguments.join(' '))}',
     );
 
     final session = await FFmpegKit.executeWithArgumentsAsync(commandArguments);
@@ -891,9 +891,9 @@ class FFmpegService {
     final state = await session.getState();
     final output = (await session.getOutput() ?? '').trim();
     if (output.isNotEmpty) {
-      _log.w('Tidal DASH tunnel failed ($ext): $output');
+      _log.w('DASH tunnel failed ($ext): $output');
     } else {
-      _log.w('Tidal DASH tunnel failed ($ext) with session state: $state');
+      _log.w('DASH tunnel failed ($ext) with session state: $state');
     }
 
     try {
