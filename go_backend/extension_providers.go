@@ -2483,11 +2483,13 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 		if providerID == "" {
 			continue
 		}
-		if providerID == req.Source {
+		// Skip the origin extension only when it differs from the explicitly
+		// selected provider; otherwise it must still be attempted here.
+		if providerID == req.Source && req.Source != selectedProvider {
 			continue
 		}
 
-		if !isExtensionFallbackAllowed(providerID) {
+		if providerID != selectedProvider && !isExtensionFallbackAllowed(providerID) {
 			GoLog("[DownloadWithExtensionFallback] Skipping extension provider %s (not enabled for fallback)\n", providerID)
 			continue
 		}
