@@ -107,44 +107,29 @@ import Gobackend
     /// - Signed session: spotiflac://session-grant?grant=...&state=<extension_id>
     @discardableResult
     private func handleExtensionOAuthRedirect(url: URL) -> Bool {
-        guard let scheme = url.scheme?.lowercased(), scheme == "spotiflac" else { return false }
-        let host = (url.host ?? "").lowercased()
-        let path = url.path.lowercased()
-        let isSessionGrant = host == "session-grant"
-        let ok =
-            isSessionGrant || host == "callback" || host == "spotify-callback" || path.contains("callback")
-        guard ok else { return false }
-        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
-            return false
-        }
-        let q = components.queryItems ?? []
-        let code =
-            q.first { $0.name == (isSessionGrant ? "grant" : "code") }?.value?.trimmingCharacters(
-                in: .whitespacesAndNewlines) ??
-            q.first { $0.name == "code" }?.value?.trimmingCharacters(
-                in: .whitespacesAndNewlines) ?? ""
-        let state =
-            q.first { $0.name == "state" }?.value?.trimmingCharacters(
-                in: .whitespacesAndNewlines) ?? ""
-        if code.isEmpty { return false }
-        if state.isEmpty {
-            NSLog("SpotiFLAC: Extension OAuth redirect missing state (extension id)")
-            return false
-        }
+        guard let route = ExtensionCallbackParser.parse(url) else { return false }
         streamQueue.async {
             var err: NSError?
             var response: String?
-            if isSessionGrant {
-                GobackendSetExtensionSessionGrantByID(state, code)
-                response = GobackendInvokeExtensionActionJSON(state, "completeGrant", &err)
+            if route.isSessionGrant {
+                GobackendSetExtensionSessionGrantByID(route.extensionId, route.code)
+                response = GobackendInvokeExtensionActionJSON(
+                    route.extensionId,
+                    "completeGrant",
+                    &err
+                )
             } else {
-                GobackendSetExtensionAuthCodeByID(state, code)
-                response = GobackendInvokeExtensionActionJSON(state, "completeSpotifyLogin", &err)
+                GobackendSetExtensionAuthCodeByID(route.extensionId, route.code)
+                response = GobackendInvokeExtensionActionJSON(
+                    route.extensionId,
+                    "completeSpotifyLogin",
+                    &err
+                )
             }
-            if err == nil && isSessionGrant {
+            if err == nil && route.isSessionGrant {
                 do {
                     try self.requireSuccessfulExtensionAction(
-                        extensionId: state,
+                        extensionId: route.extensionId,
                         actionName: "completeGrant",
                         response: response
                     )
@@ -155,9 +140,11 @@ import Gobackend
             if let err = err {
                 NSLog(
                     "SpotiFLAC: Extension callback complete failed: \(err.localizedDescription)")
-            } else if isSessionGrant {
+            } else if route.isSessionGrant {
                 DispatchQueue.main.async { [weak self] in
-                    self?.notifySessionGrantCompleted(extensionId: state)
+                    self?.notifySessionGrantCompleted(
+                        extensionId: route.extensionId
+                    )
                 }
             }
         }
