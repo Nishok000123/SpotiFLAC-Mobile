@@ -170,7 +170,7 @@
   "@optionsAutoFallback": {
     "description": "Auto-retry with other services"
   },
-  "optionsAutoFallbackSubtitle": "다운로드가 실패한 경우에 다른 서비스를 이용해 보세요",
+  "optionsAutoFallbackSubtitle": "다운로드가 실패한 경우에 다른 서비스를 사용합니다",
   "@optionsAutoFallbackSubtitle": {
     "description": "Subtitle for auto fallback"
   },
@@ -473,7 +473,7 @@
   "@aboutSjdonadoDesc": {
     "description": "Credit description for sjdonado"
   },
-  "aboutAppDescription": "음악 메타데이터를 검색하고, 확장 프로그램을 관리하고, 라이브러리를 정리하세요",
+  "aboutAppDescription": "음악 메타데이터를 검색하고\\n확장 프로그램을 관리하고\\n라이브러리를 정리하세요",
   "@aboutAppDescription": {
     "description": "App description in header card"
   },
@@ -2495,7 +2495,7 @@
       }
     }
   },
-  "libraryLastScannedNever": "절대 안 함",
+  "libraryLastScannedNever": "스캔한 적 없음",
   "@libraryLastScannedNever": {
     "description": "Shown when library has never been scanned"
   },
@@ -2840,7 +2840,7 @@
   "@cacheAppDirectory": {
     "description": "Cache item title for app cache directory"
   },
-  "cacheAppDirectoryDesc": "HTTP 응답, WebView 데이터 및 기타 임시 앱 데이터",
+  "cacheAppDirectoryDesc": "HTTP 응답, WebView 데이터 및 기타 임시 앱 데이터입니다",
   "@cacheAppDirectoryDesc": {
     "description": "Description of what app cache directory contains"
   },
@@ -2864,7 +2864,7 @@
   "@cacheLibraryCover": {
     "description": "Cache item title for local library cover art images"
   },
-  "cacheLibraryCoverDesc": "로컬 음악 파일에서 표지 이미지를 추출하였습니다. 다음 스캔 시 다시 추출합니다",
+  "cacheLibraryCoverDesc": "로컬 음악 파일에서 추출된 표지 이미지입니다. 다음 스캔 시 다시 추출됩니다",
   "@cacheLibraryCoverDesc": {
     "description": "Description of what library cover cache contains"
   },
@@ -2880,7 +2880,7 @@
   "@cacheAudioAnalysis": {
     "description": "Cache item title for saved audio analysis results"
   },
-  "cacheAudioAnalysisDesc": "스펙트로그램과 분석 결과를 저장하였습니다. 다음에 실행할 경우에 다시 분석합니다",
+  "cacheAudioAnalysisDesc": "저장된 스펙트로그램과 분석 결과입니다. 다음에 실행할 경우에 다시 분석합니다",
   "@cacheAudioAnalysisDesc": {
     "description": "Description of what audio analysis cache contains"
   },
@@ -2896,7 +2896,7 @@
   "@cacheTrackLookup": {
     "description": "Cache item title for track ID lookup cache"
   },
-  "cacheTrackLookupDesc": "Spotify/Deezer 트랙 ID을 조회합니다. 지우면 속도가 느려질 수 있습니다",
+  "cacheTrackLookupDesc": "조회된 Spotify/Deezer 트랙 ID입니다. 지우면 속도가 느려질 수 있습니다",
   "@cacheTrackLookupDesc": {
     "description": "Description of what track lookup cache contains"
   },
@@ -3615,7 +3615,7 @@
   "@lyricsProvidersTitle": {
     "description": "Settings item title for lyrics provider order"
   },
-  "lyricsProvidersDescription": "가사 출처를 활성화, 비활성화 및 재정렬합니다. 가사가 발견될 때까지 위에서 아래로 제공자를 시도합니다",
+  "lyricsProvidersDescription": "가사 출처를 활성화, 비활성화 및 재정렬할 수 있습니다. 가사가 발견될 때까지 위에서 아래로 제공자를 시도합니다",
   "@lyricsProvidersDescription": {
     "description": "Description on the lyrics provider priority page"
   },
@@ -3697,7 +3697,7 @@
   "@safMigrationSuccess": {
     "description": "Snackbar after successfully migrating to SAF"
   },
-  "settingsDonate": "개발 지원",
+  "settingsDonate": "개발 후원",
   "@settingsDonate": {
     "description": "Settings menu item - donate page"
   },
