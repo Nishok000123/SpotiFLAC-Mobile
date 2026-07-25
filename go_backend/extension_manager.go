@@ -76,7 +76,104 @@ func safeExtensionAssetPath(root, assetPath string) (string, bool) {
 	return fullPath, isPathWithinBase(root, fullPath)
 }
 
+const (
+	maxExtensionArchiveEntries           = 2048
+	maxExtensionArchiveUncompressedBytes = 256 * 1024 * 1024
+	maxExtensionManifestBytes            = 1024 * 1024
+)
+
+func validateExtensionArchive(files []*zip.File) error {
+	if len(files) > maxExtensionArchiveEntries {
+		return fmt.Errorf(
+			"extension archive contains too many entries (maximum %d)",
+			maxExtensionArchiveEntries,
+		)
+	}
+
+	seenPaths := make(map[string]struct{}, len(files))
+	var totalUncompressed uint64
+	for _, file := range files {
+		if file.FileInfo().Mode()&os.ModeSymlink != 0 || strings.Contains(file.Name, `\`) {
+			return fmt.Errorf("unsafe path in extension archive: %s", file.Name)
+		}
+
+		relPath := path.Clean(file.Name)
+		if relPath == "." || relPath == ".." || strings.HasPrefix(relPath, "../") || path.IsAbs(relPath) {
+			return fmt.Errorf("unsafe path in extension archive: %s", file.Name)
+		}
+		pathKey := strings.ToLower(relPath)
+		if _, exists := seenPaths[pathKey]; exists {
+			return fmt.Errorf("duplicate path in extension archive: %s", file.Name)
+		}
+		seenPaths[pathKey] = struct{}{}
+
+		if file.FileInfo().IsDir() {
+			continue
+		}
+		if file.UncompressedSize64 > maxExtensionArchiveUncompressedBytes-totalUncompressed {
+			return fmt.Errorf(
+				"extension archive exceeds the %d MiB extracted size limit",
+				maxExtensionArchiveUncompressedBytes/(1024*1024),
+			)
+		}
+		totalUncompressed += file.UncompressedSize64
+	}
+	return nil
+}
+
+func inspectExtensionPackage(files []*zip.File) (*ExtensionManifest, error) {
+	if err := validateExtensionArchive(files); err != nil {
+		return nil, err
+	}
+
+	var manifestFile *zip.File
+	hasIndexJS := false
+	for _, file := range files {
+		switch path.Clean(file.Name) {
+		case "manifest.json":
+			manifestFile = file
+		case "index.js":
+			hasIndexJS = !file.FileInfo().IsDir()
+		}
+	}
+
+	if manifestFile == nil || manifestFile.FileInfo().IsDir() {
+		return nil, fmt.Errorf("invalid extension package: root manifest.json not found")
+	}
+	if !hasIndexJS {
+		return nil, fmt.Errorf("invalid extension package: root index.js not found")
+	}
+	if manifestFile.UncompressedSize64 > maxExtensionManifestBytes {
+		return nil, fmt.Errorf("invalid extension package: manifest.json is too large")
+	}
+
+	rc, err := manifestFile.Open()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open manifest.json: %w", err)
+	}
+	manifestData, readErr := io.ReadAll(io.LimitReader(rc, maxExtensionManifestBytes+1))
+	closeErr := rc.Close()
+	if readErr != nil {
+		return nil, fmt.Errorf("failed to read manifest.json: %w", readErr)
+	}
+	if closeErr != nil {
+		return nil, fmt.Errorf("failed to close manifest.json: %w", closeErr)
+	}
+	if len(manifestData) > maxExtensionManifestBytes {
+		return nil, fmt.Errorf("invalid extension package: manifest.json is too large")
+	}
+
+	manifest, err := ParseManifest(manifestData)
+	if err != nil {
+		return nil, fmt.Errorf("invalid extension manifest: %w", err)
+	}
+	return manifest, nil
+}
+
 func extractExtensionArchive(zipReader *zip.ReadCloser, destination string) error {
+	if err := validateExtensionArchive(zipReader.File); err != nil {
+		return err
+	}
 	for _, file := range zipReader.File {
 		if file.FileInfo().IsDir() {
 			continue
@@ -260,37 +357,9 @@ func (m *extensionManager) loadExtensionFromFileLocked(filePath string) (*loaded
 	}
 	defer zipReader.Close()
 
-	var manifestData []byte
-	var hasIndexJS bool
-	for _, file := range zipReader.File {
-		name := filepath.Base(file.Name)
-		if name == "manifest.json" {
-			rc, err := file.Open()
-			if err != nil {
-				return nil, fmt.Errorf("failed to open manifest.json: %w", err)
-			}
-			manifestData, err = io.ReadAll(rc)
-			rc.Close()
-			if err != nil {
-				return nil, fmt.Errorf("failed to read manifest.json: %w", err)
-			}
-		}
-		if name == "index.js" {
-			hasIndexJS = true
-		}
-	}
-
-	if manifestData == nil {
-		return nil, fmt.Errorf("invalid extension package: manifest.json not found")
-	}
-
-	if !hasIndexJS {
-		return nil, fmt.Errorf("invalid extension package: index.js not found")
-	}
-
-	manifest, err := ParseManifest(manifestData)
+	manifest, err := inspectExtensionPackage(zipReader.File)
 	if err != nil {
-		return nil, fmt.Errorf("invalid extension manifest: %w", err)
+		return nil, err
 	}
 
 	m.mu.RLock()
@@ -1006,37 +1075,9 @@ func (m *extensionManager) upgradeExtensionLocked(filePath string) (*loadedExten
 	}
 	defer zipReader.Close()
 
-	var manifestData []byte
-	var hasIndexJS bool
-	for _, file := range zipReader.File {
-		name := filepath.Base(file.Name)
-		if name == "manifest.json" {
-			rc, err := file.Open()
-			if err != nil {
-				return nil, fmt.Errorf("failed to open manifest.json: %w", err)
-			}
-			manifestData, err = io.ReadAll(rc)
-			rc.Close()
-			if err != nil {
-				return nil, fmt.Errorf("failed to read manifest.json: %w", err)
-			}
-		}
-		if name == "index.js" {
-			hasIndexJS = true
-		}
-	}
-
-	if manifestData == nil {
-		return nil, fmt.Errorf("invalid extension package: manifest.json not found")
-	}
-
-	if !hasIndexJS {
-		return nil, fmt.Errorf("invalid extension package: index.js not found")
-	}
-
-	newManifest, err := ParseManifest(manifestData)
+	newManifest, err := inspectExtensionPackage(zipReader.File)
 	if err != nil {
-		return nil, fmt.Errorf("invalid extension manifest: %w", err)
+		return nil, err
 	}
 
 	m.mu.RLock()
@@ -1159,30 +1200,9 @@ func (m *extensionManager) checkExtensionUpgradeInternal(filePath string) (*Exte
 	}
 	defer zipReader.Close()
 
-	var manifestData []byte
-	for _, file := range zipReader.File {
-		name := filepath.Base(file.Name)
-		if name == "manifest.json" {
-			rc, err := file.Open()
-			if err != nil {
-				return nil, fmt.Errorf("failed to open manifest.json")
-			}
-			manifestData, err = io.ReadAll(rc)
-			rc.Close()
-			if err != nil {
-				return nil, fmt.Errorf("failed to read manifest.json")
-			}
-			break
-		}
-	}
-
-	if manifestData == nil {
-		return nil, fmt.Errorf("manifest.json not found")
-	}
-
-	newManifest, err := ParseManifest(manifestData)
+	newManifest, err := inspectExtensionPackage(zipReader.File)
 	if err != nil {
-		return nil, fmt.Errorf("invalid manifest: %w", err)
+		return nil, err
 	}
 
 	m.mu.RLock()
