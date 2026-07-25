@@ -595,7 +595,7 @@ class FFmpegService {
     if (!hasSampleRate && !hasSampleFormat && !processing.hasDither) return;
 
     final options = <String>[
-      'resampler=${processing.normalizedResampler}',
+      ...losslessResamplerFilterOptions(processing),
       if (hasSampleRate) 'osr=$targetSampleRate',
       if (hasSampleFormat) 'osf=${outputSampleFormat.trim()}',
       if (processing.hasDither) 'dither_method=${processing.normalizedDither}',
