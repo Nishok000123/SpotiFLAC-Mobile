@@ -129,6 +129,7 @@ func (r *extensionRuntime) fileDownload(call goja.FunctionCall) goja.Value {
 	var onProgress goja.Callable
 	var headers map[string]string
 	var chunkedDownload bool
+	var resumeDownload bool
 	trackItemBytes := true
 	var chunkSize int64
 	if len(call.Arguments) > 2 && !goja.IsUndefined(call.Arguments[2]) && !goja.IsNull(call.Arguments[2]) {
@@ -168,6 +169,11 @@ func (r *extensionRuntime) fileDownload(call goja.FunctionCall) goja.Value {
 						chunkedDownload = true
 						chunkSize = int64(v)
 					}
+				}
+			}
+			if resume, ok := opts["resume"]; ok {
+				if v, ok := resume.(bool); ok {
+					resumeDownload = v
 				}
 			}
 		}
@@ -328,14 +334,14 @@ func (r *extensionRuntime) fileDownload(call goja.FunctionCall) goja.Value {
 		}
 	}
 
-	// Mid-body network failures resume from the current offset instead of
-	// failing the whole download. Only attempted when the server gave a
-	// validator (If-Range guards against splicing two versions of the file)
-	// and the caller did not set its own Range. A server that ignores Range
-	// answers 200 and the download restarts from zero — same as today.
+	// Mid-body resume is opt-in because switching networks can route a stable
+	// URL to a different CDN object even when its validator is unchanged. The
+	// safe default is to fail and delete the staged partial file. Extensions
+	// that know their origin supports byte-identical Range resumes can request
+	// it explicitly with { resume: true }.
 	validator := resumeValidator(resp.Header)
 	_, callerSetRange := headers["Range"]
-	canResume := validator != "" && !callerSetRange
+	canResume := resumeDownload && validator != "" && !callerSetRange
 
 	const maxResumes = 3
 	resumes := 0
@@ -401,7 +407,7 @@ func (r *extensionRuntime) fileDownload(call goja.FunctionCall) goja.Value {
 				}
 			}
 			validator = resumeValidator(resp.Header)
-			canResume = validator != ""
+			canResume = resumeDownload && validator != ""
 		default:
 			code := resp.StatusCode
 			resp.Body.Close()
