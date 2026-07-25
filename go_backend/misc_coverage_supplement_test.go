@@ -72,15 +72,19 @@ func TestOutputFDFilePathBranches(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open fd source: %v", err)
 	}
-	defer fdSource.Close()
 	dupFD, err := dupOutputFD(int(fdSource.Fd()))
 	if err != nil {
+		_ = fdSource.Close()
 		t.Fatalf("duplicate output fd: %v", err)
 	}
 	if err := prepareDupFDForWrite(dupFD, int(fdSource.Fd())); err != nil {
+		_ = fdSource.Close()
 		t.Fatalf("prepareDupFDForWrite: %v", err)
 	}
 	closeOwnedOutputFD(dupFD)
+	if err := fdSource.Close(); err != nil {
+		t.Fatalf("close fd source: %v", err)
+	}
 	cleanupOutputOnError(outputPath, 0)
 	if _, err := os.Stat(outputPath); !os.IsNotExist(err) {
 		t.Fatalf("cleanup should remove output path, stat err=%v", err)
