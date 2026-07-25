@@ -19,7 +19,7 @@
   },
   "navStore": "Repo",
   "@navStore": {
-    "description": "Bottom navigation - Extension store tab"
+    "description": "Bottom navigation - Extension repo tab"
   },
   "homeTitle": "Início",
   "@homeTitle": {
@@ -72,10 +72,6 @@
   "settingsAppearance": "Aparência",
   "@settingsAppearance": {
     "description": "Settings section - visual customization"
-  },
-  "settingsOptions": "Opções",
-  "@settingsOptions": {
-    "description": "Settings section - app options"
   },
   "settingsExtensions": "Extensões",
   "@settingsExtensions": {
@@ -145,10 +141,6 @@
   "@appearanceHistoryViewGrid": {
     "description": "Grid layout option"
   },
-  "optionsTitle": "Opções",
-  "@optionsTitle": {
-    "description": "Options settings page title"
-  },
   "optionsPrimaryProvider": "Provedor Primário",
   "@optionsPrimaryProvider": {
     "description": "Main search provider setting"
@@ -174,10 +166,6 @@
   "@optionsDefaultSearchTabSubtitle": {
     "description": "Subtitle for the preferred default search tab setting"
   },
-  "optionsSwitchBack": "Escolha o provedor de pesquisa padrão para retornar após sair de uma extensão",
-  "@optionsSwitchBack": {
-    "description": "Hint to switch back from extension search"
-  },
   "optionsAutoFallback": "Fallback Automático",
   "@optionsAutoFallback": {
     "description": "Auto-retry with other services"
@@ -185,18 +173,6 @@
   "optionsAutoFallbackSubtitle": "Tentar outros serviços se o download falhar",
   "@optionsAutoFallbackSubtitle": {
     "description": "Subtitle for auto fallback"
-  },
-  "optionsUseExtensionProviders": "Usar Provedores de Extensão",
-  "@optionsUseExtensionProviders": {
-    "description": "Legacy setting label for extension download providers"
-  },
-  "optionsUseExtensionProvidersOn": "Provedores de extensão estão habilitados",
-  "@optionsUseExtensionProvidersOn": {
-    "description": "Status when extension providers enabled"
-  },
-  "optionsUseExtensionProvidersOff": "Provedores de extensão são necessários",
-  "@optionsUseExtensionProvidersOff": {
-    "description": "Legacy status when extension providers would be disabled"
   },
   "optionsEmbedLyrics": "Incorporar Letras",
   "@optionsEmbedLyrics": {
@@ -229,10 +205,6 @@
   "trackReplayGain": "Reanalisar ReplayGain",
   "@trackReplayGain": {
     "description": "Three-dot menu option to scan loudness and write ReplayGain tags"
-  },
-  "trackReplayGainSubtitle": "Analisar o volume e gravar etiquetas ReplayGain",
-  "@trackReplayGainSubtitle": {
-    "description": "Subtitle for the rescan ReplayGain menu option"
   },
   "trackReplayGainScanning": "Analisando o volume...",
   "@trackReplayGainScanning": {
@@ -310,11 +282,11 @@
   },
   "optionsExtensionStore": "Repositório de extensões",
   "@optionsExtensionStore": {
-    "description": "Show/hide store tab"
+    "description": "Show/hide repo tab"
   },
   "optionsExtensionStoreSubtitle": "Mostrar aba de repositório na navegação",
   "@optionsExtensionStoreSubtitle": {
-    "description": "Subtitle for extension store toggle"
+    "description": "Subtitle for extension repo toggle"
   },
   "optionsCheckUpdates": "Procurar Atualizações",
   "@optionsCheckUpdates": {
@@ -360,31 +332,6 @@
   "@optionsDetailedLoggingOff": {
     "description": "Status when logging disabled"
   },
-  "optionsSpotifyCredentials": "Credenciais do Spotify",
-  "@optionsSpotifyCredentials": {
-    "description": "Spotify API credentials setting"
-  },
-  "optionsSpotifyCredentialsConfigured": "ID do cliente: {clientId}...",
-  "@optionsSpotifyCredentialsConfigured": {
-    "description": "Shows configured client ID preview",
-    "placeholders": {
-      "clientId": {
-        "type": "String"
-      }
-    }
-  },
-  "optionsSpotifyCredentialsRequired": "Obrigatório - toque para configurar",
-  "@optionsSpotifyCredentialsRequired": {
-    "description": "Prompt to set up credentials"
-  },
-  "optionsSpotifyWarning": "O Spotify requer as suas próprias credenciais de API. Consiga gratuitamente em developer.spotify.com",
-  "@optionsSpotifyWarning": {
-    "description": "Info about Spotify API requirement"
-  },
-  "optionsSpotifyDeprecationWarning": "A busca do Spotify será descontinuada em 3 de março de 2026 devido a mudanças na API do Spotify. Por favor, mude para o Deezer.",
-  "@optionsSpotifyDeprecationWarning": {
-    "description": "Warning about Spotify API deprecation"
-  },
   "extensionsTitle": "Extensões",
   "@extensionsTitle": {
     "description": "Extensions page title"
@@ -402,26 +349,17 @@
       }
     }
   },
-  "extensionsAuthor": "por {author}",
-  "@extensionsAuthor": {
-    "description": "Extension author credit",
-    "placeholders": {
-      "author": {
-        "type": "String"
-      }
-    }
-  },
   "extensionsUninstall": "Desinstalar",
   "@extensionsUninstall": {
     "description": "Uninstall extension button"
   },
   "storeTitle": "Repositório de extensões",
   "@storeTitle": {
-    "description": "Store screen title"
+    "description": "Repo screen title"
   },
   "storeSearch": "Pesquisar extensões...",
   "@storeSearch": {
-    "description": "Store search placeholder"
+    "description": "Repo search placeholder"
   },
   "storeInstall": "Instalar",
   "@storeInstall": {
@@ -912,14 +850,6 @@
   "@snackbarHistoryCleared": {
     "description": "Snackbar - history deleted"
   },
-  "snackbarCredentialsSaved": "Credenciais salvas",
-  "@snackbarCredentialsSaved": {
-    "description": "Snackbar - Spotify credentials saved"
-  },
-  "snackbarCredentialsCleared": "Credenciais limpas",
-  "@snackbarCredentialsCleared": {
-    "description": "Snackbar - Spotify credentials removed"
-  },
   "snackbarDeletedTracks": "{count} {count, plural, =1{faixa apagada} other{faixas apagadas}}",
   "@snackbarDeletedTracks": {
     "description": "Snackbar - tracks deleted",
@@ -937,10 +867,6 @@
         "type": "String"
       }
     }
-  },
-  "snackbarFillAllFields": "Por favor, preencha todos os campos",
-  "@snackbarFillAllFields": {
-    "description": "Snackbar - validation error"
   },
   "snackbarViewQueue": "Ver Fila",
   "@snackbarViewQueue": {
@@ -1054,14 +980,6 @@
   "actionDeselect": "Desselecionar",
   "@actionDeselect": {
     "description": "Action button - deselect all"
-  },
-  "actionRemoveCredentials": "Remover Credenciais",
-  "@actionRemoveCredentials": {
-    "description": "Action button - delete Spotify credentials"
-  },
-  "actionSaveCredentials": "Salvar Credenciais",
-  "@actionSaveCredentials": {
-    "description": "Action button - save Spotify credentials"
   },
   "selectionSelected": "{count} selecionado(s)",
   "@selectionSelected": {
@@ -1236,6 +1154,19 @@
   "@updateNewVersionReady": {
     "description": "Update subtitle"
   },
+  "updateRequiredTitle": "Update required",
+  "@updateRequiredTitle": {
+    "description": "Title of the mandatory update dialog shown when the installed version is too old"
+  },
+  "updateRequiredNotice": "This version is {count} releases behind and is no longer supported. Update to keep using the app.",
+  "@updateRequiredNotice": {
+    "description": "Subtitle of the mandatory update dialog; explains why the dialog cannot be dismissed",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "updateCurrent": "Atual",
   "@updateCurrent": {
     "description": "Label for current version"
@@ -1272,10 +1203,6 @@
   "@providerPriorityInfo": {
     "description": "Info tip about fallback behavior"
   },
-  "providerPriorityFallbackExtensionsTitle": "Alternativa de extensão",
-  "@providerPriorityFallbackExtensionsTitle": {
-    "description": "Section title for choosing which download extensions can be used as fallback providers"
-  },
   "providerPriorityFallbackExtensionsDescription": "Escolha quais extensões de download instaladas podem ser usadas durante a alternativa automática.",
   "@providerPriorityFallbackExtensionsDescription": {
     "description": "Section description for extension fallback selection"
@@ -1283,10 +1210,6 @@
   "providerPriorityFallbackExtensionsHint": "Apenas extensões ativadas com capacidade de provedor de download são listadas aqui.",
   "@providerPriorityFallbackExtensionsHint": {
     "description": "Hint below the extension fallback selection list"
-  },
-  "providerBuiltIn": "Legado",
-  "@providerBuiltIn": {
-    "description": "Legacy label retained for old generated localization compatibility"
   },
   "providerExtension": "Extensão",
   "@providerExtension": {
@@ -1303,14 +1226,6 @@
   "metadataProviderPriorityInfo": "O Deezer não tem limites de taxa e é recomendado como principal. O Spotify pode limitar a taxa após muitas solicitações.",
   "@metadataProviderPriorityInfo": {
     "description": "Info tip about rate limits"
-  },
-  "metadataNoRateLimits": "Sem limites de taxa",
-  "@metadataNoRateLimits": {
-    "description": "Deezer provider description"
-  },
-  "metadataMayRateLimit": "Pode ter limites de taxa",
-  "@metadataMayRateLimit": {
-    "description": "Spotify provider description"
   },
   "logTitle": "Registros",
   "@logTitle": {
@@ -1377,30 +1292,6 @@
         "type": "int"
       }
     }
-  },
-  "credentialsTitle": "Credenciais do Spotify",
-  "@credentialsTitle": {
-    "description": "Credentials dialog title"
-  },
-  "credentialsDescription": "Digite a sua Client ID e Secret para usar a sua própria cota de aplicativo do Spotify.",
-  "@credentialsDescription": {
-    "description": "Credentials dialog explanation"
-  },
-  "credentialsClientId": "ID do cliente",
-  "@credentialsClientId": {
-    "description": "Client ID field label - DO NOT TRANSLATE"
-  },
-  "credentialsClientIdHint": "Colar Client ID",
-  "@credentialsClientIdHint": {
-    "description": "Client ID placeholder"
-  },
-  "credentialsClientSecret": "Segredo do cliente",
-  "@credentialsClientSecret": {
-    "description": "Client Secret field label - DO NOT TRANSLATE"
-  },
-  "credentialsClientSecretHint": "Colar Client Secret",
-  "@credentialsClientSecretHint": {
-    "description": "Client Secret placeholder"
   },
   "channelStable": "Estável",
   "@channelStable": {
@@ -1509,10 +1400,6 @@
   "settingsDownloadSubtitle": "Serviço, qualidade, alternativa",
   "@settingsDownloadSubtitle": {
     "description": "Download settings description"
-  },
-  "settingsOptionsSubtitle": "Alternativa, metadados, letras, capa do álbum",
-  "@settingsOptionsSubtitle": {
-    "description": "Options settings description"
   },
   "settingsExtensionsSubtitle": "Gerenciar provedores de download",
   "@settingsExtensionsSubtitle": {
@@ -1730,27 +1617,27 @@
   },
   "storeFilterAll": "Tudo",
   "@storeFilterAll": {
-    "description": "Store filter - all extensions"
+    "description": "Repo filter - all extensions"
   },
   "storeFilterMetadata": "Metadados",
   "@storeFilterMetadata": {
-    "description": "Store filter - metadata providers"
+    "description": "Repo filter - metadata providers"
   },
   "storeFilterDownload": "Baixar",
   "@storeFilterDownload": {
-    "description": "Store filter - download providers"
+    "description": "Repo filter - download providers"
   },
   "storeFilterUtility": "Utilidade",
   "@storeFilterUtility": {
-    "description": "Store filter - utility extensions"
+    "description": "Repo filter - utility extensions"
   },
   "storeFilterLyrics": "Letras",
   "@storeFilterLyrics": {
-    "description": "Store filter - lyrics providers"
+    "description": "Repo filter - lyrics providers"
   },
   "storeFilterIntegration": "Integração",
   "@storeFilterIntegration": {
-    "description": "Store filter - integrations"
+    "description": "Repo filter - integrations"
   },
   "storeClearFilters": "Limpar filtros",
   "@storeClearFilters": {
@@ -1771,10 +1658,6 @@
   "storeRepoUrlHint": "https://github.com/usuario/repositorio",
   "@storeRepoUrlHint": {
     "description": "Hint/placeholder for the repository URL input field"
-  },
-  "storeRepoUrlHelper": "e.g. https://github.com/usuario/repositorio-extensao",
-  "@storeRepoUrlHelper": {
-    "description": "Helper text below the repository URL input field"
   },
   "storeAddRepoButton": "Adicionar repositório",
   "@storeAddRepoButton": {
@@ -1807,18 +1690,6 @@
   "storeEmptyNoResults": "Nenhuma extensão encontrada",
   "@storeEmptyNoResults": {
     "description": "Message when search/filter returns no results"
-  },
-  "extensionDefaultProvider": "Pesquisa padrão",
-  "@extensionDefaultProvider": {
-    "description": "Default search provider option"
-  },
-  "extensionDefaultProviderSubtitle": "Usar a pesquisa padrão de metadados",
-  "@extensionDefaultProviderSubtitle": {
-    "description": "Subtitle for default provider"
-  },
-  "extensionAuthor": "Autor",
-  "@extensionAuthor": {
-    "description": "Extension detail - author"
   },
   "extensionId": "ID",
   "@extensionId": {
@@ -2087,10 +1958,6 @@
   "@downloadLossyOpus128Subtitle": {
     "description": "Subtitle for Opus 128kbps lossy option"
   },
-  "qualityNote": "A qualidade real depende da faixa que estiver disponível no serviço",
-  "@qualityNote": {
-    "description": "Note about quality availability"
-  },
   "downloadAskBeforeDownload": "Perguntar qualidade antes de baixar",
   "@downloadAskBeforeDownload": {
     "description": "Setting - show quality picker"
@@ -2143,6 +2010,14 @@
   "@appearanceAmoledDarkSubtitle": {
     "description": "Subtitle for AMOLED dark"
   },
+  "appearanceHeroAnimations": "Hero animations",
+  "@appearanceHeroAnimations": {
+    "description": "Toggle for shared-element (Hero) transitions"
+  },
+  "appearanceHeroAnimationsSubtitle": "Fly covers between screens, e.g. when opening the player",
+  "@appearanceHeroAnimationsSubtitle": {
+    "description": "Subtitle for the Hero animations toggle"
+  },
   "queueClearAll": "Limpar Tudo",
   "@queueClearAll": {
     "description": "Button - clear all queue items"
@@ -2174,6 +2049,27 @@
   "settingsDownloadNetworkSubtitle": "Choose which network to use for downloads. When set to WiFi Only, downloads will pause on mobile data.",
   "@settingsDownloadNetworkSubtitle": {
     "description": "Subtitle explaining network preference"
+  },
+  "settingsConcurrentDownloads": "Concurrent downloads",
+  "@settingsConcurrentDownloads": {
+    "description": "Setting title - how many tracks download at the same time"
+  },
+  "settingsConcurrentDownloadsSubtitle": "Downloading several tracks at once is faster, but some providers may rate-limit parallel requests.",
+  "@settingsConcurrentDownloadsSubtitle": {
+    "description": "Subtitle explaining the concurrent downloads picker"
+  },
+  "concurrentDownloadsOne": "1 track at a time",
+  "@concurrentDownloadsOne": {
+    "description": "Concurrent downloads option - sequential"
+  },
+  "concurrentDownloadsCount": "Up to {count} tracks at once",
+  "@concurrentDownloadsCount": {
+    "description": "Concurrent downloads option - parallel",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "albumFolderArtistAlbum": "Artista / Álbum",
   "@albumFolderArtistAlbum": {
@@ -2244,10 +2140,6 @@
         "type": "int"
       }
     }
-  },
-  "downloadedAlbumAllSelected": "Todas as faixas selecionadas",
-  "@downloadedAlbumAllSelected": {
-    "description": "Status - all items selected"
   },
   "downloadedAlbumTapToSelect": "Toque nas faixas para selecionar",
   "@downloadedAlbumTapToSelect": {
@@ -2976,6 +2868,22 @@
   "@cacheLibraryCoverDesc": {
     "description": "Description of what library cover cache contains"
   },
+  "libraryPlaybackNormalization": "Volume normalization",
+  "@libraryPlaybackNormalization": {
+    "description": "Toggle title for ReplayGain playback normalization in the built-in player"
+  },
+  "libraryPlaybackNormalizationSubtitle": "Even out loudness between tracks using their ReplayGain or R128 tags, when present",
+  "@libraryPlaybackNormalizationSubtitle": {
+    "description": "Subtitle explaining playback volume normalization"
+  },
+  "cacheAudioAnalysis": "Audio analysis cache",
+  "@cacheAudioAnalysis": {
+    "description": "Cache item title for saved audio analysis results"
+  },
+  "cacheAudioAnalysisDesc": "Saved spectrograms and analysis results. Will re-analyze on next open.",
+  "@cacheAudioAnalysisDesc": {
+    "description": "Description of what audio analysis cache contains"
+  },
   "cacheExploreFeed": "Explore feed cache",
   "@cacheExploreFeed": {
     "description": "Cache item title for explore home feed cache"
@@ -3092,17 +3000,9 @@
   "@trackSaveCoverArt": {
     "description": "Menu action - save album cover art as file"
   },
-  "trackSaveCoverArtSubtitle": "Save album art as .jpg file",
-  "@trackSaveCoverArtSubtitle": {
-    "description": "Subtitle for save cover art action"
-  },
   "trackSaveLyrics": "Save Lyrics (.lrc)",
   "@trackSaveLyrics": {
     "description": "Menu action - save lyrics as .lrc file"
-  },
-  "trackSaveLyricsSubtitle": "Fetch and save lyrics as .lrc file",
-  "@trackSaveLyricsSubtitle": {
-    "description": "Subtitle for save lyrics action"
   },
   "trackSaveLyricsProgress": "Saving lyrics...",
   "@trackSaveLyricsProgress": {
@@ -3115,10 +3015,6 @@
   "trackReEnrichOnlineSubtitle": "Search metadata online and embed into file",
   "@trackReEnrichOnlineSubtitle": {
     "description": "Subtitle for re-enrich metadata action for local items"
-  },
-  "trackReEnrichFieldsTitle": "Fields to update",
-  "@trackReEnrichFieldsTitle": {
-    "description": "Section title for field selection in re-enrich dialog"
   },
   "trackReEnrichFieldCover": "Cover Art",
   "@trackReEnrichFieldCover": {
@@ -3203,18 +3099,6 @@
       }
     }
   },
-  "queueFlacFindingProgress": "Finding FLAC matches... ({current}/{total})",
-  "@queueFlacFindingProgress": {
-    "description": "Snackbar while resolving remote matches for local FLAC redownloads",
-    "placeholders": {
-      "current": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
   "queueFlacNoReliableMatches": "No reliable online matches found for the selection",
   "@queueFlacNoReliableMatches": {
     "description": "Snackbar when no safe FLAC redownload matches were found"
@@ -3244,10 +3128,6 @@
   "@trackConvertFormat": {
     "description": "Menu item - convert audio format"
   },
-  "trackConvertFormatSubtitle": "Convert to AAC/M4A, MP3, Opus, ALAC, or FLAC",
-  "@trackConvertFormatSubtitle": {
-    "description": "Subtitle for convert format menu item"
-  },
   "trackConvertTitle": "Convert Audio",
   "@trackConvertTitle": {
     "description": "Title of convert bottom sheet"
@@ -3259,6 +3139,14 @@
   "trackConvertBitrate": "Bitrate",
   "@trackConvertBitrate": {
     "description": "Label for bitrate selection"
+  },
+  "trackConvertKeepOriginal": "Keep original file",
+  "@trackConvertKeepOriginal": {
+    "description": "Toggle to preserve the source file during conversion"
+  },
+  "trackConvertKeepOriginalDescription": "Add the converted file as a separate library entry",
+  "@trackConvertKeepOriginalDescription": {
+    "description": "Description for preserving the source file during conversion"
   },
   "trackConvertConfirmTitle": "Confirm Conversion",
   "@trackConvertConfirmTitle": {
@@ -3282,6 +3170,18 @@
   "trackConvertConfirmMessageLossless": "Convert from {sourceFormat} to {targetFormat}? (Lossless — no quality loss)\n\nThe original file will be deleted after conversion.",
   "@trackConvertConfirmMessageLossless": {
     "description": "Confirmation dialog message for lossless-to-lossless conversion",
+    "placeholders": {
+      "sourceFormat": {
+        "type": "String"
+      },
+      "targetFormat": {
+        "type": "String"
+      }
+    }
+  },
+  "trackConvertConfirmKeepOriginal": "Convert from {sourceFormat} to {targetFormat}?\n\nThe original file will be kept and the converted file will be added as a separate library entry.",
+  "@trackConvertConfirmKeepOriginal": {
+    "description": "Confirmation message when the source file will be preserved",
     "placeholders": {
       "sourceFormat": {
         "type": "String"
@@ -3315,10 +3215,6 @@
   "cueSplitTitle": "Split CUE Sheet",
   "@cueSplitTitle": {
     "description": "Title for CUE split bottom sheet"
-  },
-  "cueSplitSubtitle": "Split CUE+FLAC into individual tracks",
-  "@cueSplitSubtitle": {
-    "description": "Subtitle for CUE split menu item"
   },
   "cueSplitAlbum": "Album: {album}",
   "@cueSplitAlbum": {
@@ -3416,10 +3312,6 @@
   "@collectionFavoriteArtists": {
     "description": "Custom folder for favorite artists"
   },
-  "collectionPlaylists": "Playlists",
-  "@collectionPlaylists": {
-    "description": "Custom user playlists folder"
-  },
   "collectionPlaylist": "Playlist",
   "@collectionPlaylist": {
     "description": "Single playlist label"
@@ -3435,10 +3327,6 @@
   "collectionNoPlaylistsYet": "No playlists yet",
   "@collectionNoPlaylistsYet": {
     "description": "Empty state title when user has no playlists"
-  },
-  "collectionNoPlaylistsSubtitle": "Create a playlist to start categorizing tracks",
-  "@collectionNoPlaylistsSubtitle": {
-    "description": "Empty state subtitle when user has no playlists"
   },
   "collectionPlaylistTracks": "{count, plural, =1{1 track} other{{count} tracks}}",
   "@collectionPlaylistTracks": {
@@ -3476,10 +3364,6 @@
       }
     }
   },
-  "collectionPlaylistCreated": "Playlist created",
-  "@collectionPlaylistCreated": {
-    "description": "Snackbar after creating playlist"
-  },
   "collectionPlaylistNameHint": "Playlist name",
   "@collectionPlaylistNameHint": {
     "description": "Hint text for playlist name input"
@@ -3495,19 +3379,6 @@
   "collectionDeletePlaylist": "Delete playlist",
   "@collectionDeletePlaylist": {
     "description": "Action to delete playlist"
-  },
-  "collectionDeletePlaylistMessage": "Delete \"{playlistName}\" and all tracks inside it?",
-  "@collectionDeletePlaylistMessage": {
-    "description": "Confirmation message for deleting playlist",
-    "placeholders": {
-      "playlistName": {
-        "type": "String"
-      }
-    }
-  },
-  "collectionPlaylistDeleted": "Playlist deleted",
-  "@collectionPlaylistDeleted": {
-    "description": "Snackbar after deleting playlist"
   },
   "collectionPlaylistRenamed": "Playlist renamed",
   "@collectionPlaylistRenamed": {
@@ -3552,15 +3423,6 @@
   "collectionRemoveFromFolder": "Remove from folder",
   "@collectionRemoveFromFolder": {
     "description": "Tooltip for removing track from wishlist/loved folder"
-  },
-  "collectionRemoved": "\"{trackName}\" removed",
-  "@collectionRemoved": {
-    "description": "Snackbar after removing a track from a collection",
-    "placeholders": {
-      "trackName": {
-        "type": "String"
-      }
-    }
   },
   "collectionAddedToLoved": "\"{trackName}\" added to Loved",
   "@collectionAddedToLoved": {
@@ -3705,15 +3567,15 @@
       }
     }
   },
-  "selectionBatchConvertProgress": "Converting {current} of {total}...",
-  "@selectionBatchConvertProgress": {
-    "description": "Snackbar during batch conversion progress",
+  "selectionBatchConvertConfirmKeepOriginal": "Convert {count} {count, plural, =1{track} other{tracks}} to {format}?\n\nOriginal files will be kept and converted files will be added as separate library entries.",
+  "@selectionBatchConvertConfirmKeepOriginal": {
+    "description": "Batch conversion confirmation when source files will be preserved",
     "placeholders": {
-      "current": {
+      "count": {
         "type": "int"
       },
-      "total": {
-        "type": "int"
+      "format": {
+        "type": "String"
       }
     }
   },
@@ -3879,10 +3741,6 @@
   "@backupImportButton": {
     "description": "Button to pick a backup file to restore"
   },
-  "backupCreating": "Creating backup...",
-  "@backupCreating": {
-    "description": "Progress text while a backup is being created"
-  },
   "backupCreated": "Backup created",
   "@backupCreated": {
     "description": "Snackbar after a backup file is created"
@@ -3890,10 +3748,6 @@
   "backupCreateFailed": "Failed to create backup",
   "@backupCreateFailed": {
     "description": "Snackbar when backup creation fails"
-  },
-  "backupEmpty": "There is nothing to back up yet",
-  "@backupEmpty": {
-    "description": "Snackbar when there is no data to back up"
   },
   "backupRestoreConfirmTitle": "Restore this backup?",
   "@backupRestoreConfirmTitle": {
@@ -3906,10 +3760,6 @@
   "backupRestoreConfirmButton": "Restore",
   "@backupRestoreConfirmButton": {
     "description": "Confirm button to proceed with restore"
-  },
-  "backupRestoring": "Restoring backup...",
-  "@backupRestoring": {
-    "description": "Progress text while restoring a backup"
   },
   "backupRestored": "Backup restored successfully",
   "@backupRestored": {
@@ -3997,7 +3847,7 @@
   "@backupIncludeSecretsDescription": {
     "description": "Explanation for the include-credentials toggle"
   },
-  "backupExtensionsRestoreFailed": "{count} {count, plural, =1{extension} other{extensions}} could not be reinstalled. Install them manually from the store.",
+  "backupExtensionsRestoreFailed": "{count} {count, plural, =1{extension} other{extensions}} could not be reinstalled. Install them manually from the repo.",
   "@backupExtensionsRestoreFailed": {
     "description": "Snackbar/hint when some extensions failed to reinstall during restore",
     "placeholders": {
@@ -4110,6 +3960,26 @@
   "@storageModeSafSubtitle": {
     "description": "Subtitle for SAF storage mode"
   },
+  "downloadFolderAccessLostTitle": "Download folder access lost",
+  "@downloadFolderAccessLostTitle": {
+    "description": "Title of the warning banner shown in Files settings when the saved SAF folder grant is no longer valid"
+  },
+  "downloadFolderAccessLostSubtitle": "Downloads will fail until you re-select the folder",
+  "@downloadFolderAccessLostSubtitle": {
+    "description": "Subtitle of the warning banner shown when the saved SAF folder grant is no longer valid"
+  },
+  "downloadFolderReselect": "Re-select folder",
+  "@downloadFolderReselect": {
+    "description": "Button that reopens the folder picker to restore download folder access"
+  },
+  "downloadErrorSafPermissionLost": "SAF permission invalid or revoked. Please reconfigure download location in Settings.",
+  "@downloadErrorSafPermissionLost": {
+    "description": "Error shown on downloads that failed because the persisted Android SAF folder grant is no longer valid"
+  },
+  "downloadErrorFolderAccessLost": "Download folder access lost. Please re-select your download folder in Settings.",
+  "@downloadErrorFolderAccessLost": {
+    "description": "Error shown on downloads that failed because the iOS download folder bookmark could not be opened"
+  },
   "downloadFilenameDescription": "Use {artist}, {title}, {album}, {track}, {year}, {date}, {disc} as placeholders.",
   "@downloadFilenameDescription": {
     "description": "Description shown in filename format editor"
@@ -4177,10 +4047,6 @@
   "downloadSelectServiceToEnable": "Select a provider with quality options to enable this option",
   "@downloadSelectServiceToEnable": {
     "description": "Subtitle when quality picker is disabled due to extension service"
-  },
-  "downloadSelectTidalQobuz": "Select a provider with quality options to choose audio quality",
-  "@downloadSelectTidalQobuz": {
-    "description": "Legacy info shown when a provider does not expose quality options"
   },
   "downloadEmbedLyricsDisabled": "Enable metadata embedding first",
   "@downloadEmbedLyricsDisabled": {
@@ -4430,10 +4296,6 @@
       }
     }
   },
-  "queueDownloadedHeader": "Downloaded",
-  "@queueDownloadedHeader": {
-    "description": "Header label for downloaded items section in library"
-  },
   "queueFilteringIndicator": "Filtering...",
   "@queueFilteringIndicator": {
     "description": "Shown while filter results are being computed"
@@ -4588,15 +4450,6 @@
   "@audioAnalysisRescanning": {
     "description": "Loading text while audio is being re-analyzed after an explicit refresh"
   },
-  "extensionsSearchWith": "Search with {providerName}",
-  "@extensionsSearchWith": {
-    "description": "Extensions page - subtitle for default metadata search provider option",
-    "placeholders": {
-      "providerName": {
-        "type": "String"
-      }
-    }
-  },
   "extensionsHomeFeedProvider": "Home Feed Provider",
   "@extensionsHomeFeedProvider": {
     "description": "Extensions page - label for home feed provider selector"
@@ -4634,14 +4487,6 @@
   "@extensionsNoHomeFeedExtensions": {
     "description": "Extensions page - shown when no installed extension has home feed"
   },
-  "sortAlphaAsc": "A-Z",
-  "@sortAlphaAsc": {
-    "description": "Sort option - alphabetical ascending"
-  },
-  "sortAlphaDesc": "Z-A",
-  "@sortAlphaDesc": {
-    "description": "Sort option - alphabetical descending"
-  },
   "cancelDownloadTitle": "Cancel download?",
   "@cancelDownloadTitle": {
     "description": "Dialog title when confirming cancellation of an active download"
@@ -4675,34 +4520,6 @@
         "type": "String"
       }
     }
-  },
-  "errorLoadAlbum": "Failed to load album",
-  "@errorLoadAlbum": {
-    "description": "Error state shown when album fails to load"
-  },
-  "errorLoadPlaylist": "Failed to load playlist",
-  "@errorLoadPlaylist": {
-    "description": "Error state shown when playlist fails to load"
-  },
-  "errorLoadArtist": "Failed to load artist",
-  "@errorLoadArtist": {
-    "description": "Error state shown when artist fails to load"
-  },
-  "notifChannelDownloadName": "Download Progress",
-  "@notifChannelDownloadName": {
-    "description": "Android notification channel name for download progress"
-  },
-  "notifChannelDownloadDesc": "Shows download progress for tracks",
-  "@notifChannelDownloadDesc": {
-    "description": "Android notification channel description for download progress"
-  },
-  "notifChannelLibraryScanName": "Library Scan",
-  "@notifChannelLibraryScanName": {
-    "description": "Android notification channel name for library scan"
-  },
-  "notifChannelLibraryScanDesc": "Shows local library scan progress",
-  "@notifChannelLibraryScanDesc": {
-    "description": "Android notification channel description for library scan"
   },
   "notifDownloadingTrack": "Downloading {trackName}",
   "@notifDownloadingTrack": {
@@ -4769,6 +4586,14 @@
         "type": "int"
       }
     }
+  },
+  "notifVerificationRequiredTitle": "Verification required",
+  "@notifVerificationRequiredTitle": {
+    "description": "Notification title shown when a download needs the user to complete a verification challenge but the app is in the background"
+  },
+  "notifVerificationRequiredBody": "Open the app to complete verification and resume downloads",
+  "@notifVerificationRequiredBody": {
+    "description": "Notification body prompting the user to return to the app to solve a verification challenge"
   },
   "notifAllDownloadsComplete": "All Downloads Complete",
   "@notifAllDownloadsComplete": {
@@ -4956,14 +4781,6 @@
   "@actionPaste": {
     "description": "Generic action - paste from clipboard"
   },
-  "searchTracksHint": "Search tracks...",
-  "@searchTracksHint": {
-    "description": "Placeholder for the search screen input"
-  },
-  "searchTracksEmptyPrompt": "Search for tracks",
-  "@searchTracksEmptyPrompt": {
-    "description": "Empty-state prompt on the search screen"
-  },
   "tutorialSearchHint": "Paste or search...",
   "@tutorialSearchHint": {
     "description": "Placeholder shown in the tutorial search demo"
@@ -4991,14 +4808,6 @@
   "optionsEmbedMetadataSubtitleOff": "Disabled (advanced): skip all metadata embedding",
   "@optionsEmbedMetadataSubtitleOff": {
     "description": "Subtitle when metadata embedding is disabled"
-  },
-  "optionsMaxQualityCoverSubtitleDisabled": "Disabled when metadata embedding is off",
-  "@optionsMaxQualityCoverSubtitleDisabled": {
-    "description": "Subtitle for max quality cover when metadata embedding is disabled"
-  },
-  "downloadFilenameHintExample": "{artist} - {title}",
-  "@downloadFilenameHintExample": {
-    "description": "Example placeholder for the download filename format input"
   },
   "trackCoverNoEmbeddedArt": "No embedded album art found",
   "@trackCoverNoEmbeddedArt": {
@@ -5239,14 +5048,6 @@
       }
     }
   },
-  "optionsDefaultSearchTabAlbums": "Albums",
-  "@optionsDefaultSearchTabAlbums": {
-    "description": "Default search tab option - Albums tab"
-  },
-  "optionsDefaultSearchTabTracks": "Tracks",
-  "@optionsDefaultSearchTabTracks": {
-    "description": "Default search tab option - Tracks tab"
-  },
   "settingsFiles": "Files & Folders",
   "@settingsFiles": {
     "description": "Settings menu item - file and folder settings"
@@ -5307,9 +5108,25 @@
   "@downloadDeduplicationEnabled": {
     "description": "Subtitle when deduplication is on"
   },
+  "downloadDeduplicationWithQualityVariants": "Existing files at the selected quality will be skipped",
+  "@downloadDeduplicationWithQualityVariants": {
+    "description": "Deduplication subtitle when separate quality versions are allowed"
+  },
   "downloadDeduplicationDisabled": "All tracks will be downloaded regardless of history",
   "@downloadDeduplicationDisabled": {
     "description": "Subtitle when deduplication is off"
+  },
+  "downloadQualityVariants": "Allow different quality versions",
+  "@downloadQualityVariants": {
+    "description": "Setting to retain multiple quality versions of the same track"
+  },
+  "downloadQualityVariantsDescription": "Add the selected quality to the filename and keep each version in download history",
+  "@downloadQualityVariantsDescription": {
+    "description": "Description for retaining multiple quality versions"
+  },
+  "trackOptionDownloadQualityVariant": "Download another quality",
+  "@trackOptionDownloadQualityVariant": {
+    "description": "Track menu action to download another quality version"
   },
   "downloadFallbackExtensions": "Fallback Extensions",
   "@downloadFallbackExtensions": {
@@ -5451,6 +5268,11 @@
     }
   },
   "queueDownloadStarting": "Starting...",
+  "queueCheckingDownloadSession": "Checking download session...",
+  "queueResolvingDownloadMetadata": "Resolving track metadata...",
+  "queueResolvingDownloadStream": "Preparing audio stream...",
+  "queueWaitingForVerification": "Waiting for verification...",
+  "queueResumingAfterVerification": "Resuming after verification...",
   "@queueDownloadStarting": {
     "description": "Queue status before download progress is available"
   },
@@ -5539,7 +5361,7 @@
   "@downloadNativeWorker": {
     "description": "Setting title for Android native download worker"
   },
-  "downloadNativeWorkerSubtitle": "Beta Android service worker for extension downloads",
+  "downloadNativeWorkerSubtitle": "Android background service for extension downloads",
   "@downloadNativeWorkerSubtitle": {
     "description": "Setting subtitle for Android native download worker"
   },
@@ -5698,10 +5520,6 @@
   "errorInvalidFolderSelected": "Invalid folder selected",
   "@errorInvalidFolderSelected": {
     "description": "Error when the selected folder is invalid"
-  },
-  "errorCouldNotKeepFolderAccess": "Could not keep access to the selected folder",
-  "@errorCouldNotKeepFolderAccess": {
-    "description": "Error when persistent folder access cannot be saved"
   },
   "storeAnyVersion": "Any",
   "@storeAnyVersion": {
