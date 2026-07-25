@@ -2014,7 +2014,7 @@
   "@appearanceHeroAnimations": {
     "description": "Toggle for shared-element (Hero) transitions"
   },
-  "appearanceHeroAnimationsSubtitle": "화면 간 이동 시 표지가 날아가는 애니메이션을 표시합니다 (예시: 플레이어를 실행할 경우에)",
+  "appearanceHeroAnimationsSubtitle": "화면 간 이동 시 표지 이미지가 날아가는 애니메이션을 표시합니다 (예시: 플레이어를 실행할 경우)",
   "@appearanceHeroAnimationsSubtitle": {
     "description": "Subtitle for the Hero animations toggle"
   },
@@ -2460,7 +2460,7 @@
   "@libraryClearConfirmMessage": {
     "description": "Dialog message for clear confirmation"
   },
-  "libraryAbout": "로컬 저장소에 대한 정보",
+  "libraryAbout": "로컬 라이브러리에 대한 정보",
   "@libraryAbout": {
     "description": "Section header for about info"
   },
