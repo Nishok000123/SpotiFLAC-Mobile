@@ -1329,7 +1329,7 @@
   "@sectionService": {
     "description": "Settings section header"
   },
-  "sectionAudioQuality": "오디오 품질",
+  "sectionAudioQuality": "오디오 음질",
   "@sectionAudioQuality": {
     "description": "Settings section header"
   },
@@ -2014,7 +2014,7 @@
   "@appearanceHeroAnimations": {
     "description": "Toggle for shared-element (Hero) transitions"
   },
-  "appearanceHeroAnimationsSubtitle": "Fly covers between screens, e.g. when opening the player",
+  "appearanceHeroAnimationsSubtitle": "화면 간 이동 시 표지가 날아가는 애니메이션을 표시합니다 (예시: 플레이어를 실행할 경우에)",
   "@appearanceHeroAnimationsSubtitle": {
     "description": "Subtitle for the Hero animations toggle"
   },
@@ -2050,19 +2050,19 @@
   "@settingsDownloadNetworkSubtitle": {
     "description": "Subtitle explaining network preference"
   },
-  "settingsConcurrentDownloads": "Concurrent downloads",
+  "settingsConcurrentDownloads": "동시 다운로드",
   "@settingsConcurrentDownloads": {
     "description": "Setting title - how many tracks download at the same time"
   },
-  "settingsConcurrentDownloadsSubtitle": "Downloading several tracks at once is faster, but some providers may rate-limit parallel requests.",
+  "settingsConcurrentDownloadsSubtitle": "여러 트랙을 동시에 다운로드하면 속도는 빨라지지만, 일부 제공자는 동시 요청을 제한할 수 있습니다",
   "@settingsConcurrentDownloadsSubtitle": {
     "description": "Subtitle explaining the concurrent downloads picker"
   },
-  "concurrentDownloadsOne": "1 track at a time",
+  "concurrentDownloadsOne": "한 번에 1개의 트랙",
   "@concurrentDownloadsOne": {
     "description": "Concurrent downloads option - sequential"
   },
-  "concurrentDownloadsCount": "Up to {count} tracks at once",
+  "concurrentDownloadsCount": "한 번에 최대 {count} 개의 트랙",
   "@concurrentDownloadsCount": {
     "description": "Concurrent downloads option - parallel",
     "placeholders": {
@@ -2523,7 +2523,7 @@
   "@libraryInLibrary": {
     "description": "Badge shown on tracks that exist in local library"
   },
-  "libraryRemovedMissingFiles": "라이브러리에서 누락된 파일 {count} 개가 삭제됨",
+  "libraryRemovedMissingFiles": "라이브러리에서 {count} 개의 누락된 파일이 삭제됨",
   "@libraryRemovedMissingFiles": {
     "description": "Snackbar after cleanup",
     "placeholders": {
@@ -2868,19 +2868,19 @@
   "@cacheLibraryCoverDesc": {
     "description": "Description of what library cover cache contains"
   },
-  "libraryPlaybackNormalization": "Volume normalization",
+  "libraryPlaybackNormalization": "볼륨 정규화",
   "@libraryPlaybackNormalization": {
     "description": "Toggle title for ReplayGain playback normalization in the built-in player"
   },
-  "libraryPlaybackNormalizationSubtitle": "Even out loudness between tracks using their ReplayGain or R128 tags, when present",
+  "libraryPlaybackNormalizationSubtitle": "트랙에 ReplayGain 또는 R128 태그가 있는 경우에 이를 사용하여 트랙 간 음량을 일정하게 맞춥니다",
   "@libraryPlaybackNormalizationSubtitle": {
     "description": "Subtitle explaining playback volume normalization"
   },
-  "cacheAudioAnalysis": "Audio analysis cache",
+  "cacheAudioAnalysis": "오디오 분석 캐시",
   "@cacheAudioAnalysis": {
     "description": "Cache item title for saved audio analysis results"
   },
-  "cacheAudioAnalysisDesc": "Saved spectrograms and analysis results. Will re-analyze on next open.",
+  "cacheAudioAnalysisDesc": "스펙트로그램과 분석 결과를 저장하였습니다. 다음에 실행할 경우에 다시 분석합니다",
   "@cacheAudioAnalysisDesc": {
     "description": "Description of what audio analysis cache contains"
   },
@@ -3140,11 +3140,11 @@
   "@trackConvertBitrate": {
     "description": "Label for bitrate selection"
   },
-  "trackConvertKeepOriginal": "Keep original file",
+  "trackConvertKeepOriginal": "원본 파일 유지",
   "@trackConvertKeepOriginal": {
     "description": "Toggle to preserve the source file during conversion"
   },
-  "trackConvertKeepOriginalDescription": "Add the converted file as a separate library entry",
+  "trackConvertKeepOriginalDescription": "변환된 파일을 별도의 라이브러리 항목으로 추가합니다",
   "@trackConvertKeepOriginalDescription": {
     "description": "Description for preserving the source file during conversion"
   },
@@ -3179,7 +3179,7 @@
       }
     }
   },
-  "trackConvertConfirmKeepOriginal": "Convert from {sourceFormat} to {targetFormat}?\n\nThe original file will be kept and the converted file will be added as a separate library entry.",
+  "trackConvertConfirmKeepOriginal": "{sourceFormat}에서 {targetFormat}으로 변환하시겠습니까?\n\n원본 파일은 유지되고 변환된 파일은 별도의 라이브러리 항목으로 추가됩니다",
   "@trackConvertConfirmKeepOriginal": {
     "description": "Confirmation message when the source file will be preserved",
     "placeholders": {
@@ -3567,7 +3567,7 @@
       }
     }
   },
-  "selectionBatchConvertConfirmKeepOriginal": "Convert {count} {count, plural, =1{track} other{tracks}} to {format}?\n\nOriginal files will be kept and converted files will be added as separate library entries.",
+  "selectionBatchConvertConfirmKeepOriginal": "{count} 개의 {count, plural, =1{트랙} other{트랙}}을 {format}으로 변환하시겠습니까?\n\n원본 파일은 유지되고 변환된 파일은 별도의 라이브러리 항목으로 추가됩니다",
   "@selectionBatchConvertConfirmKeepOriginal": {
     "description": "Batch conversion confirmation when source files will be preserved",
     "placeholders": {
@@ -3847,7 +3847,7 @@
   "@backupIncludeSecretsDescription": {
     "description": "Explanation for the include-credentials toggle"
   },
-  "backupExtensionsRestoreFailed": "{count} {count, plural, =1{extension} other{extensions}} could not be reinstalled. Install them manually from the repo.",
+  "backupExtensionsRestoreFailed": "{count} 개의 {count, plural, =1{확장 프로그램} other{확장 프로그램}}을 다시 설치할 수 없습니다. 레포에서 수동으로 설치하세요",
   "@backupExtensionsRestoreFailed": {
     "description": "Snackbar/hint when some extensions failed to reinstall during restore",
     "placeholders": {
@@ -3960,23 +3960,23 @@
   "@storageModeSafSubtitle": {
     "description": "Subtitle for SAF storage mode"
   },
-  "downloadFolderAccessLostTitle": "Download folder access lost",
+  "downloadFolderAccessLostTitle": "다운로드 폴더 접근 손실",
   "@downloadFolderAccessLostTitle": {
     "description": "Title of the warning banner shown in Files settings when the saved SAF folder grant is no longer valid"
   },
-  "downloadFolderAccessLostSubtitle": "Downloads will fail until you re-select the folder",
+  "downloadFolderAccessLostSubtitle": "폴더를 다시 선택할 때까지 다운로드할 수 없습니다",
   "@downloadFolderAccessLostSubtitle": {
     "description": "Subtitle of the warning banner shown when the saved SAF folder grant is no longer valid"
   },
-  "downloadFolderReselect": "Re-select folder",
+  "downloadFolderReselect": "폴더 다시 선택",
   "@downloadFolderReselect": {
     "description": "Button that reopens the folder picker to restore download folder access"
   },
-  "downloadErrorSafPermissionLost": "SAF permission invalid or revoked. Please reconfigure download location in Settings.",
+  "downloadErrorSafPermissionLost": "SAF 권한이 잘못되었거나 취소되었습니다. 설정에서 다운로드 위치를 다시 설정하세요",
   "@downloadErrorSafPermissionLost": {
     "description": "Error shown on downloads that failed because the persisted Android SAF folder grant is no longer valid"
   },
-  "downloadErrorFolderAccessLost": "Download folder access lost. Please re-select your download folder in Settings.",
+  "downloadErrorFolderAccessLost": "다운로드 폴더 접근 권한이 없습니다. 설정에서 다운로드 폴더를 다시 설정하세요",
   "@downloadErrorFolderAccessLost": {
     "description": "Error shown on downloads that failed because the iOS download folder bookmark could not be opened"
   },
@@ -4132,7 +4132,7 @@
   "@downloadMusixmatchLanguageHint": {
     "description": "Placeholder for Musixmatch language input"
   },
-  "downloadMusixmatchLanguageDesc": "Musixmatch에서 번역된 가사를 요청하려면 BCP-47 언어 코드를 입력하세요 (예시: en, de, ja)",
+  "downloadMusixmatchLanguageDesc": "Musixmatch에서 번역된 가사를 요청하려면 BCP-47 언어 코드를 입력하세요 (예시: ko, en, ja)",
   "@downloadMusixmatchLanguageDesc": {
     "description": "Description in Musixmatch language picker"
   },
@@ -4587,11 +4587,11 @@
       }
     }
   },
-  "notifVerificationRequiredTitle": "Verification required",
+  "notifVerificationRequiredTitle": "인증 필요",
   "@notifVerificationRequiredTitle": {
     "description": "Notification title shown when a download needs the user to complete a verification challenge but the app is in the background"
   },
-  "notifVerificationRequiredBody": "Open the app to complete verification and resume downloads",
+  "notifVerificationRequiredBody": "앱을 실행하여 인증을 완료하고 다운로드를 재개하세요",
   "@notifVerificationRequiredBody": {
     "description": "Notification body prompting the user to return to the app to solve a verification challenge"
   },
@@ -5108,7 +5108,7 @@
   "@downloadDeduplicationEnabled": {
     "description": "Subtitle when deduplication is on"
   },
-  "downloadDeduplicationWithQualityVariants": "Existing files at the selected quality will be skipped",
+  "downloadDeduplicationWithQualityVariants": "선택된 음질의 기존 파일은 건너뜁니다",
   "@downloadDeduplicationWithQualityVariants": {
     "description": "Deduplication subtitle when separate quality versions are allowed"
   },
@@ -5116,15 +5116,15 @@
   "@downloadDeduplicationDisabled": {
     "description": "Subtitle when deduplication is off"
   },
-  "downloadQualityVariants": "Allow different quality versions",
+  "downloadQualityVariants": "다양한 음질 버전 허용",
   "@downloadQualityVariants": {
     "description": "Setting to retain multiple quality versions of the same track"
   },
-  "downloadQualityVariantsDescription": "Add the selected quality to the filename and keep each version in download history",
+  "downloadQualityVariantsDescription": "선택된 음질을 파일 이름에 추가하고, 각 버전을 다운로드 기록에 유지합니다",
   "@downloadQualityVariantsDescription": {
     "description": "Description for retaining multiple quality versions"
   },
-  "trackOptionDownloadQualityVariant": "Download another quality",
+  "trackOptionDownloadQualityVariant": "다른 음질 다운로드",
   "@trackOptionDownloadQualityVariant": {
     "description": "Track menu action to download another quality version"
   },
@@ -5268,11 +5268,11 @@
     }
   },
   "queueDownloadStarting": "시작하는 중...",
-  "queueCheckingDownloadSession": "Checking download session...",
-  "queueResolvingDownloadMetadata": "Resolving track metadata...",
-  "queueResolvingDownloadStream": "Preparing audio stream...",
-  "queueWaitingForVerification": "Waiting for verification...",
-  "queueResumingAfterVerification": "Resuming after verification...",
+  "queueCheckingDownloadSession": "다운로드 세션을 확인하는 중...",
+  "queueResolvingDownloadMetadata": "트랙 메타데이터를 확인하는 중...",
+  "queueResolvingDownloadStream": "오디오 스트림을 준비하는 중...",
+  "queueWaitingForVerification": "확인을 기다리는 중...",
+  "queueResumingAfterVerification": "확인 후 재개하는 중...",
   "@queueDownloadStarting": {
     "description": "Queue status before download progress is available"
   },
@@ -5361,7 +5361,7 @@
   "@downloadNativeWorker": {
     "description": "Setting title for Android native download worker"
   },
-  "downloadNativeWorkerSubtitle": "Android background service for extension downloads",
+  "downloadNativeWorkerSubtitle": "확장 프로그램 다운로드를 위한 Android 백그라운드 서비스",
   "@downloadNativeWorkerSubtitle": {
     "description": "Setting subtitle for Android native download worker"
   },
