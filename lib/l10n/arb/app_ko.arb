@@ -312,7 +312,7 @@
   "@optionsUpdateChannelWarning": {
     "description": "Warning about preview channel"
   },
-  "optionsClearHistory": "다운로드 기록 삭제",
+  "optionsClearHistory": "다운로드 기록 지우기",
   "@optionsClearHistory": {
     "description": "Delete all download history"
   },
@@ -846,11 +846,11 @@
       }
     }
   },
-  "snackbarHistoryCleared": "기록 삭제됨",
+  "snackbarHistoryCleared": "기록 지워짐",
   "@snackbarHistoryCleared": {
     "description": "Snackbar - history deleted"
   },
-  "snackbarDeletedTracks": "{count} 개의 {count, plural, =1{트랙} other{트랙}}이 제거됨",
+  "snackbarDeletedTracks": "{count} 개의 {count, plural, =1{트랙} other{트랙}}이 삭제됨",
   "@snackbarDeletedTracks": {
     "description": "Snackbar - tracks deleted",
     "placeholders": {
@@ -1235,7 +1235,7 @@
   "@logCopied": {
     "description": "Snackbar - logs copied"
   },
-  "logSearchHint": "로그를 검색하는 중...",
+  "logSearchHint": "로그 검색...",
   "@logSearchHint": {
     "description": "Log search placeholder"
   },
@@ -1251,15 +1251,15 @@
   "@logShareLogs": {
     "description": "Share button tooltip"
   },
-  "logClearLogs": "로그 삭제",
+  "logClearLogs": "로그 지우기",
   "@logClearLogs": {
     "description": "Clear button tooltip"
   },
-  "logClearLogsTitle": "로그 삭제",
+  "logClearLogsTitle": "로그 지우기",
   "@logClearLogsTitle": {
     "description": "Clear logs dialog title"
   },
-  "logClearLogsMessage": "모든 로그를 삭제하시겠습니까?",
+  "logClearLogsMessage": "모든 로그를 지우시겠습니까?",
   "@logClearLogsMessage": {
     "description": "Clear logs confirmation message"
   },
@@ -2523,7 +2523,7 @@
   "@libraryInLibrary": {
     "description": "Badge shown on tracks that exist in local library"
   },
-  "libraryRemovedMissingFiles": "라이브러리에서 누락된 파일 {count} 개가 제거됨",
+  "libraryRemovedMissingFiles": "라이브러리에서 누락된 파일 {count} 개가 삭제됨",
   "@libraryRemovedMissingFiles": {
     "description": "Snackbar after cleanup",
     "placeholders": {
