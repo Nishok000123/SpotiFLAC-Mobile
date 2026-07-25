@@ -30,6 +30,7 @@ extension _QueueTabBatchActions on _QueueTabState {
       'copyright': '',
       'duration_ms': durationMs,
       'search_online': true,
+      'replace_release_metadata': true,
       // ignore: use_null_aware_elements
       if (updateFields != null) 'update_fields': updateFields,
     };
