@@ -1154,11 +1154,11 @@
   "@updateNewVersionReady": {
     "description": "Update subtitle"
   },
-  "updateRequiredTitle": "Update required",
+  "updateRequiredTitle": "Mise à jour requise",
   "@updateRequiredTitle": {
     "description": "Title of the mandatory update dialog shown when the installed version is too old"
   },
-  "updateRequiredNotice": "This version is {count} releases behind and is no longer supported. Update to keep using the app.",
+  "updateRequiredNotice": "Cette version a {count} versions de retard et n'est plus prise en charge. Effectuez la mise à jour pour continuer à utiliser l'application.",
   "@updateRequiredNotice": {
     "description": "Subtitle of the mandatory update dialog; explains why the dialog cannot be dismissed",
     "placeholders": {
@@ -2010,11 +2010,11 @@
   "@appearanceAmoledDarkSubtitle": {
     "description": "Subtitle for AMOLED dark"
   },
-  "appearanceHeroAnimations": "Hero animations",
+  "appearanceHeroAnimations": "Animations des héros",
   "@appearanceHeroAnimations": {
     "description": "Toggle for shared-element (Hero) transitions"
   },
-  "appearanceHeroAnimationsSubtitle": "Fly covers between screens, e.g. when opening the player",
+  "appearanceHeroAnimationsSubtitle": "Des fenêtres contextuelles apparaissent entre les écrans, par exemple lors de l'ouverture du lecteur",
   "@appearanceHeroAnimationsSubtitle": {
     "description": "Subtitle for the Hero animations toggle"
   },
@@ -2050,19 +2050,19 @@
   "@settingsDownloadNetworkSubtitle": {
     "description": "Subtitle explaining network preference"
   },
-  "settingsConcurrentDownloads": "Concurrent downloads",
+  "settingsConcurrentDownloads": "Téléchargements simultanés",
   "@settingsConcurrentDownloads": {
     "description": "Setting title - how many tracks download at the same time"
   },
-  "settingsConcurrentDownloadsSubtitle": "Downloading several tracks at once is faster, but some providers may rate-limit parallel requests.",
+  "settingsConcurrentDownloadsSubtitle": "Le téléchargement simultané de plusieurs titres est plus rapide, mais certains fournisseurs peuvent limiter le débit des requêtes parallèles.",
   "@settingsConcurrentDownloadsSubtitle": {
     "description": "Subtitle explaining the concurrent downloads picker"
   },
-  "concurrentDownloadsOne": "1 track at a time",
+  "concurrentDownloadsOne": "1 titre à la fois",
   "@concurrentDownloadsOne": {
     "description": "Concurrent downloads option - sequential"
   },
-  "concurrentDownloadsCount": "Up to {count} tracks at once",
+  "concurrentDownloadsCount": "Jusqu'à {count} titres à la fois",
   "@concurrentDownloadsCount": {
     "description": "Concurrent downloads option - parallel",
     "placeholders": {
@@ -2868,19 +2868,19 @@
   "@cacheLibraryCoverDesc": {
     "description": "Description of what library cover cache contains"
   },
-  "libraryPlaybackNormalization": "Volume normalization",
+  "libraryPlaybackNormalization": "Normalisation du volume",
   "@libraryPlaybackNormalization": {
     "description": "Toggle title for ReplayGain playback normalization in the built-in player"
   },
-  "libraryPlaybackNormalizationSubtitle": "Even out loudness between tracks using their ReplayGain or R128 tags, when present",
+  "libraryPlaybackNormalizationSubtitle": "Équilibrer le volume entre les morceaux à l'aide des balises ReplayGain ou R128, lorsqu'elles sont présentes",
   "@libraryPlaybackNormalizationSubtitle": {
     "description": "Subtitle explaining playback volume normalization"
   },
-  "cacheAudioAnalysis": "Audio analysis cache",
+  "cacheAudioAnalysis": "Cache d'analyse audio",
   "@cacheAudioAnalysis": {
     "description": "Cache item title for saved audio analysis results"
   },
-  "cacheAudioAnalysisDesc": "Saved spectrograms and analysis results. Will re-analyze on next open.",
+  "cacheAudioAnalysisDesc": "Spectrogrammes et résultats d'analyse enregistrés. Réanalyse prévue lors de la prochaine ouverture.",
   "@cacheAudioAnalysisDesc": {
     "description": "Description of what audio analysis cache contains"
   },
@@ -3140,11 +3140,11 @@
   "@trackConvertBitrate": {
     "description": "Label for bitrate selection"
   },
-  "trackConvertKeepOriginal": "Keep original file",
+  "trackConvertKeepOriginal": "Conserver le fichier d'origine",
   "@trackConvertKeepOriginal": {
     "description": "Toggle to preserve the source file during conversion"
   },
-  "trackConvertKeepOriginalDescription": "Add the converted file as a separate library entry",
+  "trackConvertKeepOriginalDescription": "Ajoutez le fichier converti en tant qu'entrée distincte dans la bibliothèque",
   "@trackConvertKeepOriginalDescription": {
     "description": "Description for preserving the source file during conversion"
   },
@@ -3179,7 +3179,7 @@
       }
     }
   },
-  "trackConvertConfirmKeepOriginal": "Convert from {sourceFormat} to {targetFormat}?\n\nThe original file will be kept and the converted file will be added as a separate library entry.",
+  "trackConvertConfirmKeepOriginal": "Convertir du format {sourceFormat} au format {targetFormat} ?\n\nLe fichier d'origine sera conservé et le fichier converti sera ajouté en tant qu'entrée distincte dans la bibliothèque.",
   "@trackConvertConfirmKeepOriginal": {
     "description": "Confirmation message when the source file will be preserved",
     "placeholders": {
@@ -3567,7 +3567,7 @@
       }
     }
   },
-  "selectionBatchConvertConfirmKeepOriginal": "Convert {count} {count, plural, =1{track} other{tracks}} to {format}?\n\nOriginal files will be kept and converted files will be added as separate library entries.",
+  "selectionBatchConvertConfirmKeepOriginal": "Convertir {count} {count, plural, =1{titre} other{titres}} au format {format} ?\n\nLes fichiers d'origine seront conservés et les fichiers convertis seront ajoutés sous forme d'entrées distinctes dans la bibliothèque.",
   "@selectionBatchConvertConfirmKeepOriginal": {
     "description": "Batch conversion confirmation when source files will be preserved",
     "placeholders": {
@@ -3847,7 +3847,7 @@
   "@backupIncludeSecretsDescription": {
     "description": "Explanation for the include-credentials toggle"
   },
-  "backupExtensionsRestoreFailed": "{count} {count, plural, =1{extension} other{extensions}} could not be reinstalled. Install them manually from the repo.",
+  "backupExtensionsRestoreFailed": "{count} {count, plural, =1{extension} other{extensions}} n'ont pas pu être réinstallées. Installez-les manuellement à partir du dépôt.",
   "@backupExtensionsRestoreFailed": {
     "description": "Snackbar/hint when some extensions failed to reinstall during restore",
     "placeholders": {
@@ -3960,23 +3960,23 @@
   "@storageModeSafSubtitle": {
     "description": "Subtitle for SAF storage mode"
   },
-  "downloadFolderAccessLostTitle": "Download folder access lost",
+  "downloadFolderAccessLostTitle": "Accès au dossier de téléchargement perdu",
   "@downloadFolderAccessLostTitle": {
     "description": "Title of the warning banner shown in Files settings when the saved SAF folder grant is no longer valid"
   },
-  "downloadFolderAccessLostSubtitle": "Downloads will fail until you re-select the folder",
+  "downloadFolderAccessLostSubtitle": "Les téléchargements échoueront tant que vous n'aurez pas resélectionné le dossier",
   "@downloadFolderAccessLostSubtitle": {
     "description": "Subtitle of the warning banner shown when the saved SAF folder grant is no longer valid"
   },
-  "downloadFolderReselect": "Re-select folder",
+  "downloadFolderReselect": "Sélectionner à nouveau le dossier",
   "@downloadFolderReselect": {
     "description": "Button that reopens the folder picker to restore download folder access"
   },
-  "downloadErrorSafPermissionLost": "SAF permission invalid or revoked. Please reconfigure download location in Settings.",
+  "downloadErrorSafPermissionLost": "Autorisation SAF non valide ou révoquée. Veuillez reconfigurer l'emplacement de téléchargement dans les Paramètres.",
   "@downloadErrorSafPermissionLost": {
     "description": "Error shown on downloads that failed because the persisted Android SAF folder grant is no longer valid"
   },
-  "downloadErrorFolderAccessLost": "Download folder access lost. Please re-select your download folder in Settings.",
+  "downloadErrorFolderAccessLost": "Accès au dossier de téléchargement perdu. Veuillez sélectionner à nouveau votre dossier de téléchargement dans les Paramètres.",
   "@downloadErrorFolderAccessLost": {
     "description": "Error shown on downloads that failed because the iOS download folder bookmark could not be opened"
   },
@@ -4587,11 +4587,11 @@
       }
     }
   },
-  "notifVerificationRequiredTitle": "Verification required",
+  "notifVerificationRequiredTitle": "Vérification requise",
   "@notifVerificationRequiredTitle": {
     "description": "Notification title shown when a download needs the user to complete a verification challenge but the app is in the background"
   },
-  "notifVerificationRequiredBody": "Open the app to complete verification and resume downloads",
+  "notifVerificationRequiredBody": "Ouvrez l'application pour terminer la vérification et reprendre les téléchargements",
   "@notifVerificationRequiredBody": {
     "description": "Notification body prompting the user to return to the app to solve a verification challenge"
   },
@@ -5108,7 +5108,7 @@
   "@downloadDeduplicationEnabled": {
     "description": "Subtitle when deduplication is on"
   },
-  "downloadDeduplicationWithQualityVariants": "Existing files at the selected quality will be skipped",
+  "downloadDeduplicationWithQualityVariants": "Les fichiers existants correspondant à la qualité sélectionnée seront ignorés",
   "@downloadDeduplicationWithQualityVariants": {
     "description": "Deduplication subtitle when separate quality versions are allowed"
   },
@@ -5116,15 +5116,15 @@
   "@downloadDeduplicationDisabled": {
     "description": "Subtitle when deduplication is off"
   },
-  "downloadQualityVariants": "Allow different quality versions",
+  "downloadQualityVariants": "Autoriser différentes versions de qualité",
   "@downloadQualityVariants": {
     "description": "Setting to retain multiple quality versions of the same track"
   },
-  "downloadQualityVariantsDescription": "Add the selected quality to the filename and keep each version in download history",
+  "downloadQualityVariantsDescription": "Ajouter la qualité sélectionnée au nom du fichier et conserver chaque version dans l'historique des téléchargements",
   "@downloadQualityVariantsDescription": {
     "description": "Description for retaining multiple quality versions"
   },
-  "trackOptionDownloadQualityVariant": "Download another quality",
+  "trackOptionDownloadQualityVariant": "Télécharger une autre version de qualité",
   "@trackOptionDownloadQualityVariant": {
     "description": "Track menu action to download another quality version"
   },
@@ -5268,11 +5268,11 @@
     }
   },
   "queueDownloadStarting": "C'est parti...",
-  "queueCheckingDownloadSession": "Checking download session...",
-  "queueResolvingDownloadMetadata": "Resolving track metadata...",
-  "queueResolvingDownloadStream": "Preparing audio stream...",
-  "queueWaitingForVerification": "Waiting for verification...",
-  "queueResumingAfterVerification": "Resuming after verification...",
+  "queueCheckingDownloadSession": "Vérification de la session de téléchargement...",
+  "queueResolvingDownloadMetadata": "Récupération des métadonnées du morceau...",
+  "queueResolvingDownloadStream": "Préparation du flux audio...",
+  "queueWaitingForVerification": "En attente de vérification...",
+  "queueResumingAfterVerification": "Reprise après vérification...",
   "@queueDownloadStarting": {
     "description": "Queue status before download progress is available"
   },
@@ -5361,7 +5361,7 @@
   "@downloadNativeWorker": {
     "description": "Setting title for Android native download worker"
   },
-  "downloadNativeWorkerSubtitle": "Android background service for extension downloads",
+  "downloadNativeWorkerSubtitle": "Service d'arrière-plan Android pour le téléchargement d'extensions",
   "@downloadNativeWorkerSubtitle": {
     "description": "Setting subtitle for Android native download worker"
   },
