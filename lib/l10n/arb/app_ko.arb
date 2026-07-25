@@ -3619,7 +3619,7 @@
   "@lyricsProvidersDescription": {
     "description": "Description on the lyrics provider priority page"
   },
-  "lyricsProvidersInfoText": "확장 프로그램 가사 제공자는 내장 가사 제공자보다 먼저 실행됩니다. 하나 이상의 제공자가 활성화되어 있어야 합니다",
+  "lyricsProvidersInfoText": "확장 프로그램 가사 제공자는 내부 가사 제공자보다 먼저 실행됩니다. 하나 이상의 제공자가 활성화되어 있어야 합니다",
   "@lyricsProvidersInfoText": {
     "description": "Info tip on lyrics provider priority page"
   },
@@ -5617,7 +5617,7 @@
   "@libraryExternalPlayerSubtitle": {
     "description": "Subtitle for external player option"
   },
-  "libraryBuiltInPreviewPlayer": "내장 미리듣기 플레이어",
+  "libraryBuiltInPreviewPlayer": "내부 미리듣기 플레이어",
   "@libraryBuiltInPreviewPlayer": {
     "description": "Setting option to use the built-in preview player"
   },
@@ -5625,7 +5625,7 @@
   "@libraryBuiltInPreviewPlayerSubtitle": {
     "description": "Subtitle for built-in preview player option"
   },
-  "libraryBuiltInPlayerInfo": "내장 플레이어는 로컬 트랙을 빠르게 미리듣기 위한 도구입니다. 실제 음악 감상은 외부 음악 플레이어를 이용하는 것을 권장합니다",
+  "libraryBuiltInPlayerInfo": "내부 플레이어는 로컬 트랙을 빠르게 미리듣기 위한 도구입니다. 실제 음악 감상은 외부 음악 플레이어를 이용하는 것을 권장합니다",
   "@libraryBuiltInPlayerInfo": {
     "description": "Info note explaining the built-in player is for previews only"
   },
