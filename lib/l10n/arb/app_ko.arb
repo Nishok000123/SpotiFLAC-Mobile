@@ -3717,7 +3717,7 @@
   "@backupTitle": {
     "description": "App bar title for the backup and restore page"
   },
-  "backupExportSectionTitle": "백업 만들기",
+  "backupExportSectionTitle": "백업 생성",
   "@backupExportSectionTitle": {
     "description": "Section title for the export/backup card"
   },
@@ -3725,7 +3725,7 @@
   "@backupExportSectionDescription": {
     "description": "Description of what a backup contains"
   },
-  "backupExportButton": "백업 파일 만들기",
+  "backupExportButton": "백업 파일 생성",
   "@backupExportButton": {
     "description": "Button to create and share a backup file"
   },
@@ -3741,11 +3741,11 @@
   "@backupImportButton": {
     "description": "Button to pick a backup file to restore"
   },
-  "backupCreated": "백업 만들기 완료",
+  "backupCreated": "백업 생성 완료",
   "@backupCreated": {
     "description": "Snackbar after a backup file is created"
   },
-  "backupCreateFailed": "백업 만들기 실패",
+  "backupCreateFailed": "백업 생성 실패",
   "@backupCreateFailed": {
     "description": "Snackbar when backup creation fails"
   },
@@ -5645,7 +5645,7 @@
   "@nowPlayingUpNext": {
     "description": "Title for the playback queue sheet"
   },
-  "nowPlayingDetails": "자세히",
+  "nowPlayingDetails": "트랙 세부 정보",
   "@nowPlayingDetails": {
     "description": "Menu item and section title for track metadata details"
   },
