@@ -670,7 +670,7 @@
   "@setupLanguageTitle": {
     "description": "Title for the language selection step in setup"
   },
-  "setupLanguageDescription": "앱에서 사용할 언어를 선택하세요. 나중에 설정에서 변경할 수 있습니다",
+  "setupLanguageDescription": "앱에서 사용할 언어를 선택하세요\\n나중에 설정에서 변경할 수 있습니다",
   "@setupLanguageDescription": {
     "description": "Description for the language selection step in setup"
   },
@@ -2686,15 +2686,15 @@
   "@tutorialWelcomeDesc": {
     "description": "Tutorial welcome page description"
   },
-  "tutorialWelcomeTip1": "Spotify, Deezer에서 음악을 다운로드하거나 지원되는 URL을 붙여넣으세요",
+  "tutorialWelcomeTip1": "Spotify, Deezer 또는 지원되는 URL에서 음악을 다운로드할 수 있습니다",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
-  "tutorialWelcomeTip2": "설치된 다운로드 확장 프로그램에서 FLAC 음질 오디오를 받으세요",
+  "tutorialWelcomeTip2": "설치된 다운로드 확장 프로그램으로 FLAC 고음질 오디오를 다운로드할 수 있습니다",
   "@tutorialWelcomeTip2": {
     "description": "Tutorial welcome tip 2"
   },
-  "tutorialWelcomeTip3": "메타데이터, 표지 이미지 및 가사 자동 삽입",
+  "tutorialWelcomeTip3": "메타데이터, 표지 이미지 및 가사를 자동으로 추가할 수 있습니다",
   "@tutorialWelcomeTip3": {
     "description": "Tutorial welcome tip 3"
   },
@@ -2710,7 +2710,7 @@
   "@tutorialDownloadTitle": {
     "description": "Tutorial download page title"
   },
-  "tutorialDownloadDesc": "음악 다운로드는 간단하고 빠릅니다. 작동 방식은 다음과 같습니다",
+  "tutorialDownloadDesc": "음악 다운로드는 간단하고 빠릅니다\\n작동 방식은 다음과 같습니다",
   "@tutorialDownloadDesc": {
     "description": "Tutorial download page description"
   },
@@ -2722,15 +2722,15 @@
   "@tutorialLibraryDesc": {
     "description": "Tutorial library page description"
   },
-  "tutorialLibraryTip1": "라이브러리 탭에서 다운로드 진행 상황과 다운로드 목록을 확인하세요",
+  "tutorialLibraryTip1": "라이브러리 탭에서 다운로드 진행 상황과 다운로드 목록을 확인할 수 있습니다",
   "@tutorialLibraryTip1": {
     "description": "Tutorial library tip 1"
   },
-  "tutorialLibraryTip2": "음악 플레이어로 재생하려면 아무 트랙이나 탭하세요",
+  "tutorialLibraryTip2": "아무 트랙을 탭하여 음악 플레이어로 재생할 수 있습니다",
   "@tutorialLibraryTip2": {
     "description": "Tutorial library tip 2"
   },
-  "tutorialLibraryTip3": "더 나은 탐색을 위해 리스트 보기와 그리드 보기 사이를 전환하세요",
+  "tutorialLibraryTip3": "리스트 보기 또는 그리드 보기로 전환하여 더 나은 탐색을 할 수 있습니다",
   "@tutorialLibraryTip3": {
     "description": "Tutorial library tip 3"
   },
@@ -2742,15 +2742,15 @@
   "@tutorialExtensionsDesc": {
     "description": "Tutorial extensions page description"
   },
-  "tutorialExtensionsTip1": "유용한 확장 프로그램을 찾으려면 레포 탭을 탐색하세요",
+  "tutorialExtensionsTip1": "레포 탭을 탐색하여 유용한 확장 프로그램을 찾을 수 있습니다",
   "@tutorialExtensionsTip1": {
     "description": "Tutorial extensions tip 1"
   },
-  "tutorialExtensionsTip2": "새 다운로드 제공자 또는 검색 출처를 추가하세요",
+  "tutorialExtensionsTip2": "새 다운로드 제공자 또는 검색 출처를 추가할 수 있습니다",
   "@tutorialExtensionsTip2": {
     "description": "Tutorial extensions tip 2"
   },
-  "tutorialExtensionsTip3": "가사, 향상된 메타데이터 및 더 많은 기능을 이용하세요",
+  "tutorialExtensionsTip3": "가사, 향상된 메타데이터 및 더 많은 기능을 사용할 수 있습니다",
   "@tutorialExtensionsTip3": {
     "description": "Tutorial extensions tip 3"
   },
@@ -4781,7 +4781,7 @@
   "@actionPaste": {
     "description": "Generic action - paste from clipboard"
   },
-  "tutorialSearchHint": "붙여넣기 또는 검색...",
+  "tutorialSearchHint": "붙여넣기 또는 검색하기...",
   "@tutorialSearchHint": {
     "description": "Placeholder shown in the tutorial search demo"
   },
