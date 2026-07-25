@@ -52,7 +52,10 @@ Extensions let the community add new music sources and features without waiting 
 ### Developing Extensions
 
 > [!NOTE]
-> Want to build your own extension? The [Extension Development Guide](https://spotiflac.zarz.moe/docs) has everything you need.
+> Want to build your own extension? Start with the
+> [Extension Development Guide](docs/EXTENSION_DEVELOPMENT.md). The
+> [documentation site](https://spotiflac.zarz.moe/docs) contains the expanded
+> API reference.
 
 ---
 

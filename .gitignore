@@ -18,8 +18,10 @@ design/
 # Reference folder (development only)
 referensi/
 
-# Documentation (development only, published separately)
-docs/
+# Documentation published separately. Keep the in-repo extension contract
+# available because contribution templates link to it.
+docs/*
+!docs/EXTENSION_DEVELOPMENT.md
 
 # Old spotiflac_android folder (moved to root)
 spotiflac_android/

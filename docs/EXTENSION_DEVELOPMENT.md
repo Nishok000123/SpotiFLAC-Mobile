@@ -1,0 +1,178 @@
+# SpotiFLAC Mobile Extension Development
+
+This guide defines the extension package and manifest contract implemented by
+the current SpotiFLAC Mobile codebase. The expanded runtime API reference is
+available at <https://spotiflac.zarz.moe/docs>.
+
+## Quick start
+
+Create a directory with these two root files:
+
+```text
+my-extension/
+├── manifest.json
+└── index.js
+```
+
+Use the current camel-case manifest schema:
+
+```json
+{
+  "name": "my-extension",
+  "displayName": "My Extension",
+  "version": "1.0.0",
+  "description": "What this extension provides",
+  "homepage": "https://github.com/you/my-extension",
+  "type": ["metadata_provider"],
+  "minAppVersion": "4.2.3",
+  "permissions": {
+    "network": ["api.example.com", "*.example.com"],
+    "storage": false,
+    "file": false
+  },
+  "settings": []
+}
+```
+
+Register the implementation from `index.js`:
+
+```js
+registerExtension({
+  searchTracks: async function (query, limit) {
+    const response = await http.get(
+      "https://api.example.com/search?q=" +
+        encodeURIComponent(query) +
+        "&limit=" +
+        String(limit)
+    );
+
+    return {
+      tracks: response.data.items.map((item) => ({
+        id: String(item.id),
+        name: item.title,
+        artist: item.artist,
+        album_name: item.album,
+        duration_ms: item.duration_ms,
+        cover_url: item.cover_url
+      })),
+      total: response.data.total
+    };
+  }
+});
+```
+
+Package the contents—not their parent directory—as ZIP:
+
+```bash
+cd my-extension
+zip -r ../my-extension.spotiflac-ext manifest.json index.js
+```
+
+`manifest.json` and `index.js` must be unique files at the archive root.
+SpotiFLAC Mobile rejects traversal paths, symlinks, duplicate paths, oversized
+manifests, and archives whose extracted size exceeds the safety limit.
+
+## Manifest contract
+
+The parser lives in
+[`go_backend/extension_manifest.go`](../go_backend/extension_manifest.go).
+Use these exact field names:
+
+| Field | Required | Contract |
+| --- | --- | --- |
+| `name` | yes | Stable lowercase ID matching `^[a-z0-9][a-z0-9._-]{0,127}$` |
+| `displayName` | recommended | Human-readable Store and settings label |
+| `version` | yes | Numeric dotted version used by upgrade comparison |
+| `description` | yes | Human-readable purpose |
+| `type` | yes | Array containing `metadata_provider`, `download_provider`, or `lyrics_provider` |
+| `permissions` | yes | Capability object described below |
+| `homepage`, `icon`, `minAppVersion` | no | `icon` is a path inside the package |
+| `settings` | no | Extension settings shown by the app |
+| `qualityOptions` | download provider | Download quality IDs passed to `download()` |
+| `searchBehavior` | no | Generic search-tab behavior |
+| `urlHandler` | no | URL matching declarations |
+| `trackMatching` | no | Generic matching strategy |
+| `postProcessing` | no | Generic post-processing hooks |
+| `serviceHealth` | no | Health checks shown by the app |
+| `signedSession` | no | Signed-session bootstrap contract |
+| `requiredRuntimeFeatures` | no | Runtime feature requirements |
+| `capabilities` | no | Generic extension capability declarations |
+
+The behavior flags currently supported are `skipMetadataEnrichment`,
+`skipLyrics`, `stopProviderFallback`, and `skipBuiltInFallback`. New
+extension-specific behavior must be added as a generic manifest capability;
+the host must not branch on a particular provider ID.
+
+Do not use legacy spellings such as `display_name`, `types`,
+`permissions.network.domains`, or an object for `permissions.network`.
+
+### Permissions
+
+```json
+{
+  "permissions": {
+    "network": ["api.example.com", "*.cdn.example.com"],
+    "storage": true,
+    "file": false,
+    "allowHttp": false
+  }
+}
+```
+
+- `network` is an array of allowed host names. HTTPS is required unless
+  `allowHttp` is explicitly enabled.
+- `storage` is required for extension storage and signed-session state.
+- `file` is required for file and raw FFmpeg capabilities.
+
+Request only what the extension needs. The runtime denies undeclared network,
+storage, and file access.
+
+## Store registry integrity
+
+Repository maintainers should publish a SHA-256 digest for every package:
+
+```json
+{
+  "version": 1,
+  "extensions": [
+    {
+      "id": "my-extension",
+      "name": "my-extension",
+      "display_name": "My Extension",
+      "version": "1.0.0",
+      "description": "What this extension provides",
+      "category": "metadata",
+      "download_url": "https://example.com/my-extension.spotiflac-ext",
+      "sha256": "64-lowercase-hex-characters"
+    }
+  ]
+}
+```
+
+Generate the digest after building the package:
+
+```bash
+sha256sum my-extension.spotiflac-ext
+```
+
+Store downloads with a published digest are written to a temporary file,
+hashed, and only moved into place after the digest matches. A mismatch aborts
+installation and preserves any previously cached package. Legacy registry
+entries without `sha256` remain compatible but cannot provide package
+integrity verification.
+
+A checksum authenticates a package only as strongly as the HTTPS registry that
+publishes it. A manually imported `.spotiflac-ext` or `.sflx` package has no
+registry trust context, so install manual packages only from a publisher you
+trust.
+
+## Compatibility checklist
+
+Before publishing:
+
+1. Validate that `manifest.json` uses the exact current field names.
+2. Keep `manifest.json` and `index.js` at the archive root.
+3. Declare every network host and runtime permission used.
+4. Set `minAppVersion` when relying on a recently added capability.
+5. Test install, enable, disable, upgrade, and removal.
+6. Publish the package SHA-256 in the repository registry.
