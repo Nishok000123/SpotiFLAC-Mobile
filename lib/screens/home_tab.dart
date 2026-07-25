@@ -17,6 +17,7 @@ import 'package:spotiflac_android/providers/local_library_provider.dart';
 import 'package:spotiflac_android/screens/track_metadata_screen.dart';
 import 'package:spotiflac_android/screens/album_screen.dart';
 import 'package:spotiflac_android/screens/artist_screen.dart';
+import 'package:spotiflac_android/screens/home_search_logic.dart';
 import 'package:spotiflac_android/services/csv_import_service.dart';
 import 'package:spotiflac_android/services/downloaded_embedded_cover_resolver.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
@@ -41,9 +42,6 @@ import 'package:spotiflac_android/widgets/view_queue_snackbar_action.dart';
 
 part 'home_tab_helpers.dart';
 part 'home_tab_widgets.dart';
-
-bool _looksLikeUrlOrSpotifyUri(String text) =>
-    text.startsWith('http') || text.startsWith('spotify:');
 
 class HomeTab extends ConsumerStatefulWidget {
   const HomeTab({super.key});
@@ -85,11 +83,11 @@ class _HomeTabState extends ConsumerState<HomeTab>
 
   Map<String, (double, double)>? _thumbnailSizesCache;
   List<Track>? _searchBucketsSourceTracks;
-  _SearchResultBuckets? _searchBucketsCache;
-  _SearchSortOption _searchSortOption = _SearchSortOption.defaultOrder;
+  HomeSearchResultBuckets? _searchBucketsCache;
+  HomeSearchSortOption _searchSortOption = HomeSearchSortOption.defaultOrder;
   List<Track>? _sortedTracksSource;
   List<int>? _sortedTrackIndexesSource;
-  _SearchSortOption? _sortedTracksMode;
+  HomeSearchSortOption? _sortedTracksMode;
   List<Track>? _sortedTracksCache;
   List<int>? _sortedTrackIndexesCache;
 
@@ -252,7 +250,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
     String? currentSearchProvider,
     List<Extension> extensions,
   ) {
-    final resolvedSearchProvider = _resolveSearchProvider(
+    final resolvedSearchProvider = HomeSearchProviderPolicy.resolveProvider(
       currentSearchProvider,
       extensions,
     );
@@ -295,203 +293,13 @@ class _HomeTabState extends ConsumerState<HomeTab>
     ];
   }
 
-  Extension? _defaultSearchExtension(List<Extension> extensions) {
-    return extensions
-            .where(
-              (ext) =>
-                  ext.enabled &&
-                  ext.hasCustomSearch &&
-                  ext.searchBehavior?.primary == true,
-            )
-            .firstOrNull ??
-        extensions
-            .where((ext) => ext.enabled && ext.hasCustomSearch)
-            .firstOrNull;
-  }
-
-  String? _resolveSearchProvider(
-    String? explicitSearchProvider,
-    List<Extension> extensions,
-  ) {
-    final explicit = explicitSearchProvider?.trim();
-    if (explicit != null &&
-        explicit.isNotEmpty &&
-        extensions.any(
-          (ext) => ext.enabled && ext.hasCustomSearch && ext.id == explicit,
-        )) {
-      return explicit;
-    }
-    return _defaultSearchExtension(extensions)?.id;
-  }
-
-  bool _hasSearchProvider(
-    String? explicitSearchProvider,
-    List<Extension> extensions,
-  ) {
-    final explicit = explicitSearchProvider?.trim();
-    if (explicit != null && explicit.isNotEmpty) {
-      if (extensions.any(
-        (ext) => ext.enabled && ext.hasCustomSearch && ext.id == explicit,
-      )) {
-        return true;
-      }
-    }
-
-    return extensions.any((ext) => ext.enabled && ext.hasCustomSearch);
-  }
-
-  String? _sanitizeSearchFilterForProvider(
-    String? filter,
-    String? currentSearchProvider,
-    List<Extension> extensions,
-  ) {
-    if (filter == null || filter.isEmpty) {
-      return null;
-    }
-
-    final canonicalFilter = _canonicalSearchFilterId(filter);
-
-    if (currentSearchProvider == null || currentSearchProvider.isEmpty) {
-      switch (canonicalFilter) {
-        case 'track':
-        case 'artist':
-        case 'album':
-        case 'playlist':
-          return canonicalFilter;
-        default:
-          return null;
-      }
-    }
-
-    final extension = extensions
-        .where((e) => e.id == currentSearchProvider && e.enabled)
-        .firstOrNull;
-    final filters = extension?.searchBehavior?.filters;
-    if (filters == null || filters.isEmpty) {
-      return null;
-    }
-
-    final match = filters
-        .where(
-          (candidate) =>
-              _canonicalSearchFilterId(candidate.id) == canonicalFilter ||
-              (candidate.label != null &&
-                  _canonicalSearchFilterId(candidate.label!) ==
-                      canonicalFilter) ||
-              (candidate.icon != null &&
-                  _canonicalSearchFilterId(candidate.icon!) == canonicalFilter),
-        )
-        .firstOrNull;
-    return match?.id;
-  }
-
-  String _canonicalSearchFilterId(String value) {
-    final normalized = value.trim().toLowerCase().replaceAll(
-      RegExp(r'[^a-z0-9]+'),
-      '',
-    );
-    switch (normalized) {
-      case 'track':
-      case 'tracks':
-      case 'song':
-      case 'songs':
-      case 'music':
-        return 'track';
-      case 'artist':
-      case 'artists':
-        return 'artist';
-      case 'album':
-      case 'albums':
-        return 'album';
-      case 'playlist':
-      case 'playlists':
-        return 'playlist';
-      default:
-        return normalized;
-    }
-  }
-
-  String? _preferredSearchFilter(
-    String preferredSearchTab,
-    String? currentSearchProvider,
-    List<Extension> extensions,
-  ) {
-    final preferred = switch (preferredSearchTab) {
-      'track' => 'track',
-      'artist' => 'artist',
-      'album' => 'album',
-      'playlist' => 'playlist',
-      _ => null,
-    };
-
-    return _sanitizeSearchFilterForProvider(
-      preferred,
-      currentSearchProvider,
-      extensions,
-    );
-  }
-
-  String _displaySearchFilterSelection(
-    String? selectedSearchFilter,
-    String preferredSearchTab,
-    String? currentSearchProvider,
-    List<Extension> extensions,
-  ) {
-    if (selectedSearchFilter == 'all') {
-      return 'all';
-    }
-    if (selectedSearchFilter != null && selectedSearchFilter.isNotEmpty) {
-      return _sanitizeSearchFilterForProvider(
-            selectedSearchFilter,
-            currentSearchProvider,
-            extensions,
-          ) ??
-          'all';
-    }
-    return _preferredSearchFilter(
-          preferredSearchTab,
-          currentSearchProvider,
-          extensions,
-        ) ??
-        'all';
-  }
-
-  _SearchResultBuckets _getSearchResultBuckets(List<Track> tracks) {
+  HomeSearchResultBuckets _getSearchResultBuckets(List<Track> tracks) {
     final cached = _searchBucketsCache;
     if (cached != null && identical(tracks, _searchBucketsSourceTracks)) {
       return cached;
     }
 
-    final realTracks = <Track>[];
-    final realTrackIndexes = <int>[];
-    final albumItems = <Track>[];
-    final playlistItems = <Track>[];
-    final artistItems = <Track>[];
-
-    for (int i = 0; i < tracks.length; i++) {
-      final track = tracks[i];
-      if (!track.isCollection) {
-        realTracks.add(track);
-        realTrackIndexes.add(i);
-      }
-      if (track.isAlbumItem) {
-        albumItems.add(track);
-      }
-      if (track.isPlaylistItem) {
-        playlistItems.add(track);
-      }
-      if (track.isArtistItem) {
-        artistItems.add(track);
-      }
-    }
-
-    final buckets = _SearchResultBuckets(
-      realTracks: realTracks,
-      realTrackIndexes: realTrackIndexes,
-      albumItems: albumItems,
-      playlistItems: playlistItems,
-      artistItems: artistItems,
-    );
+    final buckets = bucketHomeSearchResults(tracks);
     _searchBucketsSourceTracks = tracks;
     _searchBucketsCache = buckets;
     return buckets;
@@ -530,7 +338,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
     final extState = ref.read(extensionProvider);
     if (!extState.isInitialized && extState.error == null) return true;
 
-    final searchProvider = _resolveSearchProvider(
+    final searchProvider = HomeSearchProviderPolicy.resolveProvider(
       settings.searchProvider,
       extState.extensions,
     );
@@ -563,7 +371,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
     }
 
     if (_isLiveSearchEnabled() && text.length >= _minLiveSearchChars) {
-      if (_looksLikeUrlOrSpotifyUri(text)) return;
+      if (looksLikeUrlOrSpotifyUri(text)) return;
 
       _liveSearchDebounce?.cancel();
       _liveSearchDebounce = Timer(_liveSearchDelay, () {
@@ -611,26 +419,26 @@ class _HomeTabState extends ConsumerState<HomeTab>
     }
 
     final settings = ref.read(settingsProvider);
-    final searchProvider = _resolveSearchProvider(
+    final searchProvider = HomeSearchProviderPolicy.resolveProvider(
       settings.searchProvider,
       extState.extensions,
     );
     final storedFilter = ref.read(trackProvider).selectedSearchFilter;
     final selectedFilter = switch (filterOverride) {
       'all' => null,
-      final explicit? => _sanitizeSearchFilterForProvider(
+      final explicit? => HomeSearchProviderPolicy.sanitizeFilter(
         explicit,
         searchProvider,
         extState.extensions,
       ),
       null => switch (storedFilter) {
         'all' => null,
-        final stored? => _sanitizeSearchFilterForProvider(
+        final stored? => HomeSearchProviderPolicy.sanitizeFilter(
           stored,
           searchProvider,
           extState.extensions,
         ),
-        null => _preferredSearchFilter(
+        null => HomeSearchProviderPolicy.preferredFilter(
           settings.defaultSearchTab,
           searchProvider,
           extState.extensions,
@@ -648,7 +456,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
     }
     _lastSearchQuery = searchKey;
     _activeSearchInput = query;
-    _searchSortOption = _SearchSortOption.defaultOrder;
+    _searchSortOption = HomeSearchSortOption.defaultOrder;
     _invalidateSearchSortCaches();
     ref.read(trackProvider.notifier).setSearchText(query.trim().isNotEmpty);
 
@@ -688,7 +496,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
     if (data?.text != null) {
       _urlController.text = data!.text!;
       final text = data.text!.trim();
-      if (_looksLikeUrlOrSpotifyUri(text)) {
+      if (looksLikeUrlOrSpotifyUri(text)) {
         _fetchMetadata();
       }
     }
@@ -720,7 +528,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
   Future<void> _fetchMetadata() async {
     final url = _urlController.text.trim();
     if (url.isEmpty) return;
-    if (_looksLikeUrlOrSpotifyUri(url)) {
+    if (looksLikeUrlOrSpotifyUri(url)) {
       await ref.read(trackProvider.notifier).fetchFromUrl(url);
       final trackState = ref.read(trackProvider);
       if (trackState.error != null && mounted) {
@@ -1200,7 +1008,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
         !isLoading;
     final isSearchProviderLoading =
         !extensionReadiness.isInitialized && extensionReadiness.error == null;
-    final hasSearchProvider = _hasSearchProvider(
+    final hasSearchProvider = HomeSearchProviderPolicy.hasProvider(
       explicitSearchProvider,
       extensions,
     );
@@ -1236,7 +1044,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
 
       final text = _urlController.text.trim();
       if (text.isEmpty || text.length < _minLiveSearchChars) return;
-      if (_looksLikeUrlOrSpotifyUri(text)) return;
+      if (looksLikeUrlOrSpotifyUri(text)) return;
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -1355,7 +1163,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
                     return SliverToBoxAdapter(
                       child: _buildSearchFilterBar(
                         searchFilters,
-                        _displaySearchFilterSelection(
+                        HomeSearchProviderPolicy.displayFilterSelection(
                           selectedSearchFilter,
                           defaultSearchTab,
                           currentSearchProvider,
@@ -2690,25 +2498,25 @@ class _HomeTabState extends ConsumerState<HomeTab>
     );
   }
 
-  String _sortOptionLabel(_SearchSortOption option) {
+  String _sortOptionLabel(HomeSearchSortOption option) {
     switch (option) {
-      case _SearchSortOption.defaultOrder:
+      case HomeSearchSortOption.defaultOrder:
         return context.l10n.searchSortDefault;
-      case _SearchSortOption.titleAsc:
+      case HomeSearchSortOption.titleAsc:
         return context.l10n.searchSortTitleAZ;
-      case _SearchSortOption.titleDesc:
+      case HomeSearchSortOption.titleDesc:
         return context.l10n.searchSortTitleZA;
-      case _SearchSortOption.artistAsc:
+      case HomeSearchSortOption.artistAsc:
         return context.l10n.searchSortArtistAZ;
-      case _SearchSortOption.artistDesc:
+      case HomeSearchSortOption.artistDesc:
         return context.l10n.searchSortArtistZA;
-      case _SearchSortOption.durationAsc:
+      case HomeSearchSortOption.durationAsc:
         return context.l10n.searchSortDurationShort;
-      case _SearchSortOption.durationDesc:
+      case HomeSearchSortOption.durationDesc:
         return context.l10n.searchSortDurationLong;
-      case _SearchSortOption.dateAsc:
+      case HomeSearchSortOption.dateAsc:
         return context.l10n.searchSortDateOldest;
-      case _SearchSortOption.dateDesc:
+      case HomeSearchSortOption.dateDesc:
         return context.l10n.searchSortDateNewest;
     }
   }
@@ -2754,7 +2562,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
                       const Spacer(),
                       TextButton(
                         onPressed: () => setSheetState(
-                          () => tempSort = _SearchSortOption.defaultOrder,
+                          () => tempSort = HomeSearchSortOption.defaultOrder,
                         ),
                         child: Text(context.l10n.libraryFilterReset),
                       ),
@@ -2764,7 +2572,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: _SearchSortOption.values.map((option) {
+                    children: HomeSearchSortOption.values.map((option) {
                       return FilterChip(
                         label: Text(_sortOptionLabel(option)),
                         selected: tempSort == option,
@@ -2798,63 +2606,12 @@ class _HomeTabState extends ConsumerState<HomeTab>
     );
   }
 
-  List<T> _applySortToList<T>(
-    List<T> items,
-    String Function(T) getName,
-    String Function(T) getArtist,
-    int Function(T) getDuration,
-    String? Function(T) getDate,
-  ) {
-    if (_searchSortOption == _SearchSortOption.defaultOrder) return items;
-    final sorted = List<T>.of(items);
-    switch (_searchSortOption) {
-      case _SearchSortOption.defaultOrder:
-        break;
-      case _SearchSortOption.titleAsc:
-        sorted.sort(
-          (a, b) =>
-              getName(a).toLowerCase().compareTo(getName(b).toLowerCase()),
-        );
-      case _SearchSortOption.titleDesc:
-        sorted.sort(
-          (a, b) =>
-              getName(b).toLowerCase().compareTo(getName(a).toLowerCase()),
-        );
-      case _SearchSortOption.artistAsc:
-        sorted.sort(
-          (a, b) =>
-              getArtist(a).toLowerCase().compareTo(getArtist(b).toLowerCase()),
-        );
-      case _SearchSortOption.artistDesc:
-        sorted.sort(
-          (a, b) =>
-              getArtist(b).toLowerCase().compareTo(getArtist(a).toLowerCase()),
-        );
-      case _SearchSortOption.durationAsc:
-        sorted.sort((a, b) => getDuration(a).compareTo(getDuration(b)));
-      case _SearchSortOption.durationDesc:
-        sorted.sort((a, b) => getDuration(b).compareTo(getDuration(a)));
-      case _SearchSortOption.dateAsc:
-        sorted.sort((a, b) {
-          final da = getDate(a) ?? '';
-          final db = getDate(b) ?? '';
-          return da.compareTo(db);
-        });
-      case _SearchSortOption.dateDesc:
-        sorted.sort((a, b) {
-          final da = getDate(a) ?? '';
-          final db = getDate(b) ?? '';
-          return db.compareTo(da);
-        });
-    }
-    return sorted;
-  }
-
   ({List<Track> tracks, List<int> indexes}) _sortTrackResults(
     List<Track> tracks,
     List<int> indexes,
   ) {
-    if (tracks.isEmpty || _searchSortOption == _SearchSortOption.defaultOrder) {
+    if (tracks.isEmpty ||
+        _searchSortOption == HomeSearchSortOption.defaultOrder) {
       return (tracks: tracks, indexes: indexes);
     }
     if (identical(tracks, _sortedTracksSource) &&
@@ -2869,12 +2626,13 @@ class _HomeTabState extends ConsumerState<HomeTab>
       (i) => (tracks[i], indexes[i]),
       growable: false,
     );
-    final sortedPairs = _applySortToList<(Track, int)>(
-      paired,
-      (p) => p.$1.name,
-      (p) => p.$1.artistName,
-      (p) => p.$1.duration,
-      (p) => p.$1.releaseDate,
+    final sortedPairs = sortHomeSearchItems<(Track, int)>(
+      items: paired,
+      option: _searchSortOption,
+      nameOf: (p) => p.$1.name,
+      artistOf: (p) => p.$1.artistName,
+      durationOf: (p) => p.$1.duration,
+      dateOf: (p) => p.$1.releaseDate,
     );
     final sortedTracks = sortedPairs.map((p) => p.$1).toList(growable: false);
     final sortedIndexes = sortedPairs.map((p) => p.$2).toList(growable: false);
@@ -3067,17 +2825,19 @@ class _HomeTabState extends ConsumerState<HomeTab>
                     icon: Icon(
                       Icons.swap_vert,
                       size: 18,
-                      color: _searchSortOption != _SearchSortOption.defaultOrder
+                      color:
+                          _searchSortOption != HomeSearchSortOption.defaultOrder
                           ? colorScheme.primary
                           : colorScheme.onSurfaceVariant,
                     ),
                     label: Text(
-                      _searchSortOption != _SearchSortOption.defaultOrder
+                      _searchSortOption != HomeSearchSortOption.defaultOrder
                           ? _sortOptionLabel(_searchSortOption)
                           : context.l10n.libraryFilterSort,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color:
-                            _searchSortOption != _SearchSortOption.defaultOrder
+                            _searchSortOption !=
+                                HomeSearchSortOption.defaultOrder
                             ? colorScheme.primary
                             : colorScheme.onSurfaceVariant,
                       ),
@@ -3234,7 +2994,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
   String _getSearchHint() {
     final settings = ref.read(settingsProvider);
     final extState = ref.read(extensionProvider);
-    final searchProvider = _resolveSearchProvider(
+    final searchProvider = HomeSearchProviderPolicy.resolveProvider(
       settings.searchProvider,
       extState.extensions,
     );
@@ -3328,7 +3088,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
   void _triggerSearchWithFilter(String? filter) {
     final text = _urlController.text.trim();
     if (text.isEmpty || text.length < _minLiveSearchChars) return;
-    if (_looksLikeUrlOrSpotifyUri(text)) return;
+    if (looksLikeUrlOrSpotifyUri(text)) return;
 
     _lastSearchQuery = null;
     _performSearch(text, filterOverride: filter);
@@ -3412,7 +3172,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
     final text = _urlController.text.trim();
     if (text.isEmpty) return;
 
-    if (_looksLikeUrlOrSpotifyUri(text)) {
+    if (looksLikeUrlOrSpotifyUri(text)) {
       _fetchMetadata();
       _searchFocusNode.unfocus();
       return;

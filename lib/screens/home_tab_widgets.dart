@@ -6,20 +6,6 @@ class _SearchProviderDropdown extends ConsumerWidget {
 
   const _SearchProviderDropdown({this.onProviderChanged});
 
-  Extension? _defaultSearchExtension(List<Extension> extensions) {
-    return extensions
-            .where(
-              (ext) =>
-                  ext.enabled &&
-                  ext.hasCustomSearch &&
-                  ext.searchBehavior?.primary == true,
-            )
-            .firstOrNull ??
-        extensions
-            .where((ext) => ext.enabled && ext.hasCustomSearch)
-            .firstOrNull;
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rawCurrentProvider = ref.watch(
@@ -71,7 +57,7 @@ class _SearchProviderDropdown extends ConsumerWidget {
             rawCurrentProvider.isNotEmpty &&
             searchProviders.any((e) => e.id == rawCurrentProvider)
         ? rawCurrentProvider
-        : _defaultSearchExtension(searchProviders)?.id;
+        : HomeSearchProviderPolicy.defaultExtension(searchProviders)?.id;
     final currentProvider =
         resolvedCurrentProvider != null && resolvedCurrentProvider.isNotEmpty
         ? resolvedCurrentProvider
