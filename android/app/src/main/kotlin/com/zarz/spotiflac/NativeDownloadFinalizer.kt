@@ -15,6 +15,13 @@ import com.antonkarpenko.ffmpegkit.LogRedirectionStrategy
 import com.antonkarpenko.ffmpegkit.ReturnCode
 import com.zarz.spotiflac.SafDownloadHandler.mimeTypeForExt
 import com.zarz.spotiflac.SafDownloadHandler.normalizeExt
+import com.zarz.spotiflac.NativeFinalizationPolicy.applyQualityVariantFilenameLabel
+import com.zarz.spotiflac.NativeFinalizationPolicy.displayAudioQuality
+import com.zarz.spotiflac.NativeFinalizationPolicy.formatIndexTag
+import com.zarz.spotiflac.NativeFinalizationPolicy.isLosslessAudioCodec
+import com.zarz.spotiflac.NativeFinalizationPolicy.isLossyAudioCodec
+import com.zarz.spotiflac.NativeFinalizationPolicy.normalizeAudioCodec
+import com.zarz.spotiflac.NativeFinalizationPolicy.resolvePreferredDecryptionExtension
 import gobackend.Gobackend
 import org.json.JSONObject
 import java.io.File
@@ -26,7 +33,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.pow
-import kotlin.math.roundToInt
 
 object NativeDownloadFinalizer {
     private const val TAG = "NativeFinalizer"
@@ -894,67 +900,14 @@ object NativeDownloadFinalizer {
             lowerName.endsWith(".ogg")
     }
 
-    private fun displayAudioQuality(
-        filePath: String,
-        fileName: String,
-        bitDepth: Int?,
-        sampleRate: Int?,
-        bitrateKbps: Int?,
-        audioCodec: String? = null,
-        storedQuality: String?,
-    ): String? {
-        val format = audioFormatForCodec(audioCodec) ?: audioFormatForPath(filePath, fileName)
-        if (format == "OPUS" ||
-            format == "MP3" ||
-            format == "AAC" ||
-            format == "EAC3" ||
-            format == "AC3" ||
-            format == "AC4" ||
-            (format == "M4A" && (bitDepth == null || bitDepth <= 0))
-        ) {
-            return if (bitrateKbps != null && bitrateKbps >= 16) {
-                "$format ${bitrateKbps}kbps"
-            } else {
-                nonPlaceholderQuality(storedQuality) ?: format
-            }
-        }
-
-        if (bitDepth != null && bitDepth > 0 && sampleRate != null && sampleRate > 0) {
-            val khz = sampleRate / 1000.0
-            val precision = if (sampleRate % 1000 == 0) 0 else 1
-            val sampleRateLabel = "%.${precision}f".format(Locale.US, khz)
-            return "$bitDepth-bit/${sampleRateLabel}kHz"
-        }
-        return nonPlaceholderQuality(storedQuality) ?: normalizeOptional(storedQuality)
-    }
-
     private fun qualityVariantFilenameLabel(state: FinalizeState): String? {
-        val measuredQuality = state.quality
-        if (isLossyAudioCodec(state.audioCodec)) {
-            val bitrate = state.bitrateKbps ?: Regex(
-                "\\b(\\d+)\\s*kbps\\b",
-                RegexOption.IGNORE_CASE,
-            ).find(measuredQuality)?.groupValues?.getOrNull(1)?.toIntOrNull()
-            return bitrate?.takeIf { it >= 16 }?.let { "${it}kbps" }
-        }
-
-        var bitDepth = state.bitDepth
-        var sampleRate = state.sampleRate
-        if (bitDepth == null || sampleRate == null) {
-            val match = Regex(
-                "\\b(\\d+)\\s*(?:-|\\s)?bit\\s*[/_-]\\s*(\\d+(?:\\.\\d+)?)\\s*k?hz\\b",
-                RegexOption.IGNORE_CASE,
-            ).find(measuredQuality)
-            bitDepth = bitDepth ?: match?.groupValues?.getOrNull(1)?.toIntOrNull()
-            sampleRate = sampleRate ?: match?.groupValues?.getOrNull(2)?.toDoubleOrNull()?.let { rate ->
-                if (rate < 1000) (rate * 1000).roundToInt() else rate.roundToInt()
-            }
-        }
-        if (bitDepth == null || bitDepth <= 0 || sampleRate == null || sampleRate <= 0) return null
-        val khz = sampleRate / 1000.0
-        val precision = if (sampleRate % 1000 == 0) 0 else 1
-        val sampleRateLabel = "%.${precision}f".format(Locale.US, khz)
-        return "${bitDepth}bit-${sampleRateLabel}kHz"
+        return NativeFinalizationPolicy.qualityVariantFilenameLabel(
+            measuredQuality = state.quality,
+            bitDepth = state.bitDepth,
+            sampleRate = state.sampleRate,
+            bitrateKbps = state.bitrateKbps,
+            audioCodec = state.audioCodec,
+        )
     }
 
     private fun finalizeQualityVariantFilename(
@@ -1019,22 +972,6 @@ object NativeDownloadFinalizer {
         }
     }
 
-    private fun applyQualityVariantFilenameLabel(
-        fileName: String,
-        stagingLabel: String,
-        qualityLabel: String,
-    ): String {
-        if (stagingLabel.isNotEmpty() && fileName.contains(stagingLabel)) {
-            return fileName.replace(stagingLabel, qualityLabel)
-        }
-        if (fileName.contains(qualityLabel)) return fileName
-        val dotIndex = fileName.lastIndexOf('.')
-        val hasExtension = dotIndex > 0
-        val stem = if (hasExtension) fileName.substring(0, dotIndex) else fileName
-        val extension = if (hasExtension) fileName.substring(dotIndex) else ""
-        return "$stem - $qualityLabel$extension"
-    }
-
     private fun uniqueLocalFile(parent: File?, preferredName: String): File {
         val directory = parent ?: return File(preferredName)
         var candidate = File(directory, preferredName)
@@ -1049,78 +986,6 @@ object NativeDownloadFinalizer {
             counter++
         }
         return candidate
-    }
-
-    private fun audioFormatForCodec(codec: String?): String? {
-        return when (normalizeAudioCodec(codec)) {
-            "flac" -> "FLAC"
-            "alac" -> "ALAC"
-            "aac" -> "AAC"
-            "eac3" -> "EAC3"
-            "ac3" -> "AC3"
-            "ac4" -> "AC4"
-            "mp3" -> "MP3"
-            "opus" -> "OPUS"
-            else -> null
-        }
-    }
-
-    private fun isLossyAudioCodec(codec: String?): Boolean {
-        return when (normalizeAudioCodec(codec)) {
-            "aac", "eac3", "ac3", "ac4", "mp3", "opus", "m4a" -> true
-            else -> false
-        }
-    }
-
-    private fun normalizeAudioCodec(codec: String?): String? {
-        val normalized = normalizeOptional(codec)
-            ?.lowercase(Locale.ROOT)
-            ?.replace('-', '_')
-            ?: return null
-        return when (normalized) {
-            "mp4a" -> "aac"
-            "ec_3" -> "eac3"
-            "ac_3" -> "ac3"
-            "ac_4" -> "ac4"
-            "mp4" -> "m4a"
-            "ogg" -> "opus"
-            else -> normalized
-        }
-    }
-
-    private fun audioFormatForPath(filePath: String, fileName: String): String? {
-        for (candidate in listOf(filePath, fileName)) {
-            val lower = candidate.trim().lowercase(Locale.ROOT)
-            when {
-                lower.endsWith(".opus") || lower.endsWith(".ogg") -> return "OPUS"
-                lower.endsWith(".mp3") -> return "MP3"
-                lower.endsWith(".aac") -> return "AAC"
-                lower.endsWith(".m4a") || lower.endsWith(".mp4") -> return "M4A"
-            }
-        }
-        return null
-    }
-
-    private fun nonPlaceholderQuality(quality: String?): String? {
-        val normalized = normalizeOptional(quality) ?: return null
-        val bitrateMatch = Regex("\\b(\\d+)\\s*kbps\\b", RegexOption.IGNORE_CASE).find(normalized)
-        if (bitrateMatch != null) {
-            val bitrate = bitrateMatch.groupValues.getOrNull(1)?.toIntOrNull()
-            if (bitrate != null && bitrate < 16) return null
-        }
-        val key = normalized.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]+"), "_").trim('_')
-        val placeholders = setOf(
-            "best",
-            "lossless",
-            "hi_res",
-            "hires",
-            "hi_res_lossless",
-            "hires_lossless",
-            "high",
-            "cd",
-            "flac_best_available",
-        )
-        return if (placeholders.contains(key)) null else normalized
     }
 
     private fun writeExternalLrc(context: Context, input: FinalizeInput, state: FinalizeState) {
@@ -1533,11 +1398,6 @@ object NativeDownloadFinalizer {
         return "image/jpeg"
     }
 
-    private fun formatIndexTag(number: Int, total: Int): String {
-        if (number <= 0) return "0"
-        return if (total > 0) "$number/$total" else number.toString()
-    }
-
     private fun downloadCoverForMetadata(context: Context, input: FinalizeInput): File? {
         val coverUrl = metadataCoverUrl(input).ifBlank { resultString(input, "cover_url") }
         if (coverUrl.isBlank()) return null
@@ -1815,22 +1675,6 @@ object NativeDownloadFinalizer {
         }
     }
 
-    private fun isLosslessAudioCodec(codec: String): Boolean {
-        val normalized = codec.trim().lowercase(Locale.ROOT).replace('-', '_')
-        if (normalized.isBlank()) return false
-        if (normalized.startsWith("pcm_")) return true
-        return normalized in setOf(
-            "alac",
-            "flac",
-            "wavpack",
-            "ape",
-            "tta",
-            "mlp",
-            "truehd",
-            "shorten"
-        )
-    }
-
     private fun requestedDecryptionOutputExt(input: FinalizeInput): String {
         val descriptor = input.result.optJSONObject("decryption")
         return normalizeExt(
@@ -1979,20 +1823,6 @@ object NativeDownloadFinalizer {
             temp.delete()
             state.pendingExternalLrc = null
             state.pendingExternalLrcFileName = null
-        }
-    }
-
-    private fun resolvePreferredDecryptionExtension(inputPath: String, requested: String): String {
-        val req = normalizeExt(requested)
-        if (req.isNotBlank()) return req
-        val lower = inputPath.lowercase(Locale.ROOT)
-        return when {
-            lower.endsWith(".m4a") -> ".flac"
-            lower.endsWith(".flac") -> ".flac"
-            lower.endsWith(".mp3") -> ".mp3"
-            lower.endsWith(".opus") -> ".opus"
-            lower.endsWith(".mp4") -> ".mp4"
-            else -> ".flac"
         }
     }
 

@@ -24,6 +24,9 @@ void main() {
       'android/app/src/main/kotlin/com/zarz/spotiflac/'
       'NativeDownloadFinalizer.kt',
     ).readAsStringSync();
+    final historyDatabaseSource = File(
+      'lib/services/history_database.dart',
+    ).readAsStringSync();
 
     int kotlinConstant(String name) {
       final match = RegExp(
@@ -45,6 +48,89 @@ void main() {
         kotlinConstant('HISTORY_SCHEMA_VERSION'),
         HistoryDatabase.schemaVersion,
       );
+    });
+
+    Set<String> historyTableColumns(String source) {
+      final match = RegExp(
+        r'CREATE TABLE(?: IF NOT EXISTS)? history\s*\(([\s\S]*?)\n\s*\)',
+      ).firstMatch(source);
+      expect(match, isNotNull, reason: 'Missing history CREATE TABLE');
+      return match!
+          .group(1)!
+          .split(',')
+          .map((definition) => definition.trim().split(RegExp(r'\s+')).first)
+          .where((column) => column.isNotEmpty)
+          .toSet();
+    }
+
+    Map<String, String> historyIndexes(String source) {
+      final indexes = <String, String>{};
+      final pattern = RegExp(
+        r'CREATE INDEX(?: IF NOT EXISTS)?\s+(\w+)\s+'
+        r'ON history\s*\(([^)]+)\)',
+      );
+      for (final match in pattern.allMatches(source)) {
+        indexes[match.group(1)!] = match
+            .group(2)!
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
+      }
+      return indexes;
+    }
+
+    test('uses the same history columns in Dart and native writers', () {
+      final dartColumns = historyTableColumns(historyDatabaseSource);
+      final nativeColumns = historyTableColumns(finalizerSource);
+      expect(nativeColumns, dartColumns);
+
+      final requiredBlock = RegExp(
+        r'requiredHistoryColumns\s*=\s*setOf\(([\s\S]*?)\n\s*\)',
+      ).firstMatch(finalizerSource);
+      expect(requiredBlock, isNotNull);
+      final requiredColumns = RegExp(
+        r'"([a-z0-9_]+)"',
+      ).allMatches(requiredBlock!.group(1)!).map((m) => m.group(1)!).toSet();
+      expect(requiredColumns, dartColumns);
+
+      final buildHistoryRow = RegExp(
+        r'private fun buildHistoryRow\([\s\S]*?return values',
+      ).firstMatch(finalizerSource);
+      expect(buildHistoryRow, isNotNull);
+      final nativeWrittenColumns = RegExp(
+        r'values\.put\("([a-z0-9_]+)"',
+      ).allMatches(buildHistoryRow!.group(0)!).map((m) => m.group(1)!).toSet();
+      expect(
+        dartColumns,
+        containsAll(nativeWrittenColumns),
+        reason: 'Native finalizer writes a column missing from Dart schema',
+      );
+    });
+
+    test('uses the same history indexes in Dart and native writers', () {
+      expect(
+        historyIndexes(finalizerSource),
+        historyIndexes(historyDatabaseSource),
+      );
+    });
+
+    test('matches shared Dart/native finalization quality cases', () {
+      final fixture = File(
+        'android/app/src/test/resources/finalization_quality_cases.tsv',
+      ).readAsLinesSync();
+      for (final line in fixture) {
+        if (line.isEmpty || line.startsWith('#')) continue;
+        final fields = line.split('\t');
+        expect(fields, hasLength(6), reason: 'Invalid shared fixture: $line');
+        final actual = buildQualityVariantFilenameLabel(
+          detectedFormat: fields[0],
+          bitDepth: int.tryParse(fields[1]),
+          sampleRate: int.tryParse(fields[2]),
+          bitrateKbps: int.tryParse(fields[3]),
+          measuredQuality: fields[4],
+        );
+        final expected = fields[5] == '<null>' ? null : fields[5];
+        expect(actual, expected, reason: 'Shared fixture: $line');
+      }
     });
   });
 

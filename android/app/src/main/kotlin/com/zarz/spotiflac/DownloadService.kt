@@ -1202,22 +1202,14 @@ class DownloadService : Service() {
         statuses: Map<String, String>,
         requestKeys: Map<String, String>
     ): JSONArray {
-        val blockedKeys = mutableSetOf<String>()
-        val expectedCompletedByKey = mutableMapOf<String, Int>()
-        for ((itemId, key) in requestKeys) {
-            when (statuses[itemId]) {
-                "completed" -> expectedCompletedByKey[key] = (expectedCompletedByKey[key] ?: 0) + 1
-                "failed", "skipped", "queued", "downloading", "finalizing" -> blockedKeys.add(key)
-            }
-        }
-
-        val entriesByKey = entries.groupBy { it.optString("album_key", "") }
+        val eligibleIndexes = NativeReplayGainPolicy.eligibleEntryIndexes(
+            entryAlbumKeys = entries.map { it.optString("album_key", "") },
+            statuses = statuses,
+            requestAlbumKeys = requestKeys,
+        )
         val eligible = JSONArray()
-        for ((key, group) in entriesByKey) {
-            if (key.isBlank() || blockedKeys.contains(key) || group.size <= 1) continue
-            val expected = expectedCompletedByKey[key] ?: continue
-            if (group.size != expected) continue
-            for (entry in group) eligible.put(entry)
+        for (index in eligibleIndexes) {
+            eligible.put(entries[index])
         }
         return eligible
     }
@@ -1234,9 +1226,7 @@ class DownloadService : Service() {
     }
 
     private fun hasPendingNativeAlbumReplayGainWork(statuses: Map<String, String>): Boolean {
-        return statuses.values.any {
-            it == "queued" || it == "downloading" || it == "finalizing"
-        }
+        return NativeReplayGainPolicy.hasPendingWork(statuses)
     }
 
     private fun writeNativeReplayGainJournal() {
