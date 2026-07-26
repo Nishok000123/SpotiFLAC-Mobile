@@ -432,16 +432,6 @@ func SetExtensionSettingsJSON(extensionID, settingsJSON string) error {
 	return manager.InitializeExtension(extensionID, settings)
 }
 
-func SearchTracksWithExtensionsJSON(query string, limit int) (string, error) {
-	manager := getExtensionManager()
-	tracks, err := manager.SearchTracksWithExtensions(query, limit)
-	if err != nil {
-		return "", err
-	}
-
-	return marshalJSONString(tracks)
-}
-
 func SearchTracksWithMetadataProvidersJSON(query string, limit int, includeExtensions bool) (string, error) {
 	manager := getExtensionManager()
 	tracks, err := manager.SearchTracksWithMetadataProviders(query, limit, includeExtensions)
@@ -821,24 +811,6 @@ func CustomSearchWithExtensionJSONWithRequestID(extensionID, query string, optio
 	return marshalJSONString(result)
 }
 
-func GetSearchProvidersJSON() (string, error) {
-	manager := getExtensionManager()
-	providers := manager.GetSearchProviders()
-
-	result := make([]map[string]any, 0, len(providers))
-	for _, p := range providers {
-		result = append(result, map[string]any{
-			"id":           p.extension.ID,
-			"display_name": p.extension.Manifest.DisplayName,
-			"placeholder":  p.extension.Manifest.SearchBehavior.Placeholder,
-			"primary":      p.extension.Manifest.SearchBehavior.Primary,
-			"icon":         p.extension.Manifest.SearchBehavior.Icon,
-		})
-	}
-
-	return marshalJSONString(result)
-}
-
 func HandleURLWithExtensionJSON(url string) (string, error) {
 	manager := getExtensionManager()
 	resultWithID, err := manager.HandleURLWithExtension(url)
@@ -1025,39 +997,6 @@ func FindURLHandlerJSON(url string) string {
 	return handler.extension.ID
 }
 
-func GetURLHandlersJSON() (string, error) {
-	manager := getExtensionManager()
-	handlers := manager.GetURLHandlers()
-
-	result := make([]map[string]any, 0, len(handlers))
-	for _, h := range handlers {
-		result = append(result, map[string]any{
-			"id":           h.extension.ID,
-			"display_name": h.extension.Manifest.DisplayName,
-			"patterns":     h.extension.Manifest.URLHandler.Patterns,
-		})
-	}
-
-	return marshalJSONString(result)
-}
-
-func RunPostProcessingJSON(filePath, metadataJSON string) (string, error) {
-	var metadata map[string]any
-	if metadataJSON != "" {
-		if err := json.Unmarshal([]byte(metadataJSON), &metadata); err != nil {
-			metadata = make(map[string]any)
-		}
-	}
-
-	manager := getExtensionManager()
-	result, err := manager.RunPostProcessing(filePath, metadata)
-	if err != nil {
-		return "", err
-	}
-
-	return marshalJSONString(result)
-}
-
 func RunPostProcessingV2JSON(inputJSON, metadataJSON string) (string, error) {
 	var metadata map[string]any
 	if metadataJSON != "" {
@@ -1077,33 +1016,6 @@ func RunPostProcessingV2JSON(inputJSON, metadataJSON string) (string, error) {
 	result, err := manager.RunPostProcessingV2(input, metadata)
 	if err != nil {
 		return "", err
-	}
-
-	return marshalJSONString(result)
-}
-
-func GetPostProcessingProvidersJSON() (string, error) {
-	manager := getExtensionManager()
-	providers := manager.GetPostProcessingProviders()
-
-	result := make([]map[string]any, 0, len(providers))
-	for _, p := range providers {
-		hooks := make([]map[string]any, 0)
-		for _, h := range p.extension.Manifest.GetPostProcessingHooks() {
-			hooks = append(hooks, map[string]any{
-				"id":                h.ID,
-				"name":              h.Name,
-				"description":       h.Description,
-				"default_enabled":   h.DefaultEnabled,
-				"supported_formats": h.SupportedFormats,
-			})
-		}
-
-		result = append(result, map[string]any{
-			"id":           p.extension.ID,
-			"display_name": p.extension.Manifest.DisplayName,
-			"hooks":        hooks,
-		})
 	}
 
 	return marshalJSONString(result)
@@ -1185,10 +1097,6 @@ func GetExtensionHomeFeedJSON(extensionID string) (string, error) {
 
 func GetExtensionHomeFeedJSONWithRequestID(extensionID, requestID string) (string, error) {
 	return callExtensionFunctionJSONWithRequestID(extensionID, "getHomeFeed", 60*time.Second, requestID)
-}
-
-func GetExtensionBrowseCategoriesJSON(extensionID string) (string, error) {
-	return callExtensionFunctionJSON(extensionID, "getBrowseCategories", 30*time.Second)
 }
 
 func CancelExtensionRequestJSON(requestID string) {

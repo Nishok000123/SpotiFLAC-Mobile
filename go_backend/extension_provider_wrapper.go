@@ -847,11 +847,9 @@ func postProcessInputMap(input PostProcessInput) map[string]any {
 
 const PostProcessTimeout = 2 * time.Minute
 
-// postProcessCommon backs both PostProcess (V1) and PostProcessV2. V1 probes
-// only extension.postProcess (its original contract: V2-only extensions are
-// not invoked via V1); V2 probes postProcessV2 first, then falls back to
-// postProcess.
-func (p *extensionProviderWrapper) postProcessCommon(input PostProcessInput, metadata map[string]any, hookID string, preferV2 bool) (*PostProcessResult, error) {
+// PostProcessV2 probes extension.postProcessV2 first, then falls back to the
+// legacy extension.postProcess contract.
+func (p *extensionProviderWrapper) PostProcessV2(input PostProcessInput, metadata map[string]any, hookID string) (*PostProcessResult, error) {
 	if !p.extension.Manifest.HasPostProcessing() {
 		return nil, fmt.Errorf("extension '%s' does not support post-processing", p.extension.ID)
 	}
@@ -861,19 +859,13 @@ func (p *extensionProviderWrapper) postProcessCommon(input PostProcessInput, met
 
 	filePath := input.Path
 
-	perfName := "postProcess"
-	var invoke func(*goja.Runtime) (goja.Value, error)
-	if preferV2 {
-		perfName = "postProcessV2"
-		inputMap := postProcessInputMap(input)
-		invoke = func(vm *goja.Runtime) (goja.Value, error) {
-			if hasExtensionMethod(vm, "postProcessV2") {
-				return invokeExtensionMethod(vm, "postProcessV2", inputMap, metadata, hookID)
-			}
-			return invokeExtensionMethod(vm, "postProcess", filePath, metadata, hookID)
+	perfName := "postProcessV2"
+	inputMap := postProcessInputMap(input)
+	invoke := func(vm *goja.Runtime) (goja.Value, error) {
+		if hasExtensionMethod(vm, "postProcessV2") {
+			return invokeExtensionMethod(vm, "postProcessV2", inputMap, metadata, hookID)
 		}
-	} else {
-		invoke = extensionMethodInvocation("postProcess", filePath, metadata, hookID)
+		return invokeExtensionMethod(vm, "postProcess", filePath, metadata, hookID)
 	}
 
 	result, err := callExtension(p, extCallOpts{
@@ -896,14 +888,6 @@ func (p *extensionProviderWrapper) postProcessCommon(input PostProcessInput, met
 		return &PostProcessResult{Success: false, Error: err.Error()}, nil
 	}
 	return result, nil
-}
-
-func (p *extensionProviderWrapper) PostProcess(filePath string, metadata map[string]any, hookID string) (*PostProcessResult, error) {
-	return p.postProcessCommon(PostProcessInput{Path: filePath}, metadata, hookID, false)
-}
-
-func (p *extensionProviderWrapper) PostProcessV2(input PostProcessInput, metadata map[string]any, hookID string) (*PostProcessResult, error) {
-	return p.postProcessCommon(input, metadata, hookID, true)
 }
 
 type ExtLyricsResult struct {

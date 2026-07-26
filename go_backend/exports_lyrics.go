@@ -7,25 +7,6 @@ import (
 	"strings"
 )
 
-func FetchLyrics(spotifyID, trackName, artistName string, durationMs int64) (string, error) {
-	client := NewLyricsClient()
-	durationSec := float64(durationMs) / 1000.0
-	lyrics, err := client.FetchLyricsAllSources(spotifyID, trackName, artistName, durationSec)
-	if err != nil {
-		return "", err
-	}
-
-	result := map[string]any{
-		"success":      true,
-		"source":       lyrics.Source,
-		"sync_type":    lyrics.SyncType,
-		"lines":        lyrics.Lines,
-		"instrumental": lyrics.Instrumental,
-	}
-
-	return marshalJSONString(result)
-}
-
 func GetLyricsLRC(spotifyID, trackName, artistName string, filePath string, durationMs int64) (string, error) {
 	if filePath != "" {
 		lyrics, err := ExtractLyrics(filePath)

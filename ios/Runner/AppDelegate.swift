@@ -440,25 +440,9 @@ import Gobackend
             if let error = error { throw error }
             return response
 
-        case "getDownloadProgress":
-            let response = GobackendGetDownloadProgress()
-            return parseJsonPayload(response as String? ?? "{}")
-            
         case "getAllDownloadProgress":
             let response = GobackendGetAllDownloadProgress()
             return parseJsonPayload(response as String? ?? "{}")
-            
-        case "initItemProgress":
-            let args = call.arguments as! [String: Any]
-            let itemId = args["item_id"] as! String
-            GobackendInitItemProgress(itemId)
-            return nil
-            
-        case "finishItemProgress":
-            let args = call.arguments as! [String: Any]
-            let itemId = args["item_id"] as! String
-            GobackendFinishItemProgress(itemId)
-            return nil
             
         case "clearItemProgress":
             let args = call.arguments as! [String: Any]
@@ -498,14 +482,6 @@ import Gobackend
             GobackendSetAllowPrivateNetwork(allowed)
             return nil
             
-        case "checkDuplicate":
-            let args = call.arguments as! [String: Any]
-            let outputDir = args["output_dir"] as! String
-            let isrc = args["isrc"] as! String
-            let response = GobackendCheckDuplicate(outputDir, isrc, &error)
-            if let error = error { throw error }
-            return response
-            
         case "checkDuplicatesBatch":
             let args = call.arguments as! [String: Any]
             let outputDir = args["output_dir"] as! String
@@ -539,16 +515,6 @@ import Gobackend
             let args = call.arguments as! [String: Any]
             let filename = args["filename"] as! String
             let response = GobackendSanitizeFilename(filename)
-            return response
-            
-        case "fetchLyrics":
-            let args = call.arguments as! [String: Any]
-            let spotifyId = args["spotify_id"] as! String
-            let trackName = args["track_name"] as! String
-            let artistName = args["artist_name"] as! String
-            let durationMs = args["duration_ms"] as? Int64 ?? 0
-            let response = GobackendFetchLyrics(spotifyId, trackName, artistName, durationMs, &error)
-            if let error = error { throw error }
             return response
             
         case "getLyricsLRC":
@@ -645,14 +611,6 @@ import Gobackend
             if let error = error { throw error }
             return response
             
-        case "getDeezerRelatedArtists":
-            let args = call.arguments as! [String: Any]
-            let artistId = args["artist_id"] as! String
-            let limit = args["limit"] as? Int ?? 12
-            let response = GobackendGetDeezerRelatedArtists(artistId, Int(limit), &error)
-            if let error = error { throw error }
-            return response
-
         case "getProviderMetadata":
             let args = call.arguments as! [String: Any]
             let providerId = args["provider_id"] as! String
@@ -845,14 +803,6 @@ import Gobackend
             if let error = error { throw error }
             return response
             
-        case "searchTracksWithExtensions":
-            let args = call.arguments as! [String: Any]
-            let query = args["query"] as! String
-            let limit = args["limit"] as? Int ?? 20
-            let response = GobackendSearchTracksWithExtensionsJSON(query, Int(limit), &error)
-            if let error = error { throw error }
-            return response
-
         case "searchTracksWithMetadataProviders":
             let args = call.arguments as! [String: Any]
             let query = args["query"] as! String
@@ -997,11 +947,6 @@ import Gobackend
             GobackendCancelExtensionRequestJSON(requestId)
             return nil
 
-        case "getSearchProviders":
-            let response = GobackendGetSearchProvidersJSON(&error)
-            if let error = error { throw error }
-            return response
-            
         case "handleURLWithExtension":
             let args = call.arguments as! [String: Any]
             let url = args["url"] as! String
@@ -1015,29 +960,19 @@ import Gobackend
             let response = GobackendFindURLHandlerJSON(url)
             return response
             
-        case "getURLHandlers":
-            let response = GobackendGetURLHandlersJSON(&error)
+        case "getTrackPlatformLinks":
+            let args = call.arguments as! [String: Any]
+            let spotifyId = args["spotify_id"] as? String ?? ""
+            let isrc = args["isrc"] as? String ?? ""
+            let response = GobackendGetTrackPlatformLinksJSON(spotifyId, isrc, &error)
             if let error = error { throw error }
             return response
             
-        case "runPostProcessing":
-            let args = call.arguments as! [String: Any]
-            let filePath = args["file_path"] as! String
-            let metadataJson = args["metadata"] as? String ?? ""
-            let response = GobackendRunPostProcessingJSON(filePath, metadataJson, &error)
-            if let error = error { throw error }
-            return response
-
         case "runPostProcessingV2":
             let args = call.arguments as! [String: Any]
             let inputJson = args["input"] as? String ?? ""
             let metadataJson = args["metadata"] as? String ?? ""
             let response = GobackendRunPostProcessingV2JSON(inputJson, metadataJson, &error)
-            if let error = error { throw error }
-            return response
-            
-        case "getPostProcessingProviders":
-            let response = GobackendGetPostProcessingProvidersJSON(&error)
             if let error = error { throw error }
             return response
             
@@ -1103,13 +1038,6 @@ import Gobackend
             let extensionId = args["extension_id"] as! String
             let requestId = args["request_id"] as? String ?? ""
             let response = GobackendGetExtensionHomeFeedJSONWithRequestID(extensionId, requestId, &error)
-            if let error = error { throw error }
-            return response
-            
-        case "getExtensionBrowseCategories":
-            let args = call.arguments as! [String: Any]
-            let extensionId = args["extension_id"] as! String
-            let response = GobackendGetExtensionBrowseCategoriesJSON(extensionId, &error)
             if let error = error { throw error }
             return response
             

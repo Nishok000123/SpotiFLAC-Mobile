@@ -501,11 +501,6 @@ class PlatformBridge {
     return response;
   }
 
-  static Future<Map<String, dynamic>> getDownloadProgress() async {
-    final result = await _channel.invokeMethod('getDownloadProgress');
-    return _decodeMapResult(result);
-  }
-
   static Future<Map<String, dynamic>> getAllDownloadProgress() async {
     final result = await _channel.invokeMethod('getAllDownloadProgress');
     return _decodeMapResult(result);
@@ -519,14 +514,6 @@ class PlatformBridge {
 
   static Future<void> exitApp() async {
     await _channel.invokeMethod('exitApp');
-  }
-
-  static Future<void> initItemProgress(String itemId) async {
-    await _channel.invokeMethod('initItemProgress', {'item_id': itemId});
-  }
-
-  static Future<void> finishItemProgress(String itemId) async {
-    await _channel.invokeMethod('finishItemProgress', {'item_id': itemId});
   }
 
   static Future<void> clearItemProgress(String itemId) async {
@@ -576,13 +563,6 @@ class PlatformBridge {
 
   static Future<void> setAllowPrivateNetwork(bool allowed) async {
     await _channel.invokeMethod('setAllowPrivateNetwork', {'allowed': allowed});
-  }
-
-  static Future<Map<String, dynamic>> checkDuplicate(
-    String outputDir,
-    String isrc,
-  ) {
-    return _invokeMap('checkDuplicate', {'output_dir': outputDir, 'isrc': isrc});
   }
 
   static Future<String> buildFilename(
@@ -732,20 +712,6 @@ class PlatformBridge {
       'title': title,
     });
     return result as bool? ?? false;
-  }
-
-  static Future<Map<String, dynamic>> fetchLyrics(
-    String spotifyId,
-    String trackName,
-    String artistName, {
-    int durationMs = 0,
-  }) {
-    return _invokeMap('fetchLyrics', {
-      'spotify_id': spotifyId,
-      'track_name': trackName,
-      'artist_name': artistName,
-      'duration_ms': durationMs,
-    });
   }
 
   static Future<String> getLyricsLRC(
@@ -1111,16 +1077,6 @@ class PlatformBridge {
     await _channel.invokeMethod('clearTrackCache');
   }
 
-  static Future<Map<String, dynamic>> getDeezerRelatedArtists(
-    String artistId, {
-    int limit = 12,
-  }) {
-    return _invokeMap('getDeezerRelatedArtists', {
-      'artist_id': artistId,
-      'limit': limit,
-    });
-  }
-
   static Future<Map<String, dynamic>> getProviderMetadata(
     String providerId,
     String resourceType,
@@ -1196,11 +1152,6 @@ class PlatformBridge {
         'spotify_id': spotifyId,
       }),
     );
-  }
-
-  static Future<List<Map<String, dynamic>>> getGoLogs() async {
-    final result = await _channel.invokeMethod('getLogs');
-    return _decodeMapListResult(result, 'getGoLogs');
   }
 
   static Future<Map<String, dynamic>> getGoLogsSince(int index) async {
@@ -1393,18 +1344,6 @@ class PlatformBridge {
       return {'success': true};
     }
     return _decodeRequiredMapResult(result, 'invokeExtensionAction');
-  }
-
-  static Future<List<Map<String, dynamic>>> searchTracksWithExtensions(
-    String query, {
-    int limit = 20,
-  }) async {
-    _log.d('searchTracksWithExtensions: "$query"');
-    final result = await _channel.invokeMethod('searchTracksWithExtensions', {
-      'query': query,
-      'limit': limit,
-    });
-    return _decodeMapListResult(result, 'searchTracksWithExtensions');
   }
 
   static Future<List<Map<String, dynamic>>> searchTracksWithMetadataProviders(
@@ -1602,11 +1541,6 @@ class PlatformBridge {
     }
   }
 
-  static Future<List<Map<String, dynamic>>> getSearchProviders() async {
-    final result = await _channel.invokeMethod('getSearchProviders');
-    return _decodeMapListResult(result, 'getSearchProviders');
-  }
-
   static Future<Map<String, dynamic>?> handleURLWithExtension(
     String url,
   ) async {
@@ -1727,9 +1661,22 @@ class PlatformBridge {
     return result as String;
   }
 
-  static Future<List<Map<String, dynamic>>> getURLHandlers() async {
-    final result = await _channel.invokeMethod('getURLHandlers');
-    return _decodeMapListResult(result, 'getURLHandlers');
+  /// Streaming-platform links for a track, keyed by song.link platform ID.
+  /// Served from the Go-side memory cache; throws when the lookup fails.
+  static Future<Map<String, String>> getTrackPlatformLinks({
+    String spotifyId = '',
+    String isrc = '',
+  }) async {
+    final result = await _channel.invokeMethod('getTrackPlatformLinks', {
+      'spotify_id': spotifyId,
+      'isrc': isrc,
+    });
+    final decoded = _decodeMapResult(result);
+    final platforms = decoded['platforms'];
+    if (platforms is! Map) return const {};
+    return platforms.map(
+      (key, value) => MapEntry(key.toString(), value.toString()),
+    );
   }
 
   static Future<Map<String, dynamic>?> getExtensionHomeFeed(
@@ -1771,21 +1718,6 @@ class PlatformBridge {
       if (identical(_homeFeedInFlight[cacheKey], entry)) {
         _homeFeedInFlight.remove(cacheKey);
       }
-    }
-  }
-
-  static Future<Map<String, dynamic>?> getExtensionBrowseCategories(
-    String extensionId,
-  ) async {
-    try {
-      final result = await _channel.invokeMethod(
-        'getExtensionBrowseCategories',
-        {'extension_id': extensionId},
-      );
-      return _decodeNullableMapResult(result, 'getExtensionBrowseCategories');
-    } catch (e) {
-      _log.e('getExtensionBrowseCategories failed: $e');
-      return null;
     }
   }
 
@@ -2107,16 +2039,6 @@ class PlatformBridge {
     }
   }
 
-  static Future<Map<String, dynamic>> runPostProcessing(
-    String filePath, {
-    Map<String, dynamic>? metadata,
-  }) {
-    return _invokeMap('runPostProcessing', {
-      'file_path': filePath,
-      'metadata': metadata != null ? jsonEncode(metadata) : '',
-    });
-  }
-
   static Future<Map<String, dynamic>> runPostProcessingV2(
     String filePath, {
     Map<String, dynamic>? metadata,
@@ -2131,11 +2053,6 @@ class PlatformBridge {
       'input': jsonEncode(input),
       'metadata': metadata != null ? jsonEncode(metadata) : '',
     });
-  }
-
-  static Future<List<Map<String, dynamic>>> getPostProcessingProviders() async {
-    final result = await _channel.invokeMethod('getPostProcessingProviders');
-    return _decodeMapListResult(result, 'getPostProcessingProviders');
   }
 
   static Future<void> initExtensionRepo(String cacheDir) async {

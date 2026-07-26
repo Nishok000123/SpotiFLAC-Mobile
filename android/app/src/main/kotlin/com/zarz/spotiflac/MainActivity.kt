@@ -1826,66 +1826,6 @@ class MainActivity: FlutterFragmentActivity() {
         return result.toString()
     }
 
-    private fun runPostProcessingSaf(fileUriStr: String, metadataJson: String): String {
-        val uri = Uri.parse(fileUriStr)
-        val doc = DocumentFile.fromSingleUri(this, uri)
-            ?: return errorJson("SAF file not found")
-
-        val tempInput = copyUriToTemp(uri) ?: return errorJson("Failed to copy SAF file to temp")
-        val tempDir = File(tempInput).parentFile?.absolutePath ?: ""
-        if (tempDir.isNotBlank()) {
-            try {
-                Gobackend.allowDownloadDir(tempDir)
-            } catch (_: Exception) {}
-        }
-
-        val response = Gobackend.runPostProcessingJSON(tempInput, metadataJson)
-        val respObj = JSONObject(response)
-        if (!respObj.optBoolean("success", false)) {
-            try {
-                File(tempInput).delete()
-            } catch (_: Exception) {}
-            return response
-        }
-
-        val newPath = respObj.optString("new_file_path", "")
-        val outputPath = if (newPath.isNotBlank()) newPath else tempInput
-        val outputFile = File(outputPath)
-        if (!outputFile.exists()) {
-            try {
-                File(tempInput).delete()
-            } catch (_: Exception) {}
-            respObj.put("success", false)
-            respObj.put("error", "postProcess output not found")
-            return respObj.toString()
-        }
-
-        val newName = outputFile.name
-        if (!newName.isNullOrBlank() && doc.name != null && doc.name != newName) {
-            try {
-                doc.renameTo(newName)
-            } catch (_: Exception) {}
-        }
-
-        val writeOk = writeUriFromPath(uri, outputFile.absolutePath)
-        if (!writeOk) {
-            respObj.put("success", false)
-            respObj.put("error", "failed to write postProcess output to SAF")
-            return respObj.toString()
-        }
-
-        try {
-            if (outputPath != tempInput) {
-                outputFile.delete()
-            }
-            File(tempInput).delete()
-        } catch (_: Exception) {}
-
-        respObj.put("new_file_path", uri.toString())
-        respObj.put("file_path", uri.toString())
-        return respObj.toString()
-    }
-
     private fun runPostProcessingSafV2(fileUriStr: String, metadataJson: String): String {
         val uri = Uri.parse(fileUriStr)
         val doc = DocumentFile.fromSingleUri(this, uri)
@@ -2255,31 +2195,11 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(response)
                         }
-                        "getDownloadProgress" -> {
-                            val response = withContext(Dispatchers.IO) {
-                                Gobackend.getDownloadProgress()
-                            }
-                            result.success(parseJsonPayload(response))
-                        }
                         "getAllDownloadProgress" -> {
                             val response = withContext(Dispatchers.IO) {
                                 Gobackend.getAllDownloadProgress()
                             }
                             result.success(parseJsonPayload(response))
-                        }
-                        "initItemProgress" -> {
-                            val itemId = call.argument<String>("item_id") ?: ""
-                            withContext(Dispatchers.IO) {
-                                Gobackend.initItemProgress(itemId)
-                            }
-                            result.success(null)
-                        }
-                        "finishItemProgress" -> {
-                            val itemId = call.argument<String>("item_id") ?: ""
-                            withContext(Dispatchers.IO) {
-                                Gobackend.finishItemProgress(itemId)
-                            }
-                            result.success(null)
                         }
                         "clearItemProgress" -> {
                             val itemId = call.argument<String>("item_id") ?: ""
@@ -2323,14 +2243,6 @@ class MainActivity: FlutterFragmentActivity() {
                                 Gobackend.setAllowPrivateNetwork(allowed)
                             }
                             result.success(null)
-                        }
-                        "checkDuplicate" -> {
-                            val outputDir = call.argument<String>("output_dir") ?: ""
-                            val isrc = call.argument<String>("isrc") ?: ""
-                            val response = withContext(Dispatchers.IO) {
-                                Gobackend.checkDuplicate(outputDir, isrc)
-                            }
-                            result.success(response)
                         }
                         "checkDuplicatesBatch" -> {
                             val outputDir = call.argument<String>("output_dir") ?: ""
@@ -2587,16 +2499,6 @@ class MainActivity: FlutterFragmentActivity() {
                             } catch (e: Exception) {
                                 result.error("share_failed", e.message, null)
                             }
-                        }
-                        "fetchLyrics" -> {
-                            val spotifyId = call.argument<String>("spotify_id") ?: ""
-                            val trackName = call.argument<String>("track_name") ?: ""
-                            val artistName = call.argument<String>("artist_name") ?: ""
-                            val durationMs = call.argument<Int>("duration_ms")?.toLong() ?: 0L
-                            val response = withContext(Dispatchers.IO) {
-                                Gobackend.fetchLyrics(spotifyId, trackName, artistName, durationMs)
-                            }
-                            result.success(response)
                         }
                         "getLyricsLRC" -> {
                             val spotifyId = call.argument<String>("spotify_id") ?: ""
@@ -3116,14 +3018,6 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(null)
                         }
-                        "getDeezerRelatedArtists" -> {
-                            val artistId = call.argument<String>("artist_id") ?: ""
-                            val limit = call.argument<Int>("limit") ?: 12
-                            val response = withContext(Dispatchers.IO) {
-                                Gobackend.getDeezerRelatedArtists(artistId, limit.toLong())
-                            }
-                            result.success(response)
-                        }
                         "getProviderMetadata" -> {
                             val providerId = call.argument<String>("provider_id") ?: ""
                             val resourceType = call.argument<String>("resource_type") ?: ""
@@ -3354,14 +3248,6 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(response)
                         }
-                        "searchTracksWithExtensions" -> {
-                            val query = call.argument<String>("query") ?: ""
-                            val limit = call.argument<Int>("limit") ?: 20
-                            val response = withContext(Dispatchers.IO) {
-                                Gobackend.searchTracksWithExtensionsJSON(query, limit.toLong())
-                            }
-                            result.success(response)
-                        }
                         "searchTracksWithMetadataProviders" -> {
                             val query = call.argument<String>("query") ?: ""
                             val limit = call.argument<Int>("limit") ?: 20
@@ -3499,12 +3385,6 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(null)
                         }
-                        "getSearchProviders" -> {
-                            val response = withContext(Dispatchers.IO) {
-                                Gobackend.getSearchProvidersJSON()
-                            }
-                            result.success(response)
-                        }
                         "handleURLWithExtension" -> {
                             val url = call.argument<String>("url") ?: ""
                             val response = withContext(Dispatchers.IO) {
@@ -3519,21 +3399,11 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(response)
                         }
-                        "getURLHandlers" -> {
+                        "getTrackPlatformLinks" -> {
+                            val spotifyId = call.argument<String>("spotify_id") ?: ""
+                            val isrc = call.argument<String>("isrc") ?: ""
                             val response = withContext(Dispatchers.IO) {
-                                Gobackend.getURLHandlersJSON()
-                            }
-                            result.success(response)
-                        }
-                        "runPostProcessing" -> {
-                            val filePath = call.argument<String>("file_path") ?: ""
-                            val metadataJson = call.argument<String>("metadata") ?: ""
-                            val response = withContext(Dispatchers.IO) {
-                                if (filePath.startsWith("content://")) {
-                                    runPostProcessingSaf(filePath, metadataJson)
-                                } else {
-                                    Gobackend.runPostProcessingJSON(filePath, metadataJson)
-                                }
+                                Gobackend.getTrackPlatformLinksJSON(spotifyId, isrc)
                             }
                             result.success(response)
                         }
@@ -3559,12 +3429,6 @@ class MainActivity: FlutterFragmentActivity() {
                                     }
                                     Gobackend.runPostProcessingV2JSON(inputObj.toString(), metadataJson)
                                 }
-                            }
-                            result.success(response)
-                        }
-                        "getPostProcessingProviders" -> {
-                            val response = withContext(Dispatchers.IO) {
-                                Gobackend.getPostProcessingProvidersJSON()
                             }
                             result.success(response)
                         }
@@ -3634,13 +3498,6 @@ class MainActivity: FlutterFragmentActivity() {
                             val requestId = call.argument<String>("request_id") ?: ""
                             val response = withContext(Dispatchers.IO) {
                                 Gobackend.getExtensionHomeFeedJSONWithRequestID(extensionId, requestId)
-                            }
-                            result.success(response)
-                        }
-                        "getExtensionBrowseCategories" -> {
-                            val extensionId = call.argument<String>("extension_id") ?: ""
-                            val response = withContext(Dispatchers.IO) {
-                                Gobackend.getExtensionBrowseCategoriesJSON(extensionId)
                             }
                             result.success(response)
                         }

@@ -383,12 +383,6 @@ func DownloadByStrategy(requestJSON string) (string, error) {
 	return errorResponse("Extension providers are disabled; built-in download providers have been retired")
 }
 
-func GetDownloadProgress() string {
-	progress := getProgress()
-	jsonBytes, _ := json.Marshal(progress)
-	return string(jsonBytes)
-}
-
 func GetAllDownloadProgress() string {
 	return GetMultiProgress()
 }
@@ -399,10 +393,6 @@ func GetAllDownloadProgressDelta(sinceSeq int64) string {
 
 func InitItemProgress(itemID string) {
 	StartItemProgress(itemID)
-}
-
-func FinishItemProgress(itemID string) {
-	CompleteItemProgress(itemID)
 }
 
 func ClearItemProgress(itemID string) {

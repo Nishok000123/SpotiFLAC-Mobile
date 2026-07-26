@@ -108,25 +108,6 @@ func markMultiProgressDirtyIfChangedLocked(item *ItemProgress, before progressBr
 	}
 }
 
-func getProgress() DownloadProgress {
-	multiMu.RLock()
-	defer multiMu.RUnlock()
-
-	for _, item := range multiProgress.Items {
-		return DownloadProgress{
-			CurrentFile:   item.ItemID,
-			Progress:      item.Progress * 100,
-			BytesTotal:    item.BytesTotal,
-			BytesReceived: item.BytesReceived,
-			IsDownloading: item.IsDownloading,
-			Status:        item.Status,
-			Stage:         item.Stage,
-		}
-	}
-
-	return DownloadProgress{}
-}
-
 func GetMultiProgress() string {
 	multiMu.RLock()
 	if !multiProgressDirty {

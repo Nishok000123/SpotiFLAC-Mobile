@@ -134,10 +134,9 @@ func TestExportsJSONWrappersAndExtensionManagerSurface(t *testing.T) {
 	}
 
 	InitItemProgress("item-1")
-	FinishItemProgress("item-1")
 	ClearItemProgress("item-1")
 	CancelDownload("item-1")
-	if GetDownloadProgress() == "" || GetAllDownloadProgress() == "" || GetAllDownloadProgressDelta(0) == "" {
+	if GetAllDownloadProgress() == "" || GetAllDownloadProgressDelta(0) == "" {
 		t.Fatal("expected progress JSON")
 	}
 	CleanupConnections()
@@ -193,9 +192,6 @@ func TestExportsJSONWrappersAndExtensionManagerSurface(t *testing.T) {
 	AllowDownloadDir(dir)
 	if err := SetDownloadDirectory(dir); err != nil {
 		t.Fatalf("SetDownloadDirectory: %v", err)
-	}
-	if duplicateJSON, err := CheckDuplicate(dir, ""); err != nil || !strings.Contains(duplicateJSON, "exists") {
-		t.Fatalf("CheckDuplicate = %q/%v", duplicateJSON, err)
 	}
 	if batchJSON, err := CheckDuplicatesBatch(dir, `[{"isrc":"","track_name":"Song","artist_name":"Artist"}]`); err != nil || !strings.Contains(batchJSON, "Song") {
 		t.Fatalf("CheckDuplicatesBatch = %q/%v", batchJSON, err)
@@ -262,9 +258,6 @@ func TestExportsJSONWrappersAndExtensionManagerSurface(t *testing.T) {
 		t.Fatal("expected settings JSON error")
 	}
 
-	if jsonText, err := SearchTracksWithExtensionsJSON("song", 5); err != nil || !strings.Contains(jsonText, "search-1") {
-		t.Fatalf("SearchTracksWithExtensionsJSON = %q/%v", jsonText, err)
-	}
 	if jsonText, err := SearchTracksWithMetadataProvidersJSON("song", 5, true); err != nil || !strings.Contains(jsonText, "search-1") {
 		t.Fatalf("SearchTracksWithMetadataProvidersJSON = %q/%v", jsonText, err)
 	}
@@ -362,9 +355,6 @@ func TestExportsJSONWrappersAndExtensionManagerSurface(t *testing.T) {
 	if _, err := GetDeezerMetadata("bad", "1"); err == nil {
 		t.Fatal("expected unsupported Deezer metadata type")
 	}
-	if jsonText, err := GetDeezerRelatedArtists("301", 2); err != nil || !strings.Contains(jsonText, "Related") {
-		t.Fatalf("GetDeezerRelatedArtists = %q/%v", jsonText, err)
-	}
 	if jsonText, err := GetDeezerExtendedMetadata("101"); err != nil || !strings.Contains(jsonText, "Label") {
 		t.Fatalf("GetDeezerExtendedMetadata = %q/%v", jsonText, err)
 	}
@@ -385,36 +375,21 @@ func TestExportsJSONWrappersAndExtensionManagerSurface(t *testing.T) {
 	if customJSON, err := CustomSearchWithExtensionJSONWithRequestID(ext.ID, "needle", `not-json`, "req-custom"); err != nil || !strings.Contains(customJSON, "custom-1") {
 		t.Fatalf("CustomSearchWithExtensionJSONWithRequestID = %q/%v", customJSON, err)
 	}
-	if providersJSON, err := GetSearchProvidersJSON(); err != nil || !strings.Contains(providersJSON, "coverage-ext") {
-		t.Fatalf("GetSearchProvidersJSON = %q/%v", providersJSON, err)
-	}
 	if found := FindURLHandlerJSON("https://example.test/track/1"); found != ext.ID {
 		t.Fatalf("FindURLHandlerJSON = %q", found)
-	}
-	if handlersJSON, err := GetURLHandlersJSON(); err != nil || !strings.Contains(handlersJSON, "coverage-ext") {
-		t.Fatalf("GetURLHandlersJSON = %q/%v", handlersJSON, err)
 	}
 	if handledJSON, err := HandleURLWithExtensionJSON("https://example.test/track/1"); err != nil || !strings.Contains(handledJSON, "url-track") {
 		t.Fatalf("HandleURLWithExtensionJSON = %q/%v", handledJSON, err)
 	}
-	if postJSON, err := RunPostProcessingJSON(filepath.Join(dir, "song.flac"), `{"title":"Song"}`); err != nil || !strings.Contains(postJSON, "success") {
-		t.Fatalf("RunPostProcessingJSON = %q/%v", postJSON, err)
-	}
 	v2Input := `{"path":"` + escapeJSONPath(filepath.Join(dir, "song.flac")) + `","uri":"content://song","name":"song.flac","mime_type":"audio/flac","size":10}`
 	if postJSON, err := RunPostProcessingV2JSON(v2Input, `not-json`); err != nil || !strings.Contains(postJSON, "success") {
 		t.Fatalf("RunPostProcessingV2JSON = %q/%v", postJSON, err)
-	}
-	if postProviders, err := GetPostProcessingProvidersJSON(); err != nil || !strings.Contains(postProviders, "hook") {
-		t.Fatalf("GetPostProcessingProvidersJSON = %q/%v", postProviders, err)
 	}
 	if feedJSON, err := GetExtensionHomeFeedJSON(ext.ID); err != nil || !strings.Contains(feedJSON, "home-1") {
 		t.Fatalf("GetExtensionHomeFeedJSON = %q/%v", feedJSON, err)
 	}
 	if feedJSON, err := GetExtensionHomeFeedJSONWithRequestID(ext.ID, "req-home"); err != nil || !strings.Contains(feedJSON, "home-1") {
 		t.Fatalf("GetExtensionHomeFeedJSONWithRequestID = %q/%v", feedJSON, err)
-	}
-	if categoriesJSON, err := GetExtensionBrowseCategoriesJSON(ext.ID); err != nil || !strings.Contains(categoriesJSON, "cat-1") {
-		t.Fatalf("GetExtensionBrowseCategoriesJSON = %q/%v", categoriesJSON, err)
 	}
 	CancelExtensionRequestJSON("req-home")
 
