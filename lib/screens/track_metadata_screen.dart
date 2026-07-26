@@ -20,6 +20,7 @@ import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/services/ffmpeg_service.dart';
 import 'package:spotiflac_android/services/replaygain_service.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/utils/adaptive_layout.dart';
 import 'package:spotiflac_android/utils/audio_conversion_utils.dart';
 import 'package:spotiflac_android/utils/audio_format_utils.dart';
 import 'package:spotiflac_android/utils/cover_art_utils.dart';
@@ -659,7 +660,11 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
             SliverToBoxAdapter(
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 720),
+                  constraints: BoxConstraints(
+                    maxWidth: adaptiveContentMaxWidth(
+                      MediaQuery.sizeOf(context).width,
+                    ),
+                  ),
                   child: _buildAnimatedTrackContent(context, ref, colorScheme),
                 ),
               ),
