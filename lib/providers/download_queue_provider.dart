@@ -983,10 +983,6 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     _lastNotifQueueCount = -1;
   }
 
-  void setOutputDir(String dir) {
-    state = state.copyWith(outputDir: dir);
-  }
-
   bool _isSafMode(AppSettings settings) {
     return Platform.isAndroid &&
         settings.storageMode == 'saf' &&
@@ -1452,39 +1448,6 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     }
   }
 
-  void clearCompleted() {
-    final removedItems = state.items.where(
-      (item) =>
-          item.status == DownloadStatus.completed ||
-          item.status == DownloadStatus.failed ||
-          item.status == DownloadStatus.skipped,
-    );
-    bool hadFailedOrSkipped = false;
-    for (final item in removedItems) {
-      if (item.status == DownloadStatus.failed ||
-          item.status == DownloadStatus.skipped) {
-        hadFailedOrSkipped = true;
-        _purgeAlbumRgEntry(item.track);
-      }
-    }
-
-    final items = state.items
-        .where(
-          (item) =>
-              item.status != DownloadStatus.completed &&
-              item.status != DownloadStatus.failed &&
-              item.status != DownloadStatus.skipped,
-        )
-        .toList();
-
-    state = state.copyWith(items: items);
-    _saveQueueToStorage();
-
-    if (hadFailedOrSkipped) {
-      _retriggerAlbumRgChecks();
-    }
-  }
-
   void clearAll() {
     final wasProcessing = state.isProcessing;
     final activeIds = state.items
@@ -1777,27 +1740,6 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     } catch (e) {
       _log.e('Failed to export failed downloads: $e');
       return null;
-    }
-  }
-
-  void clearFailedDownloads() {
-    final failedItems = state.items
-        .where((item) => item.status == DownloadStatus.failed)
-        .toList();
-    for (final item in failedItems) {
-      _purgeAlbumRgEntry(item.track);
-    }
-
-    final items = state.items
-        .where((item) => item.status != DownloadStatus.failed)
-        .toList();
-    state = state.copyWith(items: items);
-    _saveQueueToStorage();
-    _log.d('Cleared failed downloads from queue');
-
-    // Removing failed items may unblock album RG for affected albums.
-    if (failedItems.isNotEmpty) {
-      _retriggerAlbumRgChecks();
     }
   }
 

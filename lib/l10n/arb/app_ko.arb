@@ -5365,10 +5365,6 @@
   "@downloadNativeWorkerSubtitle": {
     "description": "Setting subtitle for Android native download worker"
   },
-  "badgeBeta": "베타",
-  "@badgeBeta": {
-    "description": "Badge label for beta features"
-  },
   "extensionServiceStatus": "서비스 상태",
   "@extensionServiceStatus": {
     "description": "Extension detail section header for service status"

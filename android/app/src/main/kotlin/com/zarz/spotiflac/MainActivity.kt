@@ -2386,14 +2386,6 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(tempPath)
                         }
-                        "safReplaceFromPath" -> {
-                            val uriStr = call.argument<String>("uri") ?: ""
-                            val srcPath = call.argument<String>("src_path") ?: ""
-                            val ok = withContext(Dispatchers.IO) {
-                                writeUriFromPath(Uri.parse(uriStr), srcPath)
-                            }
-                            result.success(ok)
-                        }
                         "safCreateFromPath" -> {
                             val treeUriStr = call.argument<String>("tree_uri") ?: ""
                             val relativeDir = call.argument<String>("relative_dir") ?: ""
@@ -3064,12 +3056,6 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(response)
                         }
-                        "getLogs" -> {
-                            val response = withContext(Dispatchers.IO) {
-                                Gobackend.getLogs()
-                            }
-                            result.success(response)
-                        }
                         "getLogsSince" -> {
                             val index = call.argument<Int>("index") ?: 0
                             val response = withContext(Dispatchers.IO) {
@@ -3107,12 +3093,6 @@ class MainActivity: FlutterFragmentActivity() {
                                 Gobackend.setMetadataLanguage(tag)
                             }
                             result.success(null)
-                        }
-                        "getLogCount" -> {
-                            val count = withContext(Dispatchers.IO) {
-                                Gobackend.getLogCount()
-                            }
-                            result.success(count.toInt())
                         }
                         "setLoggingEnabled" -> {
                             val enabled = call.argument<Boolean>("enabled") ?: false

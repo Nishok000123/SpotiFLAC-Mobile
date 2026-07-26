@@ -665,10 +665,6 @@ import Gobackend
             GobackendClearTrackIDCache()
             return nil
             
-        case "getLogs":
-            let response = GobackendGetLogs()
-            return response
-            
         case "getLogsSince":
             let args = call.arguments as! [String: Any]
             let index = args["index"] as? Int ?? 0
@@ -689,10 +685,6 @@ import Gobackend
 
         case "getGoRuntimeMetrics":
             return GobackendGetRuntimeMetricsJSON()
-            
-        case "getLogCount":
-            let response = GobackendGetLogCount()
-            return response
             
         case "setLoggingEnabled":
             let args = call.arguments as! [String: Any]

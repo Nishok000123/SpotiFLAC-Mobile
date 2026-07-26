@@ -642,17 +642,6 @@ class PlatformBridge {
     return result as String?;
   }
 
-  static Future<bool> replaceContentUriFromPath(
-    String uri,
-    String srcPath,
-  ) async {
-    final result = await _channel.invokeMethod('safReplaceFromPath', {
-      'uri': uri,
-      'src_path': srcPath,
-    });
-    return result as bool;
-  }
-
   static Future<String?> createSafFileFromPath({
     required String treeUri,
     required String relativeDir,
@@ -1186,11 +1175,6 @@ class PlatformBridge {
     try {
       await _channel.invokeMethod('setMetadataLanguage', {'tag': tag});
     } catch (_) {}
-  }
-
-  static Future<int> getGoLogCount() async {
-    final result = await _channel.invokeMethod('getLogCount');
-    return result as int;
   }
 
   static Future<void> setGoLoggingEnabled(bool enabled) async {

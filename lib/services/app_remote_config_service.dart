@@ -273,11 +273,6 @@ class AppRemoteConfigService {
     this.endpoint = AppInfo.remoteConfigApiUrl,
   }) : _client = client ?? http.Client();
 
-  Future<AppRemoteConfig?> fetchConfig({String? locale}) async {
-    final snapshot = await fetchConfigSnapshot(locale: locale);
-    return snapshot?.config;
-  }
-
   Future<RemoteConfigSnapshot?> readCachedConfig() async {
     final prefs = await SharedPreferences.getInstance();
     final cachedJson = prefs.getString(_cachedConfigJsonKey);

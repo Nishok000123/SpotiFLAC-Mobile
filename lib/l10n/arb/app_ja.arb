@@ -1033,9 +1033,6 @@
   "@libraryFilterMetadataMissingLabel": {
     "description": "Filter option - items missing record label"
   },
-  "@badgeBeta": {
-    "description": "Badge label for beta features"
-  },
   "@audioAnalysisLufs": {
     "description": "Integrated loudness metric label"
   },
@@ -2881,7 +2878,6 @@
   "@collectionPlaylistEmptySubtitle": {
     "description": "Playlist empty state subtitle"
   },
-  "badgeBeta": "BETA",
   "@tutorialSearchHint": {
     "description": "Placeholder shown in the tutorial search demo"
   },

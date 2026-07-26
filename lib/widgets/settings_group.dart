@@ -297,30 +297,3 @@ class SettingsSectionHeader extends StatelessWidget {
     );
   }
 }
-
-/// Small "BETA" pill, used as a [SettingsItem.titleTrailing] /
-/// [SettingsSwitchItem.titleTrailing] marker for experimental features.
-class BetaBadge extends StatelessWidget {
-  final String label;
-
-  const BetaBadge({super.key, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: colorScheme.tertiaryContainer,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: colorScheme.onTertiaryContainer,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
