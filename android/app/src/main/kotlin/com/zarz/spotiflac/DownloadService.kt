@@ -288,6 +288,9 @@ class DownloadService : Service() {
     private var currentArtistName = ""
     private var currentStatus = "preparing"
     private var queueCount = 0
+    // Signature of the last home-screen widget push; keeps widget updates
+    // event-driven (track/status/queue changes, 25% steps), never per byte.
+    private var widgetSignature = ""
     private var lastProgress = 0L
     private var lastTotal = 0L
     private var nativeWorkerRunId = ""
@@ -507,6 +510,7 @@ class DownloadService : Service() {
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
+        pushWidgetState(0, 0)
     }
 
     private fun startNativeWorker(requestsJson: String, settingsJson: String) {
@@ -1709,6 +1713,12 @@ class DownloadService : Service() {
         nativeWorkerNetworkPaused = false
         nativeWorkerJob = null
         isRunning = false
+        widgetSignature = ""
+        try {
+            DownloadQueueWidgetProvider.push(this, running = false)
+        } catch (e: Exception) {
+            android.util.Log.w("DownloadService", "Widget clear failed: ${e.message}")
+        }
         releaseWakeLock()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -1724,10 +1734,48 @@ class DownloadService : Service() {
     private fun updateNotification(progress: Long, total: Long) {
         if (!isRunning) return
         ensureWakeLock()
-        
+
         val notification = buildNotification(progress, total)
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, notification)
+        pushWidgetState(progress, total)
+    }
+
+    private fun pushWidgetState(progress: Long, total: Long) {
+        val percent = if (total > 0) {
+            ((progress * 100) / total).toInt().coerceIn(0, 100)
+        } else {
+            -1
+        }
+        val bucket = if (percent < 0) -1 else percent / 25
+        val signature = "$currentTrackName|$currentStatus|$queueCount|$bucket"
+        if (signature == widgetSignature) return
+        widgetSignature = signature
+
+        val subtitle = when (currentStatus) {
+            "verification_required" -> "Verification required"
+            "rate_limited" -> "Rate limited, retrying..."
+            "waiting_wifi" -> "Waiting for Wi-Fi..."
+            "finalizing" -> "Finalizing..."
+            else -> buildString {
+                append(currentArtistName)
+                if (queueCount > 1) {
+                    if (isNotEmpty()) append(" • ")
+                    append("$queueCount in queue")
+                }
+            }
+        }
+        try {
+            DownloadQueueWidgetProvider.push(
+                this,
+                running = true,
+                title = currentTrackName.ifEmpty { "Downloading..." },
+                subtitle = subtitle,
+                percent = percent,
+            )
+        } catch (e: Exception) {
+            android.util.Log.w("DownloadService", "Widget update failed: ${e.message}")
+        }
     }
     
     private fun buildNotification(progress: Long, total: Long): Notification {
