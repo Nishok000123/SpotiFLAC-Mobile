@@ -1,6 +1,36 @@
 part of 'queue_tab.dart';
 
 extension _QueueTabFilterWidgets on _QueueTabState {
+  /// Count text left, action buttons right, always on one line; on narrow
+  /// widths the buttons scale down instead of truncating the count.
+  Widget _countHeaderRow(
+    BuildContext context,
+    String countText,
+    List<Widget> actions,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Row(
+        children: [
+          Text(
+            countText,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Row(mainAxisSize: MainAxisSize.min, children: actions),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFilterContent({
     required BuildContext context,
     required ColorScheme colorScheme,
@@ -252,34 +282,22 @@ extension _QueueTabFilterWidgets on _QueueTabState {
       slivers: [
         if (totalTrackCount > 0 && filterMode == 'all')
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      context.l10n.queueTrackCount(totalTrackCount),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+            child: _countHeaderRow(
+              context,
+              context.l10n.queueTrackCount(totalTrackCount),
+              [
+                if (!_isSelectionMode)
+                  _buildFilterButton(context, unifiedItems),
+                if (!_isSelectionMode && filteredUnifiedItems.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () => _showCreatePlaylistDialog(context),
+                    icon: const Icon(Icons.add, size: 20),
+                    label: Text(context.l10n.collectionCreatePlaylist),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
                     ),
                   ),
-                  const Spacer(),
-                  if (!_isSelectionMode)
-                    _buildFilterButton(context, unifiedItems),
-                  if (!_isSelectionMode && filteredUnifiedItems.isNotEmpty)
-                    TextButton.icon(
-                      onPressed: () => _showCreatePlaylistDialog(context),
-                      icon: const Icon(Icons.add, size: 20),
-                      label: Text(context.l10n.collectionCreatePlaylist),
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                ],
-              ),
+              ],
             ),
           ),
 
@@ -287,24 +305,10 @@ extension _QueueTabFilterWidgets on _QueueTabState {
                 filteredGroupedLocalAlbums.isNotEmpty) &&
             filterMode == 'albums')
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      context.l10n.queueAlbumCount(totalAlbumCount),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  _buildFilterButton(context, unifiedItems),
-                ],
-              ),
+            child: _countHeaderRow(
+              context,
+              context.l10n.queueAlbumCount(totalAlbumCount),
+              [_buildFilterButton(context, unifiedItems)],
             ),
           ),
 
@@ -573,34 +577,22 @@ extension _QueueTabFilterWidgets on _QueueTabState {
 
         if (filterMode == 'singles')
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      context.l10n.queueTrackCount(totalTrackCount),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+            child: _countHeaderRow(
+              context,
+              context.l10n.queueTrackCount(totalTrackCount),
+              [
+                if (!_isSelectionMode)
+                  _buildFilterButton(context, unifiedItems),
+                if (!_isSelectionMode && filteredUnifiedItems.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () => _showCreatePlaylistDialog(context),
+                    icon: const Icon(Icons.add, size: 20),
+                    label: Text(context.l10n.collectionCreatePlaylist),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
                     ),
                   ),
-                  const Spacer(),
-                  if (!_isSelectionMode)
-                    _buildFilterButton(context, unifiedItems),
-                  if (!_isSelectionMode && filteredUnifiedItems.isNotEmpty)
-                    TextButton.icon(
-                      onPressed: () => _showCreatePlaylistDialog(context),
-                      icon: const Icon(Icons.add, size: 20),
-                      label: Text(context.l10n.collectionCreatePlaylist),
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                ],
-              ),
+              ],
             ),
           ),
 
