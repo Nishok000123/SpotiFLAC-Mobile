@@ -102,6 +102,9 @@ class MusicPlayerController {
     );
   }
 
+  Future<void> setRepeatMode(AudioServiceRepeatMode mode) async =>
+      _handler?.setRepeatMode(mode);
+
   Future<void> playNext(PlayableMedia item) async =>
       (await ensureInitialized())?.enqueue(item, playNext: true);
 

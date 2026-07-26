@@ -131,6 +131,7 @@ class MusicPlayerHandler extends BaseAudioHandler
   bool _initialized = false;
 
   bool _shuffle = false;
+  AudioServiceRepeatMode _repeatMode = AudioServiceRepeatMode.none;
   final Random _random = Random();
   final List<int> _recent = [];
   final List<int> _playHistory = [];
@@ -320,6 +321,7 @@ class MusicPlayerHandler extends BaseAudioHandler
         shuffleMode: _shuffle
             ? AudioServiceShuffleMode.all
             : AudioServiceShuffleMode.none,
+        repeatMode: _repeatMode,
       ),
     );
   }
@@ -489,6 +491,7 @@ class MusicPlayerHandler extends BaseAudioHandler
       'index': _index,
       'positionMs': (position ?? Duration.zero).inMilliseconds,
       'shuffle': _shuffle,
+      'repeat': _repeatMode.name,
     };
     unawaited(
       AppStateDatabase.instance.savePlaybackSession(session).catchError((
@@ -515,6 +518,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     required int index,
     required Duration position,
     required bool shuffle,
+    AudioServiceRepeatMode repeatMode = AudioServiceRepeatMode.none,
   }) async {
     if (items.isEmpty) return;
     // Never clobber a session the user already started this launch.
@@ -529,6 +533,7 @@ class MusicPlayerHandler extends BaseAudioHandler
         ..addAll(items.map((m) => m.toMediaItem()));
       _index = index.clamp(0, items.length - 1);
       _shuffle = shuffle;
+      _repeatMode = repeatMode;
       _pendingRestorePosition = position > Duration.zero ? position : null;
       queue.add(List<MediaItem>.unmodifiable(_queueItems));
       mediaItem.add(_media[_index].toMediaItem());
@@ -774,9 +779,18 @@ class MusicPlayerHandler extends BaseAudioHandler
   }
 
   Future<void> _onComplete() async {
+    if (_repeatMode == AudioServiceRepeatMode.one &&
+        _index >= 0 &&
+        _index < _media.length) {
+      await _playIndex(_index, recordHistory: false);
+      return;
+    }
     if (_shuffle) {
       if (_media.length > 1) {
         await _playIndex(_pickNextShuffle());
+      } else if (_repeatMode == AudioServiceRepeatMode.all &&
+          _media.isNotEmpty) {
+        await _playIndex(_index, recordHistory: false);
       } else {
         _broadcastState(playerState: PlayerState.completed);
       }
@@ -784,6 +798,9 @@ class MusicPlayerHandler extends BaseAudioHandler
     }
     if (_index >= 0 && _index < _media.length - 1) {
       await _playIndex(_index + 1);
+    } else if (_repeatMode == AudioServiceRepeatMode.all &&
+        _media.isNotEmpty) {
+      await _playIndex(0);
     } else {
       _broadcastState(playerState: PlayerState.completed);
     }
@@ -848,6 +865,18 @@ class MusicPlayerHandler extends BaseAudioHandler
   @override
   Future<void> setShuffleMode(AudioServiceShuffleMode shuffleMode) async {
     _shuffle = shuffleMode == AudioServiceShuffleMode.all;
+    _broadcastState();
+    if (_media.isNotEmpty && _index >= 0) {
+      _persistSession(position: playbackState.value.position);
+    }
+  }
+
+  @override
+  Future<void> setRepeatMode(AudioServiceRepeatMode repeatMode) async {
+    // Group repeat has no meaning for a flat queue; treat it as all.
+    _repeatMode = repeatMode == AudioServiceRepeatMode.group
+        ? AudioServiceRepeatMode.all
+        : repeatMode;
     _broadcastState();
     if (_media.isNotEmpty && _index >= 0) {
       _persistSession(position: playbackState.value.position);
@@ -1114,6 +1143,10 @@ Future<void> restorePersistedPlaybackSession() async {
       index: index,
       position: position,
       shuffle: session['shuffle'] == true,
+      repeatMode: AudioServiceRepeatMode.values.firstWhere(
+        (mode) => mode.name == session['repeat'],
+        orElse: () => AudioServiceRepeatMode.none,
+      ),
     );
     _log.i(
       'Restored playback session: ${items.length} track(s), paused at '

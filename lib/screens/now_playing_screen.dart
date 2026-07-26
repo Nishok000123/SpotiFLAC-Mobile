@@ -662,6 +662,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                     (s) => s.value?.shuffleMode == AudioServiceShuffleMode.all,
                   ),
                 );
+                final repeatMode = ref.watch(
+                  playbackStateProvider.select(
+                    (s) => s.value?.repeatMode ?? AudioServiceRepeatMode.none,
+                  ),
+                );
                 final textTheme = Theme.of(context).textTheme;
 
                 return Column(
@@ -678,6 +683,33 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                             ),
                           ),
                           const Spacer(),
+                          IconButton(
+                            tooltip: switch (repeatMode) {
+                              AudioServiceRepeatMode.one =>
+                                context.l10n.nowPlayingRepeatOne,
+                              AudioServiceRepeatMode.none =>
+                                context.l10n.nowPlayingRepeatOff,
+                              _ => context.l10n.nowPlayingRepeatAll,
+                            },
+                            isSelected:
+                                repeatMode != AudioServiceRepeatMode.none,
+                            icon: Icon(
+                              repeatMode == AudioServiceRepeatMode.one
+                                  ? Icons.repeat_one
+                                  : Icons.repeat,
+                            ),
+                            color: repeatMode != AudioServiceRepeatMode.none
+                                ? colorScheme.primary
+                                : null,
+                            onPressed: () =>
+                                controller.setRepeatMode(switch (repeatMode) {
+                                  AudioServiceRepeatMode.none =>
+                                    AudioServiceRepeatMode.all,
+                                  AudioServiceRepeatMode.all =>
+                                    AudioServiceRepeatMode.one,
+                                  _ => AudioServiceRepeatMode.none,
+                                }),
+                          ),
                           IconButton(
                             tooltip: shuffleOn
                                 ? context.l10n.nowPlayingShuffleOn
@@ -846,6 +878,16 @@ class _PlaybackControls extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final position = ref.watch(playbackPositionProvider);
     final isPlaying = ref.watch(playbackPlayingProvider);
+    final shuffleOn = ref.watch(
+      playbackStateProvider.select(
+        (s) => s.value?.shuffleMode == AudioServiceShuffleMode.all,
+      ),
+    );
+    final repeatMode = ref.watch(
+      playbackStateProvider.select(
+        (s) => s.value?.repeatMode ?? AudioServiceRepeatMode.none,
+      ),
+    );
     final maxMs = duration.inMilliseconds > 0
         ? duration.inMilliseconds.toDouble()
         : 1.0;
@@ -919,6 +961,18 @@ class _PlaybackControls extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             IconButton(
+              iconSize: 24,
+              tooltip: shuffleOn
+                  ? context.l10n.nowPlayingShuffleOn
+                  : context.l10n.nowPlayingPlayInOrder,
+              color: shuffleOn
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant,
+              icon: const Icon(Icons.shuffle),
+              onPressed: () => controller.setShuffle(!shuffleOn),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
               iconSize: 44,
               icon: const Icon(Icons.skip_previous),
               onPressed: controller.previous,
@@ -942,6 +996,28 @@ class _PlaybackControls extends ConsumerWidget {
               iconSize: 44,
               icon: const Icon(Icons.skip_next),
               onPressed: controller.next,
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              iconSize: 24,
+              tooltip: switch (repeatMode) {
+                AudioServiceRepeatMode.one => context.l10n.nowPlayingRepeatOne,
+                AudioServiceRepeatMode.none => context.l10n.nowPlayingRepeatOff,
+                _ => context.l10n.nowPlayingRepeatAll,
+              },
+              color: repeatMode == AudioServiceRepeatMode.none
+                  ? colorScheme.onSurfaceVariant
+                  : colorScheme.primary,
+              icon: Icon(
+                repeatMode == AudioServiceRepeatMode.one
+                    ? Icons.repeat_one
+                    : Icons.repeat,
+              ),
+              onPressed: () => controller.setRepeatMode(switch (repeatMode) {
+                AudioServiceRepeatMode.none => AudioServiceRepeatMode.all,
+                AudioServiceRepeatMode.all => AudioServiceRepeatMode.one,
+                _ => AudioServiceRepeatMode.none,
+              }),
             ),
           ],
         ),
