@@ -245,6 +245,60 @@ func TestPreflightSignedSession(t *testing.T) {
 			t.Fatalf("bootstrapped session = %#v error:%v", record, err)
 		}
 	})
+
+	t.Run("retries a transport failure once and surfaces the cause", func(t *testing.T) {
+		calls := 0
+		runtime := newSignedSessionTestRuntime(t, "preflight-network", roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			calls++
+			return nil, fmt.Errorf("dial tcp: Wi-Fi route unavailable")
+		}))
+		runtime.manifest.SignedSession = &SignedSessionConfig{
+			Namespace: "preflight-network",
+			BaseURL:   "https://auth.example.com",
+		}
+
+		verificationRequired, err := runtime.preflightSignedSession()
+		if err == nil || verificationRequired {
+			t.Fatalf("preflight = verification:%v error:%v", verificationRequired, err)
+		}
+		if calls != 2 {
+			t.Fatalf("bootstrap calls = %d, want one initial attempt and one retry", calls)
+		}
+		if !strings.Contains(err.Error(), "network request") || !strings.Contains(err.Error(), "Wi-Fi route unavailable") {
+			t.Fatalf("bootstrap error did not preserve the transport cause: %v", err)
+		}
+		if strings.Contains(err.Error(), "install_id=") {
+			t.Fatalf("bootstrap error leaked the install identifier: %v", err)
+		}
+	})
+
+	t.Run("surfaces HTTP status and retry-after without inventing a challenge", func(t *testing.T) {
+		calls := 0
+		runtime := newSignedSessionTestRuntime(t, "preflight-rate-limit", roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			calls++
+			return &http.Response{
+				StatusCode: http.StatusTooManyRequests,
+				Header:     http.Header{"Retry-After": []string{"17"}},
+				Body:       io.NopCloser(strings.NewReader(`{"error":"limited"}`)),
+				Request:    req,
+			}, nil
+		}))
+		runtime.manifest.SignedSession = &SignedSessionConfig{
+			Namespace: "preflight-rate-limit",
+			BaseURL:   "https://auth.example.com",
+		}
+
+		verificationRequired, err := runtime.preflightSignedSession()
+		if err == nil || verificationRequired {
+			t.Fatalf("preflight = verification:%v error:%v", verificationRequired, err)
+		}
+		if calls != 1 {
+			t.Fatalf("rate-limited bootstrap calls = %d, want 1", calls)
+		}
+		if !strings.Contains(err.Error(), "HTTP 429") || !strings.Contains(err.Error(), "retry-after seconds: 17") {
+			t.Fatalf("rate-limit details missing from bootstrap error: %v", err)
+		}
+	})
 }
 
 func TestDownloadWithExtensionsPreflightsBeforeMetadataEnrichment(t *testing.T) {
@@ -313,6 +367,71 @@ func TestDownloadWithExtensionsPreflightsBeforeMetadataEnrichment(t *testing.T) 
 	}
 	if got := GetItemProgress(itemID); got != "{}" {
 		t.Fatalf("verification response left stale progress: %s", got)
+	}
+}
+
+func TestDownloadWithExtensionsStopsAfterFailedSignedSessionPreflight(t *testing.T) {
+	extensionID := "preflight-network-failure"
+	itemID := "preflight-network-item"
+	RemoveItemProgress(itemID)
+	t.Cleanup(func() { RemoveItemProgress(itemID) })
+
+	calls := 0
+	runtime := newSignedSessionTestRuntime(t, extensionID, roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		calls++
+		return nil, fmt.Errorf("dial tcp: Wi-Fi route unavailable")
+	}))
+	manifest := &ExtensionManifest{
+		Name:  extensionID,
+		Types: []ExtensionType{ExtensionTypeDownloadProvider},
+		SignedSession: &SignedSessionConfig{
+			Namespace: extensionID,
+			BaseURL:   "https://auth.example.com",
+		},
+	}
+	runtime.manifest = manifest
+	ext := &loadedExtension{
+		ID:          extensionID,
+		Manifest:    manifest,
+		VM:          runtime.vm,
+		runtime:     runtime,
+		initialized: true,
+		Enabled:     true,
+		DataDir:     runtime.dataDir,
+	}
+
+	manager := getExtensionManager()
+	manager.mu.Lock()
+	previous, hadPrevious := manager.extensions[extensionID]
+	manager.extensions[extensionID] = ext
+	manager.mu.Unlock()
+	t.Cleanup(func() {
+		manager.mu.Lock()
+		if hadPrevious {
+			manager.extensions[extensionID] = previous
+		} else {
+			delete(manager.extensions, extensionID)
+		}
+		manager.mu.Unlock()
+	})
+
+	requestJSON := `{"service":"preflight-network-failure","item_id":"preflight-network-item","isrc":"USRC17607839"}`
+	responseJSON, err := DownloadWithExtensionsJSON(requestJSON)
+	if err != nil {
+		t.Fatalf("DownloadWithExtensionsJSON: %v", err)
+	}
+	var response DownloadResponse
+	if err := json.Unmarshal([]byte(responseJSON), &response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if response.ErrorType != "network" || response.Service != extensionID || !strings.Contains(response.Error, "Could not start verification") {
+		t.Fatalf("response = %#v", response)
+	}
+	if calls != 2 {
+		t.Fatalf("bootstrap calls = %d, want only the initial attempt and its transport retry", calls)
+	}
+	if got := GetItemProgress(itemID); got != "{}" {
+		t.Fatalf("failed preflight left stale progress: %s", got)
 	}
 }
 

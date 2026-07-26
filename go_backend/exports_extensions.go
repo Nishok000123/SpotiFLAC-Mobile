@@ -512,7 +512,17 @@ func DownloadWithExtensionsJSON(requestJSON string) (string, error) {
 	preflightStartedAt := time.Now()
 	verificationRequired, preflightErr := preflightExtensionDownloadSession(sessionProvider)
 	if preflightErr != nil {
-		GoLog("[DownloadWithExtensions] Signed-session preflight for %s was inconclusive after %s: %v\n", sessionProvider, time.Since(preflightStartedAt).Round(time.Millisecond), preflightErr)
+		message := fmt.Sprintf("Could not start verification for %s: %v", sessionProvider, preflightErr)
+		GoLog("[DownloadWithExtensions] Signed-session preflight for %s failed after %s: %v\n", sessionProvider, time.Since(preflightStartedAt).Round(time.Millisecond), preflightErr)
+		if req.ItemID != "" {
+			RemoveItemProgress(req.ItemID)
+		}
+		return marshalJSONString(&DownloadResponse{
+			Success:   false,
+			Error:     message,
+			ErrorType: classifyDownloadErrorType(message),
+			Service:   sessionProvider,
+		})
 	} else if verificationRequired {
 		GoLog("[DownloadWithExtensions] Signed-session verification required for %s after %s; skipping metadata preparation\n", sessionProvider, time.Since(preflightStartedAt).Round(time.Millisecond))
 		cacheUnpreparedDownloadRequest(downloadPreparationKey(req), req)
@@ -566,7 +576,10 @@ func InvokeExtensionActionJSON(extensionID, actionName string) (string, error) {
 }
 
 func GetExtensionPendingAuthJSON(extensionID string) (string, error) {
-	req := ensureExtensionPendingAuthRequest(extensionID)
+	req, err := ensureExtensionPendingAuthRequest(extensionID)
+	if err != nil {
+		return "", err
+	}
 	if req == nil {
 		return "", nil
 	}
@@ -580,15 +593,15 @@ func GetExtensionPendingAuthJSON(extensionID string) (string, error) {
 	return marshalJSONString(result)
 }
 
-func ensureExtensionPendingAuthRequest(extensionID string) *PendingAuthRequest {
+func ensureExtensionPendingAuthRequest(extensionID string) (*PendingAuthRequest, error) {
 	extensionID = strings.TrimSpace(extensionID)
 	if extensionID == "" {
-		return nil
+		return nil, nil
 	}
 
 	if req := GetPendingAuthRequest(extensionID); req != nil {
 		if time.Since(req.CreatedAt) < pendingAuthRequestTTL {
-			return req
+			return req, nil
 		}
 		// The cached challenge is stale (e.g. verification was requested
 		// while the app was backgrounded and never completed); serving it
@@ -599,25 +612,34 @@ func ensureExtensionPendingAuthRequest(extensionID string) *PendingAuthRequest {
 	manager := getExtensionManager()
 	ext, err := manager.GetExtension(extensionID)
 	if err != nil || ext == nil || !ext.Enabled || ext.Manifest == nil || ext.Manifest.SignedSession == nil {
-		return nil
+		return nil, nil
 	}
 
-	if err := ext.ensureRuntimeReady(); err != nil || ext.runtime == nil {
-		return nil
+	if err := ext.ensureRuntimeReady(); err != nil {
+		return nil, err
+	}
+	if ext.runtime == nil {
+		return nil, fmt.Errorf("extension '%s' runtime is unavailable", extensionID)
 	}
 
 	config := signedSessionConfigWithDefaults(ext.Manifest.SignedSession)
 	if config.Namespace == "" || config.BaseURL == "" {
-		return nil
+		return nil, nil
 	}
-	if record, err := ext.runtime.loadSignedSession(config); err == nil {
-		record.SessionID = ""
-		record.SessionSecret = ""
-		record.ExpiresAt = ""
-		_ = ext.runtime.saveSignedSession(config, record)
+	record, err := ext.runtime.loadSignedSession(config)
+	if err != nil {
+		return nil, err
 	}
-	ext.runtime.startSignedSessionVerification(config, "pending-auth-request")
-	return GetPendingAuthRequest(extensionID)
+	record.SessionID = ""
+	record.SessionSecret = ""
+	record.ExpiresAt = ""
+	if err := ext.runtime.saveSignedSession(config, record); err != nil {
+		return nil, err
+	}
+	if _, err := ext.runtime.startSignedSessionVerification(config, "pending-auth-request"); err != nil {
+		return nil, err
+	}
+	return GetPendingAuthRequest(extensionID), nil
 }
 
 func SetExtensionAuthCodeByID(extensionID, authCode string) {

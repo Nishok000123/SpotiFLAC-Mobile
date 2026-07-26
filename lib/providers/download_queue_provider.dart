@@ -12,6 +12,7 @@ import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
+import 'package:spotiflac_android/providers/download_verification_retry_guard.dart';
 import 'package:spotiflac_android/providers/download_queue_state.dart';
 import 'package:spotiflac_android/services/app_state_database.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
@@ -173,7 +174,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   int _lastNotifQueueCount = -1;
   final Set<String> _locallyCancelledItemIds = {};
   final Set<String> _pausePendingItemIds = {};
-  final Set<String> _verificationRetriedItemIds = {};
+  final DownloadVerificationRetryGuard _verificationRetryGuard =
+      DownloadVerificationRetryGuard();
   final Map<String, Future<bool>> _verificationFlowsByExtension = {};
   final Set<String> _rateLimitRetriedItemIds = {};
   String? _activeNativeWorkerRunId;
@@ -184,9 +186,6 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   // Stores per-track loudness data until all album tracks are done,
   // then computes and writes album gain/peak to every track in the album.
   final Map<String, _AlbumRgAccumulator> _albumRgData = {};
-
-  String _verificationRetryKey(String itemId, String service) =>
-      '$itemId::${service.trim().toLowerCase()}';
 
   double _normalizeProgressForUi(double value) {
     final clamped = value.clamp(0.0, 1.0).toDouble();
@@ -424,8 +423,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     final targetService = (verificationService ?? '').trim().isNotEmpty
         ? verificationService!.trim()
         : item.service;
-    final verificationRetryKey = _verificationRetryKey(item.id, targetService);
-    if (_verificationRetriedItemIds.contains(verificationRetryKey)) {
+    if (_verificationRetryGuard.hasRetriedAfterGrant(item.id, targetService)) {
       _log.e(
         'Verification was already completed once for ${item.track.name} on $targetService; not opening another challenge',
       );
@@ -438,8 +436,6 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       _failedInSession++;
       return true;
     }
-    _verificationRetriedItemIds.add(verificationRetryKey);
-
     _log.i(
       'Download for ${item.track.name} requires verification; waiting for $targetService grant',
     );
@@ -457,6 +453,14 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       return true;
     }
 
+    // Only a completed grant consumes the automatic retry. If bootstrap or
+    // browser launch failed before a challenge opened, a later attempt must
+    // still be allowed after the network changes.
+    _verificationRetryGuard.recordVerificationResult(
+      item.id,
+      targetService,
+      granted: verified,
+    );
     if (verified) {
       _log.i(
         'Verification complete for $targetService; retrying ${item.track.name}',
@@ -1586,9 +1590,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       }),
     );
     _locallyCancelledItemIds.remove(id);
-    _verificationRetriedItemIds.removeWhere(
-      (retryKey) => retryKey == id || retryKey.startsWith('$id::'),
-    );
+    _verificationRetryGuard.clearItem(id);
     _rateLimitRetriedItemIds.remove(id);
 
     // Purge stale ReplayGain entry for this track so a re-scan doesn't
@@ -2295,10 +2297,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     final remainingIds = state.items.map((item) => item.id).toSet();
     _locallyCancelledItemIds.removeWhere((id) => !remainingIds.contains(id));
     _pausePendingItemIds.removeWhere((id) => !remainingIds.contains(id));
-    _verificationRetriedItemIds.removeWhere((retryKey) {
-      final itemId = retryKey.split('::').first;
-      return !remainingIds.contains(itemId);
-    });
+    _verificationRetryGuard.retainItems(remainingIds);
     _rateLimitRetriedItemIds.removeWhere((id) => !remainingIds.contains(id));
   }
 

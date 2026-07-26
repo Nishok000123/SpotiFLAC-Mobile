@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -214,8 +215,8 @@ func signedSessionRecordIsUsable(record *signedSessionRecord) bool {
 // preflightSignedSession prepares a signed session before download metadata
 // enrichment starts. A fresh pending challenge is reused, while bootstrap
 // responses that can issue a session silently are accepted without prompting
-// the user. Bootstrap failures remain non-fatal to the caller so the normal
-// provider path can still surface its more specific error.
+// the user. Bootstrap failures are returned so callers do not continue into
+// the provider and accidentally issue the same failing bootstrap repeatedly.
 func (r *extensionRuntime) preflightSignedSession() (bool, error) {
 	if r == nil || r.manifest == nil || r.manifest.SignedSession == nil {
 		return false, nil
@@ -242,7 +243,9 @@ func (r *extensionRuntime) preflightSignedSession() (bool, error) {
 		ClearPendingAuthRequest(r.extensionID)
 	}
 
-	if authURL := r.startSignedSessionVerification(config, "download-preflight"); authURL != "" {
+	if authURL, err := r.startSignedSessionVerification(config, "download-preflight"); err != nil {
+		return false, err
+	} else if authURL != "" {
 		return true, nil
 	}
 
@@ -394,8 +397,10 @@ func (r *extensionRuntime) signedSessionFetch(call goja.FunctionCall) goja.Value
 
 	record, err := r.ensureSignedSession(config)
 	if err != nil {
-		if authURL := r.startSignedSessionVerification(config, ""); authURL != "" {
+		if authURL, verificationErr := r.startSignedSessionVerification(config, "signed-fetch"); authURL != "" {
 			return r.signedSessionVerificationRequiredValue(authURL)
+		} else if verificationErr != nil {
+			return r.vm.ToValue(map[string]any{"ok": false, "error": verificationErr.Error()})
 		}
 		return r.vm.ToValue(map[string]any{"ok": false, "error": err.Error()})
 	}
@@ -409,8 +414,10 @@ func (r *extensionRuntime) signedSessionFetch(call goja.FunctionCall) goja.Value
 		record.SessionSecret = ""
 		record.ExpiresAt = ""
 		_ = r.saveSignedSession(config, record)
-		if authURL := r.startSignedSessionVerification(config, ""); authURL != "" {
+		if authURL, verificationErr := r.startSignedSessionVerification(config, "signed-fetch-reauth"); authURL != "" {
 			return r.signedSessionVerificationRequiredValue(authURL)
+		} else if verificationErr != nil {
+			return r.vm.ToValue(map[string]any{"ok": false, "error": verificationErr.Error()})
 		}
 	}
 	return r.vm.ToValue(map[string]any{
@@ -490,45 +497,94 @@ func (r *extensionRuntime) refreshSignedSession(config SignedSessionConfig, reco
 	return nil
 }
 
-func (r *extensionRuntime) startSignedSessionVerification(config SignedSessionConfig, _ string) string {
+func (r *extensionRuntime) startSignedSessionVerification(config SignedSessionConfig, reason string) (string, error) {
 	record, err := r.loadSignedSession(config)
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("load signed-session bootstrap state: %w", err)
 	}
 	bootstrapURL, err := signedSessionURL(config, config.Endpoints.Bootstrap)
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("build signed-session bootstrap URL: %w", err)
 	}
-	parsed, _ := url.Parse(bootstrapURL)
+	parsed, err := url.Parse(bootstrapURL)
+	if err != nil {
+		return "", fmt.Errorf("parse signed-session bootstrap URL: %w", err)
+	}
 	query := parsed.Query()
 	query.Set("app_version", config.AppVersion)
 	query.Set("install_id", record.InstallID)
 	parsed.RawQuery = query.Encode()
-	req, err := http.NewRequest(http.MethodGet, parsed.String(), nil)
-	if err != nil {
-		return ""
+	if r.httpClient == nil {
+		return "", fmt.Errorf("signed-session bootstrap HTTP client is unavailable")
 	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "SpotiFLAC-Mobile/"+config.AppVersion)
-	resp, err := r.httpClient.Do(req)
+
+	var resp *http.Response
+	for attempt := 0; attempt < 2; attempt++ {
+		req, requestErr := http.NewRequest(http.MethodGet, parsed.String(), nil)
+		if requestErr != nil {
+			return "", fmt.Errorf("build signed-session bootstrap request: %w", requestErr)
+		}
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("User-Agent", "SpotiFLAC-Mobile/"+config.AppVersion)
+		resp, err = r.httpClient.Do(req)
+		if err == nil {
+			break
+		}
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+			resp = nil
+		}
+		if attempt == 0 {
+			// Android can retain pooled connections across a Wi-Fi/cellular
+			// transition. Rebuild the GET once after dropping those sockets.
+			r.httpClient.CloseIdleConnections()
+		}
+	}
 	if err != nil {
-		return ""
+		var urlErr *url.Error
+		if errors.As(err, &urlErr) && urlErr.Err != nil {
+			err = urlErr.Err
+		}
+		bootstrapErr := fmt.Errorf(
+			"signed-session bootstrap network request to %s failed: %v",
+			parsed.Host,
+			err,
+		)
+		LogWarn("SignedSession", "Bootstrap failed for extension %s (%s): %v", r.extensionID, reason, bootstrapErr)
+		return "", bootstrapErr
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxExtensionHTTPResponseBytes))
-	if err != nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return ""
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		// Drain a bounded error response so the transport can reuse the
+		// connection without exposing response bodies that may contain secrets.
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
+		message := fmt.Sprintf("signed-session bootstrap returned HTTP %d", resp.StatusCode)
+		if resp.StatusCode >= 500 {
+			message = fmt.Sprintf("signed-session bootstrap network request returned HTTP %d", resp.StatusCode)
+		}
+		if retryAfter := signedSessionRetryAfterSeconds(resp); retryAfter > 0 {
+			message += fmt.Sprintf("; retry-after seconds: %d", retryAfter)
+		}
+		bootstrapErr := errors.New(message)
+		LogWarn("SignedSession", "Bootstrap failed for extension %s (%s): %v", r.extensionID, reason, bootstrapErr)
+		return "", bootstrapErr
+	}
+	body, err := readExtensionHTTPResponseBody(resp)
+	if err != nil {
+		return "", fmt.Errorf("read signed-session bootstrap response: %w", err)
 	}
 	var boot signedSessionExchangeResponse
 	if err := json.Unmarshal(body, &boot); err != nil {
-		return ""
+		return "", fmt.Errorf("decode signed-session bootstrap response: %w", err)
 	}
 	if boot.SessionID != "" && boot.SessionSecret != "" && boot.ExpiresAt != "" {
 		record.SessionID = boot.SessionID
 		record.SessionSecret = boot.SessionSecret
 		record.ExpiresAt = boot.ExpiresAt
-		_ = r.saveSignedSession(config, record)
-		return ""
+		if err := r.saveSignedSession(config, record); err != nil {
+			return "", fmt.Errorf("save bootstrapped signed session: %w", err)
+		}
+		return "", nil
 	}
 	authURL := boot.AuthURL
 	if authURL == "" && boot.ChallengeURL != "" {
@@ -537,17 +593,18 @@ func (r *extensionRuntime) startSignedSessionVerification(config SignedSessionCo
 	if authURL == "" && boot.ChallengeID != "" {
 		authURL = r.buildSignedSessionChallengeURL(config, boot.ChallengeID)
 	}
-	if authURL != "" {
-		pendingAuthRequestsMu.Lock()
-		pendingAuthRequests[r.extensionID] = &PendingAuthRequest{
-			ExtensionID: r.extensionID,
-			AuthURL:     authURL,
-			CallbackURL: config.CallbackURL,
-			CreatedAt:   time.Now(),
-		}
-		pendingAuthRequestsMu.Unlock()
+	if authURL == "" {
+		return "", fmt.Errorf("signed-session bootstrap did not return a session or verification challenge")
 	}
-	return authURL
+	pendingAuthRequestsMu.Lock()
+	pendingAuthRequests[r.extensionID] = &PendingAuthRequest{
+		ExtensionID: r.extensionID,
+		AuthURL:     authURL,
+		CallbackURL: config.CallbackURL,
+		CreatedAt:   time.Now(),
+	}
+	pendingAuthRequestsMu.Unlock()
+	return authURL, nil
 }
 
 func (r *extensionRuntime) buildSignedSessionChallengeURL(config SignedSessionConfig, challengeID string) string {
