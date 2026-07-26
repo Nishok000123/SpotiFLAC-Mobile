@@ -783,29 +783,7 @@ func CustomSearchWithExtensionJSONWithRequestID(extensionID, query string, optio
 
 	result := make([]map[string]any, len(tracks))
 	for i, track := range tracks {
-		result[i] = map[string]any{
-			"id":            track.ID,
-			"name":          track.Name,
-			"artists":       track.Artists,
-			"album_name":    track.AlbumName,
-			"album_artist":  track.AlbumArtist,
-			"duration_ms":   track.DurationMS,
-			"images":        track.ResolvedCoverURL(),
-			"preview_url":   track.PreviewURL,
-			"release_date":  track.ReleaseDate,
-			"track_number":  track.TrackNumber,
-			"total_tracks":  track.TotalTracks,
-			"disc_number":   track.DiscNumber,
-			"total_discs":   track.TotalDiscs,
-			"isrc":          track.ISRC,
-			"provider_id":   track.ProviderID,
-			"item_type":     track.ItemType,
-			"album_type":    track.AlbumType,
-			"composer":      track.Composer,
-			"audio_quality": track.AudioQuality,
-			"audio_modes":   track.AudioModes,
-			"explicit":      track.Explicit,
-		}
+		result[i] = normalizeExtensionTrackMetadataMap(track, "", 0)
 	}
 
 	return marshalJSONString(result)
@@ -835,51 +813,13 @@ func HandleURLWithExtensionJSON(url string) (string, error) {
 	}
 
 	if result.Track != nil {
-		response["track"] = map[string]any{
-			"id":           result.Track.ID,
-			"name":         result.Track.Name,
-			"artists":      result.Track.Artists,
-			"album_name":   result.Track.AlbumName,
-			"album_artist": result.Track.AlbumArtist,
-			"duration_ms":  result.Track.DurationMS,
-			"images":       result.Track.ResolvedCoverURL(),
-			"preview_url":  result.Track.PreviewURL,
-			"release_date": result.Track.ReleaseDate,
-			"track_number": result.Track.TrackNumber,
-			"total_tracks": result.Track.TotalTracks,
-			"disc_number":  result.Track.DiscNumber,
-			"total_discs":  result.Track.TotalDiscs,
-			"isrc":         result.Track.ISRC,
-			"provider_id":  result.Track.ProviderID,
-			"composer":     result.Track.Composer,
-			"explicit":     result.Track.Explicit,
-		}
+		response["track"] = normalizeExtensionTrackMetadataMap(*result.Track, "", 0)
 	}
 
 	if len(result.Tracks) > 0 {
 		tracks := make([]map[string]any, len(result.Tracks))
 		for i, track := range result.Tracks {
-			tracks[i] = map[string]any{
-				"id":           track.ID,
-				"name":         track.Name,
-				"artists":      track.Artists,
-				"album_name":   track.AlbumName,
-				"album_artist": track.AlbumArtist,
-				"duration_ms":  track.DurationMS,
-				"images":       track.ResolvedCoverURL(),
-				"preview_url":  track.PreviewURL,
-				"release_date": track.ReleaseDate,
-				"track_number": track.TrackNumber,
-				"total_tracks": track.TotalTracks,
-				"disc_number":  track.DiscNumber,
-				"total_discs":  track.TotalDiscs,
-				"isrc":         track.ISRC,
-				"provider_id":  track.ProviderID,
-				"item_type":    track.ItemType,
-				"album_type":   track.AlbumType,
-				"composer":     track.Composer,
-				"explicit":     track.Explicit,
-			}
+			tracks[i] = normalizeExtensionTrackMetadataMap(track, "", 0)
 		}
 		response["tracks"] = tracks
 	}
@@ -958,26 +898,7 @@ func HandleURLWithExtensionJSON(url string) (string, error) {
 		if len(result.Artist.TopTracks) > 0 {
 			topTracks := make([]map[string]any, len(result.Artist.TopTracks))
 			for i, track := range result.Artist.TopTracks {
-				topTracks[i] = map[string]any{
-					"id":           track.ID,
-					"name":         track.Name,
-					"artists":      track.Artists,
-					"album_name":   track.AlbumName,
-					"album_artist": track.AlbumArtist,
-					"duration_ms":  track.DurationMS,
-					"images":       track.ResolvedCoverURL(),
-					"preview_url":  track.PreviewURL,
-					"release_date": track.ReleaseDate,
-					"track_number": track.TrackNumber,
-					"total_tracks": track.TotalTracks,
-					"disc_number":  track.DiscNumber,
-					"total_discs":  track.TotalDiscs,
-					"isrc":         track.ISRC,
-					"provider_id":  track.ProviderID,
-					"spotify_id":   track.SpotifyID,
-					"composer":     track.Composer,
-					"explicit":     track.Explicit,
-				}
+				topTracks[i] = normalizeExtensionTrackMetadataMap(track, "", 0)
 			}
 			artistResponse["top_tracks"] = topTracks
 		}

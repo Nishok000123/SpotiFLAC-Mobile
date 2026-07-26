@@ -77,7 +77,7 @@ func (e *repoExtension) getMinAppVersion() string {
 }
 
 func (e *repoExtension) getRawSHA256() string {
-	return firstNonEmpty(e.SHA256, e.ChecksumSHA256, e.ChecksumAlt)
+	return firstNonEmptyTrimmed(e.SHA256, e.ChecksumSHA256, e.ChecksumAlt)
 }
 
 func (e *repoExtension) getSHA256() string {
@@ -442,15 +442,6 @@ func (s *extensionRepo) downloadExtension(extensionID string, destPath string) e
 }
 
 const maxExtensionPackageBytes int64 = 64 * 1024 * 1024
-
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			return value
-		}
-	}
-	return ""
-}
 
 func normalizeSHA256(value string) string {
 	normalized := strings.ToLower(strings.TrimSpace(value))

@@ -265,31 +265,39 @@ func (c *SpotifyLyricsClient) SearchSong(trackName, artistName string, durationS
 	return strings.TrimSpace(best.TrackID), nil
 }
 
-func selectBestSpotifyLyricsSearchResult(results []spotifyLyricsSearchResult, trackName, artistName string, durationSec float64) *spotifyLyricsSearchResult {
-	if len(results) == 0 {
-		return nil
-	}
-
+// selectBestLyricsCandidate returns the index of the highest-scoring candidate
+// whose provider-specific gate passes; candidate returns
+// (name, artist, durationSec, gatePassed). Returns -1 when nothing matches.
+func selectBestLyricsCandidate(n int, trackName, artistName string, durationSec float64, candidate func(i int) (string, string, float64, bool)) int {
 	bestIndex := -1
 	bestScore := -1
-	for i := range results {
-		result := &results[i]
-		candidateDuration := parseClockDuration(result.Duration)
-		if !lyricsSearchTitlesMatch(result.Name, trackName, false) ||
-			!lyricsSearchArtistsMatch(result.ArtistName, artistName) ||
-			!lyricsSearchDurationMatches(candidateDuration, durationSec) {
+	for i := 0; i < n; i++ {
+		name, artist, duration, ok := candidate(i)
+		if !ok {
 			continue
 		}
-		score := scoreLyricsSearchCandidate(result.Name, result.ArtistName, candidateDuration, trackName, artistName, durationSec)
+		score := scoreLyricsSearchCandidate(name, artist, duration, trackName, artistName, durationSec)
 		if score > bestScore {
 			bestIndex = i
 			bestScore = score
 		}
 	}
-	if bestIndex < 0 {
+	return bestIndex
+}
+
+func selectBestSpotifyLyricsSearchResult(results []spotifyLyricsSearchResult, trackName, artistName string, durationSec float64) *spotifyLyricsSearchResult {
+	best := selectBestLyricsCandidate(len(results), trackName, artistName, durationSec, func(i int) (string, string, float64, bool) {
+		result := &results[i]
+		duration := parseClockDuration(result.Duration)
+		ok := lyricsSearchTitlesMatch(result.Name, trackName, false) &&
+			lyricsSearchArtistsMatch(result.ArtistName, artistName) &&
+			lyricsSearchDurationMatches(duration, durationSec)
+		return result.Name, result.ArtistName, duration, ok
+	})
+	if best < 0 {
 		return nil
 	}
-	return &results[bestIndex]
+	return &results[best]
 }
 
 func (c *SpotifyLyricsClient) FetchLyricsByID(trackID string) (*LyricsResponse, error) {
@@ -383,32 +391,20 @@ func (c *YouTubeLyricsClient) SearchSong(trackName, artistName string, durationS
 }
 
 func selectBestYouTubeLyricsSearchResult(results []youtubeLyricsSearchResult, trackName, artistName string, durationSec float64) *youtubeLyricsSearchResult {
-	if len(results) == 0 {
-		return nil
-	}
-
-	bestIndex := -1
-	bestScore := -1
-	for i := range results {
+	best := selectBestLyricsCandidate(len(results), trackName, artistName, durationSec, func(i int) (string, string, float64, bool) {
 		result := &results[i]
-		candidateDuration := parseClockDuration(result.Duration)
+		duration := parseClockDuration(result.Duration)
 		artistMatches := lyricsSearchArtistsMatch(result.Author, artistName) ||
 			lyricsSearchArtistAppearsInTitle(result.Title, artistName)
-		if !lyricsSearchTitlesMatch(result.Title, trackName, true) ||
-			!artistMatches ||
-			!lyricsSearchDurationMatches(candidateDuration, durationSec) {
-			continue
-		}
-		score := scoreLyricsSearchCandidate(result.Title, result.Author, candidateDuration, trackName, artistName, durationSec)
-		if score > bestScore {
-			bestIndex = i
-			bestScore = score
-		}
-	}
-	if bestIndex < 0 {
+		ok := lyricsSearchTitlesMatch(result.Title, trackName, true) &&
+			artistMatches &&
+			lyricsSearchDurationMatches(duration, durationSec)
+		return result.Title, result.Author, duration, ok
+	})
+	if best < 0 {
 		return nil
 	}
-	return &results[bestIndex]
+	return &results[best]
 }
 
 func (c *YouTubeLyricsClient) FetchLyrics(trackName, artistName string, durationSec float64) (*LyricsResponse, error) {
@@ -451,29 +447,17 @@ func (c *KugouLyricsClient) SearchSong(trackName, artistName string, durationSec
 }
 
 func selectBestKugouLyricsSearchResult(results []kugouLyricsSearchResult, trackName, artistName string, durationSec float64) *kugouLyricsSearchResult {
-	if len(results) == 0 {
-		return nil
-	}
-
-	bestIndex := -1
-	bestScore := -1
-	for i := range results {
+	best := selectBestLyricsCandidate(len(results), trackName, artistName, durationSec, func(i int) (string, string, float64, bool) {
 		result := &results[i]
-		if !lyricsSearchTitlesMatch(result.Title, trackName, false) ||
-			!lyricsSearchArtistsMatch(result.Artist, artistName) ||
-			!lyricsSearchDurationMatches(result.Duration, durationSec) {
-			continue
-		}
-		score := scoreLyricsSearchCandidate(result.Title, result.Artist, result.Duration, trackName, artistName, durationSec)
-		if score > bestScore {
-			bestIndex = i
-			bestScore = score
-		}
-	}
-	if bestIndex < 0 {
+		ok := lyricsSearchTitlesMatch(result.Title, trackName, false) &&
+			lyricsSearchArtistsMatch(result.Artist, artistName) &&
+			lyricsSearchDurationMatches(result.Duration, durationSec)
+		return result.Title, result.Artist, result.Duration, ok
+	})
+	if best < 0 {
 		return nil
 	}
-	return &results[bestIndex]
+	return &results[best]
 }
 
 func (c *KugouLyricsClient) FetchLyrics(trackName, artistName string, durationSec float64) (*LyricsResponse, error) {

@@ -151,11 +151,15 @@ func invokeExtensionMethod(vm *goja.Runtime, method string, args ...any) (goja.V
 		return goja.Null(), nil
 	}
 
+	return callable(extensionObject, gojaArgumentValues(vm, args)...)
+}
+
+func gojaArgumentValues(vm *goja.Runtime, args []any) []goja.Value {
 	values := make([]goja.Value, len(args))
 	for i, arg := range args {
 		values[i] = gojaArgumentValue(vm, arg)
 	}
-	return callable(extensionObject, values...)
+	return values
 }
 
 func gojaArgumentValue(vm *goja.Runtime, value any) goja.Value {
@@ -214,11 +218,7 @@ func invokeExtensionOrGlobal(vm *goja.Runtime, method string, args ...any) (goja
 	if !ok {
 		return goja.Null(), nil
 	}
-	values := make([]goja.Value, len(args))
-	for i, arg := range args {
-		values[i] = gojaArgumentValue(vm, arg)
-	}
-	return callable(vm.GlobalObject(), values...)
+	return callable(vm.GlobalObject(), gojaArgumentValues(vm, args)...)
 }
 
 func extensionTrackInput(track *ExtTrackMetadata) map[string]any {

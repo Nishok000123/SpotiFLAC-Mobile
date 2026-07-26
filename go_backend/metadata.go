@@ -1661,30 +1661,27 @@ type AudioQuality struct {
 	Codec        string `json:"codec,omitempty"`
 }
 
+func flacAudioQualityFromStreamInfo(streamInfo []byte) AudioQuality {
+	bitDepth, sampleRate, totalSamples := parseFLACStreamInfoQuality(streamInfo)
+	duration := 0
+	if sampleRate > 0 && totalSamples > 0 {
+		duration = int(totalSamples / int64(sampleRate))
+	}
+	return AudioQuality{
+		BitDepth:     bitDepth,
+		SampleRate:   sampleRate,
+		TotalSamples: totalSamples,
+		Duration:     duration,
+		Codec:        "flac",
+	}
+}
+
 func audioQualityFromParsedFlac(f *flac.File) (AudioQuality, error) {
 	for _, meta := range f.Meta {
 		if meta.Type != flac.StreamInfo || len(meta.Data) < 18 {
 			continue
 		}
-		streamInfo := meta.Data
-		sampleRate := (int(streamInfo[10]) << 12) | (int(streamInfo[11]) << 4) | (int(streamInfo[12]) >> 4)
-		bitsPerSample := ((int(streamInfo[12]) & 0x01) << 4) | (int(streamInfo[13]) >> 4) + 1
-		totalSamples := int64(streamInfo[13]&0x0F)<<32 |
-			int64(streamInfo[14])<<24 |
-			int64(streamInfo[15])<<16 |
-			int64(streamInfo[16])<<8 |
-			int64(streamInfo[17])
-		duration := 0
-		if sampleRate > 0 && totalSamples > 0 {
-			duration = int(totalSamples / int64(sampleRate))
-		}
-		return AudioQuality{
-			BitDepth:     bitsPerSample,
-			SampleRate:   sampleRate,
-			TotalSamples: totalSamples,
-			Duration:     duration,
-			Codec:        "flac",
-		}, nil
+		return flacAudioQualityFromStreamInfo(meta.Data), nil
 	}
 	return AudioQuality{}, fmt.Errorf("FLAC STREAMINFO block not found")
 }
@@ -1717,28 +1714,7 @@ func GetAudioQuality(filePath string) (AudioQuality, error) {
 			return AudioQuality{}, fmt.Errorf("failed to read STREAMINFO: %w", err)
 		}
 
-		sampleRate := (int(streamInfo[10]) << 12) | (int(streamInfo[11]) << 4) | (int(streamInfo[12]) >> 4)
-
-		bitsPerSample := ((int(streamInfo[12]) & 0x01) << 4) | (int(streamInfo[13]) >> 4) + 1
-
-		totalSamples := int64(streamInfo[13]&0x0F)<<32 |
-			int64(streamInfo[14])<<24 |
-			int64(streamInfo[15])<<16 |
-			int64(streamInfo[16])<<8 |
-			int64(streamInfo[17])
-
-		duration := 0
-		if sampleRate > 0 && totalSamples > 0 {
-			duration = int(totalSamples / int64(sampleRate))
-		}
-
-		return AudioQuality{
-			BitDepth:     bitsPerSample,
-			SampleRate:   sampleRate,
-			TotalSamples: totalSamples,
-			Duration:     duration,
-			Codec:        "flac",
-		}, nil
+		return flacAudioQualityFromStreamInfo(streamInfo), nil
 	}
 
 	file.Seek(0, 0)

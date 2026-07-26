@@ -508,10 +508,6 @@ func (c *LyricsClient) FetchLyricsWithMetadata(artist, track string) (*LyricsRes
 	return c.parseLRCLibResponse(&lrcResp), nil
 }
 
-func (c *LyricsClient) FetchLyricsFromLRCLibSearch(query string, durationSec float64) (*LyricsResponse, error) {
-	return c.fetchLyricsFromLRCLibSearch(query, "", "", durationSec)
-}
-
 func (c *LyricsClient) fetchLyricsFromLRCLibSearch(query, trackName, artistName string, durationSec float64) (*LyricsResponse, error) {
 	params := url.Values{}
 	params.Set("q", query)

@@ -879,7 +879,7 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 				return &DownloadResponse{
 					Success:           false,
 					Error:             "Download failed: " + lastErr.Error(),
-					ErrorType:         firstNonEmptyString(lastErrType, "extension_error"),
+					ErrorType:         firstNonEmptyTrimmed(lastErrType, "extension_error"),
 					RetryAfterSeconds: lastRetryAfterSeconds,
 					Service:           req.Source,
 				}, nil
@@ -1013,7 +1013,7 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 	}
 
 	if lastErr != nil {
-		errorType := firstNonEmptyString(lastErrType, classifyDownloadErrorType(lastErr.Error()))
+		errorType := firstNonEmptyTrimmed(lastErrType, classifyDownloadErrorType(lastErr.Error()))
 		if errorType == "unknown" {
 			errorType = "not_found"
 		}
