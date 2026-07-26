@@ -2091,6 +2091,14 @@
   "@appearanceHeroAnimationsSubtitle": {
     "description": "Subtitle for the Hero animations toggle"
   },
+  "appearanceForceBlur": "Always use blur effects",
+  "@appearanceForceBlur": {
+    "description": "Toggle that forces backdrop blur on even when the device profile disabled it"
+  },
+  "appearanceForceBlurSubtitle": "Enable the navigation bar blur even on devices where it is off by default. May cost performance.",
+  "@appearanceForceBlurSubtitle": {
+    "description": "Subtitle for the force-blur toggle"
+  },
   "queueClearAll": "Clear All",
   "@queueClearAll": {
     "description": "Button - clear all queue items"

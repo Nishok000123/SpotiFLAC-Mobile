@@ -891,8 +891,9 @@ class _MainShellState extends ConsumerState<MainShell>
               ],
             );
             // The backdrop blur re-filters everything scrolling underneath on
-            // every frame; low-end devices get an opaque base instead.
-            if (!ref.read(backdropBlurEnabledProvider)) {
+            // every frame; low-end devices get an opaque base instead unless
+            // the user forces blur on in appearance settings.
+            if (!ref.watch(backdropBlurEnabledProvider)) {
               return ColoredBox(
                 color: settingsGroupColor(context),
                 child: bottomBar,

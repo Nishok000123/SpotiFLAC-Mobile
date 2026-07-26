@@ -101,6 +101,15 @@ class AppearanceSettingsPage extends ConsumerWidget {
                     onChanged: (value) => ref
                         .read(settingsProvider.notifier)
                         .setHeroAnimationsEnabled(value),
+                  ),
+                  SettingsSwitchItem(
+                    icon: Icons.blur_on,
+                    title: context.l10n.appearanceForceBlur,
+                    subtitle: context.l10n.appearanceForceBlurSubtitle,
+                    value: settings.forceBackdropBlur,
+                    onChanged: (value) => ref
+                        .read(settingsProvider.notifier)
+                        .setForceBackdropBlur(value),
                     showDivider: false,
                   ),
                 ],

@@ -49,6 +49,11 @@ class AppSettings {
   /// Shared-element (Hero) flights, e.g. the mini player artwork expanding
   /// into the full player. Off skips the flights entirely.
   final bool heroAnimationsEnabled;
+
+  /// Forces the shell's backdrop blur on even when the startup runtime
+  /// profile disabled it for this device tier. Off means "follow the
+  /// device default".
+  final bool forceBackdropBlur;
   final String
   extensionVerificationBrowserMode; // 'external_first' or 'in_app_first'
   final String locale;
@@ -139,6 +144,7 @@ class AppSettings {
     this.albumFolderStructure = 'artist_album',
     this.showExtensionStore = true,
     this.heroAnimationsEnabled = true,
+    this.forceBackdropBlur = false,
     this.extensionVerificationBrowserMode = 'in_app_first',
     this.locale = 'system',
     this.lyricsMode = 'embed',
@@ -211,6 +217,7 @@ class AppSettings {
     String? albumFolderStructure,
     bool? showExtensionStore,
     bool? heroAnimationsEnabled,
+    bool? forceBackdropBlur,
     String? extensionVerificationBrowserMode,
     String? locale,
     String? lyricsMode,
@@ -293,6 +300,7 @@ class AppSettings {
       showExtensionStore: showExtensionStore ?? this.showExtensionStore,
       heroAnimationsEnabled:
           heroAnimationsEnabled ?? this.heroAnimationsEnabled,
+      forceBackdropBlur: forceBackdropBlur ?? this.forceBackdropBlur,
       extensionVerificationBrowserMode:
           extensionVerificationBrowserMode ??
           this.extensionVerificationBrowserMode,

@@ -2914,6 +2914,18 @@ abstract class AppLocalizations {
   /// **'Fly covers between screens, e.g. when opening the player'**
   String get appearanceHeroAnimationsSubtitle;
 
+  /// Toggle that forces backdrop blur on even when the device profile disabled it
+  ///
+  /// In en, this message translates to:
+  /// **'Always use blur effects'**
+  String get appearanceForceBlur;
+
+  /// Subtitle for the force-blur toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Enable the navigation bar blur even on devices where it is off by default. May cost performance.'**
+  String get appearanceForceBlurSubtitle;
+
   /// Button - clear all queue items
   ///
   /// In en, this message translates to:

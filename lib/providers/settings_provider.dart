@@ -658,6 +658,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _saveSettings();
   }
 
+  void setForceBackdropBlur(bool enabled) {
+    state = state.copyWith(forceBackdropBlur: enabled);
+    _saveSettings();
+  }
+
   void setExtensionVerificationBrowserMode(String mode) {
     state = state.copyWith(
       extensionVerificationBrowserMode:

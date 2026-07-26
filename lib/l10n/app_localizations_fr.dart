@@ -1621,6 +1621,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'Des fenêtres contextuelles apparaissent entre les écrans, par exemple lors de l\'ouverture du lecteur';
 
   @override
+  String get appearanceForceBlur => 'Always use blur effects';
+
+  @override
+  String get appearanceForceBlurSubtitle =>
+      'Enable the navigation bar blur even on devices where it is off by default. May cost performance.';
+
+  @override
   String get queueClearAll => 'Tout effacer';
 
   @override

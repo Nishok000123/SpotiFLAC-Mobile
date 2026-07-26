@@ -1544,6 +1544,13 @@ class AppLocalizationsKo extends AppLocalizations {
       '화면 간 이동 시 표지 이미지가 날아가는 애니메이션을 표시합니다 (예시: 플레이어를 실행할 경우)';
 
   @override
+  String get appearanceForceBlur => 'Always use blur effects';
+
+  @override
+  String get appearanceForceBlurSubtitle =>
+      'Enable the navigation bar blur even on devices where it is off by default. May cost performance.';
+
+  @override
   String get queueClearAll => '모두 지우기';
 
   @override
