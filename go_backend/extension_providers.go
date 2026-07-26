@@ -133,16 +133,44 @@ func (m *extensionManager) SearchTracksWithMetadataProvidersForItemID(query stri
 	return tracks, nil
 }
 
+// FindURLHandler returns the enabled handler matching the URL. When several
+// extensions match (e.g. two Spotify handlers), the user's metadata provider
+// priority breaks the tie deterministically instead of Go's random map
+// iteration order.
 func (m *extensionManager) FindURLHandler(url string) *extensionProviderWrapper {
 	m.mu.RLock()
-	defer m.mu.RUnlock()
-
+	matches := make([]*loadedExtension, 0, 2)
 	for _, ext := range m.extensions {
 		if ext.Enabled && ext.Manifest.MatchesURL(url) && ext.Error == "" {
-			return newExtensionProviderWrapper(ext)
+			matches = append(matches, ext)
 		}
 	}
-	return nil
+	m.mu.RUnlock()
+
+	if len(matches) == 0 {
+		return nil
+	}
+	if len(matches) > 1 {
+		rank := map[string]int{}
+		for i, id := range GetMetadataProviderPriority() {
+			rank[strings.ToLower(strings.TrimSpace(id))] = i
+		}
+		sort.SliceStable(matches, func(i, j int) bool {
+			ri, oki := rank[strings.ToLower(matches[i].ID)]
+			rj, okj := rank[strings.ToLower(matches[j].ID)]
+			switch {
+			case oki && okj:
+				return ri < rj
+			case oki:
+				return true
+			case okj:
+				return false
+			default:
+				return matches[i].ID < matches[j].ID
+			}
+		})
+	}
+	return newExtensionProviderWrapper(matches[0])
 }
 
 type ExtURLHandleResultWithExtID struct {

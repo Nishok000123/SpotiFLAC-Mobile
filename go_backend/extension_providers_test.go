@@ -777,3 +777,50 @@ func TestParseExtensionAuxiliaryResults(t *testing.T) {
 		t.Fatalf("unexpected lyrics result: %+v", lyrics)
 	}
 }
+
+func TestMatchesURLHostAnchored(t *testing.T) {
+	manifest := &ExtensionManifest{
+		URLHandler: &URLHandlerConfig{
+			Enabled:  true,
+			Patterns: []string{"spotify.com", "deezer.page.link", "spotify:"},
+		},
+	}
+
+	for _, urlStr := range []string{
+		"https://open.spotify.com/track/abc",
+		"https://spotify.com/track/abc",
+		"HTTPS://OPEN.SPOTIFY.COM/track/ABC",
+		"https://deezer.page.link/xyz",
+		"spotify:track:abc123",
+	} {
+		if !manifest.MatchesURL(urlStr) {
+			t.Fatalf("expected match for %q", urlStr)
+		}
+	}
+
+	for _, urlStr := range []string{
+		// The old substring matching accepted all of these.
+		"https://evil.example/?next=https://spotify.com/track/abc",
+		"https://notspotify.com/track/abc",
+		"https://spotify.com.evil.example/track/abc",
+		"https://example.com/spotify.com",
+		"not a url at all",
+	} {
+		if manifest.MatchesURL(urlStr) {
+			t.Fatalf("expected no match for %q", urlStr)
+		}
+	}
+
+	withPath := &ExtensionManifest{
+		URLHandler: &URLHandlerConfig{
+			Enabled:  true,
+			Patterns: []string{"youtube.com/watch"},
+		},
+	}
+	if !withPath.MatchesURL("https://www.youtube.com/watch?v=abc") {
+		t.Fatal("expected host+path prefix to match")
+	}
+	if withPath.MatchesURL("https://www.youtube.com/playlist?list=abc") {
+		t.Fatal("expected different path to not match")
+	}
+}
