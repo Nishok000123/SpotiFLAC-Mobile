@@ -646,6 +646,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get collectionExportM3uFailed => 'Export failed';
 
   @override
+  String get trackOpenOn => 'Open on...';
+
+  @override
+  String get trackOpenOnNoLinks => 'No platform links found for this track.';
+
+  @override
   String snackbarAddedToQueue(String trackName) {
     return 'Added \"$trackName\" to queue';
   }
@@ -5556,6 +5562,14 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get updateNewVersionReady => 'Una nueva versión está lista';
 
   @override
+  String get updateRequiredTitle => 'Update required';
+
+  @override
+  String updateRequiredNotice(int count) {
+    return 'This version is $count releases behind and is no longer supported. Update to keep using the app.';
+  }
+
+  @override
   String get updateCurrent => 'Actual';
 
   @override
@@ -6202,6 +6216,13 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get appearanceAmoledDarkSubtitle => 'Fondo negro puro';
 
   @override
+  String get appearanceHeroAnimations => 'Hero animations';
+
+  @override
+  String get appearanceHeroAnimationsSubtitle =>
+      'Fly covers between screens, e.g. when opening the player';
+
+  @override
   String get queueClearAll => 'Eliminar todo';
 
   @override
@@ -6227,6 +6248,21 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   @override
   String get settingsDownloadNetworkSubtitle =>
       'Elegir qué red usar para descargas. Cuando se establece en Wi-Fi solamente, las descargas se detendrán en los datos móviles.';
+
+  @override
+  String get settingsConcurrentDownloads => 'Concurrent downloads';
+
+  @override
+  String get settingsConcurrentDownloadsSubtitle =>
+      'Downloading several tracks at once is faster, but some providers may rate-limit parallel requests.';
+
+  @override
+  String get concurrentDownloadsOne => '1 track at a time';
+
+  @override
+  String concurrentDownloadsCount(int count) {
+    return 'Up to $count tracks at once';
+  }
 
   @override
   String get albumFolderArtistAlbum => 'Artista / Álbum';
@@ -6858,6 +6894,20 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
       'Portada extraída de archivos locales. Se extraerá de nuevo en el próximo escaneo.';
 
   @override
+  String get libraryPlaybackNormalization => 'Volume normalization';
+
+  @override
+  String get libraryPlaybackNormalizationSubtitle =>
+      'Even out loudness between tracks using their ReplayGain or R128 tags, when present';
+
+  @override
+  String get cacheAudioAnalysis => 'Audio analysis cache';
+
+  @override
+  String get cacheAudioAnalysisDesc =>
+      'Saved spectrograms and analysis results. Will re-analyze on next open.';
+
+  @override
   String get cacheExploreFeed => 'Explorar caché de inicio';
 
   @override
@@ -7032,6 +7082,13 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get trackConvertBitrate => 'Tasa de bits';
 
   @override
+  String get trackConvertKeepOriginal => 'Keep original file';
+
+  @override
+  String get trackConvertKeepOriginalDescription =>
+      'Add the converted file as a separate library entry';
+
+  @override
   String get trackConvertConfirmTitle => 'Confirmar conversión';
 
   @override
@@ -7049,6 +7106,14 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
     String targetFormat,
   ) {
     return 'Convertir de $sourceFormat a $targetFormat? \n(Sin pérdidas)\n\nEl archivo original será eliminado después de la conversión.';
+  }
+
+  @override
+  String trackConvertConfirmKeepOriginal(
+    String sourceFormat,
+    String targetFormat,
+  ) {
+    return 'Convert from $sourceFormat to $targetFormat?\n\nThe original file will be kept and the converted file will be added as a separate library entry.';
   }
 
   @override
@@ -7335,6 +7400,17 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
       one: 'pista',
     );
     return '¿Convertir $count $_temp0 a $format? (Sin pérdida — no hay pérdida de calidad)\n\nLos archivos originales se eliminarán después de la conversión.';
+  }
+
+  @override
+  String selectionBatchConvertConfirmKeepOriginal(int count, String format) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'tracks',
+      one: 'track',
+    );
+    return 'Convert $count $_temp0 to $format?\n\nOriginal files will be kept and converted files will be added as separate library entries.';
   }
 
   @override
@@ -7664,6 +7740,24 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   @override
   String get storageModeSafSubtitle =>
       'Escoge cualquier carpeta, incluyendo la tarjeta SD';
+
+  @override
+  String get downloadFolderAccessLostTitle => 'Download folder access lost';
+
+  @override
+  String get downloadFolderAccessLostSubtitle =>
+      'Downloads will fail until you re-select the folder';
+
+  @override
+  String get downloadFolderReselect => 'Re-select folder';
+
+  @override
+  String get downloadErrorSafPermissionLost =>
+      'SAF permission invalid or revoked. Please reconfigure download location in Settings.';
+
+  @override
+  String get downloadErrorFolderAccessLost =>
+      'Download folder access lost. Please re-select your download folder in Settings.';
 
   @override
   String downloadFilenameDescription(
@@ -8176,6 +8270,13 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   }
 
   @override
+  String get notifVerificationRequiredTitle => 'Verification required';
+
+  @override
+  String get notifVerificationRequiredBody =>
+      'Open the app to complete verification and resume downloads';
+
+  @override
   String get notifAllDownloadsComplete => 'Todas las descargas completadas';
 
   @override
@@ -8552,8 +8653,22 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
       'Las pistas previamente descargadas se omitirán';
 
   @override
+  String get downloadDeduplicationWithQualityVariants =>
+      'Existing files at the selected quality will be skipped';
+
+  @override
   String get downloadDeduplicationDisabled =>
       'Todas las pistas se descargarán independientemente del historial';
+
+  @override
+  String get downloadQualityVariants => 'Allow different quality versions';
+
+  @override
+  String get downloadQualityVariantsDescription =>
+      'Add the selected quality to the filename and keep each version in download history';
+
+  @override
+  String get trackOptionDownloadQualityVariant => 'Download another quality';
 
   @override
   String get downloadFallbackExtensions => 'Reslpado de extensiones';
@@ -8682,6 +8797,21 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get queueDownloadStarting => 'Comenzando...';
+
+  @override
+  String get queueCheckingDownloadSession => 'Checking download session...';
+
+  @override
+  String get queueResolvingDownloadMetadata => 'Resolving track metadata...';
+
+  @override
+  String get queueResolvingDownloadStream => 'Preparing audio stream...';
+
+  @override
+  String get queueWaitingForVerification => 'Waiting for verification...';
+
+  @override
+  String get queueResumingAfterVerification => 'Resuming after verification...';
 
   @override
   String get a11ySelectTrack => 'Seleccionar pista';

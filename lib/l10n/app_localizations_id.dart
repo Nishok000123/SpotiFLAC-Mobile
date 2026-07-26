@@ -110,7 +110,7 @@ class AppLocalizationsId extends AppLocalizations {
       'Gunakan warna dari wallpaper Anda';
 
   @override
-  String get appearanceHistoryView => 'Tampilan Riwayat';
+  String get appearanceHistoryView => 'Gaya Tampilan Histori';
 
   @override
   String get appearanceHistoryViewList => 'Daftar';
@@ -138,7 +138,7 @@ class AppLocalizationsId extends AppLocalizations {
       'Pilih tab mana yang terbuka terlebih dahulu untuk hasil pencarian baru.';
 
   @override
-  String get optionsAutoFallback => 'Cadangan Otomatis';
+  String get optionsAutoFallback => 'Layanan Cadangan';
 
   @override
   String get optionsAutoFallbackSubtitle =>
@@ -646,6 +646,12 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get collectionExportM3uFailed => 'Export failed';
+
+  @override
+  String get trackOpenOn => 'Open on...';
+
+  @override
+  String get trackOpenOnNoLinks => 'No platform links found for this track.';
 
   @override
   String snackbarAddedToQueue(String trackName) {

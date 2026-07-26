@@ -563,10 +563,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dialogDownload => 'Herunterladen';
 
   @override
-  String get previewPlay => 'Play preview';
+  String get previewPlay => 'Vorschau abspielen';
 
   @override
-  String get previewStop => 'Stop preview';
+  String get previewStop => 'Vorschau stoppen';
 
   @override
   String get previewUnavailable => 'Preview unavailable';
@@ -652,6 +652,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get collectionExportM3uFailed => 'Export failed';
+
+  @override
+  String get trackOpenOn => 'Open on...';
+
+  @override
+  String get trackOpenOnNoLinks => 'No platform links found for this track.';
 
   @override
   String snackbarAddedToQueue(String trackName) {
@@ -966,7 +972,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Deezer hat keine Limits und wird als primäre empfohlen. Spotify kann nach vielen Anfragen begrenzen.';
 
   @override
-  String get logTitle => 'Logs';
+  String get logTitle => 'Protokolle';
 
   @override
   String get logCopied => 'Logs in Zwischenablage kopiert';
@@ -2912,7 +2918,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get backupContentsTitle => 'Backup contents';
 
   @override
-  String get backupContentsSettings => 'App settings';
+  String get backupContentsSettings => 'Appeinstellungen';
 
   @override
   String backupContentsHistory(int count) {
@@ -3455,7 +3461,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get audioAnalysisAnalyzing => 'Audio wird analysiert...';
 
   @override
-  String get audioAnalysisSampleRate => 'Sample Rate';
+  String get audioAnalysisSampleRate => 'Abtastrate';
 
   @override
   String get audioAnalysisCodec => 'Codec';
@@ -4361,7 +4367,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get artistReleases => 'Releases';
 
   @override
-  String get editMetadataSelectNone => 'None';
+  String get editMetadataSelectNone => 'Keine';
 
   @override
   String queueRetryAllFailed(int count) {
@@ -4424,7 +4430,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'The built-in player is a preview tool for checking local tracks quickly. Use an external music player for actual listening.';
 
   @override
-  String get nowPlayingTitle => 'Now Playing';
+  String get nowPlayingTitle => 'Jetzt läuft';
 
   @override
   String get nowPlayingNothingPlaying => 'Nothing is playing';
@@ -4529,7 +4535,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Lyrics proxy for Musixmatch, Netease, Apple Music, QQ Music, Spotify, Deezer, YouTube, Kugou, and Genius';
 
   @override
-  String get snackbarPlayingNext => 'Playing next';
+  String get snackbarPlayingNext => 'Als nächstes';
 
   @override
   String get snackbarAddedToQueueGeneric => 'Added to queue';
@@ -4577,7 +4583,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get trackConvertResampler => 'Resampler';
 
   @override
-  String get trackConvertDitherNone => 'None';
+  String get trackConvertDitherNone => 'Keine';
 
   @override
   String get trackConvertDitherTriangular => 'TPDF';
@@ -4648,10 +4654,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get regionCountryJP => 'Japan';
 
   @override
-  String get regionCountryKR => 'South Korea';
+  String get regionCountryKR => 'Südkorea';
 
   @override
-  String get regionCountryIN => 'India';
+  String get regionCountryIN => 'Indien';
 
   @override
   String get regionCountryID => 'Indonesia';
@@ -4705,7 +4711,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'If the browser did not open, or verification finished but did not return to SpotiFLAC Mobile, open this link again or copy it manually.';
 
   @override
-  String get extensionVerificationClose => 'Close';
+  String get extensionVerificationClose => 'Schließen';
 
   @override
   String get extensionVerificationCopyLink => 'Copy link';

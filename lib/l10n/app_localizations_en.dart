@@ -646,6 +646,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get collectionExportM3uFailed => 'Export failed';
 
   @override
+  String get trackOpenOn => 'Open on...';
+
+  @override
+  String get trackOpenOnNoLinks => 'No platform links found for this track.';
+
+  @override
   String snackbarAddedToQueue(String trackName) {
     return 'Added \"$trackName\" to queue';
   }

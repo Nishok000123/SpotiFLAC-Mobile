@@ -14,6 +14,7 @@ const int translationThreshold = 70;
 /// Only these languages will be available in the app.
 const List<Locale> filteredSupportedLocales = <Locale>[
   Locale('en'),
+  Locale('ko'),
   Locale('fr'),
   Locale('es', 'ES'),
   Locale('de'),
@@ -28,6 +29,7 @@ const List<Locale> filteredSupportedLocales = <Locale>[
 /// Set of locale codes for quick lookup.
 const Set<String> filteredLocaleCodes = <String>{
   'en',
+  'ko',
   'fr',
   'es_ES',
   'de',

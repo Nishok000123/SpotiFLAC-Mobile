@@ -11,6 +11,7 @@ import 'app_localizations_es.dart';
 import 'app_localizations_fr.dart';
 import 'app_localizations_id.dart';
 import 'app_localizations_ja.dart';
+import 'app_localizations_ko.dart';
 import 'app_localizations_pt.dart';
 import 'app_localizations_ru.dart';
 import 'app_localizations_tr.dart';
@@ -109,6 +110,7 @@ abstract class AppLocalizations {
     Locale('fr'),
     Locale('id'),
     Locale('ja'),
+    Locale('ko'),
     Locale('pt'),
     Locale('pt', 'PT'),
     Locale('ru'),
@@ -1255,6 +1257,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Export failed'**
   String get collectionExportM3uFailed;
+
+  /// Track option and sheet title listing streaming platforms where the track can be opened
+  ///
+  /// In en, this message translates to:
+  /// **'Open on...'**
+  String get trackOpenOn;
+
+  /// Shown in the Open on sheet when song.link returns no links
+  ///
+  /// In en, this message translates to:
+  /// **'No platform links found for this track.'**
+  String get trackOpenOnNoLinks;
 
   /// Snackbar - track added to download queue
   ///
@@ -7682,6 +7696,7 @@ class _AppLocalizationsDelegate
     'fr',
     'id',
     'ja',
+    'ko',
     'pt',
     'ru',
     'tr',
@@ -7727,6 +7742,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsId();
     case 'ja':
       return AppLocalizationsJa();
+    case 'ko':
+      return AppLocalizationsKo();
     case 'pt':
       return AppLocalizationsPt();
     case 'ru':
