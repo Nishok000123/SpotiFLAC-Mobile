@@ -5,21 +5,16 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
-import 'app_localizations_ar.dart';
 import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
 import 'app_localizations_es.dart';
 import 'app_localizations_fr.dart';
-import 'app_localizations_hi.dart';
 import 'app_localizations_id.dart';
 import 'app_localizations_ja.dart';
-import 'app_localizations_ko.dart';
-import 'app_localizations_nl.dart';
 import 'app_localizations_pt.dart';
 import 'app_localizations_ru.dart';
 import 'app_localizations_tr.dart';
 import 'app_localizations_uk.dart';
-import 'app_localizations_zh.dart';
 
 // ignore_for_file: type=lint
 
@@ -107,25 +102,18 @@ abstract class AppLocalizations {
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
-    Locale('ar'),
     Locale('de'),
     Locale('en'),
     Locale('es'),
     Locale('es', 'ES'),
     Locale('fr'),
-    Locale('hi'),
     Locale('id'),
     Locale('ja'),
-    Locale('ko'),
-    Locale('nl'),
     Locale('pt'),
     Locale('pt', 'PT'),
     Locale('ru'),
     Locale('tr'),
     Locale('uk'),
-    Locale('zh'),
-    Locale('zh', 'CN'),
-    Locale('zh', 'TW'),
   ];
 
   /// App name - DO NOT TRANSLATE
@@ -1235,7 +1223,7 @@ abstract class AppLocalizations {
   /// Dialog message - import playlist confirmation
   ///
   /// In en, this message translates to:
-  /// **'Found {count} tracks in CSV. Add them to download queue?'**
+  /// **'Found {count} tracks in the playlist file. Add them to download queue?'**
   String dialogImportPlaylistMessage(int count);
 
   /// Label shown in quality picker for CSV import
@@ -1243,6 +1231,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} tracks from CSV'**
   String csvImportTracks(int count);
+
+  /// Tooltip on the collection screen action that exports the track list as an M3U8 playlist file
+  ///
+  /// In en, this message translates to:
+  /// **'Export as M3U8'**
+  String get collectionExportM3u;
+
+  /// Snackbar after M3U8 export; tracks without a local file are not exported
+  ///
+  /// In en, this message translates to:
+  /// **'Exported {exported} of {total} tracks'**
+  String collectionExportM3uDone(int exported, int total);
+
+  /// Snackbar when an M3U8 export finds no local files
+  ///
+  /// In en, this message translates to:
+  /// **'No downloaded files to export'**
+  String get collectionExportM3uNone;
+
+  /// Snackbar when writing or sharing the M3U8 export fails
+  ///
+  /// In en, this message translates to:
+  /// **'Export failed'**
+  String get collectionExportM3uFailed;
 
   /// Snackbar - track added to download queue
   ///
@@ -6106,10 +6118,10 @@ abstract class AppLocalizations {
   /// **'Search with {providerName}...'**
   String homeSearchHintProvider(String providerName);
 
-  /// Tooltip for importing a CSV file into Home search
+  /// Tooltip for importing a CSV or M3U playlist file into Home search
   ///
   /// In en, this message translates to:
-  /// **'Import CSV'**
+  /// **'Import playlist (CSV, M3U)'**
   String get homeImportCsvTooltip;
 
   /// Tooltip for the Home search provider picker
@@ -7664,21 +7676,16 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) => <String>[
-    'ar',
     'de',
     'en',
     'es',
     'fr',
-    'hi',
     'id',
     'ja',
-    'ko',
-    'nl',
     'pt',
     'ru',
     'tr',
     'uk',
-    'zh',
   ].contains(locale.languageCode);
 
   @override
@@ -7704,22 +7711,10 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
         }
         break;
       }
-    case 'zh':
-      {
-        switch (locale.countryCode) {
-          case 'CN':
-            return AppLocalizationsZhCn();
-          case 'TW':
-            return AppLocalizationsZhTw();
-        }
-        break;
-      }
   }
 
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'ar':
-      return AppLocalizationsAr();
     case 'de':
       return AppLocalizationsDe();
     case 'en':
@@ -7728,16 +7723,10 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsEs();
     case 'fr':
       return AppLocalizationsFr();
-    case 'hi':
-      return AppLocalizationsHi();
     case 'id':
       return AppLocalizationsId();
     case 'ja':
       return AppLocalizationsJa();
-    case 'ko':
-      return AppLocalizationsKo();
-    case 'nl':
-      return AppLocalizationsNl();
     case 'pt':
       return AppLocalizationsPt();
     case 'ru':
@@ -7746,8 +7735,6 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsTr();
     case 'uk':
       return AppLocalizationsUk();
-    case 'zh':
-      return AppLocalizationsZh();
   }
 
   throw FlutterError(

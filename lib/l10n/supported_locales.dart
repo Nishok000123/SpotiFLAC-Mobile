@@ -15,26 +15,26 @@ const int translationThreshold = 70;
 const List<Locale> filteredSupportedLocales = <Locale>[
   Locale('en'),
   Locale('fr'),
-  Locale('de'),
   Locale('es', 'ES'),
+  Locale('de'),
   Locale('uk'),
   Locale('ru'),
   Locale('tr'),
   Locale('id'),
-  Locale('ja'),
   Locale('pt', 'PT'),
+  Locale('ja'),
 ];
 
 /// Set of locale codes for quick lookup.
 const Set<String> filteredLocaleCodes = <String>{
   'en',
   'fr',
-  'de',
   'es_ES',
+  'de',
   'uk',
   'ru',
   'tr',
   'id',
-  'ja',
   'pt_PT',
+  'ja',
 };

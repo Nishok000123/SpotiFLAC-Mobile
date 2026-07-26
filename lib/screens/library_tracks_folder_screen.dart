@@ -2,11 +2,14 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart' show ShareParams, SharePlus, XFile;
 import 'package:spotiflac_android/widgets/album_detail_header.dart';
 import 'package:spotiflac_android/widgets/cached_cover_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/track.dart';
+import 'package:spotiflac_android/services/m3u_playlist_service.dart';
+import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/providers/library_collections_provider.dart';
@@ -67,6 +70,59 @@ class _LibraryTracksFolderScreenState
         () => ref
             .read(libraryCollectionsProvider.notifier)
             .ensurePlaylistLoaded(playlistId),
+      );
+    }
+  }
+
+  /// Exports the collection as an .m3u8 shared via the system sheet. Tracks
+  /// without a resolvable local file are skipped; SAF entries are written
+  /// relative to the download tree root.
+  Future<void> _exportAsM3u8(
+    BuildContext context,
+    String title,
+    List<CollectionTrackEntry> entries,
+  ) async {
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final tracks = entries.map((e) => e.track).toList(growable: false);
+      final paths = await ref
+          .read(playbackProvider.notifier)
+          .resolveTrackFilePaths(tracks);
+
+      final exportEntries = <M3uExportEntry>[];
+      for (var i = 0; i < tracks.length; i++) {
+        final path = paths[i];
+        if (path == null || isCueVirtualPath(path)) continue;
+        final entryPath = M3uPlaylistService.exportPathFor(path);
+        if (entryPath == null) continue;
+        exportEntries.add(M3uExportEntry(track: tracks[i], path: entryPath));
+      }
+
+      if (exportEntries.isEmpty) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.collectionExportM3uNone)),
+        );
+        return;
+      }
+
+      final file = await M3uPlaylistService.writeExportFile(
+        title,
+        M3uPlaylistService.buildM3u8Content(exportEntries),
+      );
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            l10n.collectionExportM3uDone(exportEntries.length, tracks.length),
+          ),
+        ),
+      );
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], text: title),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.collectionExportM3uFailed)),
       );
     }
   }
@@ -568,6 +624,23 @@ class _LibraryTracksFolderScreenState
             )
           : null,
       appBarActions: [
+        if (!isSelectionMode && entries.isNotEmpty)
+          IconButton(
+            tooltip: context.l10n.collectionExportM3u,
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.4),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.ios_share,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            onPressed: () => _exportAsM3u8(context, title, entries),
+          ),
         if (isPlaylistMode && !isSelectionMode) ...[
           IconButton(
             tooltip: context.l10n.collectionRenamePlaylist,

@@ -623,13 +623,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String dialogImportPlaylistMessage(int count) {
-    return 'Found $count tracks in CSV. Add them to download queue?';
+    return 'Found $count tracks in the playlist file. Add them to download queue?';
   }
 
   @override
   String csvImportTracks(int count) {
     return '$count tracks from CSV';
   }
+
+  @override
+  String get collectionExportM3u => 'Export as M3U8';
+
+  @override
+  String collectionExportM3uDone(int exported, int total) {
+    return 'Exported $exported of $total tracks';
+  }
+
+  @override
+  String get collectionExportM3uNone => 'No downloaded files to export';
+
+  @override
+  String get collectionExportM3uFailed => 'Export failed';
 
   @override
   String snackbarAddedToQueue(String trackName) {
@@ -3680,7 +3694,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get homeImportCsvTooltip => 'Import CSV';
+  String get homeImportCsvTooltip => 'Import playlist (CSV, M3U)';
 
   @override
   String get homeChangeSearchProviderTooltip => 'Change search provider';
