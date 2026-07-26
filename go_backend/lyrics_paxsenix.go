@@ -194,29 +194,34 @@ func parsePaxsenixLyricsPayload(raw, provider string, multiPersonWordByWord bool
 	return nil, fmt.Errorf("failed to decode %s lyrics response", provider)
 }
 
-func lyricsResponseFromText(text, provider string) *LyricsResponse {
-	lines := parseSyncedLyrics(text)
-	if len(lines) > 0 {
+// lyricsResponseFromLRCText parses LRC-or-plain text into a response, or nil
+// when the text contains no usable lines.
+func lyricsResponseFromLRCText(text, provider, source string) *LyricsResponse {
+	if lines := parseSyncedLyrics(text); len(lines) > 0 {
 		return &LyricsResponse{
 			Lines:       lines,
 			SyncType:    "LINE_SYNCED",
 			PlainLyrics: plainLyricsFromTimedLines(lines),
 			Provider:    provider,
-			Source:      provider,
+			Source:      source,
 		}
 	}
-
-	plainLines := plainTextLyricsLines(text)
-	if len(plainLines) > 0 {
+	if lines := plainTextLyricsLines(text); len(lines) > 0 {
 		return &LyricsResponse{
-			Lines:       plainLines,
+			Lines:       lines,
 			SyncType:    "UNSYNCED",
 			PlainLyrics: text,
 			Provider:    provider,
-			Source:      provider,
+			Source:      source,
 		}
 	}
+	return nil
+}
 
+func lyricsResponseFromText(text, provider string) *LyricsResponse {
+	if resp := lyricsResponseFromLRCText(text, provider, provider); resp != nil {
+		return resp
+	}
 	return &LyricsResponse{Provider: provider, Source: provider}
 }
 

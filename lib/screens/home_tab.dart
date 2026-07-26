@@ -2359,7 +2359,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
     int? navigationIndex,
   }) async {
     final navigator = Navigator.of(context);
-    _precacheCover(item.coverUrl);
+    precacheCoverImage(context, item.coverUrl);
     final beforeModTime =
         await DownloadedEmbeddedCoverResolver.readFileModTimeMillis(
           item.filePath,
@@ -2379,25 +2379,6 @@ class _HomeTabState extends ConsumerState<HomeTab>
       beforeModTime: beforeModTime,
       force: result == true,
       onChanged: _onEmbeddedCoverChanged,
-    );
-  }
-
-  void _precacheCover(String? url) {
-    if (url == null || url.isEmpty) return;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      return;
-    }
-    final dpr = MediaQuery.devicePixelRatioOf(
-      context,
-    ).clamp(1.0, 3.0).toDouble();
-    final targetSize = (360 * dpr).round().clamp(512, 1024).toInt();
-    precacheImage(
-      ResizeImage(
-        cachedCoverImageProvider(url),
-        width: targetSize,
-        height: targetSize,
-      ),
-      context,
     );
   }
 

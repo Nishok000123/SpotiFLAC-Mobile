@@ -199,36 +199,8 @@ func (c *NeteaseClient) FetchLyrics(
 		return nil, err
 	}
 
-	lines := parseSyncedLyrics(lrcText)
-	if len(lines) == 0 {
-		plainLines := strings.Split(lrcText, "\n")
-		for _, line := range plainLines {
-			trimmed := strings.TrimSpace(line)
-			if trimmed != "" {
-				lines = append(lines, LyricsLine{
-					StartTimeMs: 0,
-					Words:       trimmed,
-					EndTimeMs:   0,
-				})
-			}
-		}
-
-		if len(lines) == 0 {
-			return nil, fmt.Errorf("netease returned empty lyrics")
-		}
-
-		return &LyricsResponse{
-			Lines:    lines,
-			SyncType: "UNSYNCED",
-			Provider: "Netease",
-			Source:   "Netease",
-		}, nil
+	if resp := lyricsResponseFromLRCText(lrcText, "Netease", "Netease"); resp != nil {
+		return resp, nil
 	}
-
-	return &LyricsResponse{
-		Lines:    lines,
-		SyncType: "LINE_SYNCED",
-		Provider: "Netease",
-		Source:   "Netease",
-	}, nil
+	return nil, fmt.Errorf("netease returned empty lyrics")
 }

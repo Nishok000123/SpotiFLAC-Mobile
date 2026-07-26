@@ -23,6 +23,7 @@ import 'package:spotiflac_android/screens/selection_mode_mixin.dart';
 import 'package:spotiflac_android/screens/track_metadata_screen.dart';
 import 'package:spotiflac_android/services/downloaded_embedded_cover_resolver.dart';
 import 'package:spotiflac_android/widgets/album_scaffold_body.dart';
+import 'package:spotiflac_android/widgets/cached_cover_image.dart';
 import 'package:spotiflac_android/widgets/album_track_tile.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
 import 'package:spotiflac_android/widgets/destructive_selection_button.dart';
@@ -206,7 +207,7 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
     required int navigationIndex,
   }) async {
     final navigator = Navigator.of(context);
-    _precacheCover(item.coverUrl);
+    precacheCoverImage(context, item.coverUrl);
     final beforeModTime =
         await DownloadedEmbeddedCoverResolver.readFileModTimeMillis(
           item.filePath,
@@ -227,28 +228,6 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
       beforeModTime: beforeModTime,
       force: result == true,
       onChanged: _onEmbeddedCoverChanged,
-    );
-  }
-
-  void _precacheCover(String? url) {
-    if (url == null || url.isEmpty) return;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      return;
-    }
-    final dpr = MediaQuery.devicePixelRatioOf(
-      context,
-    ).clamp(1.0, 3.0).toDouble();
-    final targetSize = (360 * dpr).round().clamp(512, 1024).toInt();
-    precacheImage(
-      ResizeImage(
-        CachedNetworkImageProvider(
-          url,
-          cacheManager: CoverCacheManager.instance,
-        ),
-        width: targetSize,
-        height: targetSize,
-      ),
-      context,
     );
   }
 

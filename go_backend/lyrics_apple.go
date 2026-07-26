@@ -440,26 +440,8 @@ func (c *AppleMusicClient) FetchLyrics(
 		lrcText = rawLyrics
 	}
 
-	lines := parseSyncedLyrics(lrcText)
-	if len(lines) > 0 {
-		return &LyricsResponse{
-			Lines:    lines,
-			SyncType: "LINE_SYNCED",
-			Provider: "Apple Music",
-			Source:   "Apple Music",
-		}, nil
+	if resp := lyricsResponseFromLRCText(lrcText, "Apple Music", "Apple Music"); resp != nil {
+		return resp, nil
 	}
-
-	resultLines := plainTextLyricsLines(lrcText)
-
-	if len(resultLines) > 0 {
-		return &LyricsResponse{
-			Lines:    resultLines,
-			SyncType: "UNSYNCED",
-			Provider: "Apple Music",
-			Source:   "Apple Music",
-		}, nil
-	}
-
 	return nil, lyricsNotFoundErrorf("no lyrics found on apple music")
 }

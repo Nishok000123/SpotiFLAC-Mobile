@@ -229,9 +229,9 @@ func TestExtensionHealthInitializeVMAndCustomSearchWrappers(t *testing.T) {
 	if tracks, err := provider.CustomSearch("needle", map[string]any{"type": "track"}); err != nil || len(tracks) == 0 {
 		t.Fatalf("CustomSearch = %#v/%v", tracks, err)
 	}
-	cancelMu.Lock()
-	delete(cancelMap, "custom-item-unique")
-	cancelMu.Unlock()
+	downloadCancels.mu.Lock()
+	delete(downloadCancels.entries, "custom-item-unique")
+	downloadCancels.mu.Unlock()
 	if tracks, err := provider.customSearch("needle", nil, "custom-item-unique", ""); err != nil || len(tracks) == 0 {
 		t.Fatalf("customSearch (item ID) = %#v/%v", tracks, err)
 	}
