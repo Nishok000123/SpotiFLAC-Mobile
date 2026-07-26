@@ -127,6 +127,46 @@ Do not use legacy spellings such as `display_name`, `types`,
 Request only what the extension needs. The runtime denies undeclared network,
 storage, and file access.
 
+## Downloading files
+
+Extensions with `permissions.file: true` can stream a remote file into their
+allowed output path:
+
+```js
+const result = file.download(downloadUrl, outputPath, {
+  headers: {
+    "User-Agent": "My Extension/1.0"
+  },
+  onProgress: function (written, total) {
+    log.debug("Downloaded", written, "of", total, "bytes");
+  },
+  resume: true
+});
+```
+
+The third argument is optional and supports:
+
+| Option | Type | Default | Contract |
+| --- | --- | --- | --- |
+| `headers` | object | `{}` | Additional request headers. Do not set `Range` when using runtime-managed resume. |
+| `onProgress` | function | none | Called as `onProgress(writtenBytes, totalBytes)` when the total is known. |
+| `trackItemBytes` | boolean | `true` | Publishes byte progress to the host download queue. The legacy alias `track_item_bytes` is also accepted. |
+| `resume` | boolean | `false` | Allows up to three mid-body Range resumes for the normal streaming mode. |
+| `chunked` | boolean or positive number | `false` | Uses sequential Range requests. `true` selects 1 MiB chunks; a positive number sets the chunk size in bytes. |
+
+`resume` is deliberately opt-in. It is attempted only when the server returns
+a strong `ETag` or `Last-Modified` validator. Resumed responses must return the
+expected `206 Content-Range`; if the server returns `200`, the staged file is
+truncated and restarted from byte zero. Enable it only when the origin
+guarantees that the same URL and validator identify byte-identical content
+across retries and network changes. A CDN can otherwise splice bytes from two
+different objects into one apparently successful file.
+
+Use `chunked` for origins that require bounded Range requests, such as some
+media CDNs. Chunked mode has its own per-chunk retries and does not use the
+`resume` option. In every mode SpotiFLAC Mobile writes to a staged sibling file
+and publishes the final path only after the download completes successfully.
+
 ## Store registry integrity
 
 Repository maintainers should publish a SHA-256 digest for every package:
