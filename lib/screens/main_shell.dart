@@ -119,6 +119,7 @@ class _MainShellState extends ConsumerState<MainShell>
       );
       _initialSafRepairComplete = true;
       if (!mounted) return;
+      unawaited(restorePersistedPlaybackSession());
       _setupShareListener();
       await _checkSafMigration();
       final updateDialogShown = await _checkForUpdates();
