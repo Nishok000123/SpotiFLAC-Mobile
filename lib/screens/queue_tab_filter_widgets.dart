@@ -173,6 +173,27 @@ extension _QueueTabFilterWidgets on _QueueTabState {
       }
     }
 
+    // Completion-bridge tracks are hidden from filteredUnifiedItems, so weave
+    // them into the front of the swipe-navigation list (matching their pinned
+    // lead-zone position) — otherwise a just-downloaded track opens with no
+    // swipe navigation at all until its row lands in the library query.
+    final bridgeNavigationIndexById = <String, int>{};
+    if (bridgeIds.isNotEmpty) {
+      final bridgeHistoryItems = <DownloadHistoryItem>[];
+      for (final id in bridgeIds) {
+        final historyItem = bridgeHistoryById[id];
+        if (historyItem == null) continue;
+        bridgeNavigationIndexById[id] = bridgeHistoryItems.length;
+        bridgeHistoryItems.add(historyItem);
+      }
+      if (bridgeHistoryItems.isNotEmpty) {
+        downloadedNavigationItems.insertAll(0, bridgeHistoryItems);
+        downloadedNavigationIndexByUnifiedId.updateAll(
+          (_, index) => index + bridgeHistoryItems.length,
+        );
+      }
+    }
+
     final leadCount = activeDownloadIds.length + bridgeIds.length;
     final collectionEntries = filterMode == 'all'
         ? _getVisibleCollectionEntries(collectionState)
@@ -197,6 +218,8 @@ extension _QueueTabFilterWidgets on _QueueTabState {
           _completionBridge[bridgeId]!,
           colorScheme,
           bridgeHistoryById[bridgeId],
+          navigationItems: downloadedNavigationItems,
+          navigationIndex: bridgeNavigationIndexById[bridgeId],
         ),
       );
     }
@@ -219,6 +242,8 @@ extension _QueueTabFilterWidgets on _QueueTabState {
           _completionBridge[bridgeId]!,
           colorScheme,
           bridgeHistoryById[bridgeId],
+          navigationItems: downloadedNavigationItems,
+          navigationIndex: bridgeNavigationIndexById[bridgeId],
         ),
       );
     }

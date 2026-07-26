@@ -149,8 +149,10 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
     BuildContext context,
     DownloadItem item,
     ColorScheme colorScheme,
-    DownloadHistoryItem? historyItem,
-  ) {
+    DownloadHistoryItem? historyItem, {
+    List<DownloadHistoryItem>? navigationItems,
+    int? navigationIndex,
+  }) {
     final track = item.track;
     final radius = BorderRadius.circular(8);
     final unifiedItem = historyItem == null
@@ -178,7 +180,11 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
       label: context.l10n.a11yTrackByArtist(trackName, artistName),
       child: GestureDetector(
         onTap: () => historyItem != null
-            ? _navigateToHistoryMetadataScreen(historyItem)
+            ? _navigateToHistoryMetadataScreen(
+                historyItem,
+                navigationItems: navigationItems,
+                navigationIndex: navigationIndex,
+              )
             : _navigateToMetadataScreen(item),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,8 +238,10 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
     BuildContext context,
     DownloadItem item,
     ColorScheme colorScheme,
-    DownloadHistoryItem? historyItem,
-  ) {
+    DownloadHistoryItem? historyItem, {
+    List<DownloadHistoryItem>? navigationItems,
+    int? navigationIndex,
+  }) {
     final track = item.track;
     final coverSize = _queueCoverSize();
     final radius = BorderRadius.circular(8);
@@ -269,7 +277,11 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => historyItem != null
-            ? _navigateToHistoryMetadataScreen(historyItem)
+            ? _navigateToHistoryMetadataScreen(
+                historyItem,
+                navigationItems: navigationItems,
+                navigationIndex: navigationIndex,
+              )
             : _navigateToMetadataScreen(item),
         child: Padding(
           padding: const EdgeInsets.all(12),
