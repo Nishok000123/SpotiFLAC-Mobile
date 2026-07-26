@@ -36,6 +36,7 @@ import 'package:spotiflac_android/widgets/album_detail_header.dart'
 import 'package:spotiflac_android/widgets/audio_analysis_widget.dart';
 import 'package:spotiflac_android/widgets/batch_convert_sheet.dart';
 import 'package:spotiflac_android/widgets/cached_cover_image.dart';
+import 'package:spotiflac_android/widgets/open_on_platform_sheet.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/constants/music_services.dart';
 import 'package:spotiflac_android/screens/collapsing_header_scroll_mixin.dart';
@@ -1356,10 +1357,21 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
               label: l10n.cueSplitTitle,
               onTap: () => _showCueSplitSheet(screenContext),
             ),
+          if (_spotifyId != null || (isrc?.isNotEmpty ?? false))
+            _MetadataOption(
+              icon: Icons.open_in_new,
+              label: l10n.trackOpenOn,
+              dividerAbove: true,
+              onTap: () => OpenOnPlatformSheet.show(
+                screenContext,
+                spotifyId: _spotifyId ?? '',
+                isrc: isrc ?? '',
+              ),
+            ),
           _MetadataOption(
             icon: Icons.share_outlined,
             label: l10n.trackMetadataShare,
-            dividerAbove: true,
+            dividerAbove: _spotifyId == null && !(isrc?.isNotEmpty ?? false),
             onTap: () => _shareFile(screenContext),
           ),
           _MetadataOption(
