@@ -9,6 +9,7 @@ import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
+import 'package:spotiflac_android/widgets/duplicate_review_sheet.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/settings_sliver_app_bar.dart';
 
@@ -404,6 +405,12 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
                   onChanged: (value) => ref
                       .read(settingsProvider.notifier)
                       .setLocalLibraryShowDuplicates(value),
+                ),
+                SettingsItem(
+                  icon: Icons.difference_outlined,
+                  title: context.l10n.libraryReviewDuplicates,
+                  subtitle: context.l10n.libraryReviewDuplicatesSubtitle,
+                  onTap: () => DuplicateReviewSheet.show(context),
                 ),
                 Opacity(
                   opacity: settings.localLibraryEnabled ? 1.0 : 0.5,
