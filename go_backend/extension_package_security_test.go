@@ -53,22 +53,25 @@ func TestWriteVerifiedExtensionPackageRejectsMismatchBeforeReplace(t *testing.T)
 	}
 }
 
-func TestRegistryRejectsMalformedExtensionChecksum(t *testing.T) {
-	_, err := parseRegistryBody([]byte(
-		`{"version":1,"extensions":[{"id":"ext","name":"ext","version":"1.0.0","sha256":"not-a-hash"}]}`,
-	))
-	if err == nil || !strings.Contains(err.Error(), "invalid SHA-256") {
-		t.Fatalf("expected invalid checksum error, got %v", err)
-	}
-
+func TestRegistrySkipsOnlyExtensionWithMalformedChecksum(t *testing.T) {
 	checksum := strings.Repeat("a", sha256.Size*2)
 	registry, err := parseRegistryBody([]byte(
-		`{"version":1,"extensions":[{"id":"ext","name":"ext","version":"1.0.0","checksumSha256":"sha256:` +
+		`{"version":1,"extensions":[` +
+			`{"id":"bad","name":"bad","version":"1.0.0","sha256":"not-a-hash"},` +
+			`{"id":"verified","name":"verified","version":"1.0.0","checksumSha256":"sha256:` +
 			checksum +
-			`"}]}`,
+			`"},` +
+			`{"id":"legacy","name":"legacy","version":"1.0.0"}` +
+			`]}`,
 	))
 	if err != nil {
-		t.Fatalf("parse registry with checksum alias: %v", err)
+		t.Fatalf("parse registry: %v", err)
+	}
+	if len(registry.Extensions) != 2 {
+		t.Fatalf("registry extensions = %#v, want valid entries only", registry.Extensions)
+	}
+	if registry.Extensions[0].ID != "verified" || registry.Extensions[1].ID != "legacy" {
+		t.Fatalf("registry extension order = %#v", registry.Extensions)
 	}
 	if got := registry.Extensions[0].getSHA256(); got != checksum {
 		t.Fatalf("normalized checksum = %q, want %q", got, checksum)

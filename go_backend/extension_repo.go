@@ -331,16 +331,22 @@ func parseRegistryBody(body []byte) (*repoRegistry, error) {
 		}
 		return nil, fmt.Errorf("failed to parse registry: %w", err)
 	}
+	validExtensions := make([]repoExtension, 0, len(registry.Extensions))
 	for index := range registry.Extensions {
 		ext := &registry.Extensions[index]
 		rawChecksum := ext.getRawSHA256()
 		if rawChecksum != "" && normalizeSHA256(rawChecksum) == "" {
-			return nil, fmt.Errorf(
-				"extension %q has an invalid SHA-256 checksum",
+			LogWarn(
+				"ExtensionRepo",
+				"Skipping registry extension %q at index %d: invalid SHA-256 checksum",
 				ext.ID,
+				index,
 			)
+			continue
 		}
+		validExtensions = append(validExtensions, *ext)
 	}
+	registry.Extensions = validExtensions
 	return &registry, nil
 }
 
