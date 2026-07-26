@@ -1063,34 +1063,24 @@ final downloadHistoryExistsProvider = FutureProvider.autoDispose
       );
     });
 
+// Deliberately no per-row verifyOrRepairHistoryItem here (issue #495): on a
+// >500-track playlist that verify pass meant one SAF stat round-trip per
+// already-downloaded track, and any loadedIndexVersion bump mid-pass restarted
+// it from zero — above ~500 tracks the future never settled and "Download all"
+// silently did nothing. Stale rows are reconciled by the startup repair and
+// orphan-cleanup passes; the single-track provider above keeps the verify.
 final downloadHistoryBatchExistsProvider = FutureProvider.autoDispose
     .family<Set<String>, HistoryBatchLookupRequest>((ref, request) async {
       ref.watch(
         downloadHistoryProvider.select((state) => state.loadedIndexVersion),
       );
-      final notifier = ref.read(downloadHistoryProvider.notifier);
       final rows = await HistoryDatabase.instance.findExistingTracks(
         request.tracks,
       );
-      final found = <String>{};
-      const chunkSize = 16;
-      for (var start = 0; start < rows.length; start += chunkSize) {
-        final end = min(start + chunkSize, rows.length);
-        final checks = await Future.wait(
-          List.generate(end - start, (offset) async {
-            final index = start + offset;
-            final row = rows[index];
-            if (row == null) return null;
-            final exists = await notifier.verifyOrRepairHistoryItem(
-              DownloadHistoryItem.fromJson(row),
-            );
-            if (!exists) return null;
-            return request.tracks[index].lookupKey;
-          }),
-        );
-        found.addAll(checks.whereType<String>());
-      }
-      return found;
+      return <String>{
+        for (var i = 0; i < rows.length; i++)
+          if (rows[i] != null) request.tracks[i].lookupKey,
+      };
     });
 
 class DownloadedAlbumTracksRequest {

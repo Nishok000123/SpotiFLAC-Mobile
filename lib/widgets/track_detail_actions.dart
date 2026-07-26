@@ -7,6 +7,7 @@ import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/providers/library_collections_provider.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
+import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/widgets/download_service_picker.dart';
 import 'package:spotiflac_android/widgets/view_queue_snackbar_action.dart';
 
@@ -142,13 +143,20 @@ Future<void> queueTracksSkippingDownloaded(
   final historyLookups = tracks
       .map(historyLookupForTrack)
       .toList(growable: false);
-  final existingHistoryKeys = skipExisting
-      ? await ref.read(
-          downloadHistoryBatchExistsProvider(
-            HistoryBatchLookupRequest(historyLookups),
-          ).future,
-        )
-      : const <String>{};
+  Set<String> existingHistoryKeys = const {};
+  if (skipExisting) {
+    try {
+      existingHistoryKeys = await ref.read(
+        downloadHistoryBatchExistsProvider(
+          HistoryBatchLookupRequest(historyLookups),
+        ).future,
+      );
+    } catch (e) {
+      // Queueing without the skip beats silently doing nothing: several
+      // callers fire this flow unawaited, so a throw here would vanish.
+      AppLogger('DownloadFlow').w('Duplicate check failed, queueing all: $e');
+    }
+  }
   if (!context.mounted) return;
   final localLibState =
       (skipExisting &&
