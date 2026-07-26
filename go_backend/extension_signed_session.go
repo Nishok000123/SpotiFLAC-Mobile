@@ -95,9 +95,6 @@ func (r *extensionRuntime) signedSessionFilePath(config SignedSessionConfig) (st
 		baseDir = r.dataDir
 	}
 	dir := filepath.Join(baseDir, "signed_sessions")
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		return "", err
-	}
 	scope := strings.Join([]string{
 		namespace,
 		strings.TrimSpace(strings.ToLower(config.BaseURL)),
@@ -128,32 +125,41 @@ func (r *extensionRuntime) loadSignedSession(config SignedSessionConfig) (*signe
 	if data, err := os.ReadFile(path); err == nil {
 		_ = json.Unmarshal(data, record)
 	}
+	changed := false
 	if strings.TrimSpace(record.InstallID) == "" {
 		record.InstallID = randomHex(16)
+		changed = true
 	}
-	normalizeSignedSessionRecordScope(config, record)
-	if err := r.saveSignedSession(config, record); err != nil {
-		return nil, err
+	if normalizeSignedSessionRecordScope(config, record) {
+		changed = true
+	}
+	// Only rewrite the file when the record actually changed; loads happen on
+	// every signed request and preflight.
+	if changed {
+		if err := r.saveSignedSession(config, record); err != nil {
+			return nil, err
+		}
 	}
 	return record, nil
 }
 
-func normalizeSignedSessionRecordScope(config SignedSessionConfig, record *signedSessionRecord) {
+// normalizeSignedSessionRecordScope stamps the config scope onto the record,
+// resetting the session when the scope changed. Returns whether the record
+// was modified.
+func normalizeSignedSessionRecordScope(config SignedSessionConfig, record *signedSessionRecord) bool {
 	namespace := sanitizeSignedSessionNamespace(config.Namespace)
 	baseURL := strings.TrimSpace(config.BaseURL)
 	appVersion := strings.TrimSpace(config.AppVersion)
 	platform := strings.TrimSpace(config.Platform)
-	if record.Namespace == "" && record.BaseURL == "" && record.AppVersion == "" && record.Platform == "" {
-		record.Namespace = namespace
-		record.BaseURL = baseURL
-		record.AppVersion = appVersion
-		record.Platform = platform
-		return
+	if record.Namespace == namespace &&
+		record.BaseURL == baseURL &&
+		record.AppVersion == appVersion &&
+		record.Platform == platform {
+		return false
 	}
-	if record.Namespace != namespace ||
-		record.BaseURL != baseURL ||
-		record.AppVersion != appVersion ||
-		record.Platform != platform {
+	blankScope := record.Namespace == "" && record.BaseURL == "" &&
+		record.AppVersion == "" && record.Platform == ""
+	if !blankScope {
 		record.SessionID = ""
 		record.SessionSecret = ""
 		record.ExpiresAt = ""
@@ -162,11 +168,15 @@ func normalizeSignedSessionRecordScope(config SignedSessionConfig, record *signe
 	record.BaseURL = baseURL
 	record.AppVersion = appVersion
 	record.Platform = platform
+	return true
 }
 
 func (r *extensionRuntime) saveSignedSession(config SignedSessionConfig, record *signedSessionRecord) error {
 	path, err := r.signedSessionFilePath(config)
 	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(record, "", "  ")

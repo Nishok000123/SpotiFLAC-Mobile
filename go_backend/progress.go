@@ -3,6 +3,7 @@ package gobackend
 import (
 	"encoding/json"
 	"math"
+	"sort"
 	"sync"
 	"time"
 )
@@ -334,6 +335,11 @@ func SetItemFinalizing(itemID string) {
 	}
 }
 
+// maxRemovedProgressEntries bounds the removal tombstones a long batch session
+// can accumulate; pruning bumps multiProgressReset so lagging delta clients
+// fall back to a full resync instead of missing removals.
+const maxRemovedProgressEntries = 512
+
 func RemoveItemProgress(itemID string) {
 	multiMu.Lock()
 	defer multiMu.Unlock()
@@ -341,8 +347,28 @@ func RemoveItemProgress(itemID string) {
 	if _, ok := multiProgress.Items[itemID]; ok {
 		delete(multiProgress.Items, itemID)
 		removedProgressSeq[itemID] = nextMultiProgressSeqLocked()
+		if len(removedProgressSeq) > maxRemovedProgressEntries {
+			pruneRemovedProgressLocked()
+		}
 	}
 	markMultiProgressDirtyLocked()
+}
+
+func pruneRemovedProgressLocked() {
+	revisions := make([]int64, 0, len(removedProgressSeq))
+	for _, revision := range removedProgressSeq {
+		revisions = append(revisions, revision)
+	}
+	sort.Slice(revisions, func(i, j int) bool { return revisions[i] < revisions[j] })
+	cutoff := revisions[len(revisions)/2]
+	for id, revision := range removedProgressSeq {
+		if revision <= cutoff {
+			delete(removedProgressSeq, id)
+		}
+	}
+	if cutoff > multiProgressReset {
+		multiProgressReset = cutoff
+	}
 }
 
 func GetItemProgress(itemID string) string {

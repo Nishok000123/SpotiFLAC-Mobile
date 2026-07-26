@@ -292,6 +292,7 @@ func (r *extensionRuntime) fileDownload(call goja.FunctionCall) goja.Value {
 	}
 
 	var written int64
+	var lastProgressNotify int64
 	buf := make([]byte, 32*1024)
 
 	// copyBody streams resp into progressWriter. fatal is a terminal JS error
@@ -321,7 +322,11 @@ func (r *extensionRuntime) fileDownload(call goja.FunctionCall) goja.Value {
 					return r.jsError("short write"), nil
 				}
 
-				if onProgress != nil && contentLength > 0 {
+				// Throttle the JS callback like the native progress writer:
+				// per-read invocation is interpreter work inside the copy loop.
+				if onProgress != nil && contentLength > 0 &&
+					(written-lastProgressNotify >= progressUpdateThreshold || written >= contentLength) {
+					lastProgressNotify = written
 					_, _ = onProgress(goja.Undefined(), r.vm.ToValue(written), r.vm.ToValue(contentLength))
 				}
 			}
@@ -535,6 +540,7 @@ func (r *extensionRuntime) fileDownloadChunked(client *http.Client, urlStr, full
 	}
 
 	var totalWritten int64
+	var lastProgressNotify int64
 	buf := make([]byte, 32*1024)
 	maxRetries := 3
 
@@ -616,7 +622,9 @@ func (r *extensionRuntime) fileDownloadChunked(client *http.Client, urlStr, full
 					return r.jsError("short write")
 				}
 
-				if onProgress != nil && totalSize > 0 {
+				if onProgress != nil && totalSize > 0 &&
+					(totalWritten-lastProgressNotify >= progressUpdateThreshold || totalWritten >= totalSize) {
+					lastProgressNotify = totalWritten
 					_, _ = onProgress(goja.Undefined(), r.vm.ToValue(totalWritten), r.vm.ToValue(totalSize))
 				}
 			}
