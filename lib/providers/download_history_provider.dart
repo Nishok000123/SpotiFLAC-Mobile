@@ -1860,37 +1860,6 @@ final downloadHistoryProvider =
       DownloadHistoryNotifier.new,
     );
 
-class DownloadHistoryPageRequest {
-  final int limit;
-  final int offset;
-
-  const DownloadHistoryPageRequest({this.limit = 100, this.offset = 0});
-
-  @override
-  bool operator ==(Object other) =>
-      other is DownloadHistoryPageRequest &&
-      other.limit == limit &&
-      other.offset == offset;
-
-  @override
-  int get hashCode => Object.hash(limit, offset);
-}
-
-final downloadHistoryPageProvider = FutureProvider.autoDispose
-    .family<List<DownloadHistoryItem>, DownloadHistoryPageRequest>((
-      ref,
-      request,
-    ) async {
-      ref.watch(
-        downloadHistoryProvider.select((state) => state.loadedIndexVersion),
-      );
-      final rows = await HistoryDatabase.instance.getAll(
-        limit: request.limit,
-        offset: request.offset,
-      );
-      return rows.map(DownloadHistoryItem.fromJson).toList(growable: false);
-    });
-
 class DownloadHistoryGroupedCounts {
   final int albumCount;
   final int singleTrackCount;

@@ -129,83 +129,6 @@ enum LocalLibrarySortMode { album, title, artist, latest, quality }
 
 enum LocalLibraryFilterMode { all, albums, singles }
 
-class LocalLibraryPageRequest {
-  final int limit;
-  final int offset;
-  final LocalLibrarySortMode sortMode;
-  final LocalLibraryFilterMode filterMode;
-  final String? searchQuery;
-  final String? format;
-
-  const LocalLibraryPageRequest({
-    this.limit = 100,
-    this.offset = 0,
-    this.sortMode = LocalLibrarySortMode.album,
-    this.filterMode = LocalLibraryFilterMode.all,
-    this.searchQuery,
-    this.format,
-  });
-
-  @override
-  bool operator ==(Object other) {
-    return other is LocalLibraryPageRequest &&
-        other.limit == limit &&
-        other.offset == offset &&
-        other.sortMode == sortMode &&
-        other.filterMode == filterMode &&
-        other.searchQuery == searchQuery &&
-        other.format == format;
-  }
-
-  @override
-  int get hashCode =>
-      Object.hash(limit, offset, sortMode, filterMode, searchQuery, format);
-}
-
-class LocalLibraryAlbumGroup {
-  final String albumKey;
-  final String albumName;
-  final String artistName;
-  final String? coverPath;
-  final int trackCount;
-  final int? maxBitDepth;
-  final int? maxSampleRate;
-  final int? maxBitrate;
-  final String? format;
-  final String? releaseDate;
-  final String? genre;
-
-  const LocalLibraryAlbumGroup({
-    required this.albumKey,
-    required this.albumName,
-    required this.artistName,
-    this.coverPath,
-    required this.trackCount,
-    this.maxBitDepth,
-    this.maxSampleRate,
-    this.maxBitrate,
-    this.format,
-    this.releaseDate,
-    this.genre,
-  });
-
-  factory LocalLibraryAlbumGroup.fromDbRow(Map<String, dynamic> row) {
-    return LocalLibraryAlbumGroup(
-      albumKey: row['album_key'] as String,
-      albumName: row['album_name'] as String? ?? '',
-      artistName: row['artist_name'] as String? ?? '',
-      coverPath: row['cover_path'] as String?,
-      trackCount: (row['track_count'] as num?)?.toInt() ?? 0,
-      maxBitDepth: (row['max_bit_depth'] as num?)?.toInt(),
-      maxSampleRate: (row['max_sample_rate'] as num?)?.toInt(),
-      maxBitrate: (row['max_bitrate'] as num?)?.toInt(),
-      format: row['format'] as String?,
-      releaseDate: row['release_date'] as String?,
-      genre: row['genre'] as String?,
-    );
-  }
-}
-
 class LocalLibraryLookupIndex {
   final Set<String> isrcs;
   final Set<String> matchKeys;
@@ -228,6 +151,39 @@ class LocalLibraryBatchLookupRequest {
     required this.trackName,
     required this.artistName,
   });
+}
+
+class IsrcDuplicateEntry {
+  final String id;
+  final String source; // 'downloaded' (history row) or 'local' (library row)
+  final String trackName;
+  final String artistName;
+  final String albumName;
+  final String filePath;
+  final int? bitDepth;
+  final int? sampleRate;
+  final int? bitrate;
+  final String? format;
+
+  const IsrcDuplicateEntry({
+    required this.id,
+    required this.source,
+    required this.trackName,
+    required this.artistName,
+    required this.albumName,
+    required this.filePath,
+    this.bitDepth,
+    this.sampleRate,
+    this.bitrate,
+    this.format,
+  });
+}
+
+class IsrcDuplicateGroup {
+  final String isrc;
+  final List<IsrcDuplicateEntry> entries;
+
+  const IsrcDuplicateGroup({required this.isrc, required this.entries});
 }
 
 class QueueLibraryDbQuery {
@@ -655,146 +611,6 @@ class LibraryDatabase {
     return rows.map(_dbRowToJson).toList();
   }
 
-  Future<List<Map<String, dynamic>>> getPage(
-    LocalLibraryPageRequest request,
-  ) async {
-    final db = await database;
-    final where = <String>[];
-    final whereArgs = <Object?>[];
-    _appendPageFilters(where, whereArgs, request);
-
-    final rows = await db.query(
-      'library',
-      where: where.isEmpty ? null : where.join(' AND '),
-      whereArgs: whereArgs,
-      orderBy: _orderByForSort(request.sortMode),
-      limit: request.limit,
-      offset: request.offset,
-    );
-    return rows.map(_dbRowToJson).toList(growable: false);
-  }
-
-  Future<int> getPageCount(LocalLibraryPageRequest request) async {
-    final db = await database;
-    final where = <String>[];
-    final whereArgs = <Object?>[];
-    _appendPageFilters(where, whereArgs, request);
-    final rows = await db.rawQuery(
-      'SELECT COUNT(*) AS count FROM library'
-      '${where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}'}',
-      whereArgs,
-    );
-    return Sqflite.firstIntValue(rows) ?? 0;
-  }
-
-  Future<List<LocalLibraryAlbumGroup>> getAlbumPage({
-    int limit = 100,
-    int offset = 0,
-    LocalLibraryFilterMode filterMode = LocalLibraryFilterMode.albums,
-    LocalLibrarySortMode sortMode = LocalLibrarySortMode.album,
-    String? searchQuery,
-  }) async {
-    final db = await database;
-    final where = <String>[];
-    final whereArgs = <Object?>[];
-    _appendSearchFilter(where, whereArgs, searchQuery);
-    final having = switch (filterMode) {
-      LocalLibraryFilterMode.singles => 'COUNT(*) = 1',
-      LocalLibraryFilterMode.albums => 'COUNT(*) > 1',
-      LocalLibraryFilterMode.all => null,
-    };
-    final rows = await db.rawQuery(
-      '''
-      SELECT
-        album_key,
-        MIN(album_name) AS album_name,
-        COALESCE(NULLIF(MIN(album_artist), ''), MIN(artist_name)) AS artist_name,
-        MAX(CASE WHEN cover_path IS NOT NULL AND cover_path != '' THEN cover_path END) AS cover_path,
-        COUNT(*) AS track_count,
-        MAX(bit_depth) AS max_bit_depth,
-        MAX(sample_rate) AS max_sample_rate,
-        MAX(bitrate) AS max_bitrate,
-        MAX(format) AS format,
-        MAX(release_date) AS release_date,
-        MAX(genre) AS genre
-      FROM library
-      ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
-      GROUP BY album_key
-      ${having == null ? '' : 'HAVING $having'}
-      ORDER BY ${_albumOrderByForSort(sortMode)}
-      LIMIT ? OFFSET ?
-      ''',
-      [...whereArgs, limit, offset],
-    );
-    return rows.map(LocalLibraryAlbumGroup.fromDbRow).toList(growable: false);
-  }
-
-  Future<int> getAlbumCount({
-    LocalLibraryFilterMode filterMode = LocalLibraryFilterMode.albums,
-    String? searchQuery,
-  }) async {
-    final db = await database;
-    final where = <String>[];
-    final whereArgs = <Object?>[];
-    _appendSearchFilter(where, whereArgs, searchQuery);
-    final having = switch (filterMode) {
-      LocalLibraryFilterMode.singles => 'COUNT(*) = 1',
-      LocalLibraryFilterMode.albums => 'COUNT(*) > 1',
-      LocalLibraryFilterMode.all => null,
-    };
-    final rows = await db.rawQuery('''
-      SELECT COUNT(*) AS count FROM (
-        SELECT album_key
-        FROM library
-        ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
-        GROUP BY album_key
-        ${having == null ? '' : 'HAVING $having'}
-      )
-      ''', whereArgs);
-    return Sqflite.firstIntValue(rows) ?? 0;
-  }
-
-  void _appendPageFilters(
-    List<String> where,
-    List<Object?> whereArgs,
-    LocalLibraryPageRequest request,
-  ) {
-    _appendSearchFilter(where, whereArgs, request.searchQuery);
-    final normalizedFormat = request.format?.trim().toLowerCase();
-    if (normalizedFormat != null && normalizedFormat.isNotEmpty) {
-      where.add('LOWER(format) = ?');
-      whereArgs.add(normalizedFormat);
-    }
-    switch (request.filterMode) {
-      case LocalLibraryFilterMode.all:
-        break;
-      case LocalLibraryFilterMode.albums:
-        where.add(
-          'album_key IN (SELECT album_key FROM library GROUP BY album_key HAVING COUNT(*) > 1)',
-        );
-        break;
-      case LocalLibraryFilterMode.singles:
-        where.add(
-          'album_key IN (SELECT album_key FROM library GROUP BY album_key HAVING COUNT(*) = 1)',
-        );
-        break;
-    }
-  }
-
-  void _appendSearchFilter(
-    List<String> where,
-    List<Object?> whereArgs,
-    String? searchQuery,
-  ) {
-    final query = normalizeLookupText(searchQuery);
-    if (query.isEmpty) return;
-    final like = '%${_escapeLikePattern(query)}%';
-    where.add(
-      "(track_name_norm LIKE ? ESCAPE '\\' OR artist_name_norm LIKE ? ESCAPE '\\' OR album_name_norm LIKE ? ESCAPE '\\' OR album_artist_norm LIKE ? ESCAPE '\\')",
-    );
-    whereArgs.addAll([like, like, like, like]);
-  }
-
   String _escapeLikePattern(String value) {
     return value
         .replaceAll('\\', r'\\')
@@ -814,18 +630,6 @@ class LibraryDatabase {
         'COALESCE(bit_depth, 0) DESC, COALESCE(sample_rate, 0) DESC, COALESCE(bitrate, 0) DESC, album_artist_norm, album_name_norm, disc_number, track_number',
       LocalLibrarySortMode.album =>
         'album_artist_norm, album_name_norm, COALESCE(disc_number, 0), COALESCE(track_number, 0), track_name_norm',
-    };
-  }
-
-  String _albumOrderByForSort(LocalLibrarySortMode sortMode) {
-    return switch (sortMode) {
-      LocalLibrarySortMode.latest =>
-        'MAX(scanned_at) DESC, artist_name, album_name',
-      LocalLibrarySortMode.quality =>
-        'MAX(COALESCE(bit_depth, 0)) DESC, MAX(COALESCE(sample_rate, 0)) DESC, MAX(COALESCE(bitrate, 0)) DESC, artist_name, album_name',
-      LocalLibrarySortMode.title => 'album_name, artist_name',
-      LocalLibrarySortMode.artist ||
-      LocalLibrarySortMode.album => 'artist_name, album_name',
     };
   }
 
@@ -1571,27 +1375,6 @@ class LibraryDatabase {
     return _dbRowToJson(rows.first);
   }
 
-  Future<Map<String, dynamic>?> getByFilePath(String filePath) async {
-    final db = await database;
-    final rows = await db.query(
-      'library',
-      where: 'file_path = ?',
-      whereArgs: [filePath],
-      limit: 1,
-    );
-    if (rows.isEmpty) return null;
-    return _dbRowToJson(rows.first);
-  }
-
-  Future<bool> existsByIsrc(String isrc) async {
-    final db = await database;
-    final result = await db.rawQuery(
-      'SELECT 1 FROM library WHERE isrc = ? LIMIT 1',
-      [isrc],
-    );
-    return result.isNotEmpty;
-  }
-
   Future<List<Map<String, dynamic>>> findByTrackAndArtist(
     String trackName,
     String artistName,
@@ -1700,22 +1483,6 @@ class LibraryDatabase {
         .toList(growable: false);
   }
 
-  Future<Set<String>> getAllIsrcs() async {
-    final db = await database;
-    final rows = await db.rawQuery(
-      'SELECT isrc FROM library WHERE isrc IS NOT NULL AND isrc != ""',
-    );
-    return rows.map((r) => r['isrc'] as String).toSet();
-  }
-
-  Future<Set<String>> getAllTrackKeys() async {
-    final db = await database;
-    final rows = await db.rawQuery(
-      'SELECT match_key FROM library WHERE match_key IS NOT NULL AND match_key != ""',
-    );
-    return rows.map((r) => r['match_key'] as String).toSet();
-  }
-
   Future<LocalLibraryLookupIndex> getLookupIndex() async {
     final db = await database;
     final rows = await db.rawQuery('SELECT isrc, match_key FROM library');
@@ -1750,6 +1517,68 @@ class LibraryDatabase {
         .map((row) => row['cover_path'] as String?)
         .whereType<String>()
         .toList(growable: false);
+  }
+
+  /// Groups of tracks sharing one ISRC across download history and the
+  /// local library. Library rows whose path key already appears in history
+  /// are excluded so a scanned copy of a download doesn't pair with itself.
+  /// Entries come back best-quality first.
+  Future<List<IsrcDuplicateGroup>> findIsrcDuplicateGroups() async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      WITH merged AS (
+        SELECT h.id AS id, 'downloaded' AS source, h.track_name, h.artist_name,
+               h.album_name, h.file_path, UPPER(TRIM(h.isrc)) AS isrc_key,
+               h.bit_depth, h.sample_rate, h.bitrate, h.format
+        FROM history_db.history h
+        WHERE h.isrc IS NOT NULL AND TRIM(h.isrc) != ''
+        UNION ALL
+        SELECT l.id AS id, 'local' AS source, l.track_name, l.artist_name,
+               l.album_name, l.file_path, UPPER(TRIM(l.isrc)) AS isrc_key,
+               l.bit_depth, l.sample_rate, l.bitrate, l.format
+        FROM library l
+        WHERE l.isrc IS NOT NULL AND TRIM(l.isrc) != ''
+          AND NOT EXISTS (
+            SELECT 1
+            FROM library_path_keys lpk
+            JOIN history_db.history_path_keys hpk ON hpk.path_key = lpk.path_key
+            WHERE lpk.item_id = l.id
+          )
+      )
+      SELECT * FROM merged
+      WHERE isrc_key IN (
+        SELECT isrc_key FROM merged GROUP BY isrc_key HAVING COUNT(*) > 1
+      )
+      ORDER BY isrc_key, bit_depth DESC, sample_rate DESC, bitrate DESC
+    ''');
+
+    final groups = <String, List<IsrcDuplicateEntry>>{};
+    for (final row in rows) {
+      final isrc = row['isrc_key'] as String? ?? '';
+      final filePath = row['file_path'] as String? ?? '';
+      if (isrc.isEmpty || filePath.isEmpty) continue;
+      groups
+          .putIfAbsent(isrc, () => [])
+          .add(
+            IsrcDuplicateEntry(
+              id: row['id'] as String,
+              source: row['source'] as String,
+              trackName: row['track_name'] as String? ?? '',
+              artistName: row['artist_name'] as String? ?? '',
+              albumName: row['album_name'] as String? ?? '',
+              filePath: filePath,
+              bitDepth: (row['bit_depth'] as num?)?.toInt(),
+              sampleRate: (row['sample_rate'] as num?)?.toInt(),
+              bitrate: (row['bitrate'] as num?)?.toInt(),
+              format: row['format'] as String?,
+            ),
+          );
+    }
+    return [
+      for (final entry in groups.entries)
+        if (entry.value.length > 1)
+          IsrcDuplicateGroup(isrc: entry.key, entries: entry.value),
+    ];
   }
 
   Future<void> deleteByPath(String filePath) async {
