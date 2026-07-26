@@ -3945,6 +3945,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get libraryFilterMetadataIncorrectIsrcFormat => 'ISRC 형식이 잘못됨';
 
   @override
+  String get libraryFilterMetadataMissingIsrc => 'Missing ISRC';
+
+  @override
   String get libraryFilterMetadataMissingLabel => '레이블 누락';
 
   @override

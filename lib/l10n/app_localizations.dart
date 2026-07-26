@@ -3727,7 +3727,7 @@ abstract class AppLocalizations {
   /// Tutorial welcome page title
   ///
   /// In en, this message translates to:
-  /// **'Welcome to SpotiFLAC!'**
+  /// **'Welcome to SpotiFLAC Mobile!'**
   String get tutorialWelcomeTitle;
 
   /// Tutorial welcome page description
@@ -3739,7 +3739,7 @@ abstract class AppLocalizations {
   /// Tutorial welcome tip 1
   ///
   /// In en, this message translates to:
-  /// **'Download music from Spotify, Deezer, or paste any supported URL'**
+  /// **'Search music or paste a link from any source your installed extensions support'**
   String get tutorialWelcomeTip1;
 
   /// Tutorial welcome tip 2
@@ -6759,6 +6759,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Incorrect ISRC format'**
   String get libraryFilterMetadataIncorrectIsrcFormat;
+
+  /// Filter option - items without any ISRC tag
+  ///
+  /// In en, this message translates to:
+  /// **'Missing ISRC'**
+  String get libraryFilterMetadataMissingIsrc;
 
   /// Filter option - items missing record label
   ///

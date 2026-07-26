@@ -462,6 +462,9 @@ extension _LibraryDbQueueSql on LibraryDatabase {
       case 'incorrect-isrc-format':
         where.add('($hasIncorrectIsrc)');
         break;
+      case 'missing-isrc':
+        where.add('TRIM(COALESCE($isrcExpr, \'\')) = \'\'');
+        break;
       case 'missing-label':
         where.add('NOT ($hasLabel)');
         break;

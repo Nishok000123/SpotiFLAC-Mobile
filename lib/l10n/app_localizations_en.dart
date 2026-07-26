@@ -2076,7 +2076,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get tutorialWelcomeTitle => 'Welcome to SpotiFLAC!';
+  String get tutorialWelcomeTitle => 'Welcome to SpotiFLAC Mobile!';
 
   @override
   String get tutorialWelcomeDesc =>
@@ -2084,7 +2084,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tutorialWelcomeTip1 =>
-      'Download music from Spotify, Deezer, or paste any supported URL';
+      'Search music or paste a link from any source your installed extensions support';
 
   @override
   String get tutorialWelcomeTip2 =>
@@ -4066,6 +4066,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get libraryFilterMetadataIncorrectIsrcFormat =>
       'Incorrect ISRC format';
+
+  @override
+  String get libraryFilterMetadataMissingIsrc => 'Missing ISRC';
 
   @override
   String get libraryFilterMetadataMissingLabel => 'Missing label';

@@ -4113,6 +4113,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get libraryFilterMetadataIncorrectIsrcFormat => 'Falsches ISRC-Format';
 
   @override
+  String get libraryFilterMetadataMissingIsrc => 'Missing ISRC';
+
+  @override
   String get libraryFilterMetadataMissingLabel => 'Label fehlt';
 
   @override

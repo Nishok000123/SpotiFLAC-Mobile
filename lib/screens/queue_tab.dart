@@ -956,6 +956,15 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                               ),
                               FilterChip(
                                 label: Text(
+                                  context.l10n.libraryFilterMetadataMissingIsrc,
+                                ),
+                                selected: tempMetadata == 'missing-isrc',
+                                onSelected: (_) => setSheetState(
+                                  () => tempMetadata = 'missing-isrc',
+                                ),
+                              ),
+                              FilterChip(
+                                label: Text(
                                   context
                                       .l10n
                                       .libraryFilterMetadataMissingLabel,

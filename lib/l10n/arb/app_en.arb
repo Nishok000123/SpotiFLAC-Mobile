@@ -2751,7 +2751,7 @@
       }
     }
   },
-  "tutorialWelcomeTitle": "Welcome to SpotiFLAC!",
+  "tutorialWelcomeTitle": "Welcome to SpotiFLAC Mobile!",
   "@tutorialWelcomeTitle": {
     "description": "Tutorial welcome page title"
   },
@@ -2759,7 +2759,7 @@
   "@tutorialWelcomeDesc": {
     "description": "Tutorial welcome page description"
   },
-  "tutorialWelcomeTip1": "Download music from Spotify, Deezer, or paste any supported URL",
+  "tutorialWelcomeTip1": "Search music or paste a link from any source your installed extensions support",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
@@ -5297,6 +5297,10 @@
   "libraryFilterMetadataIncorrectIsrcFormat": "Incorrect ISRC format",
   "@libraryFilterMetadataIncorrectIsrcFormat": {
     "description": "Filter option - items with an invalid ISRC format"
+  },
+  "libraryFilterMetadataMissingIsrc": "Missing ISRC",
+  "@libraryFilterMetadataMissingIsrc": {
+    "description": "Filter option - items without any ISRC tag"
   },
   "libraryFilterMetadataMissingLabel": "Missing label",
   "@libraryFilterMetadataMissingLabel": {

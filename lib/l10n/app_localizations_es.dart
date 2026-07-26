@@ -4062,6 +4062,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'Incorrect ISRC format';
 
   @override
+  String get libraryFilterMetadataMissingIsrc => 'Missing ISRC';
+
+  @override
   String get libraryFilterMetadataMissingLabel => 'Missing label';
 
   @override
