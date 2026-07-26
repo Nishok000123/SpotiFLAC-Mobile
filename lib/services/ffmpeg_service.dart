@@ -588,22 +588,6 @@ class FFmpegService {
     return null;
   }
 
-  static Future<String?> decryptAudioFile({
-    required String inputPath,
-    required String decryptionKey,
-    bool deleteOriginal = true,
-  }) async {
-    return decryptWithDescriptor(
-      inputPath: inputPath,
-      descriptor: DownloadDecryptionDescriptor(
-        strategy: _genericMovKeyDecryptionStrategy,
-        key: decryptionKey,
-        inputFormat: 'mov',
-      ),
-      deleteOriginal: deleteOriginal,
-    );
-  }
-
   static Future<String?> decryptWithDescriptor({
     required String inputPath,
     required DownloadDecryptionDescriptor descriptor,
@@ -807,31 +791,6 @@ class FFmpegService {
       _log.e('Failed to finalize decrypted file: $e');
       return null;
     }
-  }
-
-  static Future<String?> convertFlacToMp3(
-    String inputPath, {
-    String bitrate = '320k',
-    bool deleteOriginal = true,
-  }) async {
-    final outputPath = _buildOutputPath(inputPath, '.mp3');
-
-    final command =
-        '-v error -hide_banner -i "$inputPath" -codec:a libmp3lame -b:a $bitrate -map 0:a -map_metadata 0 -id3v2_version 3 "$outputPath" -y';
-
-    final result = await _execute(command);
-
-    if (result.success) {
-      if (deleteOriginal) {
-        try {
-          await File(inputPath).delete();
-        } catch (_) {}
-      }
-      return outputPath;
-    }
-
-    _log.e('FLAC to MP3 conversion failed: ${result.output}');
-    return null;
   }
 
   static bool isActiveLiveDecryptedUrl(String url) {
@@ -1261,117 +1220,12 @@ class FFmpegService {
     return port;
   }
 
-  static Future<String?> convertFlacToOpus(
-    String inputPath, {
-    String bitrate = '128k',
-    bool deleteOriginal = true,
-  }) async {
-    final outputPath = _buildOutputPath(inputPath, '.opus');
-
-    final command =
-        '-v error -hide_banner -i "$inputPath" -codec:a libopus -b:a $bitrate -vbr on -compression_level 10 -map 0:a -map_metadata 0 "$outputPath" -y';
-
-    final result = await _execute(command);
-
-    if (result.success) {
-      if (deleteOriginal) {
-        try {
-          await File(inputPath).delete();
-        } catch (_) {}
-      }
-      return outputPath;
-    }
-
-    _log.e('FLAC to Opus conversion failed: ${result.output}');
-    return null;
-  }
-
-  static Future<String?> convertFlacToLossy(
-    String inputPath, {
-    required String format,
-    String? bitrate,
-    bool deleteOriginal = true,
-  }) async {
-    String bitrateValue = '320k';
-    if (bitrate != null && bitrate.contains('_')) {
-      final parts = bitrate.split('_');
-      if (parts.length == 2) {
-        bitrateValue = '${parts[1]}k';
-      }
-    }
-
-    switch (format.toLowerCase()) {
-      case 'opus':
-        final opusBitrate = bitrate?.startsWith('opus_') == true
-            ? bitrateValue
-            : '128k';
-        return convertFlacToOpus(
-          inputPath,
-          bitrate: opusBitrate,
-          deleteOriginal: deleteOriginal,
-        );
-      case 'mp3':
-      default:
-        final mp3Bitrate = bitrate?.startsWith('mp3_') == true
-            ? bitrateValue
-            : '320k';
-        return convertFlacToMp3(
-          inputPath,
-          bitrate: mp3Bitrate,
-          deleteOriginal: deleteOriginal,
-        );
-    }
-  }
-
-  static Future<String?> convertFlacToM4a(
-    String inputPath, {
-    String codec = 'aac',
-    String bitrate = '256k',
-  }) async {
-    final dir = File(inputPath).parent.path;
-    final baseName = inputPath
-        .split(Platform.pathSeparator)
-        .last
-        .replaceAll('.flac', '');
-    final outputDir = '$dir${Platform.pathSeparator}M4A';
-
-    await Directory(outputDir).create(recursive: true);
-
-    final outputPath = '$outputDir${Platform.pathSeparator}$baseName.m4a';
-
-    String command;
-    if (codec == 'alac') {
-      command =
-          '-v error -hide_banner -i "$inputPath" -codec:a alac -map 0:a -map_metadata 0 "$outputPath" -y';
-    } else {
-      command =
-          '-v error -hide_banner -i "$inputPath" -codec:a aac -b:a $bitrate -map 0:a -map_metadata 0 "$outputPath" -y';
-    }
-
-    final result = await _execute(command);
-
-    if (result.success) {
-      return outputPath;
-    }
-
-    _log.e('FLAC to M4A conversion failed: ${result.output}');
-    return null;
-  }
-
   static Future<bool> isAvailable() async {
     try {
       final version = await FFmpegKitConfig.getFFmpegVersion();
       return version?.isNotEmpty ?? false;
     } catch (e) {
       return false;
-    }
-  }
-
-  static Future<String?> getVersion() async {
-    try {
-      return await FFmpegKitConfig.getFFmpegVersion();
-    } catch (e) {
-      return null;
     }
   }
 

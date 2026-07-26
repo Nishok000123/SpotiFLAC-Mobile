@@ -5,49 +5,23 @@ import 'package:ffmpeg_kit_flutter_new_full/ffmpeg_session.dart';
 class DownloadDecryptionDescriptor {
   final String strategy;
   final String key;
-  final String? iv;
   final String? inputFormat;
   final String? outputExtension;
-  final Map<String, dynamic> options;
 
   const DownloadDecryptionDescriptor({
     required this.strategy,
     required this.key,
-    this.iv,
     this.inputFormat,
     this.outputExtension,
-    this.options = const {},
   });
 
   factory DownloadDecryptionDescriptor.fromJson(Map<String, dynamic> json) {
-    final rawOptions = json['options'];
     return DownloadDecryptionDescriptor(
       strategy: (json['strategy'] as String? ?? '').trim(),
       key: (json['key'] as String? ?? '').trim(),
-      iv: (json['iv'] as String?)?.trim(),
       inputFormat: (json['input_format'] as String?)?.trim(),
       outputExtension: (json['output_extension'] as String?)?.trim(),
-      options: rawOptions is Map
-          ? Map<String, dynamic>.from(rawOptions)
-          : const {},
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    final json = <String, dynamic>{'strategy': strategy, 'key': key};
-    if (iv != null && iv!.isNotEmpty) {
-      json['iv'] = iv;
-    }
-    if (inputFormat != null && inputFormat!.isNotEmpty) {
-      json['input_format'] = inputFormat;
-    }
-    if (outputExtension != null && outputExtension!.isNotEmpty) {
-      json['output_extension'] = outputExtension;
-    }
-    if (options.isNotEmpty) {
-      json['options'] = options;
-    }
-    return json;
   }
 
   static DownloadDecryptionDescriptor? fromDownloadResult(

@@ -177,7 +177,6 @@ void main() {
       expect(structured!.normalizedStrategy, 'ffmpeg.mov_key');
       expect(structured.normalizedOutputExtension, '.m4a');
       expect(structured.key, 'secret');
-      expect(structured.options['repair_ac4'], isTrue);
       expect(legacy!.inputFormat, 'mov');
       expect(legacy.normalizedOutputExtension, '.flac');
     });
