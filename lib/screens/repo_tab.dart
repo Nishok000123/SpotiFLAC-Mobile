@@ -128,6 +128,7 @@ class _RepoTabState extends ConsumerState<RepoTab> {
 
             if (!hasRegistryUrl)
               SliverFillRemaining(
+                hasScrollBody: false,
                 child: _buildSetupRepoState(colorScheme, error),
               )
             else ...[
@@ -181,9 +182,7 @@ class _RepoTabState extends ConsumerState<RepoTab> {
                           ),
                         ),
                         onChanged: (value) {
-                          ref
-                              .read(repoProvider.notifier)
-                              .setSearchQuery(value);
+                          ref.read(repoProvider.notifier).setSearchQuery(value);
                         },
                         onTapOutside: (_) {
                           FocusScope.of(context).unfocus();
@@ -321,93 +320,103 @@ class _RepoTabState extends ConsumerState<RepoTab> {
   }
 
   Widget _buildSetupRepoState(ColorScheme colorScheme, String? error) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.extension_outlined,
-              size: 72,
-              color: colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              context.l10n.storeAddRepoTitle,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            TextField(
-              controller: _repoUrlController,
-              decoration: InputDecoration(
-                hintText: context.l10n.storeRepoUrlHint,
-                labelText: context.l10n.storeRepoUrlLabel,
-                prefixIcon: const Icon(Icons.link),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(28),
-                  borderSide: BorderSide(color: colorScheme.outlineVariant),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(28),
-                  borderSide: BorderSide(color: colorScheme.outlineVariant),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(28),
-                  borderSide: BorderSide(color: colorScheme.primary, width: 2),
-                ),
-                filled: true,
-                fillColor: colorScheme.surfaceContainerHighest,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
+    // Bottom padding keeps the content optically centered in the area
+    // visible above the translucent nav bar.
+    return Padding(
+      padding: EdgeInsets.fromLTRB(32, 32, 32, 32 + context.navBarBottomInset),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.extension_outlined,
+                size: 72,
+                color: colorScheme.onSurfaceVariant,
               ),
-              keyboardType: TextInputType.url,
-              autocorrect: false,
-              onSubmitted: (_) => _submitRepoUrl(),
-            ),
-            if (error != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 24),
+              Text(
+                context.l10n.storeAddRepoTitle,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 20,
-                      color: colorScheme.onErrorContainer,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              TextField(
+                controller: _repoUrlController,
+                decoration: InputDecoration(
+                  hintText: context.l10n.storeRepoUrlHint,
+                  labelText: context.l10n.storeRepoUrlLabel,
+                  prefixIcon: const Icon(Icons.link),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(28),
+                    borderSide: BorderSide(color: colorScheme.outlineVariant),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(28),
+                    borderSide: BorderSide(color: colorScheme.outlineVariant),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(28),
+                    borderSide: BorderSide(
+                      color: colorScheme.primary,
+                      width: 2,
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        error,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onErrorContainer,
+                  ),
+                  filled: true,
+                  fillColor: colorScheme.surfaceContainerHighest,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                ),
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                // Reveal the submit button below the field when the keyboard
+                // auto-scrolls to the focused input.
+                scrollPadding: const EdgeInsets.only(bottom: 120),
+                onSubmitted: (_) => _submitRepoUrl(),
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 20,
+                        color: colorScheme.onErrorContainer,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          error,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onErrorContainer),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _submitRepoUrl,
+                  icon: const Icon(Icons.add),
+                  label: Text(context.l10n.storeAddRepoButton),
                 ),
               ),
             ],
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _submitRepoUrl,
-                icon: const Icon(Icons.add),
-                label: Text(context.l10n.storeAddRepoButton),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -667,7 +676,9 @@ class _CategoryChip extends StatelessWidget {
       onSelected: (_) => onTap(),
       showCheckmark: false,
       backgroundColor: settingsGroupColor(context),
-      side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+      side: BorderSide(
+        color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+      ),
     );
   }
 }
