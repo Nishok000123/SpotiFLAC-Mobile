@@ -47,6 +47,7 @@ import 'package:spotiflac_android/widgets/animation_utils.dart';
 import 'package:spotiflac_android/widgets/selection_action_button.dart';
 import 'package:spotiflac_android/widgets/selection_bottom_bar.dart';
 import 'package:spotiflac_android/widgets/smoothed_progress.dart';
+import 'package:spotiflac_android/widgets/scroll_edge_fade.dart';
 
 part 'queue_tab_helpers.dart';
 part 'queue_tab_widgets.dart';
@@ -1472,46 +1473,51 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                           filteredAlbumCount = queueCounts.albumCount;
                           filteredSingleCount = queueCounts.singleTrackCount;
 
-                          return SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: [
-                                _FilterChip(
-                                  label: context.l10n.historyFilterAll,
-                                  count: filteredAllCount,
-                                  isSelected: historyFilterMode == 'all',
-                                  onTap: () {
-                                    _animateToFilterPage(0);
-                                  },
-                                ),
-                                const SizedBox(width: 8),
-                                _FilterChip(
-                                  label: context.l10n.historyFilterAlbums,
-                                  count: filteredAlbumCount,
-                                  isSelected: historyFilterMode == 'albums',
-                                  onTap: () {
-                                    _animateToFilterPage(1);
-                                  },
-                                ),
-                                const SizedBox(width: 8),
-                                _FilterChip(
-                                  label: context.l10n.historyFilterSingles,
-                                  count: filteredSingleCount,
-                                  isSelected: historyFilterMode == 'singles',
-                                  onTap: () {
-                                    _animateToFilterPage(2);
-                                  },
-                                ),
-                                const SizedBox(width: 8),
-                                _FilterChip(
-                                  label: context.l10n.searchPlaylists,
-                                  count: collectionState.playlists.length,
-                                  isSelected: historyFilterMode == 'playlists',
-                                  onTap: () {
-                                    _animateToFilterPage(3);
-                                  },
-                                ),
-                              ],
+                          return ScrollEdgeFade(
+                            axis: Axis.horizontal,
+                            size: 48,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  _FilterChip(
+                                    label: context.l10n.historyFilterAll,
+                                    count: filteredAllCount,
+                                    isSelected: historyFilterMode == 'all',
+                                    onTap: () {
+                                      _animateToFilterPage(0);
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _FilterChip(
+                                    label: context.l10n.historyFilterAlbums,
+                                    count: filteredAlbumCount,
+                                    isSelected: historyFilterMode == 'albums',
+                                    onTap: () {
+                                      _animateToFilterPage(1);
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _FilterChip(
+                                    label: context.l10n.historyFilterSingles,
+                                    count: filteredSingleCount,
+                                    isSelected: historyFilterMode == 'singles',
+                                    onTap: () {
+                                      _animateToFilterPage(2);
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _FilterChip(
+                                    label: context.l10n.searchPlaylists,
+                                    count: collectionState.playlists.length,
+                                    isSelected:
+                                        historyFilterMode == 'playlists',
+                                    onTap: () {
+                                      _animateToFilterPage(3);
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         },
