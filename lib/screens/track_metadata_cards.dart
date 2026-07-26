@@ -706,6 +706,27 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
                       ),
                     ),
                   ),
+                if (!_isBitrateFormatLabel(fileExtension) &&
+                    _audioBitrate != null &&
+                    _audioBitrate! > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.tertiaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${_audioBitrate}kbps',
+                      style: TextStyle(
+                        color: colorScheme.onTertiaryContainer,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,

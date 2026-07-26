@@ -144,6 +144,13 @@ func ReadFileMetadata(filePath string) (string, error) {
 				}
 				if quality.SampleRate > 0 && quality.TotalSamples > 0 {
 					result["duration"] = int(quality.TotalSamples / int64(quality.SampleRate))
+					// Average bitrate from file size: helps spot lossy audio
+					// repackaged as "24-bit" FLAC (real hi-res sits well above
+					// ~1500 kbps, upconverted files far below).
+					durationSec := float64(quality.TotalSamples) / float64(quality.SampleRate)
+					if info, statErr := os.Stat(filePath); statErr == nil && info.Size() > 0 && durationSec > 0 {
+						result["bitrate"] = int(float64(info.Size()) * 8 / durationSec / 1000)
+					}
 				}
 			}
 		}
@@ -164,6 +171,10 @@ func ReadFileMetadata(filePath string) (string, error) {
 			}
 			if quality.Bitrate > 0 && !isLosslessLibraryFormat(fmt.Sprint(result["format"])) {
 				result["bitrate"] = quality.Bitrate
+			} else if quality.Duration > 0 {
+				if info, statErr := os.Stat(filePath); statErr == nil && info.Size() > 0 {
+					result["bitrate"] = int(float64(info.Size()) * 8 / float64(quality.Duration) / 1000)
+				}
 			}
 		}
 	} else if isMp3 {

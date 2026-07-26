@@ -315,11 +315,11 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
       final formatChanged =
           resolvedFormat != null &&
           resolvedFormat != normalizeAudioFormatValue(storedFormat);
-      final resolvedBitrate = _isBitrateFormatValue(resolvedFormat)
-          ? _readPlausibleBitrateKbps(
-              metadata['bitrate'] ?? metadata['bit_rate'],
-            )
-          : null;
+      // Lossless files carry an average bitrate too (computed by the backend
+      // from file size / duration) — useful for spotting fake 24-bit rips.
+      final resolvedBitrate = _readPlausibleBitrateKbps(
+        metadata['bitrate'] ?? metadata['bit_rate'],
+      );
       final resolvedDuration = readPositiveInt(metadata['duration']);
       final resolvedAlbum = metadata['album']?.toString();
       final resolvedTitle = metadata['title']?.toString();
