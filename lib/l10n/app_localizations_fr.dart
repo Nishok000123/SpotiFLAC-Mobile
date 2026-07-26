@@ -3642,6 +3642,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get cancelDownloadKeep => 'Conserver';
 
   @override
+  String get queueCancelledTitle => 'Download cancelled';
+
+  @override
+  String get queueCancelledMessage =>
+      'This download was cancelled. Retry it or remove it from the queue.';
+
+  @override
   String get metadataSaveFailedFfmpeg =>
       'Échec de l\'enregistrement des métadonnées via FFmpeg';
 

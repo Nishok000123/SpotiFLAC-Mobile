@@ -261,7 +261,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
               item.status == DownloadStatus.finalizing) {
             item = item.copyWith(status: DownloadStatus.queued, progress: 0);
           }
-          if (item.status == DownloadStatus.queued) {
+          if (item.status == DownloadStatus.queued ||
+              item.status == DownloadStatus.skipped) {
             pendingItems.add(item);
           }
         } catch (_) {
@@ -306,12 +307,15 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
 
   Future<void> _writeQueueChanges() async {
     try {
+      // skipped (user-cancelled) rows persist too, so a cancelled download can
+      // still be retried after an app restart instead of being re-searched.
       final pendingItems = state.items
           .where(
             (item) =>
                 item.status == DownloadStatus.queued ||
                 item.status == DownloadStatus.downloading ||
-                item.status == DownloadStatus.finalizing,
+                item.status == DownloadStatus.finalizing ||
+                item.status == DownloadStatus.skipped,
           )
           .toList(growable: false);
       final nowIso = DateTime.now().toIso8601String();

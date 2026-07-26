@@ -27,10 +27,8 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
             child: Icon(Icons.music_note, color: colorScheme.onSurfaceVariant),
           );
 
-    final onTap = isFailed
+    final onTap = isFailed || item.status == DownloadStatus.skipped
         ? () => _showDownloadErrorDialog(context, item)
-        : item.status == DownloadStatus.skipped
-        ? () => ref.read(downloadQueueProvider.notifier).removeItem(item.id)
         : () => _confirmCancelDownload(context, item);
 
     return SmoothedProgressScope(

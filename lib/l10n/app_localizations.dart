@@ -5948,6 +5948,18 @@ abstract class AppLocalizations {
   /// **'Keep'**
   String get cancelDownloadKeep;
 
+  /// Dialog title when opening a cancelled queue item
+  ///
+  /// In en, this message translates to:
+  /// **'Download cancelled'**
+  String get queueCancelledTitle;
+
+  /// Dialog body when opening a cancelled queue item
+  ///
+  /// In en, this message translates to:
+  /// **'This download was cancelled. Retry it or remove it from the queue.'**
+  String get queueCancelledMessage;
+
   /// Snackbar error when FFmpeg fails to write metadata
   ///
   /// In en, this message translates to:

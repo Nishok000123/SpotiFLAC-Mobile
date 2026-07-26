@@ -4577,6 +4577,14 @@
   "@cancelDownloadKeep": {
     "description": "Dialog button - keep the active download (do not cancel)"
   },
+  "queueCancelledTitle": "Download cancelled",
+  "@queueCancelledTitle": {
+    "description": "Dialog title when opening a cancelled queue item"
+  },
+  "queueCancelledMessage": "This download was cancelled. Retry it or remove it from the queue.",
+  "@queueCancelledMessage": {
+    "description": "Dialog body when opening a cancelled queue item"
+  },
   "metadataSaveFailedFfmpeg": "Failed to save metadata via FFmpeg",
   "@metadataSaveFailedFfmpeg": {
     "description": "Snackbar error when FFmpeg fails to write metadata"

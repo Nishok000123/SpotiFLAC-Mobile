@@ -3444,6 +3444,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get cancelDownloadKeep => '유지';
 
   @override
+  String get queueCancelledTitle => 'Download cancelled';
+
+  @override
+  String get queueCancelledMessage =>
+      'This download was cancelled. Retry it or remove it from the queue.';
+
+  @override
   String get metadataSaveFailedFfmpeg => 'FFmpeg를 통해 메타데이터 저장 실패';
 
   @override

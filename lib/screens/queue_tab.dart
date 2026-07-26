@@ -1624,7 +1624,9 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       ),
     );
     if (confirmed == true) {
-      ref.read(downloadQueueProvider.notifier).dismissItem(item.id);
+      // cancelItem (not dismissItem): the item stays in the queue as
+      // cancelled so it can be retried without re-searching the track.
+      ref.read(downloadQueueProvider.notifier).cancelItem(item.id);
     }
   }
 
@@ -1634,13 +1636,18 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   ) async {
     final colorScheme = Theme.of(context).colorScheme;
     final isRateLimit = item.errorType == DownloadErrorType.rateLimit;
+    final isCancelled = item.status == DownloadStatus.skipped;
     final isFolderAccessLost =
         item.errorMessage == safPermissionLostErrorMessage ||
         item.errorMessage == downloadFolderAccessLostErrorMessage;
-    final title = isRateLimit
+    final title = isCancelled
+        ? context.l10n.queueCancelledTitle
+        : isRateLimit
         ? context.l10n.queueRateLimitTitle
         : context.l10n.updateDownloadFailed;
-    final message = isRateLimit
+    final message = isCancelled
+        ? context.l10n.queueCancelledMessage
+        : isRateLimit
         ? context.l10n.queueRateLimitMessage
         : (item.errorMessage.trim().isNotEmpty
               ? _localizedDownloadError(context, item.errorMessage)
