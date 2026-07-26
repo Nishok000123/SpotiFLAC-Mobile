@@ -935,18 +935,10 @@ class _DownloadRun {
             progress: 0.99,
           );
 
-          final backendGenre = result['genre'] as String?;
-          final backendLabel = result['label'] as String?;
-          final backendCopyright = result['copyright'] as String?;
-
-          await n._embedMetadataToFile(
+          await _embedFinalMetadata(
             convertedPath,
-            trackToDownload,
             format: metadataFormatForLossyFormat(format),
-            genre: backendGenre ?? genre,
-            label: backendLabel ?? label,
-            copyright: backendCopyright,
-            downloadService: item.service,
+            rebuildTrack: false,
           );
 
           return (convertedPath, newFileName);
@@ -995,23 +987,9 @@ class _DownloadRun {
               DownloadStatus.finalizing,
               progress: 0.99,
             );
-            final finalTrack = n._buildTrackForMetadataEmbedding(
-              trackToDownload,
-              result,
-              resolvedAlbumArtist,
-            );
-            final backendGenre = result['genre'] as String?;
-            final backendLabel = result['label'] as String?;
-            final backendCopyright = result['copyright'] as String?;
-
-            await n._embedMetadataToFile(
+            await _embedFinalMetadata(
               tempPath,
-              finalTrack,
               format: 'm4a',
-              genre: backendGenre ?? genre,
-              label: backendLabel ?? label,
-              copyright: backendCopyright,
-              downloadService: item.service,
               writeExternalLrc: false,
             );
           }
@@ -1065,24 +1043,9 @@ class _DownloadRun {
               'publishing as FLAC and embedding metadata.',
             );
             branch = 'nativeFlac';
-            final finalTrack = n._buildTrackForMetadataEmbedding(
-              trackToDownload,
-              result,
-              resolvedAlbumArtist,
-            );
-
-            final backendGenre = result['genre'] as String?;
-            final backendLabel = result['label'] as String?;
-            final backendCopyright = result['copyright'] as String?;
-
-            await n._embedMetadataToFile(
+            await _embedFinalMetadata(
               tempPath,
-              finalTrack,
               format: 'flac',
-              genre: backendGenre ?? genre,
-              label: backendLabel ?? label,
-              copyright: backendCopyright,
-              downloadService: item.service,
               writeExternalLrc: false,
             );
 
@@ -1104,24 +1067,9 @@ class _DownloadRun {
             addCleanup(flacPath);
             _log.d('Converted to FLAC (temp): $flacPath');
             _log.d('Embedding metadata and cover to converted FLAC...');
-            final finalTrack = n._buildTrackForMetadataEmbedding(
-              trackToDownload,
-              result,
-              resolvedAlbumArtist,
-            );
-
-            final backendGenre = result['genre'] as String?;
-            final backendLabel = result['label'] as String?;
-            final backendCopyright = result['copyright'] as String?;
-
-            await n._embedMetadataToFile(
+            await _embedFinalMetadata(
               flacPath,
-              finalTrack,
               format: 'flac',
-              genre: backendGenre ?? genre,
-              label: backendLabel ?? label,
-              copyright: backendCopyright,
-              downloadService: item.service,
               writeExternalLrc: false,
             );
 
@@ -1175,18 +1123,10 @@ class _DownloadRun {
         _log.i('Embedding metadata to $format...');
         n.updateItemStatus(item.id, DownloadStatus.finalizing, progress: 0.99);
 
-        final backendGenre = result['genre'] as String?;
-        final backendLabel = result['label'] as String?;
-        final backendCopyright = result['copyright'] as String?;
-
-        await n._embedMetadataToFile(
+        await _embedFinalMetadata(
           convertedPath,
-          trackToDownload,
           format: metadataFormatForLossyFormat(format),
-          genre: backendGenre ?? genre,
-          label: backendLabel ?? label,
-          copyright: backendCopyright,
-          downloadService: item.service,
+          rebuildTrack: false,
         );
         _log.d('Metadata embedded successfully');
       } else {
@@ -1230,25 +1170,7 @@ class _DownloadRun {
             DownloadStatus.finalizing,
             progress: 0.99,
           );
-          final finalTrack = n._buildTrackForMetadataEmbedding(
-            trackToDownload,
-            result,
-            resolvedAlbumArtist,
-          );
-
-          final backendGenre = result['genre'] as String?;
-          final backendLabel = result['label'] as String?;
-          final backendCopyright = result['copyright'] as String?;
-
-          await n._embedMetadataToFile(
-            targetPath,
-            finalTrack,
-            format: 'm4a',
-            genre: backendGenre ?? genre,
-            label: backendLabel ?? label,
-            copyright: backendCopyright,
-            downloadService: item.service,
-          );
+          await _embedFinalMetadata(targetPath, format: 'm4a');
         }
       }
     } catch (e) {
@@ -1304,25 +1226,7 @@ class _DownloadRun {
               filePath = targetPath;
             }
 
-            final finalTrack = n._buildTrackForMetadataEmbedding(
-              trackToDownload,
-              result,
-              resolvedAlbumArtist,
-            );
-
-            final backendGenre = result['genre'] as String?;
-            final backendLabel = result['label'] as String?;
-            final backendCopyright = result['copyright'] as String?;
-
-            await n._embedMetadataToFile(
-              flacPath,
-              finalTrack,
-              format: 'flac',
-              genre: backendGenre ?? genre,
-              label: backendLabel ?? label,
-              copyright: backendCopyright,
-              downloadService: item.service,
-            );
+            await _embedFinalMetadata(flacPath, format: 'flac');
           } else {
             n.updateItemStatus(
               item.id,
@@ -1339,16 +1243,9 @@ class _DownloadRun {
 
               _log.d('Embedding metadata and cover to converted FLAC...');
               try {
-                final finalTrack = n._buildTrackForMetadataEmbedding(
-                  trackToDownload,
-                  result,
-                  resolvedAlbumArtist,
-                );
-
                 final backendGenre = result['genre'] as String?;
                 final backendLabel = result['label'] as String?;
                 final backendCopyright = result['copyright'] as String?;
-
                 if (backendGenre != null ||
                     backendLabel != null ||
                     backendCopyright != null) {
@@ -1357,15 +1254,7 @@ class _DownloadRun {
                   );
                 }
 
-                await n._embedMetadataToFile(
-                  flacPath,
-                  finalTrack,
-                  format: 'flac',
-                  genre: backendGenre ?? genre,
-                  label: backendLabel ?? label,
-                  copyright: backendCopyright,
-                  downloadService: item.service,
-                );
+                await _embedFinalMetadata(flacPath, format: 'flac');
                 _log.d('Metadata and cover embedded successfully');
               } catch (e) {
                 _log.w('Warning: Failed to embed metadata/cover: $e');
@@ -1417,15 +1306,6 @@ class _DownloadRun {
             progress: 0.99,
           );
 
-          final finalTrack = n._buildTrackForMetadataEmbedding(
-            trackToDownload,
-            result,
-            resolvedAlbumArtist,
-          );
-          final backendGenre = result['genre'] as String?;
-          final backendLabel = result['label'] as String?;
-          final backendCopyright = result['copyright'] as String?;
-
           // writeExternalLrc: false — tempPath lives in the cache dir,
           // so a sidecar .lrc written next to it would be orphaned;
           // the SAF .lrc is written by _saveExternalLrc after publish,
@@ -1435,14 +1315,9 @@ class _DownloadRun {
               : isOpusFile
               ? 'opus'
               : 'flac';
-          final fetchedLrc = await n._embedMetadataToFile(
+          final fetchedLrc = await _embedFinalMetadata(
             tempPath,
-            finalTrack,
             format: embedFormat,
-            genre: backendGenre ?? genre,
-            label: backendLabel ?? label,
-            copyright: backendCopyright,
-            downloadService: item.service,
             writeExternalLrc: false,
           );
           final existingLrc = result['lyrics_lrc'] as String?;
@@ -1484,28 +1359,40 @@ class _DownloadRun {
     try {
       n.updateItemStatus(item.id, DownloadStatus.finalizing, progress: 0.99);
 
-      final finalTrack = n._buildTrackForMetadataEmbedding(
-        trackToDownload,
-        result,
-        resolvedAlbumArtist,
-      );
-      final backendGenre = result['genre'] as String?;
-      final backendLabel = result['label'] as String?;
-      final backendCopyright = result['copyright'] as String?;
-
-      await n._embedMetadataToFile(
-        currentFilePath,
-        finalTrack,
-        format: 'flac',
-        genre: backendGenre ?? genre,
-        label: backendLabel ?? label,
-        copyright: backendCopyright,
-        downloadService: item.service,
-      );
+      await _embedFinalMetadata(currentFilePath, format: 'flac');
       _log.d('Local FLAC metadata embedding completed');
     } catch (e) {
       _log.w('Local FLAC metadata embedding failed: $e');
     }
+  }
+
+  /// Final metadata embed shared by every publish branch. Backend-provided
+  /// genre/label/copyright win over the Deezer extended-metadata lookup.
+  /// [rebuildTrack] is false only for the lossy-HIGH branches, which embed
+  /// the track as-is instead of re-merging the download result into it.
+  Future<String?> _embedFinalMetadata(
+    String path, {
+    required String format,
+    bool writeExternalLrc = true,
+    bool rebuildTrack = true,
+  }) {
+    final track = rebuildTrack
+        ? n._buildTrackForMetadataEmbedding(
+            trackToDownload,
+            result,
+            resolvedAlbumArtist,
+          )
+        : trackToDownload;
+    return n._embedMetadataToFile(
+      path,
+      track,
+      format: format,
+      genre: (result['genre'] as String?) ?? genre,
+      label: (result['label'] as String?) ?? label,
+      copyright: result['copyright'] as String?,
+      downloadService: item.service,
+      writeExternalLrc: writeExternalLrc,
+    );
   }
 
   Future<void> _recoverSafUriIfNeeded() async {
