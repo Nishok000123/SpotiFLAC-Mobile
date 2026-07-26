@@ -173,6 +173,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   ParsedLyrics _lyrics = ParsedLyrics.empty;
   bool _loadingMeta = false;
   int _currentPage = 0;
+  bool _bottomDragForwarding = false;
+  double _bottomDragTotal = 0;
+  bool _queueSheetShowing = false;
 
   @override
   void initState() {
@@ -389,19 +392,65 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                   ],
                 ),
               ),
-              _PageTabBar(
-                controller: _pageController,
-                colorScheme: colorScheme,
-                labels: [
-                  context.l10n.nowPlayingTabPlayer,
-                  context.l10n.nowPlayingTabLyrics,
-                ],
+              _queueSwipeRegion(
+                colorScheme,
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _PageTabBar(
+                      controller: _pageController,
+                      colorScheme: colorScheme,
+                      labels: [
+                        context.l10n.nowPlayingTabPlayer,
+                        context.l10n.nowPlayingTabLyrics,
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  /// Swipe up (player content or bottom tab strip) opens the queue sheet; a
+  /// downward drag is forwarded to the route's drag-to-dismiss instead.
+  Widget _queueSwipeRegion(ColorScheme colorScheme, Widget child) {
+    final route = ModalRoute.of(context);
+    final npRoute = route is NowPlayingRoute ? route : null;
+    final pageHeight = MediaQuery.sizeOf(context).height;
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onVerticalDragStart: (_) {
+        _bottomDragForwarding = false;
+        _bottomDragTotal = 0;
+      },
+      onVerticalDragUpdate: (details) {
+        if (_bottomDragForwarding) {
+          npRoute?.updateDrag(details, pageHeight);
+          return;
+        }
+        _bottomDragTotal += details.primaryDelta ?? 0;
+        if (_bottomDragTotal > 12 && npRoute != null) {
+          npRoute.startDrag();
+          _bottomDragForwarding = true;
+        }
+      },
+      onVerticalDragEnd: (details) {
+        if (_bottomDragForwarding) {
+          npRoute?.endDrag(details, pageHeight);
+        } else if ((details.primaryVelocity ?? 0) < -300 ||
+            _bottomDragTotal < -40) {
+          _showQueueSheet(colorScheme);
+        }
+      },
+      onVerticalDragCancel: () {
+        if (_bottomDragForwarding) npRoute?.cancelDrag();
+      },
+      child: child,
     );
   }
 
@@ -437,12 +486,27 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 child: SizedBox(
                   width: artSize,
                   height: artSize,
-                  child: PlayerArtwork(
-                    artUri: mediaItem.artUri?.toString(),
-                    colorScheme: colorScheme,
-                    cacheWidth:
-                        (artSize * MediaQuery.devicePixelRatioOf(context))
-                            .round(),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 450),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(
+                        scale: Tween(begin: 0.94, end: 1.0).animate(animation),
+                        child: child,
+                      ),
+                    ),
+                    child: PlayerArtwork(
+                      key: ValueKey(
+                        mediaItem.artUri?.toString() ?? mediaItem.id,
+                      ),
+                      artUri: mediaItem.artUri?.toString(),
+                      colorScheme: colorScheme,
+                      cacheWidth:
+                          (artSize * MediaQuery.devicePixelRatioOf(context))
+                              .round(),
+                    ),
                   ),
                 ),
               ),
@@ -483,17 +547,25 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         }
 
         final artSize = (constraints.maxWidth - 64).clamp(0.0, 360.0);
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight - 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                artworkAt(artSize),
-                const SizedBox(height: 32),
-                ..._metadataAndControls(mediaItem, controller, colorScheme),
-              ],
+        // Not user-scrollable: a swipe up here opens the queue instead,
+        // and a swipe down still dismisses the player via the route.
+        return _queueSwipeRegion(
+          colorScheme,
+          SingleChildScrollView(
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight - 32,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  artworkAt(artSize),
+                  const SizedBox(height: 32),
+                  ..._metadataAndControls(mediaItem, controller, colorScheme),
+                ],
+              ),
             ),
           ),
         );
@@ -511,29 +583,45 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     return [
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 28),
-        child: Column(
-          children: [
-            Text(
-              mediaItem.title,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween(
+                begin: const Offset(0, 0.15),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
             ),
-            const SizedBox(height: 6),
-            Text(
-              mediaItem.artist ?? '',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+          ),
+          child: Column(
+            key: ValueKey(mediaItem.id),
+            children: [
+              Text(
+                mediaItem.title,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+              const SizedBox(height: 6),
+              Text(
+                mediaItem.artist ?? '',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ),
       const SizedBox(height: 24),
@@ -637,6 +725,8 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   }
 
   void _showQueueSheet(ColorScheme colorScheme) {
+    if (_queueSheetShowing) return;
+    _queueSheetShowing = true;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -819,7 +909,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           },
         );
       },
-    );
+    ).whenComplete(() => _queueSheetShowing = false);
   }
 
   void _showDetailsSheet(ColorScheme colorScheme) {
