@@ -4922,6 +4922,22 @@
   "@queueDownloadNext": {
     "description": "Tooltip on a queued download row; moves the item to the front of the queue so the next free slot downloads it"
   },
+  "editMetadataMusicBrainzButton": "Fetch from MusicBrainz",
+  "@editMetadataMusicBrainzButton": {
+    "description": "Tag editor button that fills genre and album artist from MusicBrainz by ISRC"
+  },
+  "editMetadataMusicBrainzFilled": "Updated from MusicBrainz",
+  "@editMetadataMusicBrainzFilled": {
+    "description": "Snackbar after MusicBrainz suggestions were applied to the tag editor fields"
+  },
+  "editMetadataMusicBrainzNothing": "Nothing found on MusicBrainz",
+  "@editMetadataMusicBrainzNothing": {
+    "description": "Snackbar when the MusicBrainz lookup returns no data"
+  },
+  "editMetadataMusicBrainzNeedsIsrc": "Requires an ISRC tag",
+  "@editMetadataMusicBrainzNeedsIsrc": {
+    "description": "Snackbar when the MusicBrainz lookup is tapped without an ISRC"
+  },
   "nowPlayingRepeatOff": "Repeat off",
   "@nowPlayingRepeatOff": {
     "description": "Repeat toggle tooltip when repeat is disabled"

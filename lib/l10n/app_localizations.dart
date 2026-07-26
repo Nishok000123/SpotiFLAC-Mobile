@@ -6294,6 +6294,30 @@ abstract class AppLocalizations {
   /// **'Download next'**
   String get queueDownloadNext;
 
+  /// Tag editor button that fills genre and album artist from MusicBrainz by ISRC
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch from MusicBrainz'**
+  String get editMetadataMusicBrainzButton;
+
+  /// Snackbar after MusicBrainz suggestions were applied to the tag editor fields
+  ///
+  /// In en, this message translates to:
+  /// **'Updated from MusicBrainz'**
+  String get editMetadataMusicBrainzFilled;
+
+  /// Snackbar when the MusicBrainz lookup returns no data
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing found on MusicBrainz'**
+  String get editMetadataMusicBrainzNothing;
+
+  /// Snackbar when the MusicBrainz lookup is tapped without an ISRC
+  ///
+  /// In en, this message translates to:
+  /// **'Requires an ISRC tag'**
+  String get editMetadataMusicBrainzNeedsIsrc;
+
   /// Repeat toggle tooltip when repeat is disabled
   ///
   /// In en, this message translates to:

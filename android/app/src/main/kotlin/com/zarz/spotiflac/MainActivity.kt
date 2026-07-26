@@ -3387,6 +3387,27 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(response)
                         }
+                        "fetchMusicBrainzTags" -> {
+                            val isrc = call.argument<String>("isrc") ?: ""
+                            val albumName = call.argument<String>("album_name") ?: ""
+                            val response = withContext(Dispatchers.IO) {
+                                val genre = try {
+                                    Gobackend.fetchMusicBrainzGenreByISRC(isrc)
+                                } catch (_: Exception) {
+                                    ""
+                                }
+                                val albumArtist = try {
+                                    Gobackend.fetchMusicBrainzAlbumArtistByISRC(isrc, albumName)
+                                } catch (_: Exception) {
+                                    ""
+                                }
+                                JSONObject()
+                                    .put("genre", genre)
+                                    .put("album_artist", albumArtist)
+                                    .toString()
+                            }
+                            result.success(response)
+                        }
                         "runPostProcessingV2" -> {
                             val inputJson = call.argument<String>("input") ?: ""
                             val metadataJson = call.argument<String>("metadata") ?: ""

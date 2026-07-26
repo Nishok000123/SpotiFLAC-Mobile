@@ -84,6 +84,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
   late final TextEditingController _copyrightCtrl;
   late final TextEditingController _composerCtrl;
   late final TextEditingController _commentCtrl;
+  bool _fetchingMusicBrainz = false;
 
   bool _hasValue(String? value) => value != null && value.trim().isNotEmpty;
 
@@ -1518,9 +1519,80 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
             ),
           ),
           const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: (_fetching || _fetchingMusicBrainz || _saving)
+                  ? null
+                  : _fetchFromMusicBrainz,
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: _fetchingMusicBrainz
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.library_music_outlined),
+              label: Text(context.l10n.editMetadataMusicBrainzButton),
+            ),
+          ),
+          const SizedBox(height: 8),
         ],
       ],
     );
+  }
+
+  /// Fills genre and album artist from MusicBrainz (keyed by ISRC) as
+  /// editable suggestions; nothing is saved until the user taps Save.
+  Future<void> _fetchFromMusicBrainz() async {
+    final isrc = _isrcCtrl.text.trim();
+    if (isrc.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.editMetadataMusicBrainzNeedsIsrc)),
+      );
+      return;
+    }
+    setState(() => _fetchingMusicBrainz = true);
+    try {
+      final tags = await PlatformBridge.fetchMusicBrainzTags(
+        isrc: isrc,
+        albumName: _albumCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      var filled = 0;
+      if (tags.genre.isNotEmpty) {
+        _genreCtrl.text = tags.genre;
+        filled++;
+      }
+      if (tags.albumArtist.isNotEmpty) {
+        _albumArtistCtrl.text = tags.albumArtist;
+        filled++;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            filled > 0
+                ? context.l10n.editMetadataMusicBrainzFilled
+                : context.l10n.editMetadataMusicBrainzNothing,
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.editMetadataMusicBrainzNothing),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _fetchingMusicBrainz = false);
+    }
   }
 
   Widget _quickSelectButton({

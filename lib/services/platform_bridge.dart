@@ -1645,6 +1645,24 @@ class PlatformBridge {
     return result as String;
   }
 
+  /// MusicBrainz genre and album artist for an ISRC; empty strings when a
+  /// lookup finds nothing. One channel call covers both fields to spare
+  /// MusicBrainz's 1 req/s budget.
+  static Future<({String genre, String albumArtist})> fetchMusicBrainzTags({
+    required String isrc,
+    String albumName = '',
+  }) async {
+    final result = await _channel.invokeMethod('fetchMusicBrainzTags', {
+      'isrc': isrc,
+      'album_name': albumName,
+    });
+    final decoded = _decodeMapResult(result);
+    return (
+      genre: decoded['genre']?.toString() ?? '',
+      albumArtist: decoded['album_artist']?.toString() ?? '',
+    );
+  }
+
   /// Streaming-platform links for a track, keyed by song.link platform ID.
   /// Served from the Go-side memory cache; throws when the lookup fails.
   static Future<Map<String, String>> getTrackPlatformLinks({

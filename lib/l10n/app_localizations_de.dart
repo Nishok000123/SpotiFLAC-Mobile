@@ -3835,6 +3835,18 @@ class AppLocalizationsDe extends AppLocalizations {
   String get queueDownloadNext => 'Download next';
 
   @override
+  String get editMetadataMusicBrainzButton => 'Fetch from MusicBrainz';
+
+  @override
+  String get editMetadataMusicBrainzFilled => 'Updated from MusicBrainz';
+
+  @override
+  String get editMetadataMusicBrainzNothing => 'Nothing found on MusicBrainz';
+
+  @override
+  String get editMetadataMusicBrainzNeedsIsrc => 'Requires an ISRC tag';
+
+  @override
   String get nowPlayingRepeatOff => 'Repeat off';
 
   @override

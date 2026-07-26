@@ -959,6 +959,21 @@ import Gobackend
             let response = GobackendGetTrackPlatformLinksJSON(spotifyId, isrc, &error)
             if let error = error { throw error }
             return response
+
+        case "fetchMusicBrainzTags":
+            let args = call.arguments as! [String: Any]
+            let isrc = args["isrc"] as? String ?? ""
+            let albumName = args["album_name"] as? String ?? ""
+            var genreError: NSError?
+            let genre = GobackendFetchMusicBrainzGenreByISRC(isrc, &genreError)
+            var artistError: NSError?
+            let albumArtist = GobackendFetchMusicBrainzAlbumArtistByISRC(isrc, albumName, &artistError)
+            let payload: [String: Any] = [
+                "genre": genreError == nil ? genre : "",
+                "album_artist": artistError == nil ? albumArtist : "",
+            ]
+            let data = try JSONSerialization.data(withJSONObject: payload)
+            return String(data: data, encoding: .utf8) ?? "{}"
             
         case "runPostProcessingV2":
             let args = call.arguments as! [String: Any]
