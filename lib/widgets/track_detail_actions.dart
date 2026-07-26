@@ -8,6 +8,7 @@ import 'package:spotiflac_android/providers/library_collections_provider.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/widgets/download_service_picker.dart';
+import 'package:spotiflac_android/widgets/view_queue_snackbar_action.dart';
 
 /// Shared single-track "add to queue" flow for detail screens: shows the
 /// quality/service picker when the user opted into it, otherwise resolves
@@ -24,10 +25,7 @@ void downloadSingleTrack(
   final settings = ref.read(settingsProvider);
 
   void notifyQueued() {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.snackbarAddedToQueue(track.name))),
-    );
+    showAddedToQueueSnackBar(context, track.name);
   }
 
   if (settings.askQualityBeforeDownload || forceQualityPicker) {

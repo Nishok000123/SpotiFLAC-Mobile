@@ -543,9 +543,18 @@ class _HomeTabState extends ConsumerState<HomeTab>
             : isRateLimit
             ? l10n.errorRateLimitedMessage
             : l10n.errorUrlFetchFailed;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(displayMessage)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(displayMessage),
+            // Retrying an unrecognized URL is deterministic; skip the action.
+            action: errorMsg == 'url_not_recognized'
+                ? null
+                : SnackBarAction(
+                    label: l10n.dialogRetry,
+                    onPressed: _fetchMetadata,
+                  ),
+          ),
+        );
         ref.read(trackProvider.notifier).clear();
       } else {
         _navigateToDetailIfNeeded();
@@ -649,11 +658,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
             ref
                 .read(downloadQueueProvider.notifier)
                 .addToQueue(track, service, qualityOverride: quality);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(context.l10n.snackbarAddedToQueue(track.name)),
-              ),
-            );
+            showAddedToQueueSnackBar(context, track.name);
           },
         );
       } else {
@@ -669,11 +674,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
           return;
         }
         ref.read(downloadQueueProvider.notifier).addToQueue(track, service);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.l10n.snackbarAddedToQueue(track.name)),
-          ),
-        );
+        showAddedToQueueSnackBar(context, track.name);
       }
     }
   }
@@ -1982,11 +1983,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
           ref
               .read(downloadQueueProvider.notifier)
               .addToQueue(track, service, qualityOverride: quality);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.l10n.snackbarAddedToQueue(track.name)),
-            ),
-          );
+          showAddedToQueueSnackBar(context, track.name);
         },
       );
     } else {
@@ -2002,9 +1999,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
         return;
       }
       ref.read(downloadQueueProvider.notifier).addToQueue(track, service);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.snackbarAddedToQueue(track.name))),
-      );
+      showAddedToQueueSnackBar(context, track.name);
     }
   }
 

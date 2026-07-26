@@ -300,9 +300,18 @@ class _MainShellState extends ConsumerState<MainShell>
           : isRateLimit
           ? l10n.errorRateLimitedMessage
           : l10n.errorUrlFetchFailed;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(displayMessage)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(displayMessage),
+          // Retrying an unrecognized URL is deterministic; skip the action.
+          action: errorMsg == 'url_not_recognized'
+              ? null
+              : SnackBarAction(
+                  label: l10n.dialogRetry,
+                  onPressed: () => _handleSharedUrl(url),
+                ),
+        ),
+      );
     }
   }
 

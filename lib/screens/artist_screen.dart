@@ -1638,12 +1638,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
       ref
           .read(downloadQueueProvider.notifier)
           .addToQueue(track, service, qualityOverride: quality);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.snackbarAddedToQueue(track.name)),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      showAddedToQueueSnackBar(context, track.name);
     }
 
     if (settings.askQualityBeforeDownload || settings.allowQualityVariants) {
