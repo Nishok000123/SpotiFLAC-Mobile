@@ -3516,6 +3516,27 @@ class AppLocalizationsFr extends AppLocalizations {
       'Les téléchargements de titres individuels apparaîtront ici';
 
   @override
+  String queuePlaylistCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count playlists',
+      one: '1 playlist',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get queueEmptyPlaylistsSubtitle =>
+      'Create a playlist to organize your tracks';
+
+  @override
+  String get libraryDefaultView => 'Default view';
+
+  @override
+  String get libraryDefaultViewLastUsed => 'Last used';
+
+  @override
   String get queueEmptyHistory => 'Aucun historique de téléchargement';
 
   @override

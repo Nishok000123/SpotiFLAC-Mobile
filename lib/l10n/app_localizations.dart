@@ -5720,6 +5720,30 @@ abstract class AppLocalizations {
   /// **'Single track downloads will appear here'**
   String get queueEmptySinglesSubtitle;
 
+  /// Playlist count label with plural support
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 playlist} other{{count} playlists}}'**
+  String queuePlaylistCount(int count);
+
+  /// Empty state subtitle for the playlists library view
+  ///
+  /// In en, this message translates to:
+  /// **'Create a playlist to organize your tracks'**
+  String get queueEmptyPlaylistsSubtitle;
+
+  /// Setting title - which library view opens when switching to the Library tab
+  ///
+  /// In en, this message translates to:
+  /// **'Default view'**
+  String get libraryDefaultView;
+
+  /// Default view option - keep the last used library view
+  ///
+  /// In en, this message translates to:
+  /// **'Last used'**
+  String get libraryDefaultViewLastUsed;
+
   /// Empty state title when download history is empty
   ///
   /// In en, this message translates to:

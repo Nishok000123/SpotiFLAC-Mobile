@@ -230,6 +230,19 @@ extension _QueueTabFilterWidgets on _QueueTabState {
         : const <_CollectionEntry>[];
     final collectionCount = collectionEntries.length;
 
+    // Indexes into collectionState.playlists, name-filtered by the search
+    // query, for the 'playlists' view.
+    final playlistIndexes = <int>[];
+    if (filterMode == 'playlists') {
+      final query = _searchQuery.trim().toLowerCase();
+      for (var i = 0; i < collectionState.playlists.length; i++) {
+        if (query.isEmpty ||
+            collectionState.playlists[i].name.toLowerCase().contains(query)) {
+          playlistIndexes.add(i);
+        }
+      }
+    }
+
     Widget leadGridCell(int index) {
       if (index < activeDownloadIds.length) {
         final id = activeDownloadIds[index];
@@ -427,6 +440,49 @@ extension _QueueTabFilterWidgets on _QueueTabState {
               ),
             ),
           ),
+
+        if (filterMode == 'playlists' && playlistIndexes.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: _countHeaderRow(
+              context,
+              context.l10n.queuePlaylistCount(playlistIndexes.length),
+              [
+                if (!_isPlaylistSelectionMode)
+                  TextButton.icon(
+                    onPressed: () => _showCreatePlaylistDialog(context),
+                    icon: const Icon(Icons.add, size: 20),
+                    label: Text(context.l10n.collectionCreatePlaylist),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: _AnimatedLibrarySliverGrid(
+              maxCrossAxisExtent: _libraryAlbumGridExtent,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.72,
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final playlistIndex = playlistIndexes[index];
+                return KeyedSubtree(
+                  key: ValueKey(
+                    'plgrid_${collectionState.playlists[playlistIndex].id}',
+                  ),
+                  child: _buildAllTabGridCollectionItem(
+                    context: context,
+                    colorScheme: colorScheme,
+                    entry: _CollectionEntry.playlist(playlistIndex),
+                    collectionState: collectionState,
+                  ),
+                );
+              }, childCount: playlistIndexes.length),
+            ),
+          ),
+        ],
 
         if (filterMode == 'all') ...[
           if (historyViewMode == 'grid')
@@ -666,6 +722,7 @@ extension _QueueTabFilterWidgets on _QueueTabState {
             (filterMode != 'albums' ||
                 (filteredGroupedAlbums.isEmpty &&
                     filteredGroupedLocalAlbums.isEmpty)) &&
+            (filterMode != 'playlists' || playlistIndexes.isEmpty) &&
             !showFilteringIndicator &&
             !isPageLoading)
           SliverFillRemaining(
@@ -693,7 +750,8 @@ extension _QueueTabFilterWidgets on _QueueTabState {
             totalTrackCount > 0 ||
             (filterMode == 'albums' &&
                 (filteredGroupedAlbums.isNotEmpty ||
-                    filteredGroupedLocalAlbums.isNotEmpty)))
+                    filteredGroupedLocalAlbums.isNotEmpty)) ||
+            (filterMode == 'playlists' && playlistIndexes.isNotEmpty))
           SliverToBoxAdapter(
             child: SizedBox(height: _isSelectionMode ? 100 : 16),
           ),
@@ -769,6 +827,11 @@ extension _QueueTabFilterWidgets on _QueueTabState {
         message = context.l10n.queueEmptySingles;
         subtitle = context.l10n.queueEmptySinglesSubtitle;
         icon = Icons.music_note;
+        break;
+      case 'playlists':
+        message = context.l10n.collectionNoPlaylistsYet;
+        subtitle = context.l10n.queueEmptyPlaylistsSubtitle;
+        icon = Icons.queue_music;
         break;
       default:
         message = context.l10n.queueEmptyHistory;

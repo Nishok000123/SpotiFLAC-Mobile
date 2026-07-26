@@ -3326,6 +3326,27 @@ class AppLocalizationsKo extends AppLocalizations {
   String get queueEmptySinglesSubtitle => '싱글 트랙 다운로드는 여기에 표시됩니다';
 
   @override
+  String queuePlaylistCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count playlists',
+      one: '1 playlist',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get queueEmptyPlaylistsSubtitle =>
+      'Create a playlist to organize your tracks';
+
+  @override
+  String get libraryDefaultView => 'Default view';
+
+  @override
+  String get libraryDefaultViewLastUsed => 'Last used';
+
+  @override
   String get queueEmptyHistory => '다운로드 기록이 없음';
 
   @override

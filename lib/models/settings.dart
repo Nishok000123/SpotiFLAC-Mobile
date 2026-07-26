@@ -34,6 +34,10 @@ class AppSettings {
   final bool filterContributingArtistsInAlbumArtist;
   final String historyViewMode;
   final String historyFilterMode;
+
+  /// Library view opened when switching to the Library tab:
+  /// 'last' (keep last used), 'all', 'albums', 'singles', or 'playlists'.
+  final String defaultLibraryView;
   final bool askQualityBeforeDownload;
   final bool enableLogging;
   final bool useExtensionProviders;
@@ -132,6 +136,7 @@ class AppSettings {
     this.filterContributingArtistsInAlbumArtist = false,
     this.historyViewMode = 'grid',
     this.historyFilterMode = 'all',
+    this.defaultLibraryView = 'last',
     this.askQualityBeforeDownload = true,
     this.enableLogging = false,
     this.useExtensionProviders = true,
@@ -202,6 +207,7 @@ class AppSettings {
     bool? filterContributingArtistsInAlbumArtist,
     String? historyViewMode,
     String? historyFilterMode,
+    String? defaultLibraryView,
     bool? askQualityBeforeDownload,
     bool? enableLogging,
     bool? useExtensionProviders,
@@ -279,6 +285,7 @@ class AppSettings {
           this.filterContributingArtistsInAlbumArtist,
       historyViewMode: historyViewMode ?? this.historyViewMode,
       historyFilterMode: historyFilterMode ?? this.historyFilterMode,
+      defaultLibraryView: defaultLibraryView ?? this.defaultLibraryView,
       askQualityBeforeDownload:
           askQualityBeforeDownload ?? this.askQualityBeforeDownload,
       enableLogging: enableLogging ?? this.enableLogging,

@@ -4415,6 +4415,27 @@
   "@queueEmptySinglesSubtitle": {
     "description": "Empty state subtitle for single track downloads"
   },
+  "queuePlaylistCount": "{count, plural, =1{1 playlist} other{{count} playlists}}",
+  "@queuePlaylistCount": {
+    "description": "Playlist count label with plural support",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "queueEmptyPlaylistsSubtitle": "Create a playlist to organize your tracks",
+  "@queueEmptyPlaylistsSubtitle": {
+    "description": "Empty state subtitle for the playlists library view"
+  },
+  "libraryDefaultView": "Default view",
+  "@libraryDefaultView": {
+    "description": "Setting title - which library view opens when switching to the Library tab"
+  },
+  "libraryDefaultViewLastUsed": "Last used",
+  "@libraryDefaultViewLastUsed": {
+    "description": "Default view option - keep the last used library view"
+  },
   "queueEmptyHistory": "No download history",
   "@queueEmptyHistory": {
     "description": "Empty state title when download history is empty"

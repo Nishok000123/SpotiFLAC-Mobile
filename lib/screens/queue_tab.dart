@@ -238,8 +238,9 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   double _playlistSelectionOverlayBottomPadding = 0;
 
   PageController? _filterPageController;
-  final List<String> _filterModes = ['all', 'albums', 'singles'];
+  final List<String> _filterModes = ['all', 'albums', 'singles', 'playlists'];
   bool _isPageControllerInitialized = false;
+  bool _wasTabVisible = false;
   static const List<String> _months = [
     'Jan',
     'Feb',
@@ -327,9 +328,47 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   void _initializePageController() {
     if (_isPageControllerInitialized) return;
     _isPageControllerInitialized = true;
-    final currentFilter = ref.read(settingsProvider).historyFilterMode;
-    final initialPage = _filterModes.indexOf(currentFilter).clamp(0, 2);
+    final settings = ref.read(settingsProvider);
+    final initialFilter = settings.defaultLibraryView == 'last'
+        ? settings.historyFilterMode
+        : settings.defaultLibraryView;
+    final initialPage = _filterModes
+        .indexOf(initialFilter)
+        .clamp(0, _filterModes.length - 1);
+    if (settings.historyFilterMode != _filterModes[initialPage]) {
+      Future.microtask(() {
+        if (!mounted) return;
+        ref
+            .read(settingsProvider.notifier)
+            .setHistoryFilterMode(_filterModes[initialPage]);
+      });
+    }
     _filterPageController = PageController(initialPage: initialPage);
+  }
+
+  /// When the shell switches back to this tab and a fixed default view is
+  /// configured, jump the filter pager to it.
+  void _applyDefaultLibraryViewOnTabVisible() {
+    final isVisible = TickerMode.valuesOf(context).enabled;
+    final becameVisible = isVisible && !_wasTabVisible;
+    _wasTabVisible = isVisible;
+    if (!becameVisible) return;
+    final defaultView = ref.read(settingsProvider).defaultLibraryView;
+    if (defaultView == 'last') return;
+    final index = _filterModes.indexOf(defaultView);
+    if (index < 0) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ref.read(settingsProvider).historyFilterMode != defaultView) {
+        ref.read(settingsProvider.notifier).setHistoryFilterMode(defaultView);
+      }
+      final controller = _filterPageController;
+      if (controller != null &&
+          controller.hasClients &&
+          controller.page?.round() != index) {
+        controller.jumpToPage(index);
+      }
+    });
   }
 
   @override
@@ -1118,6 +1157,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   @override
   Widget build(BuildContext context) {
     _initializePageController();
+    _applyDefaultLibraryViewOnTabVisible();
 
     ref.listen(downloadQueueLookupProvider, (previous, next) {
       if (previous == null) return;
@@ -1242,7 +1282,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         collectionState,
         totalTrackCount: switch (filterMode) {
           'singles' => queueCounts.singleTrackCount,
-          'albums' => 0,
+          'albums' || 'playlists' => 0,
           _ => queueCounts.allTrackCount,
         },
         totalAlbumCount: filterMode == 'albums' ? queueCounts.albumCount : null,
@@ -1257,6 +1297,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     final currentTotalCount = switch (historyFilterMode) {
       'albums' => queueCounts.albumCount,
       'singles' => queueCounts.singleTrackCount,
+      'playlists' => 0,
       _ => queueCounts.allTrackCount,
     };
     final hasMoreLibrary = currentLoadedCount < currentTotalCount;
@@ -1459,6 +1500,15 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                                   isSelected: historyFilterMode == 'singles',
                                   onTap: () {
                                     _animateToFilterPage(2);
+                                  },
+                                ),
+                                const SizedBox(width: 8),
+                                _FilterChip(
+                                  label: context.l10n.searchPlaylists,
+                                  count: collectionState.playlists.length,
+                                  isSelected: historyFilterMode == 'playlists',
+                                  onTap: () {
+                                    _animateToFilterPage(3);
                                   },
                                 ),
                               ],

@@ -337,6 +337,71 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
     );
   }
 
+  String _getDefaultViewLabel(BuildContext context, String view) {
+    switch (view) {
+      case 'all':
+        return context.l10n.historyFilterAll;
+      case 'albums':
+        return context.l10n.historyFilterAlbums;
+      case 'singles':
+        return context.l10n.historyFilterSingles;
+      case 'playlists':
+        return context.l10n.searchPlaylists;
+      default:
+        return context.l10n.libraryDefaultViewLastUsed;
+    }
+  }
+
+  void _showDefaultViewPicker(BuildContext context, String current) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final options = [
+      ('last', Icons.history, context.l10n.libraryDefaultViewLastUsed),
+      ('all', Icons.apps, context.l10n.historyFilterAll),
+      ('albums', Icons.album, context.l10n.historyFilterAlbums),
+      ('singles', Icons.music_note, context.l10n.historyFilterSingles),
+      ('playlists', Icons.queue_music, context.l10n.searchPlaylists),
+    ];
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: colorScheme.surfaceContainerHigh,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              child: Text(
+                context.l10n.libraryDefaultView,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+            for (final (value, icon, label) in options)
+              _AutoScanOption(
+                icon: icon,
+                title: label,
+                selected: current == value,
+                colorScheme: colorScheme,
+                onTap: () {
+                  ref
+                      .read(settingsProvider.notifier)
+                      .setDefaultLibraryView(value);
+                  Navigator.pop(context);
+                },
+              ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
@@ -366,6 +431,26 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
                   lastScannedAt: libraryState.lastScannedAt,
                 );
               },
+            ),
+          ),
+
+          SliverToBoxAdapter(
+            child: SettingsGroup(
+              children: [
+                SettingsItem(
+                  icon: Icons.grid_view_rounded,
+                  title: context.l10n.libraryDefaultView,
+                  subtitle: _getDefaultViewLabel(
+                    context,
+                    settings.defaultLibraryView,
+                  ),
+                  onTap: () => _showDefaultViewPicker(
+                    context,
+                    settings.defaultLibraryView,
+                  ),
+                  showDivider: false,
+                ),
+              ],
             ),
           ),
 

@@ -273,6 +273,10 @@ final _queueLibraryPageProvider = FutureProvider.autoDispose
       ref.watch(
         localLibraryProvider.select((state) => state.loadedIndexVersion),
       );
+      // Playlists render from libraryCollectionsProvider, not the DB.
+      if (request.filterMode == 'playlists') {
+        return const _QueueLibraryPageData();
+      }
       final dbQuery = request.toDbQuery();
       if (request.filterMode == 'albums') {
         final rows = await LibraryDatabase.instance.getQueueAlbumPage(dbQuery);

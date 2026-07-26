@@ -96,6 +96,13 @@ class SettingsNotifier extends Notifier<AppSettings> {
     'album',
     'playlist',
   };
+  static const Set<String> _libraryViewValues = {
+    'last',
+    'all',
+    'albums',
+    'singles',
+    'playlists',
+  };
   static const Set<String> _extensionVerificationBrowserModeValues = {
     'external_first',
     'in_app_first',
@@ -149,6 +156,9 @@ class SettingsNotifier extends Notifier<AppSettings> {
               loaded.downloadFallbackExtensionIds != null &&
               sanitizedDownloadFallbackExtensionIds == null,
           defaultSearchTab: sanitizedDefaultSearchTab,
+          defaultLibraryView: _normalizeDefaultLibraryView(
+            loaded.defaultLibraryView,
+          ),
           defaultService: loaded.defaultService,
           searchProvider: loaded.searchProvider,
           extensionVerificationBrowserMode:
@@ -351,6 +361,12 @@ class SettingsNotifier extends Notifier<AppSettings> {
     final normalized = value.trim().toLowerCase();
     if (_searchTabValues.contains(normalized)) return normalized;
     return 'all';
+  }
+
+  String _normalizeDefaultLibraryView(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (_libraryViewValues.contains(normalized)) return normalized;
+    return 'last';
   }
 
   String _normalizeExtensionVerificationBrowserMode(String value) {
@@ -604,6 +620,13 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   void setDefaultSearchTab(String tab) {
     state = state.copyWith(defaultSearchTab: _normalizeDefaultSearchTab(tab));
+    _saveSettings();
+  }
+
+  void setDefaultLibraryView(String view) {
+    state = state.copyWith(
+      defaultLibraryView: _normalizeDefaultLibraryView(view),
+    );
     _saveSettings();
   }
 
