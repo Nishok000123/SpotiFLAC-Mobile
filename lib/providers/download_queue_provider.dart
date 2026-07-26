@@ -1670,6 +1670,26 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     }
   }
 
+  /// Reinserts a queued item ahead of all other queued items so the next
+  /// free download slot picks it up. During an active native worker run the
+  /// current batch keeps its order; the new order applies from the next run.
+  void downloadNext(String id) {
+    final items = state.items;
+    final index = items.indexWhere((item) => item.id == id);
+    if (index == -1) return;
+    final item = items[index];
+    if (item.status != DownloadStatus.queued) return;
+    final firstQueuedIndex = items.indexWhere(
+      (candidate) => candidate.status == DownloadStatus.queued,
+    );
+    if (firstQueuedIndex == index) return;
+    final reordered = List<DownloadItem>.from(items)
+      ..removeAt(index)
+      ..insert(firstQueuedIndex, item);
+    state = state.copyWith(items: reordered);
+    _saveQueueToStorage();
+  }
+
   void removeItem(String id) {
     final removedItem = state.items.where((item) => item.id == id).firstOrNull;
     _locallyCancelledItemIds.remove(id);

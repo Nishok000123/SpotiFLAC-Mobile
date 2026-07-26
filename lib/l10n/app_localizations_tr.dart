@@ -3770,6 +3770,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get queueFinalizingDownload => 'Finalizing download';
 
   @override
+  String get queueDownloadNext => 'Download next';
+
+  @override
   String get queueDownloadedFileMissing => 'Downloaded file missing';
 
   @override

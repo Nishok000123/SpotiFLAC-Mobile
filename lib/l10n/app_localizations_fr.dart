@@ -3840,6 +3840,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get queueFinalizingDownload => 'Téléchargement en cours';
 
   @override
+  String get queueDownloadNext => 'Download next';
+
+  @override
   String get queueDownloadedFileMissing => 'Fichier téléchargé manquant';
 
   @override

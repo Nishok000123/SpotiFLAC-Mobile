@@ -4845,6 +4845,10 @@
   "@queueFinalizingDownload": {
     "description": "Accessibility label for a queue item that is finalizing"
   },
+  "queueDownloadNext": "Download next",
+  "@queueDownloadNext": {
+    "description": "Tooltip on a queued download row; moves the item to the front of the queue so the next free slot downloads it"
+  },
   "queueDownloadedFileMissing": "Downloaded file missing",
   "@queueDownloadedFileMissing": {
     "description": "Accessibility label when a downloaded file is missing from disk"

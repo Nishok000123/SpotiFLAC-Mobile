@@ -486,14 +486,34 @@ extension _QueueTabItemWidgets on _QueueTabState {
   ) {
     switch (item.status) {
       case DownloadStatus.queued:
-        return IconButton(
-          onPressed: () =>
-              ref.read(downloadQueueProvider.notifier).cancelItem(item.id),
-          icon: Icon(Icons.close, color: colorScheme.error),
-          tooltip: context.l10n.dialogCancel,
-          style: IconButton.styleFrom(
-            backgroundColor: colorScheme.errorContainer.withValues(alpha: 0.3),
-          ),
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              onPressed: () => ref
+                  .read(downloadQueueProvider.notifier)
+                  .downloadNext(item.id),
+              icon: Icon(Icons.skip_next, color: colorScheme.primary),
+              tooltip: context.l10n.queueDownloadNext,
+              style: IconButton.styleFrom(
+                backgroundColor: colorScheme.primaryContainer.withValues(
+                  alpha: 0.3,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              onPressed: () =>
+                  ref.read(downloadQueueProvider.notifier).cancelItem(item.id),
+              icon: Icon(Icons.close, color: colorScheme.error),
+              tooltip: context.l10n.dialogCancel,
+              style: IconButton.styleFrom(
+                backgroundColor: colorScheme.errorContainer.withValues(
+                  alpha: 0.3,
+                ),
+              ),
+            ),
+          ],
         );
       case DownloadStatus.downloading:
         return IconButton(

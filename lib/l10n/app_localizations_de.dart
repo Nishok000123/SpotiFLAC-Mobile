@@ -3786,6 +3786,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get queueFinalizingDownload => 'Download wird abgeschlossen';
 
   @override
+  String get queueDownloadNext => 'Download next';
+
+  @override
   String get queueDownloadedFileMissing => 'Heruntergeladene Datei fehlt';
 
   @override

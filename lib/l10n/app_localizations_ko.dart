@@ -3631,6 +3631,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get queueFinalizingDownload => '다운로드를 마무리하는 중';
 
   @override
+  String get queueDownloadNext => 'Download next';
+
+  @override
   String get queueDownloadedFileMissing => '다운로드한 파일이 없음';
 
   @override

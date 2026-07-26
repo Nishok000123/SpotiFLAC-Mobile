@@ -6220,6 +6220,12 @@ abstract class AppLocalizations {
   /// **'Finalizing download'**
   String get queueFinalizingDownload;
 
+  /// Tooltip on a queued download row; moves the item to the front of the queue so the next free slot downloads it
+  ///
+  /// In en, this message translates to:
+  /// **'Download next'**
+  String get queueDownloadNext;
+
   /// Accessibility label when a downloaded file is missing from disk
   ///
   /// In en, this message translates to:
