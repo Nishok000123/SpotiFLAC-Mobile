@@ -3842,6 +3842,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get queueDownloadNext => 'Download next';
 
   @override
+  String get queueMoveUp => 'Move up';
+
+  @override
+  String get queueMoveDown => 'Move down';
+
+  @override
   String get editMetadataMusicBrainzButton => 'Fetch from MusicBrainz';
 
   @override

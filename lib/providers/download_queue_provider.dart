@@ -1014,6 +1014,31 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     _saveQueueToStorage();
   }
 
+  /// Moves a queued item [offset] positions up (negative) or down (positive)
+  /// among the queued items, leaving non-queued rows in place. Same native
+  /// worker caveat as [downloadNext]: an in-flight batch keeps its order.
+  void moveQueuedItem(String id, int offset) {
+    if (offset == 0) return;
+    final items = state.items;
+    final index = items.indexWhere((item) => item.id == id);
+    if (index == -1) return;
+    final item = items[index];
+    if (item.status != DownloadStatus.queued) return;
+    final queuedIndices = <int>[
+      for (var i = 0; i < items.length; i++)
+        if (items[i].status == DownloadStatus.queued) i,
+    ];
+    final position = queuedIndices.indexOf(index);
+    final targetPosition = position + offset;
+    if (targetPosition < 0 || targetPosition >= queuedIndices.length) return;
+    final reordered = List<DownloadItem>.from(items)..removeAt(index);
+    // Inserting at the target's pre-removal index lands the item directly
+    // before it when moving up and directly after it when moving down.
+    reordered.insert(queuedIndices[targetPosition], item);
+    state = state.copyWith(items: reordered);
+    _saveQueueToStorage();
+  }
+
   void removeItem(String id) {
     final removedItem = state.items.where((item) => item.id == id).firstOrNull;
     _locallyCancelledItemIds.remove(id);

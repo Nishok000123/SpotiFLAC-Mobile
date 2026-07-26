@@ -194,8 +194,12 @@ extension _QueueTabItemWidgets on _QueueTabState {
             child: InkWell(
               onTap: isCompleted
                   ? () => _navigateToMetadataScreen(item)
-                  : item.status == DownloadStatus.failed
+                  : item.status == DownloadStatus.failed ||
+                        item.status == DownloadStatus.skipped
                   ? () => _showDownloadErrorDialog(context, item)
+                  : null,
+              onLongPress: item.status == DownloadStatus.queued
+                  ? () => _showQueuedItemMenu(context, item)
                   : null,
               borderRadius: BorderRadius.circular(12),
               child: Stack(
@@ -475,6 +479,45 @@ extension _QueueTabItemWidgets on _QueueTabState {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showQueuedItemMenu(BuildContext context, DownloadItem item) {
+    final notifier = ref.read(downloadQueueProvider.notifier);
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.skip_next),
+              title: Text(context.l10n.queueDownloadNext),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                notifier.downloadNext(item.id);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.arrow_upward),
+              title: Text(context.l10n.queueMoveUp),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                notifier.moveQueuedItem(item.id, -1);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.arrow_downward),
+              title: Text(context.l10n.queueMoveDown),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                notifier.moveQueuedItem(item.id, 1);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

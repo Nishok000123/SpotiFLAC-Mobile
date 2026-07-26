@@ -6306,6 +6306,18 @@ abstract class AppLocalizations {
   /// **'Download next'**
   String get queueDownloadNext;
 
+  /// Queue item menu action - move the queued item one position earlier
+  ///
+  /// In en, this message translates to:
+  /// **'Move up'**
+  String get queueMoveUp;
+
+  /// Queue item menu action - move the queued item one position later
+  ///
+  /// In en, this message translates to:
+  /// **'Move down'**
+  String get queueMoveDown;
+
   /// Tag editor button that fills genre and album artist from MusicBrainz by ISRC
   ///
   /// In en, this message translates to:
