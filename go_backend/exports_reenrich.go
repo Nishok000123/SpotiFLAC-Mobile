@@ -43,9 +43,9 @@ type reEnrichRequest struct {
 	DurationMs    int64    `json:"duration_ms"`
 	SearchOnline  bool     `json:"search_online"`
 	UpdateFields  []string `json:"update_fields,omitempty"`
-	// ReplaceReleaseMetadata lets an explicit user re-enrich action repair a
-	// stale album identity (for example, a playlist name stored as ALBUM).
-	// Older callers keep the conservative mismatch-preservation behavior.
+	// ReplaceReleaseMetadata lets a deliberate single-file re-enrich action
+	// repair a stale album identity (for example, a playlist name stored as
+	// ALBUM). Batch and older callers keep the conservative mismatch guard.
 	ReplaceReleaseMetadata bool `json:"replace_release_metadata,omitempty"`
 }
 

@@ -14,6 +14,7 @@ import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/image_cache_utils.dart';
 import 'package:spotiflac_android/utils/lyrics_metadata_helper.dart';
 import 'package:spotiflac_android/utils/nav_bar_inset.dart';
+import 'package:spotiflac_android/utils/re_enrich_release_policy.dart';
 import 'package:spotiflac_android/services/library_database.dart';
 import 'package:spotiflac_android/services/batch_track_actions.dart';
 import 'package:spotiflac_android/models/unified_library_item.dart';
@@ -454,7 +455,9 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
       'copyright': '',
       'duration_ms': durationMs,
       'search_online': true,
-      'replace_release_metadata': true,
+      'replace_release_metadata': allowsReleaseIdentityReplacement(
+        ReEnrichOperationScope.batch,
+      ),
       // ignore: use_null_aware_elements
       if (updateFields != null) 'update_fields': updateFields,
     };

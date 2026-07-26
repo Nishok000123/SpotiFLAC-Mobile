@@ -970,7 +970,9 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
         'composer': composer ?? '',
         'duration_ms': durationMs,
         'search_online': true,
-        'replace_release_metadata': true,
+        'replace_release_metadata': allowsReleaseIdentityReplacement(
+          ReEnrichOperationScope.singleFile,
+        ),
       };
 
       final result = await PlatformBridge.reEnrichFile(request);
