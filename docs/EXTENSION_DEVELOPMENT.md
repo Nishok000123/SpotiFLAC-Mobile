@@ -65,8 +65,13 @@ Package the contents—not their parent directory—as ZIP:
 
 ```bash
 cd my-extension
-zip -r ../my-extension.spotiflac-ext manifest.json index.js
+zip -r ../my-extension.sflx manifest.json index.js
 ```
+
+An extension package is a plain ZIP archive renamed to `.sflx`. The longer
+`.spotiflac-ext` suffix is the legacy alias; both are accepted everywhere
+(manual import, repo downloads) and the layout is identical. Use `.sflx` for
+new packages.
 
 `manifest.json` and `index.js` must be unique files at the archive root.
 SpotiFLAC Mobile rejects traversal paths, symlinks, duplicate paths, oversized
@@ -182,7 +187,7 @@ Repository maintainers should publish a SHA-256 digest for every package:
       "version": "1.0.0",
       "description": "What this extension provides",
       "category": "metadata",
-      "download_url": "https://example.com/my-extension.spotiflac-ext",
+      "download_url": "https://example.com/my-extension.sflx",
       "sha256": "64-lowercase-hex-characters"
     }
   ]
@@ -192,7 +197,7 @@ Repository maintainers should publish a SHA-256 digest for every package:
 Generate the digest after building the package:
 
 ```bash
-sha256sum my-extension.spotiflac-ext
+sha256sum my-extension.sflx
 ```
 
 Store downloads with a published digest are written to a temporary file,
