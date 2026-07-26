@@ -680,23 +680,12 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
       baseFilenameFormat,
     );
     if (isSafMode) {
-      final baseName = await PlatformBridge.buildFilename(
-        effectiveFilenameFormat,
-        _filenameMetadataForTrack(
-          item.track,
-          quality: quality,
-          qualityVariant: item.preserveQualityVariant
-              ? qualityVariantStagingLabel(item.id)
-              : '',
-          playlistPosition: _validPlaylistPosition(item),
-        ),
-      );
-      safFileName = await _buildSafFileName(
-        baseName,
-        safOutputExt,
-        qualityVariant: item.preserveQualityVariant
-            ? qualityVariantStagingLabel(item.id)
-            : '',
+      safFileName = await _buildSafFileNameForItem(
+        item,
+        item.track,
+        filenameFormat: effectiveFilenameFormat,
+        quality: quality,
+        outputExt: safOutputExt,
       );
     }
 

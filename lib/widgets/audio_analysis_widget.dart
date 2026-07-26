@@ -398,18 +398,7 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
           widget.filePath,
           channel: _spectrogramChannel,
         );
-        if (image == null) {
-          final artifact = await _generateSpectrogramForFile(
-            widget.filePath,
-            channel: _spectrogramChannel,
-          );
-          image = artifact.image;
-          await _saveSpectrogramToCache(
-            widget.filePath,
-            image,
-            channel: _spectrogramChannel,
-          );
-        }
+        image ??= await _generateAndCacheSpectrogram();
         if (mounted) {
           setState(() {
             _spectrogramImage?.dispose();
@@ -424,6 +413,19 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
     if (mounted) {
       setState(() => _checkingCache = false);
     }
+  }
+
+  Future<ui.Image> _generateAndCacheSpectrogram() async {
+    final artifact = await _generateSpectrogramForFile(
+      widget.filePath,
+      channel: _spectrogramChannel,
+    );
+    await _saveSpectrogramToCache(
+      widget.filePath,
+      artifact.image,
+      channel: _spectrogramChannel,
+    );
+    return artifact.image;
   }
 
   Future<void> _analyze({bool forceRefresh = false}) async {
@@ -470,18 +472,7 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
         );
       }
 
-      if (image == null) {
-        final artifact = await _generateSpectrogramForFile(
-          widget.filePath,
-          channel: _spectrogramChannel,
-        );
-        image = artifact.image;
-        await _saveSpectrogramToCache(
-          widget.filePath,
-          image,
-          channel: _spectrogramChannel,
-        );
-      }
+      image ??= await _generateAndCacheSpectrogram();
 
       if (mounted) {
         setState(() {

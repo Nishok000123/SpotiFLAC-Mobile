@@ -109,19 +109,7 @@ class HomeSearchProviderPolicy {
   const HomeSearchProviderPolicy._();
 
   static Extension? defaultExtension(List<Extension> extensions) {
-    return extensions
-            .where(
-              (extension) =>
-                  extension.enabled &&
-                  extension.hasCustomSearch &&
-                  extension.searchBehavior?.primary == true,
-            )
-            .firstOrNull ??
-        extensions
-            .where(
-              (extension) => extension.enabled && extension.hasCustomSearch,
-            )
-            .firstOrNull;
+    return defaultSearchExtension(extensions);
   }
 
   static String? resolveProvider(
@@ -146,21 +134,7 @@ class HomeSearchProviderPolicy {
     String? explicitSearchProvider,
     List<Extension> extensions,
   ) {
-    final explicit = explicitSearchProvider?.trim();
-    if (explicit != null &&
-        explicit.isNotEmpty &&
-        extensions.any(
-          (extension) =>
-              extension.enabled &&
-              extension.hasCustomSearch &&
-              extension.id == explicit,
-        )) {
-      return true;
-    }
-
-    return extensions.any(
-      (extension) => extension.enabled && extension.hasCustomSearch,
-    );
+    return resolveProvider(explicitSearchProvider, extensions) != null;
   }
 
   static String? sanitizeFilter(

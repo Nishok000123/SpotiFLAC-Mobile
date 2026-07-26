@@ -1061,19 +1061,6 @@ class _ServiceChip extends StatelessWidget {
 class _MetadataSourceSelector extends ConsumerWidget {
   const _MetadataSourceSelector();
 
-  Extension? _defaultSearchExtension(List<Extension> extensions) {
-    return extensions
-            .where(
-              (ext) =>
-                  ext.enabled &&
-                  ext.hasCustomSearch &&
-                  ext.searchBehavior?.primary == true,
-            )
-            .firstOrNull ??
-        extensions
-            .where((ext) => ext.enabled && ext.hasCustomSearch)
-            .firstOrNull;
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1082,7 +1069,7 @@ class _MetadataSourceSelector extends ConsumerWidget {
     final extState = ref.watch(extensionProvider);
 
     final rawSearchProvider = settings.searchProvider?.trim() ?? '';
-    final primarySearchExtension = _defaultSearchExtension(extState.extensions);
+    final primarySearchExtension = defaultSearchExtension(extState.extensions);
     final defaultProviderTarget =
         primarySearchExtension?.displayName ??
         context.l10n.extensionsNoCustomSearch;

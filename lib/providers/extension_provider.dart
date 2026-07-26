@@ -63,6 +63,21 @@ List<String>? _tryDecodeStringListPreference(String rawJson, String key) {
   }
 }
 
+/// First enabled custom-search extension, preferring ones marked primary.
+Extension? defaultSearchExtension(List<Extension> extensions) {
+  return extensions
+          .where(
+            (ext) =>
+                ext.enabled &&
+                ext.hasCustomSearch &&
+                ext.searchBehavior?.primary == true,
+          )
+          .firstOrNull ??
+      extensions
+          .where((ext) => ext.enabled && ext.hasCustomSearch)
+          .firstOrNull;
+}
+
 class Extension {
   final String id;
   final String name;
@@ -1247,19 +1262,7 @@ class ExtensionNotifier extends Notifier<ExtensionState> {
   }
 
   String? _firstEnabledSearchProviderId() {
-    return state.extensions
-            .where(
-              (ext) =>
-                  ext.enabled &&
-                  ext.hasCustomSearch &&
-                  ext.searchBehavior?.primary == true,
-            )
-            .map((ext) => ext.id)
-            .firstOrNull ??
-        state.extensions
-            .where((ext) => ext.enabled && ext.hasCustomSearch)
-            .map((ext) => ext.id)
-            .firstOrNull;
+    return defaultSearchExtension(state.extensions)?.id;
   }
 
   String? _replacedBuiltInProviderFor(

@@ -207,6 +207,34 @@ extension _DownloadQueuePaths on DownloadQueueNotifier {
     return parts.join('/');
   }
 
+  /// Renders the SAF file name for [item]: filename template → sanitized,
+  /// byte-limited SAF name (quality-variant aware).
+  Future<String> _buildSafFileNameForItem(
+    DownloadItem item,
+    Track track, {
+    required String filenameFormat,
+    required String quality,
+    required String outputExt,
+  }) async {
+    final qualityVariant = item.preserveQualityVariant
+        ? qualityVariantStagingLabel(item.id)
+        : '';
+    final baseName = await PlatformBridge.buildFilename(
+      filenameFormat,
+      _filenameMetadataForTrack(
+        track,
+        quality: quality,
+        qualityVariant: qualityVariant,
+        playlistPosition: _validPlaylistPosition(item),
+      ),
+    );
+    return _buildSafFileName(
+      baseName,
+      outputExt,
+      qualityVariant: qualityVariant,
+    );
+  }
+
   Future<String> _buildSafFileName(
     String baseName,
     String outputExt, {

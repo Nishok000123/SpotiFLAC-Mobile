@@ -760,30 +760,16 @@ class HistoryDatabase {
       String column,
       Iterable<String> rawValues,
       Map<String, Map<String, dynamic>> destination,
-    ) async {
-      final values = rawValues
-          .where((value) => value.isNotEmpty)
-          .toSet()
-          .toList();
-      const chunkSize = 450;
-      for (var start = 0; start < values.length; start += chunkSize) {
-        final end = start + chunkSize < values.length
-            ? start + chunkSize
-            : values.length;
-        final chunk = values.sublist(start, end);
-        final placeholders = List.filled(chunk.length, '?').join(',');
-        final rows = await db.rawQuery(
-          'SELECT * FROM history WHERE $column IN ($placeholders) '
-          'ORDER BY downloaded_at DESC',
-          chunk,
-        );
-        for (final row in rows) {
-          final key = row[column] as String?;
-          if (key != null && key.isNotEmpty) {
-            destination.putIfAbsent(key, () => _dbRowToJson(row));
-          }
-        }
-      }
+    ) {
+      return sqlite.loadRowsByColumn(
+        db,
+        table: 'history',
+        column: column,
+        rawValues: rawValues,
+        destination: destination,
+        mapRow: _dbRowToJson,
+        orderBy: 'downloaded_at DESC',
+      );
     }
 
     final spotifyCandidates = requests.expand(

@@ -1437,27 +1437,15 @@ class LibraryDatabase {
       String column,
       Iterable<String> rawValues,
       Map<String, Map<String, dynamic>> destination,
-    ) async {
-      final values = rawValues
-          .where((value) => value.isNotEmpty)
-          .toSet()
-          .toList();
-      const chunkSize = 450;
-      for (var start = 0; start < values.length; start += chunkSize) {
-        final end = (start + chunkSize).clamp(0, values.length);
-        final chunk = values.sublist(start, end);
-        final placeholders = List.filled(chunk.length, '?').join(',');
-        final rows = await db.rawQuery(
-          'SELECT * FROM library WHERE $column IN ($placeholders)',
-          chunk,
-        );
-        for (final row in rows) {
-          final key = row[column] as String?;
-          if (key != null && key.isNotEmpty) {
-            destination.putIfAbsent(key, () => _dbRowToJson(row));
-          }
-        }
-      }
+    ) {
+      return sqlite.loadRowsByColumn(
+        db,
+        table: 'library',
+        column: column,
+        rawValues: rawValues,
+        destination: destination,
+        mapRow: _dbRowToJson,
+      );
     }
 
     await Future.wait([

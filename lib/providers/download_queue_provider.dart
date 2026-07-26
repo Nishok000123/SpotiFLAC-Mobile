@@ -2493,23 +2493,12 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         baseFilenameFormat,
       );
       if (isSafMode) {
-        final baseName = await PlatformBridge.buildFilename(
-          effectiveFilenameFormat,
-          _filenameMetadataForTrack(
-            trackToDownload,
-            quality: quality,
-            qualityVariant: item.preserveQualityVariant
-                ? qualityVariantStagingLabel(item.id)
-                : '',
-            playlistPosition: _validPlaylistPosition(item),
-          ),
-        );
-        safFileName = await _buildSafFileName(
-          baseName,
-          safOutputExt,
-          qualityVariant: item.preserveQualityVariant
-              ? qualityVariantStagingLabel(item.id)
-              : '',
+        safFileName = await _buildSafFileNameForItem(
+          item,
+          trackToDownload,
+          filenameFormat: effectiveFilenameFormat,
+          quality: quality,
+          outputExt: safOutputExt,
         );
         safBaseName = safFileName.replaceFirst(RegExp(r'\.[^.]+$'), '');
       }
