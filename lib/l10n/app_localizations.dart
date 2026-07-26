@@ -1270,6 +1270,48 @@ abstract class AppLocalizations {
   /// **'No platform links found for this track.'**
   String get trackOpenOnNoLinks;
 
+  /// Library settings row opening the duplicate review sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Review duplicates'**
+  String get libraryReviewDuplicates;
+
+  /// Subtitle for the duplicate review settings row
+  ///
+  /// In en, this message translates to:
+  /// **'Find tracks stored more than once'**
+  String get libraryReviewDuplicatesSubtitle;
+
+  /// Title of the duplicate review sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicates'**
+  String get duplicatesTitle;
+
+  /// Shown when the duplicate review sheet finds nothing
+  ///
+  /// In en, this message translates to:
+  /// **'No duplicate tracks found.'**
+  String get duplicatesEmpty;
+
+  /// Button that deletes all but the highest-quality copy in a duplicate group
+  ///
+  /// In en, this message translates to:
+  /// **'Keep best'**
+  String get duplicatesKeepBest;
+
+  /// Confirmation message for the keep-best action
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {count} lower-quality copies of \"{trackName}\"?'**
+  String duplicatesKeepBestMessage(int count, String trackName);
+
+  /// Confirmation message for deleting one duplicate copy
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this copy of \"{trackName}\"?'**
+  String duplicatesDeleteCopyMessage(String trackName);
+
   /// Snackbar - track added to download queue
   ///
   /// In en, this message translates to:
@@ -6252,6 +6294,30 @@ abstract class AppLocalizations {
   /// **'Download next'**
   String get queueDownloadNext;
 
+  /// Repeat toggle tooltip when repeat is disabled
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat off'**
+  String get nowPlayingRepeatOff;
+
+  /// Repeat toggle tooltip when the whole queue repeats
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat all'**
+  String get nowPlayingRepeatAll;
+
+  /// Repeat toggle tooltip when the current track repeats
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat one'**
+  String get nowPlayingRepeatOne;
+
+  /// Snackbar shown when connectivity returns and network-failed downloads can be retried
+  ///
+  /// In en, this message translates to:
+  /// **'{count} downloads failed while offline'**
+  String queueNetworkFailedOffline(int count);
+
   /// Accessibility label when a downloaded file is missing from disk
   ///
   /// In en, this message translates to:
@@ -6839,12 +6905,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Android background service for extension downloads'**
   String get downloadNativeWorkerSubtitle;
-
-  /// Badge label for beta features
-  ///
-  /// In en, this message translates to:
-  /// **'BETA'**
-  String get badgeBeta;
 
   /// Extension detail section header for service status
   ///

@@ -2,14 +2,18 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/material.dart'
+    show ScaffoldMessenger, SnackBar, SnackBarAction, Text;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/download_item.dart';
 import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/models/track.dart';
+import 'package:spotiflac_android/services/app_navigation_service.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/providers/download_verification_retry_guard.dart';
@@ -159,6 +163,9 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   bool _networkPausedByWifiOnly = false;
   List<ConnectivityResult>? _lastConnectivityResults;
   DateTime _lastConnectionCleanupAt = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _lastReconnectRetryPromptAt = DateTime.fromMillisecondsSinceEpoch(
+    0,
+  );
   static const _connectionCleanupDebounce = Duration(seconds: 2);
   String? _lastServiceTrackName;
   String? _lastServiceArtistName;
@@ -1581,12 +1588,14 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     }
   }
 
-  void retryAllFailed() {
+  void retryAllFailed({bool networkOnly = false}) {
     final failedIds = state.items
         .where(
           (item) =>
-              item.status == DownloadStatus.failed ||
-              item.status == DownloadStatus.skipped,
+              (item.status == DownloadStatus.failed ||
+                  item.status == DownloadStatus.skipped) &&
+              (!networkOnly ||
+                  item.errorType == DownloadErrorType.network),
         )
         .map((item) => item.id)
         .toSet();
@@ -1817,11 +1826,53 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   }
 
   void _stopConnectivityMonitoring({bool clearNetworkPause = true}) {
-    _connectivitySub?.cancel();
-    _connectivitySub = null;
     if (clearNetworkPause) {
       _networkPausedByWifiOnly = false;
     }
+    // Keep listening while network-failed items remain so the reconnect
+    // retry prompt can still fire when the queue is otherwise idle.
+    if (_hasNetworkFailedItems) return;
+    _connectivitySub?.cancel();
+    _connectivitySub = null;
+  }
+
+  bool get _hasNetworkFailedItems => state.items.any(
+    (item) =>
+        item.status == DownloadStatus.failed &&
+        item.errorType == DownloadErrorType.network,
+  );
+
+  /// Offers a one-tap retry for network-failed items once connectivity
+  /// returns, debounced so network flapping doesn't spam snackbars.
+  void _maybeOfferRetryAfterReconnect(List<ConnectivityResult> results) {
+    if (results.every((result) => result == ConnectivityResult.none)) return;
+    final failedCount = state.items
+        .where(
+          (item) =>
+              item.status == DownloadStatus.failed &&
+              item.errorType == DownloadErrorType.network,
+        )
+        .length;
+    if (failedCount == 0) return;
+    final now = DateTime.now();
+    if (now.difference(_lastReconnectRetryPromptAt) <
+        const Duration(minutes: 1)) {
+      return;
+    }
+    _lastReconnectRetryPromptAt = now;
+
+    final context = AppNavigationService.rootNavigatorKey.currentContext;
+    if (context == null || !context.mounted) return;
+    final l10n = context.l10n;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.queueNetworkFailedOffline(failedCount)),
+        action: SnackBarAction(
+          label: l10n.dialogRetry,
+          onPressed: () => retryAllFailed(networkOnly: true),
+        ),
+      ),
+    );
   }
 
   void _handleDownloadNetworkModeChanged(String mode) {
@@ -1883,6 +1934,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
 
   void _handleConnectivityResults(List<ConnectivityResult> results) {
     _maybeCleanupOnNetworkChange(results);
+    _maybeOfferRetryAfterReconnect(results);
 
     final settings = ref.read(settingsProvider);
     if (settings.downloadNetworkMode != 'wifi_only') return;

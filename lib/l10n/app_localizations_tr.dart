@@ -658,6 +658,32 @@ class AppLocalizationsTr extends AppLocalizations {
   String get trackOpenOnNoLinks => 'No platform links found for this track.';
 
   @override
+  String get libraryReviewDuplicates => 'Review duplicates';
+
+  @override
+  String get libraryReviewDuplicatesSubtitle =>
+      'Find tracks stored more than once';
+
+  @override
+  String get duplicatesTitle => 'Duplicates';
+
+  @override
+  String get duplicatesEmpty => 'No duplicate tracks found.';
+
+  @override
+  String get duplicatesKeepBest => 'Keep best';
+
+  @override
+  String duplicatesKeepBestMessage(int count, String trackName) {
+    return 'Delete $count lower-quality copies of \"$trackName\"?';
+  }
+
+  @override
+  String duplicatesDeleteCopyMessage(String trackName) {
+    return 'Delete this copy of \"$trackName\"?';
+  }
+
+  @override
   String snackbarAddedToQueue(String trackName) {
     return '\"$trackName\" kuyruğa eklendi';
   }
@@ -3793,6 +3819,20 @@ class AppLocalizationsTr extends AppLocalizations {
   String get queueDownloadNext => 'Download next';
 
   @override
+  String get nowPlayingRepeatOff => 'Repeat off';
+
+  @override
+  String get nowPlayingRepeatAll => 'Repeat all';
+
+  @override
+  String get nowPlayingRepeatOne => 'Repeat one';
+
+  @override
+  String queueNetworkFailedOffline(int count) {
+    return '$count downloads failed while offline';
+  }
+
+  @override
   String get queueDownloadedFileMissing => 'Downloaded file missing';
 
   @override
@@ -4204,9 +4244,6 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get downloadNativeWorkerSubtitle =>
       'Uzantı indirmeleri için Android arka plan hizmeti';
-
-  @override
-  String get badgeBeta => 'BETA';
 
   @override
   String get extensionServiceStatus => 'Service Status';
