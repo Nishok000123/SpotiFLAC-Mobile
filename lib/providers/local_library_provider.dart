@@ -1031,14 +1031,16 @@ final localLibraryFirstCoverProvider = FutureProvider.autoDispose
       ref.watch(
         localLibraryProvider.select((state) => state.loadedIndexVersion),
       );
-      for (final track in request.tracks) {
-        final cover = _nonEmptyCoverPath(
-          await LibraryDatabase.instance.findExisting(
+      final rows = await LibraryDatabase.instance.findExistingBatch([
+        for (final track in request.tracks)
+          LocalLibraryBatchLookupRequest(
             isrc: track.isrc,
             trackName: track.trackName,
             artistName: track.artistName,
           ),
-        );
+      ]);
+      for (final row in rows) {
+        final cover = _nonEmptyCoverPath(row);
         if (cover != null) return cover;
       }
       return null;

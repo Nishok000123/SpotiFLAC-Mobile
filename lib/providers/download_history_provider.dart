@@ -363,9 +363,13 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
   bool _isAudioMetadataBackfillInProgress = false;
   bool _startupMaintenanceScheduled = false;
   Future<void> _historyWriteChain = Future<void>.value();
+  Timer? _indexBumpTimer;
+  DateTime? _lastIndexBumpAt;
+  static const _indexBumpWindow = Duration(seconds: 1);
 
   @override
   DownloadHistoryState build() {
+    ref.onDispose(() => _indexBumpTimer?.cancel());
     _loadFromDatabaseSync();
     return DownloadHistoryState();
   }
@@ -1162,20 +1166,47 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
         await _db.upsert(resolved.item.toJson());
         _putResolvedHistoryInMemory(resolved.item, resolved.existingId);
       }
-      int? persistedCount;
-      try {
-        persistedCount = await _db.getCount();
-      } catch (error) {
-        _historyLog.w('History saved but count refresh failed: $error');
-      }
-      state = state.copyWith(
-        totalCount: persistedCount ?? state.totalCount,
-        loadedIndexVersion: state.loadedIndexVersion + 1,
-      );
+      _scheduleIndexBump();
     } catch (e, stack) {
       _historyLog.e('Failed to $action: $e', e, stack);
       rethrow;
     }
+  }
+
+  /// Coalesces the post-persist count refresh + index bump to at most one per
+  /// [_indexBumpWindow]. Every bump invalidates the DB-derived views (queue
+  /// union queries, grouped counts, per-row exists checks) across all
+  /// keep-alive tabs, so per-item bumps during a batch fan out into repeated
+  /// full-table work.
+  void _scheduleIndexBump() {
+    if (_indexBumpTimer != null) return;
+    final now = DateTime.now();
+    final sinceLast = _lastIndexBumpAt == null
+        ? _indexBumpWindow
+        : now.difference(_lastIndexBumpAt!);
+    if (sinceLast >= _indexBumpWindow) {
+      _lastIndexBumpAt = now;
+      unawaited(_bumpIndexNow());
+      return;
+    }
+    _indexBumpTimer = Timer(_indexBumpWindow - sinceLast, () {
+      _indexBumpTimer = null;
+      _lastIndexBumpAt = DateTime.now();
+      unawaited(_bumpIndexNow());
+    });
+  }
+
+  Future<void> _bumpIndexNow() async {
+    int? persistedCount;
+    try {
+      persistedCount = await _db.getCount();
+    } catch (error) {
+      _historyLog.w('History saved but count refresh failed: $error');
+    }
+    state = state.copyWith(
+      totalCount: persistedCount ?? state.totalCount,
+      loadedIndexVersion: state.loadedIndexVersion + 1,
+    );
   }
 
   DownloadHistoryItem _putInMemoryTrackVariant(DownloadHistoryItem item) {

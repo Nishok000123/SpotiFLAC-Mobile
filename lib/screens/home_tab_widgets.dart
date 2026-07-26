@@ -197,6 +197,10 @@ class _TrackItemWithStatus extends ConsumerWidget {
   final bool showLocalLibraryIndicator;
   final Map<String, (double, double)> thumbnailSizesByExtensionId;
 
+  /// Resolved by the result page via one batch lookup instead of a per-row
+  /// exists query (which in SAF mode also costs a bridge call per row).
+  final bool isInHistory;
+
   const _TrackItemWithStatus({
     super.key,
     required this.track,
@@ -206,6 +210,7 @@ class _TrackItemWithStatus extends ConsumerWidget {
     required this.searchExtensionId,
     required this.showLocalLibraryIndicator,
     required this.thumbnailSizesByExtensionId,
+    required this.isInHistory,
   });
 
   @override
@@ -217,11 +222,6 @@ class _TrackItemWithStatus extends ConsumerWidget {
         (lookup) => lookup.byTrackId[track.id],
       ),
     );
-
-    final historyLookup = historyLookupForTrack(track);
-    final isInHistory = ref
-        .watch(downloadHistoryExistsProvider(historyLookup))
-        .maybeWhen(data: (exists) => exists, orElse: () => false);
 
     final isInLocalLibrary = showLocalLibraryIndicator
         ? ref.watch(

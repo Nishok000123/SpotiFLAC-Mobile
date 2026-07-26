@@ -626,11 +626,13 @@ class HistoryDatabase {
     String trackName,
     String artistName,
   ) async {
+    final key = matchKeyFor(trackName, artistName);
+    if (key.isEmpty) return null;
     final db = await database;
     final rows = await db.query(
       'history',
-      where: 'LOWER(track_name) = ? AND LOWER(artist_name) = ?',
-      whereArgs: [trackName.toLowerCase(), artistName.toLowerCase()],
+      where: 'match_key = ?',
+      whereArgs: [key],
       orderBy: 'downloaded_at DESC',
       limit: 1,
     );

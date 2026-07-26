@@ -2735,6 +2735,16 @@ class _HomeTabState extends ConsumerState<HomeTab>
     }
 
     if (sortedTracks.isNotEmpty) {
+      final historyLookups = sortedTracks
+          .map(historyLookupForTrack)
+          .toList(growable: false);
+      final existingHistoryKeys = ref
+          .watch(
+            downloadHistoryBatchExistsProvider(
+              HistoryBatchLookupRequest(historyLookups),
+            ),
+          )
+          .maybeWhen(data: (keys) => keys, orElse: () => const <String>{});
       slivers.addAll(
         _buildVirtualizedResultSection(
           title: context.l10n.searchSongs,
@@ -2753,6 +2763,9 @@ class _HomeTabState extends ConsumerState<HomeTab>
             searchExtensionId: searchExtensionId,
             showLocalLibraryIndicator: showLocalLibraryIndicator,
             thumbnailSizesByExtensionId: thumbnailSizesByExtensionId,
+            isInHistory: existingHistoryKeys.contains(
+              historyLookups[index].lookupKey,
+            ),
           ),
         ),
       );
