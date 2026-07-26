@@ -256,6 +256,13 @@ func getExtensionInitSettings(extensionID string) map[string]any {
 }
 
 func ensureRuntimeReadyLocked(ext *loadedExtension, applyStoredSettings bool) error {
+	// Gate enabling too, so a package installed with a failed gate cannot be
+	// switched on anyway.
+	if err := validateManifestGates(ext.Manifest); err != nil {
+		ext.Error = err.Error()
+		ext.Enabled = false
+		return err
+	}
 	if ext.VM == nil || ext.runtime == nil {
 		if err := initializeVMLocked(ext); err != nil {
 			ext.Error = err.Error()
@@ -822,7 +829,58 @@ func teardownVMLocked(ext *loadedExtension) {
 	ext.initialized = false
 }
 
+// supportedRuntimeFeatures maps every feature name the goja runtime provides
+// to its current contract version (documented in SIGNED_SESSION_GUIDE.md).
+// Bump a version here when a feature's contract changes.
+var supportedRuntimeFeatures = map[string]int{
+	"signedSession":  1,
+	"sessionRefresh": 1,
+	"sessionGrant":   1,
+	"globalAction":   1,
+	"webviewAuth":    1,
+}
+
+// validateManifestGates enforces minAppVersion and requiredRuntimeFeatures
+// on every load path (.sflx install, upgrade, directory load); the Store UI
+// check alone never covered manual installs. An empty app version (tests,
+// dev harnesses) skips the version gate.
+func validateManifestGates(manifest *ExtensionManifest) error {
+	if manifest == nil {
+		return nil
+	}
+	minVersion := strings.TrimSpace(manifest.MinAppVersion)
+	appVersion := strings.TrimSpace(GetAppVersion())
+	if minVersion != "" && appVersion != "" && compareVersions(appVersion, minVersion) < 0 {
+		return fmt.Errorf("requires app %s or later (installed: %s)", minVersion, appVersion)
+	}
+	for _, raw := range manifest.RequiredRuntimeFeatures {
+		name := strings.TrimSpace(raw)
+		if name == "" {
+			continue
+		}
+		wantVersion := 1
+		if at := strings.LastIndex(name, "@"); at > 0 {
+			if v, err := strconv.Atoi(name[at+1:]); err == nil && v > 0 {
+				wantVersion = v
+			}
+			name = name[:at]
+		}
+		have, ok := supportedRuntimeFeatures[name]
+		if !ok {
+			return fmt.Errorf("requires runtime feature %q this app build does not provide", name)
+		}
+		if have < wantVersion {
+			return fmt.Errorf("requires runtime feature %s@%d (app provides @%d)", name, wantVersion, have)
+		}
+	}
+	return nil
+}
+
 func validateExtensionLoad(ext *loadedExtension) error {
+	if err := validateManifestGates(ext.Manifest); err != nil {
+		return err
+	}
+
 	ext.VMMu.Lock()
 	defer ext.VMMu.Unlock()
 
