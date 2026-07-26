@@ -205,8 +205,13 @@ class _DuplicateReviewSheetState extends ConsumerState<DuplicateReviewSheet> {
                       ),
                     );
                   }
+                  // shrinkWrap keeps a small sheet compact but builds every
+                  // group eagerly; past a screenful, switch to a lazy
+                  // full-height list so a large duplicate set can't jank the
+                  // opening frame.
+                  final compact = groups.length <= 12;
                   return ListView.builder(
-                    shrinkWrap: true,
+                    shrinkWrap: compact,
                     itemCount: groups.length,
                     itemBuilder: (context, index) =>
                         _buildGroup(context, colorScheme, groups[index]),

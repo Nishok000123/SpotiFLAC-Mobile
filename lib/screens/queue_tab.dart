@@ -154,7 +154,7 @@ String? _formatDownloadEta(DownloadItem item, {double? visualProgress}) {
 bool _shouldAnimateDownloadProgress(BuildContext context, DownloadItem item) {
   final progress = item.progress.clamp(0.0, 1.0);
   final animationsDisabled =
-      MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+      MediaQuery.maybeDisableAnimationsOf(context) ?? false;
   return item.status == DownloadStatus.downloading &&
       progress > 0 &&
       progress < 1 &&

@@ -340,7 +340,6 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
-    final libraryState = ref.watch(localLibraryProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -348,17 +347,25 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
         slivers: [
           SettingsSliverAppBar(title: context.l10n.libraryTitle),
 
+          // Scan snapshots land ~2.5x/s; keep the per-snapshot rebuild scoped
+          // to the widgets that actually display scan state instead of the
+          // whole settings page.
           SliverToBoxAdapter(
-            child: _LibraryHeroCard(
-              itemCount: libraryState.totalCount,
-              excludedDownloadedCount: libraryState.excludedDownloadedCount,
-              isScanning: libraryState.isScanning,
-              scanIsFinalizing: libraryState.scanIsFinalizing,
-              scanProgress: libraryState.scanProgress,
-              scanCurrentFile: libraryState.scanCurrentFile,
-              scanTotalFiles: libraryState.scanTotalFiles,
-              scannedFiles: libraryState.scannedFiles,
-              lastScannedAt: libraryState.lastScannedAt,
+            child: Consumer(
+              builder: (context, ref, _) {
+                final libraryState = ref.watch(localLibraryProvider);
+                return _LibraryHeroCard(
+                  itemCount: libraryState.totalCount,
+                  excludedDownloadedCount: libraryState.excludedDownloadedCount,
+                  isScanning: libraryState.isScanning,
+                  scanIsFinalizing: libraryState.scanIsFinalizing,
+                  scanProgress: libraryState.scanProgress,
+                  scanCurrentFile: libraryState.scanCurrentFile,
+                  scanTotalFiles: libraryState.scanTotalFiles,
+                  scannedFiles: libraryState.scannedFiles,
+                  lastScannedAt: libraryState.lastScannedAt,
+                );
+              },
             ),
           ),
 
@@ -438,7 +445,9 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
             SliverToBoxAdapter(
               child: SettingsSectionHeader(title: context.l10n.libraryActions),
             ),
-            if (libraryState.scanWasCancelled)
+            if (ref.watch(
+              localLibraryProvider.select((s) => s.scanWasCancelled),
+            ))
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -491,65 +500,77 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
                 ),
               ),
             SliverToBoxAdapter(
-              child: SettingsGroup(
-                children: [
-                  if (libraryState.isScanning)
-                    _ScanProgressTile(
-                      isFinalizing: libraryState.scanIsFinalizing,
-                      progress: libraryState.scanProgress,
-                      currentFile: libraryState.scanCurrentFile,
-                      scannedFiles: libraryState.scannedFiles,
-                      totalFiles: libraryState.scanTotalFiles,
-                      onCancel: _cancelScan,
-                    )
-                  else ...[
-                    Opacity(
-                      opacity: settings.localLibraryPath.isNotEmpty ? 1.0 : 0.5,
-                      child: SettingsItem(
-                        icon: Icons.refresh,
-                        title: context.l10n.libraryScan,
-                        subtitle: settings.localLibraryPath.isEmpty
-                            ? context.l10n.libraryScanSelectFolderFirst
-                            : context.l10n.libraryScanSubtitle,
-                        onTap: settings.localLibraryPath.isNotEmpty
-                            ? _startScan
-                            : null,
+              child: Consumer(
+                builder: (context, ref, _) {
+                  final libraryState = ref.watch(localLibraryProvider);
+                  return SettingsGroup(
+                    children: [
+                      if (libraryState.isScanning)
+                        _ScanProgressTile(
+                          isFinalizing: libraryState.scanIsFinalizing,
+                          progress: libraryState.scanProgress,
+                          currentFile: libraryState.scanCurrentFile,
+                          scannedFiles: libraryState.scannedFiles,
+                          totalFiles: libraryState.scanTotalFiles,
+                          onCancel: _cancelScan,
+                        )
+                      else ...[
+                        Opacity(
+                          opacity: settings.localLibraryPath.isNotEmpty
+                              ? 1.0
+                              : 0.5,
+                          child: SettingsItem(
+                            icon: Icons.refresh,
+                            title: context.l10n.libraryScan,
+                            subtitle: settings.localLibraryPath.isEmpty
+                                ? context.l10n.libraryScanSelectFolderFirst
+                                : context.l10n.libraryScanSubtitle,
+                            onTap: settings.localLibraryPath.isNotEmpty
+                                ? _startScan
+                                : null,
+                          ),
+                        ),
+                        Opacity(
+                          opacity: settings.localLibraryPath.isNotEmpty
+                              ? 1.0
+                              : 0.5,
+                          child: SettingsItem(
+                            icon: Icons.sync,
+                            title: context.l10n.libraryForceFullScan,
+                            subtitle: context.l10n.libraryForceFullScanSubtitle,
+                            onTap: settings.localLibraryPath.isNotEmpty
+                                ? () => _startScan(forceFullScan: true)
+                                : null,
+                          ),
+                        ),
+                      ],
+                      Opacity(
+                        opacity: libraryState.totalCount > 0 ? 1.0 : 0.5,
+                        child: SettingsItem(
+                          icon: Icons.cleaning_services_outlined,
+                          title: context.l10n.libraryCleanupMissingFiles,
+                          subtitle:
+                              context.l10n.libraryCleanupMissingFilesSubtitle,
+                          onTap: libraryState.totalCount > 0
+                              ? _cleanupMissingFiles
+                              : null,
+                        ),
                       ),
-                    ),
-                    Opacity(
-                      opacity: settings.localLibraryPath.isNotEmpty ? 1.0 : 0.5,
-                      child: SettingsItem(
-                        icon: Icons.sync,
-                        title: context.l10n.libraryForceFullScan,
-                        subtitle: context.l10n.libraryForceFullScanSubtitle,
-                        onTap: settings.localLibraryPath.isNotEmpty
-                            ? () => _startScan(forceFullScan: true)
-                            : null,
+                      Opacity(
+                        opacity: libraryState.totalCount > 0 ? 1.0 : 0.5,
+                        child: SettingsItem(
+                          icon: Icons.delete_outline,
+                          title: context.l10n.libraryClear,
+                          subtitle: context.l10n.libraryClearSubtitle,
+                          onTap: libraryState.totalCount > 0
+                              ? _clearLibrary
+                              : null,
+                          showDivider: false,
+                        ),
                       ),
-                    ),
-                  ],
-                  Opacity(
-                    opacity: libraryState.totalCount > 0 ? 1.0 : 0.5,
-                    child: SettingsItem(
-                      icon: Icons.cleaning_services_outlined,
-                      title: context.l10n.libraryCleanupMissingFiles,
-                      subtitle: context.l10n.libraryCleanupMissingFilesSubtitle,
-                      onTap: libraryState.totalCount > 0
-                          ? _cleanupMissingFiles
-                          : null,
-                    ),
-                  ),
-                  Opacity(
-                    opacity: libraryState.totalCount > 0 ? 1.0 : 0.5,
-                    child: SettingsItem(
-                      icon: Icons.delete_outline,
-                      title: context.l10n.libraryClear,
-                      subtitle: context.l10n.libraryClearSubtitle,
-                      onTap: libraryState.totalCount > 0 ? _clearLibrary : null,
-                      showDivider: false,
-                    ),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
           ],
