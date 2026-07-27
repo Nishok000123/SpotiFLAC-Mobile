@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotiflac_android/services/download_request_payload.dart';
+import 'package:spotiflac_android/utils/audio_format_utils.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 
 final _log = AppLogger('PlatformBridge');
@@ -831,6 +832,25 @@ class PlatformBridge {
 
   static Future<Map<String, dynamic>> readFileMetadata(String filePath) {
     return _invokeMap('readFileMetadata', {'file_path': filePath});
+  }
+
+  /// Reads the tags and quality fields used for automatic Library display.
+  ///
+  /// Android's readAudioMetadata implementation can inspect most SAF files
+  /// through /proc/self/fd, avoiding the full-file cache copy required by tag
+  /// editing. Keep the complete reader as a compatibility fallback for
+  /// malformed or incorrectly named files that the lightweight scanner could
+  /// only identify from their filename.
+  static Future<Map<String, dynamic>> readDisplayAudioMetadata(
+    String filePath,
+  ) async {
+    final scanned = await readAudioMetadata(filePath);
+    if (scanned != null &&
+        scanned['error'] == null &&
+        scanned['metadataFromFilename'] != true) {
+      return normalizeScannedAudioMetadata(scanned);
+    }
+    return readFileMetadata(filePath);
   }
 
   static Future<Map<String, dynamic>> editFileMetadata(

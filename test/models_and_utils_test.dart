@@ -792,6 +792,53 @@ void main() {
   });
 
   group('audio conversion utils', () {
+    test('normalizes lightweight library scan metadata for display probes', () {
+      final normalized = normalizeScannedAudioMetadata({
+        'trackName': 'Song',
+        'artistName': 'Artist',
+        'albumName': 'Album',
+        'albumArtist': 'Album Artist',
+        'releaseDate': '2026',
+        'trackNumber': 2,
+        'totalTracks': 10,
+        'discNumber': 1,
+        'totalDiscs': 2,
+        'bitDepth': 24,
+        'sampleRate': 96000,
+        'bitrate': 1840,
+        'format': 'flac',
+      });
+
+      expect(normalized['title'], 'Song');
+      expect(normalized['artist'], 'Artist');
+      expect(normalized['album'], 'Album');
+      expect(normalized['album_artist'], 'Album Artist');
+      expect(normalized['date'], '2026');
+      expect(normalized['track_number'], 2);
+      expect(normalized['total_tracks'], 10);
+      expect(normalized['disc_number'], 1);
+      expect(normalized['total_discs'], 2);
+      expect(normalized['bit_depth'], 24);
+      expect(normalized['sample_rate'], 96000);
+      expect(normalized['bitrate'], 1840);
+      expect(normalized['audio_codec'], 'flac');
+    });
+
+    test('does not replace stored tags with filename scan fallbacks', () {
+      final normalized = normalizeScannedAudioMetadata({
+        'trackName': 'Filename fallback',
+        'artistName': 'Unknown Artist',
+        'albumName': 'Unknown Album',
+        'metadataFromFilename': true,
+        'format': 'flac',
+      });
+
+      expect(normalized['title'], isNull);
+      expect(normalized['artist'], isNull);
+      expect(normalized['album'], isNull);
+      expect(normalized['audio_codec'], 'flac');
+    });
+
     test('distinguishes an ALAC codec from its M4A container', () {
       expect(normalizeAudioFormatValue('ALAC'), 'alac');
       expect(

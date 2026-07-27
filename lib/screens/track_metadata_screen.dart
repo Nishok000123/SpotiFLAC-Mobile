@@ -297,7 +297,9 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
     _hasLoadedResolvedAudioMetadata = true;
 
     try {
-      final metadata = await PlatformBridge.readFileMetadata(sourcePath);
+      final metadata = await PlatformBridge.readDisplayAudioMetadata(
+        sourcePath,
+      );
       if (!mounted ||
           generation != _metadataLoadGeneration ||
           sourcePath != cleanFilePath) {

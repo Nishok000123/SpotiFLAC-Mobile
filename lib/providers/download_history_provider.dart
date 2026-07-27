@@ -524,7 +524,10 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
       lookupItems: _lookupItemsWithUpdates([updated]),
     );
     await _db.upsert(updated.toJson());
-    _bumpHistoryRevision();
+    // Swiping through older tracks can backfill several quality records in a
+    // short burst. Coalesce their DB-derived Library refreshes just like
+    // download completion writes instead of rebuilding every view per swipe.
+    _scheduleIndexBump();
   }
 
   Future<void> updateMetadataForItem({

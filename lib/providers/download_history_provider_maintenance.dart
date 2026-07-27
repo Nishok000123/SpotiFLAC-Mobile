@@ -392,7 +392,7 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
     }
 
     try {
-      final result = await PlatformBridge.readFileMetadata(filePath);
+      final result = await PlatformBridge.readDisplayAudioMetadata(filePath);
       final error = result['error'];
       if (error != null) {
         if (_isPermanentProbeError(error.toString())) {
