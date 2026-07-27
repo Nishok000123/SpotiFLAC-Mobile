@@ -336,11 +336,11 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
     String quality, {
     bool listStyle = false,
   }) {
-    final isHighResolution = quality.startsWith('24');
+    final isHighlightedQuality = shouldHighlightAudioQualityBadge(quality);
     return Container(
       padding: EdgeInsets.symmetric(horizontal: listStyle ? 6 : 4, vertical: 2),
       decoration: BoxDecoration(
-        color: isHighResolution
+        color: isHighlightedQuality
             ? listStyle
                   ? colorScheme.primaryContainer
                   : colorScheme.primary
@@ -350,7 +350,7 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
       child: Text(
         listStyle ? quality : _getQualityBadgeText(quality),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: isHighResolution
+          color: isHighlightedQuality
               ? listStyle
                     ? colorScheme.onPrimaryContainer
                     : colorScheme.onPrimary
