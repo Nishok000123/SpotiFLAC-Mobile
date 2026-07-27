@@ -6,20 +6,28 @@ import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/providers/library_collections_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/services/cover_cache_manager.dart';
+import 'package:spotiflac_android/utils/local_playback.dart';
 import 'package:spotiflac_android/widgets/playlist_picker_sheet.dart';
+import 'package:spotiflac_android/widgets/track_collection_action_policy.dart';
 import 'package:spotiflac_android/widgets/track_detail_actions.dart';
 import 'package:spotiflac_android/utils/clickable_metadata.dart';
 
 class TrackCollectionQuickActions extends ConsumerWidget {
   final Track track;
+  final bool hasLocalPlaybackCandidate;
 
-  const TrackCollectionQuickActions({super.key, required this.track});
+  const TrackCollectionQuickActions({
+    super.key,
+    required this.track,
+    this.hasLocalPlaybackCandidate = false,
+  });
 
   static void showTrackOptionsSheet(
     BuildContext context,
     WidgetRef ref,
-    Track track,
-  ) {
+    Track track, {
+    bool hasLocalPlaybackCandidate = false,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     showModalBottomSheet<void>(
       context: context,
@@ -29,7 +37,10 @@ class TrackCollectionQuickActions extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (sheetContext) => _TrackOptionsSheet(track: track),
+      builder: (sheetContext) => _TrackOptionsSheet(
+        track: track,
+        hasLocalPlaybackCandidate: hasLocalPlaybackCandidate,
+      ),
     );
   }
 
@@ -44,7 +55,12 @@ class TrackCollectionQuickActions extends ConsumerWidget {
         color: colorScheme.onSurfaceVariant,
         size: 20,
       ),
-      onPressed: () => showTrackOptionsSheet(context, ref, track),
+      onPressed: () => showTrackOptionsSheet(
+        context,
+        ref,
+        track,
+        hasLocalPlaybackCandidate: hasLocalPlaybackCandidate,
+      ),
       padding: const EdgeInsets.only(left: 12),
       constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
     );
@@ -53,8 +69,12 @@ class TrackCollectionQuickActions extends ConsumerWidget {
 
 class _TrackOptionsSheet extends ConsumerWidget {
   final Track track;
+  final bool hasLocalPlaybackCandidate;
 
-  const _TrackOptionsSheet({required this.track});
+  const _TrackOptionsSheet({
+    required this.track,
+    required this.hasLocalPlaybackCandidate,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -68,6 +88,10 @@ class _TrackOptionsSheet extends ConsumerWidget {
     );
     final allowQualityVariants = ref.watch(
       settingsProvider.select((settings) => settings.allowQualityVariants),
+    );
+    final qualityVariantAction = resolveQualityVariantMenuAction(
+      allowQualityVariants: allowQualityVariants,
+      hasLocalPlaybackCandidate: hasLocalPlaybackCandidate,
     );
 
     return SafeArea(
@@ -168,23 +192,18 @@ class _TrackOptionsSheet extends ConsumerWidget {
                 color: colorScheme.outlineVariant.withValues(alpha: 0.5),
               ),
 
-              if (allowQualityVariants)
+              if (qualityVariantAction == QualityVariantMenuAction.playLocal)
+                _OptionTile(
+                  icon: Icons.play_arrow_rounded,
+                  title: context.l10n.trackMetadataPlay,
+                  onTap: () => _playLocal(context, ref),
+                )
+              else if (qualityVariantAction ==
+                  QualityVariantMenuAction.downloadAnotherQuality)
                 _OptionTile(
                   icon: Icons.download_outlined,
                   title: context.l10n.trackOptionDownloadQualityVariant,
-                  onTap: () {
-                    final rootContext = Navigator.of(
-                      context,
-                      rootNavigator: true,
-                    ).context;
-                    Navigator.pop(context);
-                    downloadSingleTrack(
-                      rootContext,
-                      ref,
-                      track,
-                      forceQualityPicker: true,
-                    );
-                  },
+                  onTap: () => _downloadQualityVariant(context, ref),
                 ),
 
               _OptionTile(
@@ -254,6 +273,23 @@ class _TrackOptionsSheet extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _downloadQualityVariant(BuildContext context, WidgetRef ref) {
+    final rootContext = Navigator.of(context, rootNavigator: true).context;
+    Navigator.pop(context);
+    downloadSingleTrack(rootContext, ref, track, forceQualityPicker: true);
+  }
+
+  Future<void> _playLocal(BuildContext context, WidgetRef ref) async {
+    final rootContext = Navigator.of(context, rootNavigator: true).context;
+    Navigator.pop(context);
+    final played = await playLocalIfAvailable(rootContext, ref, track);
+    if (!played && rootContext.mounted) {
+      ScaffoldMessenger.of(rootContext).showSnackBar(
+        SnackBar(content: Text(rootContext.l10n.snackbarFileNotFound)),
+      );
+    }
   }
 }
 

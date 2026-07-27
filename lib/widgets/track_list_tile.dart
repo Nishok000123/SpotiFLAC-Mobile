@@ -116,7 +116,10 @@ class TrackListTile extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               PreviewButton(track: track),
-              TrackCollectionQuickActions(track: track),
+              TrackCollectionQuickActions(
+                track: track,
+                hasLocalPlaybackCandidate: isInHistory || isInLocalLibrary,
+              ),
             ],
           ),
           onTap: () => _handleTap(
@@ -129,6 +132,7 @@ class TrackListTile extends ConsumerWidget {
             context,
             ref,
             track,
+            hasLocalPlaybackCandidate: isInHistory || isInLocalLibrary,
           ),
         ),
       ),

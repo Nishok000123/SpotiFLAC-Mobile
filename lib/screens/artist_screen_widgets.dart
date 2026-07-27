@@ -433,6 +433,7 @@ extension _ArtistScreenSections on _ArtistScreenState {
             context,
             ref,
             track,
+            hasLocalPlaybackCandidate: isInHistory || isInLocalLibrary,
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -527,7 +528,10 @@ extension _ArtistScreenSections on _ArtistScreenState {
                     ],
                   ),
                 ),
-                TrackCollectionQuickActions(track: track),
+                TrackCollectionQuickActions(
+                  track: track,
+                  hasLocalPlaybackCandidate: isInHistory || isInLocalLibrary,
+                ),
               ],
             ),
           ),
