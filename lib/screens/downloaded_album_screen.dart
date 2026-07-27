@@ -10,12 +10,14 @@ import 'package:spotiflac_android/services/batch_track_actions.dart';
 import 'package:spotiflac_android/models/unified_library_item.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
+import 'package:spotiflac_android/utils/audio_quality_badge_policy.dart';
 import 'package:spotiflac_android/utils/confirm_and_delete_tracks.dart';
 import 'package:spotiflac_android/utils/cover_art_utils.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/image_cache_utils.dart';
 import 'package:spotiflac_android/utils/nav_bar_inset.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
+import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/playback_provider.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
 import 'package:spotiflac_android/screens/collapsing_header_scroll_mixin.dart';
@@ -61,6 +63,7 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
   List<int>? _sortedDiscNumbersCache;
   List<DownloadHistoryItem>? _commonQualitySourceCache;
   String? _commonQualityCache;
+  String? _commonQualityModeCache;
   List<DownloadHistoryItem>? _embeddedCoverSourceCache;
   String? _embeddedCoverPathCache;
   bool _embeddedCoverPathResolved = false;
@@ -118,6 +121,7 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
     _sortedDiscNumbersCache = null;
     _commonQualitySourceCache = null;
     _commonQualityCache = null;
+    _commonQualityModeCache = null;
     _embeddedCoverSourceCache = null;
     _embeddedCoverPathCache = null;
     _embeddedCoverPathResolved = false;
@@ -233,6 +237,9 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final qualityLabelMode = ref.watch(
+      settingsProvider.select((s) => s.libraryQualityLabelMode),
+    );
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
     final bottomInset = context.navBarBottomInset;
 
@@ -269,7 +276,7 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
       scrollController: scrollController,
       isSelectionMode: isSelectionMode,
       onExitSelectionMode: exitSelectionMode,
-      appBar: _buildAppBar(context, colorScheme, tracks),
+      appBar: _buildAppBar(context, colorScheme, tracks, qualityLabelMode),
       trackList: _buildTrackList(context, colorScheme, tracks),
       bottomBar: _buildSelectionBottomBar(
         context,
@@ -307,10 +314,11 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
     BuildContext context,
     ColorScheme colorScheme,
     List<DownloadHistoryItem> tracks,
+    String qualityLabelMode,
   ) {
     final expandedHeight = calculateExpandedHeight(context);
     final embeddedCoverPath = _resolveAlbumEmbeddedCoverPath(tracks);
-    final commonQuality = _getCommonQuality(tracks);
+    final commonQuality = _getCommonQuality(tracks, qualityLabelMode);
 
     final cacheWidth = coverCacheWidthForViewport(context);
     final Widget background = embeddedCoverPath != null
@@ -458,30 +466,44 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
     );
   }
 
-  String? _getCommonQuality(List<DownloadHistoryItem> tracks) {
-    if (identical(tracks, _commonQualitySourceCache)) {
+  String? _getCommonQuality(List<DownloadHistoryItem> tracks, String mode) {
+    if (identical(tracks, _commonQualitySourceCache) &&
+        mode == _commonQualityModeCache) {
       return _commonQualityCache;
     }
 
     if (tracks.isEmpty) {
       _commonQualitySourceCache = tracks;
+      _commonQualityModeCache = mode;
       _commonQualityCache = null;
       return null;
     }
-    final firstQuality = tracks.first.quality;
+    String? label(DownloadHistoryItem track) => buildLibraryAudioQualityLabel(
+      mode: mode,
+      format: track.format,
+      bitrateKbps: track.bitrate,
+      bitDepth: track.bitDepth,
+      sampleRate: track.sampleRate,
+      storedQuality: track.quality,
+    );
+
+    final firstQuality = label(tracks.first);
     if (firstQuality == null) {
       _commonQualitySourceCache = tracks;
+      _commonQualityModeCache = mode;
       _commonQualityCache = null;
       return null;
     }
     for (final track in tracks) {
-      if (track.quality != firstQuality) {
+      if (label(track) != firstQuality) {
         _commonQualitySourceCache = tracks;
+        _commonQualityModeCache = mode;
         _commonQualityCache = null;
         return null;
       }
     }
     _commonQualitySourceCache = tracks;
+    _commonQualityModeCache = mode;
     _commonQualityCache = firstQuality;
     return firstQuality;
   }

@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
@@ -402,6 +403,70 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
     );
   }
 
+  String _getQualityLabelModeLabel(BuildContext context, String mode) {
+    if (mode == AppSettings.libraryQualityLabelBitDepth) {
+      return '${context.l10n.audioAnalysisBitDepth} & '
+          '${context.l10n.audioAnalysisSampleRate}';
+    }
+    return context.l10n.trackConvertBitrate;
+  }
+
+  void _showQualityLabelModePicker(BuildContext context, String current) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final options = [
+      (
+        AppSettings.libraryQualityLabelBitrate,
+        Icons.speed_rounded,
+        context.l10n.trackConvertBitrate,
+      ),
+      (
+        AppSettings.libraryQualityLabelBitDepth,
+        Icons.graphic_eq_rounded,
+        '${context.l10n.audioAnalysisBitDepth} & '
+            '${context.l10n.audioAnalysisSampleRate}',
+      ),
+    ];
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: colorScheme.surfaceContainerHigh,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              child: Text(
+                context.l10n.trackAudioQuality,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+            for (final (value, icon, label) in options)
+              _AutoScanOption(
+                icon: icon,
+                title: label,
+                selected: current == value,
+                colorScheme: colorScheme,
+                onTap: () {
+                  ref
+                      .read(settingsProvider.notifier)
+                      .setLibraryQualityLabelMode(value);
+                  Navigator.pop(context);
+                },
+              ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
@@ -447,6 +512,18 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
                   onTap: () => _showDefaultViewPicker(
                     context,
                     settings.defaultLibraryView,
+                  ),
+                ),
+                SettingsItem(
+                  icon: Icons.graphic_eq_rounded,
+                  title: context.l10n.trackAudioQuality,
+                  subtitle: _getQualityLabelModeLabel(
+                    context,
+                    settings.libraryQualityLabelMode,
+                  ),
+                  onTap: () => _showQualityLabelModePicker(
+                    context,
+                    settings.libraryQualityLabelMode,
                   ),
                   showDivider: false,
                 ),

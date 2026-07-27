@@ -17,6 +17,7 @@ import 'package:spotiflac_android/utils/ffmpeg_reenrich.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/lyrics_metadata_helper.dart';
 import 'package:spotiflac_android/models/download_item.dart';
+import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/models/unified_library_item.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
@@ -270,6 +271,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   String? _filterFormat;
   String? _filterMetadata;
   String _sortMode = 'latest';
+  String _libraryQualityLabelMode = AppSettings.libraryQualityLabelBitrate;
   double _libraryGridExtent = _libraryGridDefaultExtent;
   double? _libraryGridScaleStartExtent;
   final Map<String, int> _libraryPageOffsetByFilter = {};
@@ -1236,6 +1238,11 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     );
     final historyFilterMode = ref.watch(
       settingsProvider.select((s) => s.historyFilterMode),
+    );
+    // Keep this mode out of the page-provider request: changing only badge
+    // text must not re-query the database or reset Library pagination.
+    _libraryQualityLabelMode = ref.watch(
+      settingsProvider.select((s) => s.libraryQualityLabelMode),
     );
     final colorScheme = Theme.of(context).colorScheme;
     final topPadding = normalizedHeaderTopPadding(context);

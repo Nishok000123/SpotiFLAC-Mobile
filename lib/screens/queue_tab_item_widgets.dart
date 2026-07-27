@@ -877,6 +877,7 @@ extension _QueueTabItemWidgets on _QueueTabState {
         '${_QueueTabState._months[date.month - 1]} ${date.day}, ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 
     final isDownloaded = item.source == LibraryItemSource.downloaded;
+    final quality = item.qualityForMode(_libraryQualityLabelMode);
     final sourceLabel = isDownloaded
         ? context.l10n.librarySourceDownloaded
         : context.l10n.librarySourceLocal;
@@ -1004,13 +1005,12 @@ extension _QueueTabItemWidgets on _QueueTabState {
                                   ),
                             ),
                           ),
-                          if (item.quality != null &&
-                              item.quality!.isNotEmpty) ...[
+                          if (quality != null && quality.isNotEmpty) ...[
                             const SizedBox(width: 8),
                             _buildLibraryQualityBadge(
                               context,
                               colorScheme,
-                              item.quality!,
+                              quality,
                               listStyle: true,
                             ),
                           ],
@@ -1073,6 +1073,7 @@ extension _QueueTabItemWidgets on _QueueTabState {
     final fileExistsListenable = _fileExistsListenable(item.filePath);
     final isSelected = _selectedIds.contains(item.id);
     final isDownloaded = item.source == LibraryItemSource.downloaded;
+    final quality = item.qualityForMode(_libraryQualityLabelMode);
 
     return GestureDetector(
       onTap: _isSelectionMode
@@ -1134,14 +1135,14 @@ extension _QueueTabItemWidgets on _QueueTabState {
                       ),
                     ),
                   ),
-                  if (item.quality != null && item.quality!.isNotEmpty)
+                  if (quality != null && quality.isNotEmpty)
                     Positioned(
                       left: 4,
                       top: 4,
                       child: _buildLibraryQualityBadge(
                         context,
                         colorScheme,
-                        item.quality!,
+                        quality,
                       ),
                     ),
                   if (!_isSelectionMode)

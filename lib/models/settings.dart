@@ -6,6 +6,8 @@ part 'settings.g.dart';
 @JsonSerializable()
 class AppSettings {
   static const String homeFeedProviderOff = '__off__';
+  static const String libraryQualityLabelBitrate = 'bitrate';
+  static const String libraryQualityLabelBitDepth = 'bit_depth';
 
   final String defaultService;
   final String audioQuality;
@@ -38,6 +40,9 @@ class AppSettings {
   /// Library view opened when switching to the Library tab:
   /// 'last' (keep last used), 'all', 'albums', 'singles', or 'playlists'.
   final String defaultLibraryView;
+
+  /// Library badge text: measured bitrate or the legacy bit depth/sample rate.
+  final String libraryQualityLabelMode;
   final bool askQualityBeforeDownload;
   final bool enableLogging;
   final bool useExtensionProviders;
@@ -137,6 +142,7 @@ class AppSettings {
     this.historyViewMode = 'grid',
     this.historyFilterMode = 'all',
     this.defaultLibraryView = 'last',
+    this.libraryQualityLabelMode = libraryQualityLabelBitrate,
     this.askQualityBeforeDownload = true,
     this.enableLogging = false,
     this.useExtensionProviders = true,
@@ -208,6 +214,7 @@ class AppSettings {
     String? historyViewMode,
     String? historyFilterMode,
     String? defaultLibraryView,
+    String? libraryQualityLabelMode,
     bool? askQualityBeforeDownload,
     bool? enableLogging,
     bool? useExtensionProviders,
@@ -286,6 +293,8 @@ class AppSettings {
       historyViewMode: historyViewMode ?? this.historyViewMode,
       historyFilterMode: historyFilterMode ?? this.historyFilterMode,
       defaultLibraryView: defaultLibraryView ?? this.defaultLibraryView,
+      libraryQualityLabelMode:
+          libraryQualityLabelMode ?? this.libraryQualityLabelMode,
       askQualityBeforeDownload:
           askQualityBeforeDownload ?? this.askQualityBeforeDownload,
       enableLogging: enableLogging ?? this.enableLogging,

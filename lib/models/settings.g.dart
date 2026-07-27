@@ -34,6 +34,9 @@ AppSettings _$AppSettingsFromJson(Map<String, dynamic> json) => AppSettings(
   historyViewMode: json['historyViewMode'] as String? ?? 'grid',
   historyFilterMode: json['historyFilterMode'] as String? ?? 'all',
   defaultLibraryView: json['defaultLibraryView'] as String? ?? 'last',
+  libraryQualityLabelMode:
+      json['libraryQualityLabelMode'] as String? ??
+      AppSettings.libraryQualityLabelBitrate,
   askQualityBeforeDownload: json['askQualityBeforeDownload'] as bool? ?? true,
   enableLogging: json['enableLogging'] as bool? ?? false,
   useExtensionProviders: json['useExtensionProviders'] as bool? ?? true,
@@ -124,6 +127,7 @@ Map<String, dynamic> _$AppSettingsToJson(
   'historyViewMode': instance.historyViewMode,
   'historyFilterMode': instance.historyFilterMode,
   'defaultLibraryView': instance.defaultLibraryView,
+  'libraryQualityLabelMode': instance.libraryQualityLabelMode,
   'askQualityBeforeDownload': instance.askQualityBeforeDownload,
   'enableLogging': instance.enableLogging,
   'useExtensionProviders': instance.useExtensionProviders,

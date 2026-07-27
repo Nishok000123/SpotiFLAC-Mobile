@@ -156,7 +156,9 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
     final unifiedItem = historyItem == null
         ? null
         : UnifiedLibraryItem.fromDownloadHistory(historyItem);
-    final quality = unifiedItem?.quality ?? track.audioQuality;
+    final quality =
+        unifiedItem?.qualityForMode(_libraryQualityLabelMode) ??
+        track.audioQuality;
     final cover = unifiedItem != null
         ? _buildUnifiedCoverImage(unifiedItem, colorScheme)
         : track.coverUrl != null
@@ -246,7 +248,9 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
     final unifiedItem = historyItem == null
         ? null
         : UnifiedLibraryItem.fromDownloadHistory(historyItem);
-    final quality = unifiedItem?.quality ?? track.audioQuality;
+    final quality =
+        unifiedItem?.qualityForMode(_libraryQualityLabelMode) ??
+        track.audioQuality;
     final cover = unifiedItem != null
         ? _buildUnifiedCoverImage(unifiedItem, colorScheme, coverSize)
         : track.coverUrl != null

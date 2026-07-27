@@ -510,6 +510,10 @@ void main() {
       expect(settings.deduplicateDownloads, isTrue);
       expect(settings.allowQualityVariants, isFalse);
       expect(settings.nativeDownloadWorkerEnabled, isFalse);
+      expect(
+        settings.libraryQualityLabelMode,
+        AppSettings.libraryQualityLabelBitrate,
+      );
     });
 
     test('copyWith updates values and can clear nullable provider fields', () {
@@ -526,6 +530,7 @@ void main() {
         lyricsAppleElrcWordSync: true,
         deduplicateDownloads: false,
         allowQualityVariants: true,
+        libraryQualityLabelMode: AppSettings.libraryQualityLabelBitDepth,
         clearDownloadFallbackExtensionIds: true,
         clearSearchProvider: true,
         clearHomeFeedProvider: true,
@@ -537,6 +542,10 @@ void main() {
       expect(updated.lyricsAppleElrcWordSync, isTrue);
       expect(updated.deduplicateDownloads, isFalse);
       expect(updated.allowQualityVariants, isTrue);
+      expect(
+        updated.libraryQualityLabelMode,
+        AppSettings.libraryQualityLabelBitDepth,
+      );
       expect(updated.downloadFallbackExtensionIds, isNull);
       expect(updated.searchProvider, isNull);
       expect(updated.homeFeedProvider, isNull);
@@ -563,6 +572,7 @@ void main() {
         deduplicateDownloads: false,
         allowQualityVariants: true,
         nativeDownloadWorkerEnabled: true,
+        libraryQualityLabelMode: AppSettings.libraryQualityLabelBitDepth,
       );
 
       final decoded = AppSettings.fromJson(settings.toJson());
@@ -582,6 +592,10 @@ void main() {
       expect(decoded.musixmatchLanguage, 'id');
       expect(decoded.lyricsAppleElrcWordSync, isTrue);
       expect(decoded.lastSeenVersion, '4.5.0');
+      expect(
+        decoded.libraryQualityLabelMode,
+        AppSettings.libraryQualityLabelBitDepth,
+      );
       expect(decoded.deduplicateDownloads, isFalse);
       expect(decoded.allowQualityVariants, isTrue);
       expect(decoded.nativeDownloadWorkerEnabled, isTrue);

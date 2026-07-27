@@ -159,6 +159,9 @@ class SettingsNotifier extends Notifier<AppSettings> {
           defaultLibraryView: _normalizeDefaultLibraryView(
             loaded.defaultLibraryView,
           ),
+          libraryQualityLabelMode: _normalizeLibraryQualityLabelMode(
+            loaded.libraryQualityLabelMode,
+          ),
           defaultService: loaded.defaultService,
           searchProvider: loaded.searchProvider,
           extensionVerificationBrowserMode:
@@ -367,6 +370,12 @@ class SettingsNotifier extends Notifier<AppSettings> {
     final normalized = value.trim().toLowerCase();
     if (_libraryViewValues.contains(normalized)) return normalized;
     return 'last';
+  }
+
+  String _normalizeLibraryQualityLabelMode(String value) {
+    return value == AppSettings.libraryQualityLabelBitDepth
+        ? AppSettings.libraryQualityLabelBitDepth
+        : AppSettings.libraryQualityLabelBitrate;
   }
 
   String _normalizeExtensionVerificationBrowserMode(String value) {
@@ -626,6 +635,13 @@ class SettingsNotifier extends Notifier<AppSettings> {
   void setDefaultLibraryView(String view) {
     state = state.copyWith(
       defaultLibraryView: _normalizeDefaultLibraryView(view),
+    );
+    _saveSettings();
+  }
+
+  void setLibraryQualityLabelMode(String mode) {
+    state = state.copyWith(
+      libraryQualityLabelMode: _normalizeLibraryQualityLabelMode(mode),
     );
     _saveSettings();
   }
