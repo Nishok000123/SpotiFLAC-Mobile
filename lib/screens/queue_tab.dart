@@ -1185,7 +1185,9 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       downloadHistoryProvider.select((state) => state.loadedIndexVersion),
       (previous, next) {
         if (previous == null || previous == next) return;
-        _invalidateLibraryDataCaches();
+        // The family provider already reruns for the new revision. Retain its
+        // last successful page while SQLite is loading so metadata backfills
+        // and download completions cannot flash the Library as empty.
         _resetLibraryPaging();
         if (mounted) setState(() {});
       },
@@ -1194,7 +1196,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       localLibraryProvider.select((state) => state.loadedIndexVersion),
       (previous, next) {
         if (previous == null || previous == next) return;
-        _invalidateLibraryDataCaches();
+        // Keep stale rows visible until the refreshed query replaces them.
         _resetLibraryPaging();
         if (mounted) setState(() {});
       },
