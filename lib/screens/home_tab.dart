@@ -768,7 +768,13 @@ class _HomeTabState extends ConsumerState<HomeTab>
       explicitSearchProvider,
       extensions,
     );
-    final showSearchBar = hasSearchProvider || isSearchProviderLoading;
+    final showSearchBar = HomeSearchProviderPolicy.shouldShowSearchBar(
+      hasSearchProvider: hasSearchProvider,
+      isSearchProviderLoading: isSearchProviderLoading,
+      hasHomeFeedExtension: hasHomeFeedExtension,
+      hasExploreContent: hasExploreContent,
+      hasSearchInput: hasSearchInput,
+    );
     final hasResults =
         hasSearchInput || hasActualResults || isLoading || showRecentAccess;
     final showExplore =
