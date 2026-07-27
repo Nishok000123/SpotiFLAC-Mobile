@@ -151,6 +151,38 @@ class NativeFinalizationPolicyTest {
     }
 
     @Test
+    fun deferredSafNamingNeverPublishesTheNativeCacheName() {
+        val logicalName = NativeFinalizationPolicy.logicalOutputFileName(
+            deferredSafPublish = true,
+            resultSafFileName = "Sunidhi Chauhan - Aisa Jadoo - qv_ab12cd34.flac",
+            requestSafFileName = "fallback.flac",
+            currentFileName = "native_saf_work_603020549715656640.m4a",
+        )
+
+        assertEquals(
+            "Sunidhi Chauhan - Aisa Jadoo - 16bit-44.1kHz.flac",
+            NativeFinalizationPolicy.applyQualityVariantFilenameLabel(
+                fileName = logicalName,
+                stagingLabel = "qv_ab12cd34",
+                qualityLabel = "16bit-44.1kHz",
+            ),
+        )
+    }
+
+    @Test
+    fun nonSafNamingStillFollowsTheCurrentConvertedFile() {
+        assertEquals(
+            "converted.flac",
+            NativeFinalizationPolicy.logicalOutputFileName(
+                deferredSafPublish = false,
+                resultSafFileName = "ignored.flac",
+                requestSafFileName = "ignored-too.flac",
+                currentFileName = "converted.flac",
+            ),
+        )
+    }
+
+    @Test
     fun decryptionExtensionAndIndexTagsHaveStableFallbacks() {
         assertEquals(
             ".m4a",

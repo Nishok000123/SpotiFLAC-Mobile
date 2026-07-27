@@ -157,6 +157,24 @@ internal object NativeFinalizationPolicy {
         return "$stem - $qualityLabel$extension"
     }
 
+    /**
+     * Returns the user-facing name that a deferred SAF download was assigned
+     * before its audio was materialized in the app cache. Container and
+     * decryption passes may replace [currentFileName] with a temporary
+     * `native_saf_work_*` name, which must never become the published name.
+     */
+    fun logicalOutputFileName(
+        deferredSafPublish: Boolean,
+        resultSafFileName: String?,
+        requestSafFileName: String?,
+        currentFileName: String,
+    ): String {
+        if (!deferredSafPublish) return currentFileName
+        return normalizeOptional(resultSafFileName)
+            ?: normalizeOptional(requestSafFileName)
+            ?: currentFileName
+    }
+
     fun resolvePreferredDecryptionExtension(
         inputPath: String,
         requested: String,

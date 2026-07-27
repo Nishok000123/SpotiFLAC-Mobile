@@ -803,7 +803,7 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
         updateItemStatus(
           itemId,
           DownloadStatus.finalizing,
-          progress: progress <= 0 ? 0.95 : progress,
+          progress: nativeWorkerFinalizingProgress(progress),
         );
         continue;
       }
@@ -811,12 +811,34 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
       if (status == 'completed') {
         final result = itemSnapshot['result'];
         if (result is Map) {
-          reconciledIds.add(itemId);
-          await _completeAndroidNativeWorkerItem(
-            context,
-            Map<String, dynamic>.from(result),
-            settings,
-          );
+          try {
+            await _completeAndroidNativeWorkerItem(
+              context,
+              Map<String, dynamic>.from(result),
+              settings,
+            );
+            reconciledIds.add(itemId);
+          } catch (e, stack) {
+            // A native output can be complete while Library persistence or
+            // Dart-side adoption fails. Do not leave the queue permanently at
+            // 100%: surface the reconciliation failure and keep processing
+            // the rest of the worker batch.
+            _log.e(
+              'Failed to reconcile completed native worker item $itemId: $e',
+              e,
+              stack,
+            );
+            if (_findItemById(itemId) != null) {
+              updateItemStatus(
+                itemId,
+                DownloadStatus.failed,
+                error: 'Downloaded file could not be added to the Library: $e',
+                errorType: DownloadErrorType.unknown,
+              );
+              _failedInSession++;
+            }
+            reconciledIds.add(itemId);
+          }
         }
         continue;
       }

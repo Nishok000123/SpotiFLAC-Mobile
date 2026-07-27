@@ -323,8 +323,13 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen>
               child: TrackListTile(
                 track: track,
                 isInHistory: isInHistory,
-                onDownload: () =>
-                    _downloadTrack(context, track, playlistPosition: index + 1),
+                onDownload: ({bool forceQualityPicker = false}) =>
+                    _downloadTrack(
+                      context,
+                      track,
+                      playlistPosition: index + 1,
+                      forceQualityPicker: forceQualityPicker,
+                    ),
                 leading: track.coverUrl != null
                     ? CachedCoverImage(
                         imageUrl: track.coverUrl!,
@@ -358,6 +363,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen>
     BuildContext context,
     Track track, {
     int? playlistPosition,
+    bool forceQualityPicker = false,
   }) {
     downloadSingleTrack(
       context,
@@ -366,6 +372,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen>
       recommendedService: _recommendedDownloadService(),
       playlistName: _playlistName,
       playlistPosition: playlistPosition,
+      forceQualityPicker: forceQualityPicker,
     );
   }
 

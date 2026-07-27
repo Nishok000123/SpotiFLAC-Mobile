@@ -74,6 +74,15 @@ Future<void> persistBeforePublishingDownloadCompletion({
   publish();
 }
 
+/// Keeps native-worker finalization visually distinct from completion.
+/// Download bytes may reach 100% before SAF publishing, metadata persistence,
+/// and queue reconciliation have finished.
+double nativeWorkerFinalizingProgress(double progress) {
+  final normalized = progress.clamp(0.0, 1.0).toDouble();
+  if (normalized <= 0) return 0.95;
+  return min(normalized, 0.99);
+}
+
 final _invalidFolderChars = RegExp(r'[<>:"/\\|?*]');
 final _trimDotsAndSpacesRegex = RegExp(r'^[. ]+|[. ]+$');
 final _trimUnderscoresAndSpacesRegex = RegExp(r'^[_ ]+|[_ ]+$');
@@ -1488,7 +1497,6 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     _verificationRetryGuard.retainItems(remainingIds);
     _rateLimitRetriedItemIds.removeWhere((id) => !remainingIds.contains(id));
   }
-
 }
 
 final downloadQueueProvider =

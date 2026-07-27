@@ -423,7 +423,12 @@ extension _ArtistScreenSections on _ArtistScreenState {
         final isQueued = queueItem != null;
 
         return InkWell(
-          onTap: () => _handlePopularTrackTap(track, isQueued: isQueued),
+          onTap: () => _handlePopularTrackTap(
+            track,
+            isQueued: isQueued,
+            isInHistory: isInHistory,
+            isInLocalLibrary: isInLocalLibrary,
+          ),
           onLongPress: () => TrackCollectionQuickActions.showTrackOptionsSheet(
             context,
             ref,
@@ -531,8 +536,19 @@ extension _ArtistScreenSections on _ArtistScreenState {
     );
   }
 
-  void _handlePopularTrackTap(Track track, {required bool isQueued}) async {
+  void _handlePopularTrackTap(
+    Track track, {
+    required bool isQueued,
+    required bool isInHistory,
+    required bool isInLocalLibrary,
+  }) async {
     if (isQueued) return;
+
+    final settings = ref.read(settingsProvider);
+    if (settings.allowQualityVariants && (isInHistory || isInLocalLibrary)) {
+      _downloadTrack(track);
+      return;
+    }
 
     final playedLocal = await playLocalIfAvailable(context, ref, track);
     if (playedLocal) {

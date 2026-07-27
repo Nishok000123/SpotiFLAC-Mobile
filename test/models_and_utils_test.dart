@@ -19,6 +19,14 @@ import 'package:spotiflac_android/utils/path_match_keys.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 
 void main() {
+  group('native worker progress', () {
+    test('does not publish 100 percent while finalization is pending', () {
+      expect(nativeWorkerFinalizingProgress(0), 0.95);
+      expect(nativeWorkerFinalizingProgress(0.7), 0.7);
+      expect(nativeWorkerFinalizingProgress(1), 0.99);
+    });
+  });
+
   group('native worker contracts', () {
     final finalizerSource = File(
       'android/app/src/main/kotlin/com/zarz/spotiflac/'

@@ -537,7 +537,12 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
               child: TrackListTile(
                 track: track,
                 isInHistory: isInHistory,
-                onDownload: () => _downloadTrack(context, track),
+                onDownload: ({bool forceQualityPicker = false}) =>
+                    _downloadTrack(
+                      context,
+                      track,
+                      forceQualityPicker: forceQualityPicker,
+                    ),
                 clickableArtist: true,
                 leading: SizedBox(
                   width: 32,
@@ -559,12 +564,17 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
     );
   }
 
-  void _downloadTrack(BuildContext context, Track track) {
+  void _downloadTrack(
+    BuildContext context,
+    Track track, {
+    bool forceQualityPicker = false,
+  }) {
     downloadSingleTrack(
       context,
       ref,
       track,
       recommendedService: _recommendedDownloadService(),
+      forceQualityPicker: forceQualityPicker,
     );
   }
 

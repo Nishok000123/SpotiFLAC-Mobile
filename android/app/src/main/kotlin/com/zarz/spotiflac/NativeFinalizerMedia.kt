@@ -20,6 +20,7 @@ import com.zarz.spotiflac.NativeFinalizationPolicy.displayAudioQuality
 import com.zarz.spotiflac.NativeFinalizationPolicy.formatIndexTag
 import com.zarz.spotiflac.NativeFinalizationPolicy.isLosslessAudioCodec
 import com.zarz.spotiflac.NativeFinalizationPolicy.isLossyAudioCodec
+import com.zarz.spotiflac.NativeFinalizationPolicy.logicalOutputFileName
 import com.zarz.spotiflac.NativeFinalizationPolicy.normalizeAudioCodec
 import com.zarz.spotiflac.NativeFinalizationPolicy.resolvePreferredDecryptionExtension
 import gobackend.Gobackend
@@ -61,12 +62,18 @@ internal fun NativeDownloadFinalizer.finalizeQualityVariantFilename(
         return
     }
 
+    val logicalFileName = logicalOutputFileName(
+        deferredSafPublish = isDeferredSafPublish(input),
+        resultSafFileName = input.result.optString("saf_final_file_name", ""),
+        requestSafFileName = input.request.optString("saf_file_name", ""),
+        currentFileName = state.fileName,
+    )
     val preferredName = applyQualityVariantFilenameLabel(
-        fileName = state.fileName,
+        fileName = logicalFileName,
         stagingLabel = stagingLabel,
         qualityLabel = qualityLabel,
     )
-    if (preferredName == state.fileName) return
+    if (preferredName == logicalFileName && preferredName == state.fileName) return
     input.result.put("quality_variant_file_name", preferredName)
     if (isDeferredSafPublish(input)) {
         state.fileName = preferredName

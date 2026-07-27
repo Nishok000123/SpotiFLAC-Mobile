@@ -11,14 +11,15 @@ import 'package:spotiflac_android/widgets/in_library_badge.dart';
 import 'package:spotiflac_android/widgets/preview_button.dart';
 import 'package:spotiflac_android/widgets/track_collection_quick_actions.dart';
 
-/// Track row shared by the album and playlist screens. Tap plays the local
-/// copy when one exists and otherwise triggers [onDownload]; long-press opens
-/// the track options sheet. Callers supply [leading] (track number, cover
-/// art, ...) and choose whether the artist name links to the artist screen.
+/// Track row shared by the album and playlist screens. Tap offers another
+/// download when quality variants are enabled, otherwise it plays the local
+/// copy when one exists and falls back to [onDownload]. Long-press opens the
+/// track options sheet. Callers supply [leading] (track number, cover art,
+/// ...) and choose whether the artist name links to the artist screen.
 class TrackListTile extends ConsumerWidget {
   final Track track;
   final bool isInHistory;
-  final VoidCallback onDownload;
+  final void Function({bool forceQualityPicker}) onDownload;
   final Widget leading;
   final bool clickableArtist;
 
@@ -118,7 +119,12 @@ class TrackListTile extends ConsumerWidget {
               TrackCollectionQuickActions(track: track),
             ],
           ),
-          onTap: () => _handleTap(context, ref, isQueued: isQueued),
+          onTap: () => _handleTap(
+            context,
+            ref,
+            isQueued: isQueued,
+            isInLocalLibrary: isInLocalLibrary,
+          ),
           onLongPress: () => TrackCollectionQuickActions.showTrackOptionsSheet(
             context,
             ref,
@@ -133,8 +139,15 @@ class TrackListTile extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref, {
     required bool isQueued,
+    required bool isInLocalLibrary,
   }) async {
     if (isQueued) return;
+
+    final settings = ref.read(settingsProvider);
+    if (settings.allowQualityVariants && (isInHistory || isInLocalLibrary)) {
+      onDownload(forceQualityPicker: true);
+      return;
+    }
 
     final playedLocal = await playLocalIfAvailable(context, ref, track);
     if (playedLocal) {
