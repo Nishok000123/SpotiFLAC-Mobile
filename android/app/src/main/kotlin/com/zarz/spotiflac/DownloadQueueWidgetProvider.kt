@@ -18,16 +18,28 @@ import android.widget.RemoteViews
  */
 class DownloadQueueWidgetProvider : AppWidgetProvider() {
 
+    override fun onEnabled(context: Context) {
+        widgetPreferences(context).edit().putBoolean(KEY_ENABLED, true).apply()
+    }
+
+    override fun onDisabled(context: Context) {
+        widgetPreferences(context).edit().putBoolean(KEY_ENABLED, false).apply()
+    }
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray,
     ) {
+        if (appWidgetIds.isNotEmpty()) {
+            widgetPreferences(context).edit().putBoolean(KEY_ENABLED, true).apply()
+        }
         render(context, appWidgetManager, appWidgetIds)
     }
 
     companion object {
         private const val PREFS = "download_widget_state"
+        private const val KEY_ENABLED = "enabled"
         private const val KEY_RUNNING = "running"
         private const val KEY_TITLE = "title"
         private const val KEY_SUBTITLE = "subtitle"
@@ -41,27 +53,38 @@ class DownloadQueueWidgetProvider : AppWidgetProvider() {
             subtitle: String = "",
             percent: Int = -1,
         ) {
+            val prefs = widgetPreferences(context)
+            // Most users never add the optional launcher widget. Keep the
+            // download hot path free of AppWidget IPC and preference writes
+            // for those users.
+            if (!prefs.getBoolean(KEY_ENABLED, false)) return
+
             val manager = AppWidgetManager.getInstance(context)
             val ids = manager.getAppWidgetIds(
                 ComponentName(context, DownloadQueueWidgetProvider::class.java)
             )
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .edit()
+            if (ids.isEmpty()) {
+                prefs.edit().putBoolean(KEY_ENABLED, false).apply()
+                return
+            }
+            prefs.edit()
                 .putBoolean(KEY_RUNNING, running)
                 .putString(KEY_TITLE, title)
                 .putString(KEY_SUBTITLE, subtitle)
                 .putInt(KEY_PERCENT, percent)
                 .apply()
-            if (ids.isEmpty()) return
             render(context, manager, ids)
         }
+
+        private fun widgetPreferences(context: Context) =
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
         private fun render(
             context: Context,
             manager: AppWidgetManager,
             ids: IntArray,
         ) {
-            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val prefs = widgetPreferences(context)
             val running = prefs.getBoolean(KEY_RUNNING, false)
             val views = RemoteViews(context.packageName, R.layout.widget_download_queue)
 
