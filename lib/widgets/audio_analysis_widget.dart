@@ -61,6 +61,37 @@ List<String> buildAudioSpectrogramArguments({
   ];
 }
 
+class AudioAstatsSummary {
+  final double peakDb;
+  final double rmsDb;
+
+  const AudioAstatsSummary({required this.peakDb, required this.rmsDb});
+}
+
+AudioAstatsSummary? parseAudioAstatsSummary(String logs) {
+  final overallMatch = RegExp(r'Overall([\s\S]*)').firstMatch(logs);
+  final section = overallMatch?.group(1) ?? logs;
+  final peak = _parseLastAudioAstatsValue(section, 'Peak level dB');
+  final rms = _parseLastAudioAstatsValue(section, 'RMS level dB');
+  if (peak == null || rms == null) return null;
+  return AudioAstatsSummary(peakDb: peak, rmsDb: rms);
+}
+
+double? _parseLastAudioAstatsValue(String text, String label) {
+  final matches = RegExp(
+    '${RegExp.escape(label)}:\\s*([-+]?\\d+(?:\\.\\d+)?)',
+    caseSensitive: false,
+  ).allMatches(text);
+  double? value;
+  for (final match in matches) {
+    final parsed = double.tryParse(match.group(1) ?? '');
+    if (parsed != null && parsed.isFinite) {
+      value = parsed;
+    }
+  }
+  return value;
+}
+
 double? estimateBroadbandSpectralCutoffHz({
   required Uint8List rgba,
   required int width,
@@ -466,9 +497,12 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
           ),
         );
         final levelMetrics = await _runFullStreamLevelAnalysis(workingPath);
+        if (levelMetrics == null) {
+          throw Exception('FFmpeg level analysis returned no usable metrics');
+        }
         final loudnessMetrics = await _runLoudnessAnalysis(workingPath);
-        final peakAmplitude = levelMetrics?.peakDb ?? 0;
-        final rmsLevel = levelMetrics?.rmsDb ?? peakAmplitude;
+        final peakAmplitude = levelMetrics.peakDb;
+        final rmsLevel = levelMetrics.rmsDb;
         final dynamicRange = peakAmplitude - rmsLevel;
 
         return _AudioAnalysisRunResult(
@@ -492,9 +526,9 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
             rmsLevel: rmsLevel,
             integratedLufs: loudnessMetrics?.integratedLufs,
             truePeakDb: loudnessMetrics?.truePeakDb,
-            clippingSamples: levelMetrics?.clippingSamples ?? 0,
+            clippingSamples: levelMetrics.clippingSamples,
             spectralCutoffHz: spectralCutoffHz,
-            channelStats: levelMetrics?.channelStats ?? const [],
+            channelStats: levelMetrics.channelStats,
             totalSamples: info.totalSamples,
           ),
           spectrogramImage: spectrogram.image,
@@ -828,20 +862,19 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
         return null;
       }
 
-      final logs = await session.getLogsAsString();
-      final overallMatch = RegExp(r'Overall([\s\S]*)').firstMatch(logs);
-      final section = overallMatch?.group(1) ?? logs;
-      final peak = _parseLastAstatsValue(section, 'Peak level dB');
-      final rms = _parseLastAstatsValue(section, 'RMS level dB');
-      if (peak == null || rms == null) return null;
+      // FFmpegKit delivers logs asynchronously even after the process exits.
+      // The non-waiting getLogsAsString() can miss the final astats summary.
+      final logs = await session.getAllLogsAsString() ?? '';
+      final summary = parseAudioAstatsSummary(logs);
+      if (summary == null) return null;
       final channelStats = _parseChannelStats(logs);
       final clippingSamples = channelStats.fold<int>(0, (sum, stats) {
         if (stats.peakDb == null || stats.peakDb! < -0.1) return sum;
         return sum + stats.peakCount;
       });
       return _LevelMetrics(
-        peakDb: peak,
-        rmsDb: rms,
+        peakDb: summary.peakDb,
+        rmsDb: summary.rmsDb,
         clippingSamples: clippingSamples,
         channelStats: channelStats,
       );
@@ -870,7 +903,7 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
         '-',
       ]);
 
-      final logs = await session.getLogsAsString();
+      final logs = await session.getAllLogsAsString() ?? '';
       final integratedMatches = RegExp(
         r'I:\s+(-?\d+\.?\d*)\s+LUFS',
       ).allMatches(logs);
@@ -928,18 +961,7 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
   }
 
   double? _parseLastAstatsValue(String text, String label) {
-    final matches = RegExp(
-      '${RegExp.escape(label)}:\\s*([-+]?\\d+(?:\\.\\d+)?)',
-      caseSensitive: false,
-    ).allMatches(text);
-    double? value;
-    for (final match in matches) {
-      final parsed = double.tryParse(match.group(1) ?? '');
-      if (parsed != null && parsed.isFinite) {
-        value = parsed;
-      }
-    }
-    return value;
+    return _parseLastAudioAstatsValue(text, label);
   }
 
   int? _parseLastAstatsInt(String text, String label) {

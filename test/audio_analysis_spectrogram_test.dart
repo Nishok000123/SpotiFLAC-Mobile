@@ -4,6 +4,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:spotiflac_android/widgets/audio_analysis_widget.dart';
 
 void main() {
+  group('audio level analysis', () {
+    test('reads peak and RMS from the final astats overall summary', () {
+      const logs = '''
+[Parsed_astats_0] Channel: 1
+[Parsed_astats_0] Peak level dB: -0.847144
+[Parsed_astats_0] RMS level dB: -12.935500
+[Parsed_astats_0] Channel: 2
+[Parsed_astats_0] Peak level dB: -0.861847
+[Parsed_astats_0] RMS level dB: -12.752564
+[Parsed_astats_0] Overall
+[Parsed_astats_0] Peak level dB: -0.847144
+[Parsed_astats_0] RMS level dB: -12.843069
+''';
+
+      final summary = parseAudioAstatsSummary(logs);
+
+      expect(summary, isNotNull);
+      expect(summary!.peakDb, closeTo(-0.847144, 0.000001));
+      expect(summary.rmsDb, closeTo(-12.843069, 0.000001));
+    });
+
+    test('rejects logs delivered without the final RMS metric', () {
+      const incompleteLogs = '''
+[Parsed_astats_0] Overall
+[Parsed_astats_0] Peak level dB: -0.847144
+''';
+
+      expect(parseAudioAstatsSummary(incompleteLogs), isNull);
+    });
+  });
+
   group('audio spectrogram filter', () {
     test('keeps source rate and uses a full-range float pipeline', () {
       final filter = buildAudioSpectrogramFilter();
