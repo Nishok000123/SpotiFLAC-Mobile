@@ -21,7 +21,7 @@ class LocalLibraryItem {
   final String? releaseDate;
   final int? bitDepth;
   final int? sampleRate;
-  final int? bitrate; // kbps, for lossy formats (mp3, opus, ogg)
+  final int? bitrate; // average kbps for both lossless and lossy audio
   final String? genre;
   final String? composer;
   final String? label;

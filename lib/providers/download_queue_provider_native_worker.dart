@@ -50,9 +50,9 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
         : readPositiveInt(
             result['actual_sample_rate'] ?? result['sample_rate'],
           );
-    final bitrate = isLossy
-        ? readPositiveBitrateKbps(result['actual_bitrate'] ?? result['bitrate'])
-        : null;
+    final bitrate = readPositiveBitrateKbps(
+      result['actual_bitrate'] ?? result['bitrate'],
+    );
     final storedQuality =
         result['quality']?.toString().trim().isNotEmpty == true
         ? result['quality'].toString()
@@ -1023,9 +1023,9 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
           result['audio_codec']?.toString() ?? result['format']?.toString(),
         ) ??
         normalizeAudioFormatValue(audioFormatForPath(filePath));
-    var actualBitrate = isLossyAudioFormat(actualFormat)
-        ? readPositiveBitrateKbps(result['bitrate'] ?? result['actual_bitrate'])
-        : null;
+    var actualBitrate = readPositiveBitrateKbps(
+      result['bitrate'] ?? result['actual_bitrate'],
+    );
     final resolvedQuality = resolveDisplayQuality(
       filePath: filePath,
       detectedFormat: actualFormat,
@@ -1119,11 +1119,9 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
       actualFormat =
           normalizeAudioFormatValue(result['audio_codec']?.toString()) ??
           normalizeAudioFormatValue(audioFormatForPath(filePath));
-      actualBitrate = isLossyAudioFormat(actualFormat)
-          ? readPositiveBitrateKbps(
-              result['bitrate'] ?? result['actual_bitrate'],
-            )
-          : null;
+      actualBitrate = readPositiveBitrateKbps(
+        result['bitrate'] ?? result['actual_bitrate'],
+      );
       final finalQuality = resolveDisplayQuality(
         filePath: filePath,
         fileName: variantOutcome.fileName,
@@ -1199,7 +1197,7 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
                     : context.safFileName,
                 bitDepth: isLossyOutput ? null : actualBitDepth,
                 sampleRate: isLossyOutput ? null : actualSampleRate,
-                bitrate: isLossyOutput ? actualBitrate : null,
+                bitrate: actualBitrate,
                 format: historyFormat,
                 genre: normalizeOptionalString(result['genre'] as String?),
                 label: normalizeOptionalString(result['label'] as String?),

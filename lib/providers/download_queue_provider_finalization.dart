@@ -382,7 +382,7 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
     if (bitDepth != null) result['actual_bit_depth'] = bitDepth;
     if (sampleRate != null) result['actual_sample_rate'] = sampleRate;
     if (detectedFormat != null) result['audio_codec'] = detectedFormat;
-    if (bitrateKbps != null && isLossyAudioFormat(detectedFormat)) {
+    if (bitrateKbps != null) {
       result['bitrate'] = bitrateKbps;
     }
 

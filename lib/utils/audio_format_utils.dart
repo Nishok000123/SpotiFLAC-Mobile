@@ -10,6 +10,24 @@ int? readPositiveBitrateKbps(dynamic value) {
   return kbps >= 16 ? kbps : null;
 }
 
+/// Estimates average stream bitrate without decoding audio. Older SAF-backed
+/// Library rows can therefore be updated with a cheap size query instead of
+/// copying the complete audio file into app cache.
+int? estimateAverageBitrateKbps({
+  required int? fileSizeBytes,
+  required int? durationSeconds,
+}) {
+  if (fileSizeBytes == null ||
+      fileSizeBytes <= 0 ||
+      durationSeconds == null ||
+      durationSeconds <= 0) {
+    return null;
+  }
+  return readPositiveBitrateKbps(
+    (fileSizeBytes * 8 / durationSeconds / 1000).round(),
+  );
+}
+
 String? audioFormatForPath(String? filePath, {String? fileName}) {
   final candidates = <String>[?filePath, ?fileName];
   for (final candidate in candidates) {

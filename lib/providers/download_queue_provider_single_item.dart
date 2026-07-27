@@ -1481,9 +1481,7 @@ class _DownloadRun {
       int? finalBitDepth = backendBitDepth;
       int? finalSampleRate = backendSampleRate;
       String? finalFormat = backendFormat;
-      int? finalBitrateKbps = isLossyAudioFormat(finalFormat)
-          ? backendBitrateKbps
-          : null;
+      int? finalBitrateKbps = backendBitrateKbps;
       final lowerFilePath = path.toLowerCase();
       final canProbeFinalMetadata =
           path.startsWith('content://') ||
@@ -1525,7 +1523,7 @@ class _DownloadRun {
             final probedBitrateKbps = readPositiveBitrateKbps(
               metadata['bitrate'] ?? metadata['bit_rate'],
             );
-            if (probedBitrateKbps != null && isLossyAudioFormat(finalFormat)) {
+            if (probedBitrateKbps != null) {
               finalBitrateKbps = probedBitrateKbps;
             }
 
@@ -1556,7 +1554,7 @@ class _DownloadRun {
           lowerFilePath.endsWith('.ogg');
       final historyBitDepth = isLossyOutput ? null : finalBitDepth;
       final historySampleRate = isLossyOutput ? null : finalSampleRate;
-      final historyBitrate = isLossyOutput ? finalBitrateKbps : null;
+      final historyBitrate = finalBitrateKbps;
 
       await persistBeforePublishingDownloadCompletion(
         persist: () async {

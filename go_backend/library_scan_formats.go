@@ -147,7 +147,11 @@ func scanFLACFileWithCoverCache(filePath string, result *LibraryScanResult, disp
 		result.BitDepth = quality.BitDepth
 		result.SampleRate = quality.SampleRate
 		if quality.SampleRate > 0 && quality.TotalSamples > 0 {
-			result.Duration = int(quality.TotalSamples / int64(quality.SampleRate))
+			durationSeconds := float64(quality.TotalSamples) / float64(quality.SampleRate)
+			result.Duration = int(durationSeconds)
+			if info, statErr := os.Stat(filePath); statErr == nil && info.Size() > 0 {
+				result.Bitrate = int(float64(info.Size()) * 8 / durationSeconds / 1000)
+			}
 		}
 	}
 	if coverCacheDir != "" {
@@ -205,9 +209,6 @@ func scanM4AFileWithCoverCache(filePath string, result *LibraryScanResult, displ
 		}
 		if format := libraryFormatForM4ACodec(quality.Codec); format != "" {
 			result.Format = format
-			if isLosslessLibraryFormat(format) {
-				result.Bitrate = 0
-			}
 		}
 	}
 	if coverCacheDir != "" {

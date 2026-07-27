@@ -841,7 +841,7 @@ object NativeDownloadFinalizer {
             }
             val bitrateKbps = optPositiveBitrateKbps(metadata, "bitrate")
                 ?: optPositiveBitrateKbps(metadata, "bit_rate")
-            if (bitrateKbps != null && isLossyAudioCodec(state.audioCodec)) {
+            if (bitrateKbps != null) {
                 state.bitrateKbps = bitrateKbps
                 result.put("bitrate", bitrateKbps)
             }
@@ -1096,7 +1096,7 @@ object NativeDownloadFinalizer {
         values.put("quality", state.quality)
         state.bitDepth?.let { values.put("bit_depth", it) }
         state.sampleRate?.let { values.put("sample_rate", it) }
-        state.bitrateKbps?.takeIf { it >= 16 && isLossyAudioCodec(state.audioCodec) }?.let {
+        state.bitrateKbps?.takeIf { it >= 16 }?.let {
             values.put("bitrate", it)
         }
         normalizeAudioCodec(state.audioCodec)?.let { values.put("format", it) }

@@ -275,6 +275,18 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
   }
 
   bool _shouldBackfillAudioMetadata(DownloadHistoryItem item) {
+    return _needsAverageBitrateBackfill(item) ||
+        _shouldBackfillAudioMetadataIgnoringBitrate(item);
+  }
+
+  bool _needsAverageBitrateBackfill(DownloadHistoryItem item) {
+    return _supportsAudioMetadataProbe(item.filePath) &&
+        (item.bitrate == null || item.bitrate! <= 0) &&
+        item.duration != null &&
+        item.duration! > 0;
+  }
+
+  bool _shouldBackfillAudioMetadataIgnoringBitrate(DownloadHistoryItem item) {
     if (!_supportsAudioMetadataProbe(item.filePath)) {
       return false;
     }
@@ -396,10 +408,9 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
       final detectedFormat = normalizeAudioFormatValue(
         result['audio_codec']?.toString() ?? result['format']?.toString(),
       );
-      final rawBitrateKbps = readPositiveBitrateKbps(result['bitrate']);
-      final bitrateKbps = isLossyAudioFormat(detectedFormat)
-          ? rawBitrateKbps
-          : null;
+      final bitrateKbps = readPositiveBitrateKbps(
+        result['bitrate'] ?? result['bit_rate'],
+      );
       final quality = resolveDisplayQuality(
         filePath: filePath,
         detectedFormat: detectedFormat,
@@ -496,10 +507,24 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
       for (final index in selectedIndexes) {
         final item = items[index];
 
-        final probed = await _probeAudioMetadata(
-          item.filePath,
-          fallbackQuality: item.quality,
-        );
+        Map<String, dynamic>? probed;
+        if (_shouldBackfillAudioMetadataIgnoringBitrate(item)) {
+          probed = await _probeAudioMetadata(
+            item.filePath,
+            fallbackQuality: item.quality,
+          );
+        } else if (_needsAverageBitrateBackfill(item)) {
+          // A stat is enough for average bitrate and avoids copying an entire
+          // SAF file to cache merely to update the Library badge.
+          final stat = await fileStat(item.filePath);
+          final bitrate = estimateAverageBitrateKbps(
+            fileSizeBytes: stat?.size,
+            durationSeconds: item.duration,
+          );
+          if (bitrate != null) {
+            probed = {'bitrate': bitrate};
+          }
+        }
         if (probed == null) {
           continue;
         }

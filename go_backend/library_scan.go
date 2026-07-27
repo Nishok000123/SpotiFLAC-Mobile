@@ -30,7 +30,7 @@ type LibraryScanResult struct {
 	ReleaseDate          string `json:"releaseDate,omitempty"`
 	BitDepth             int    `json:"bitDepth,omitempty"`
 	SampleRate           int    `json:"sampleRate,omitempty"`
-	Bitrate              int    `json:"bitrate,omitempty"` // kbps, for lossy formats (MP3, Opus, Vorbis)
+	Bitrate              int    `json:"bitrate,omitempty"` // average kbps for both lossless and lossy audio
 	Genre                string `json:"genre,omitempty"`
 	Composer             string `json:"composer,omitempty"`
 	Label                string `json:"label,omitempty"`

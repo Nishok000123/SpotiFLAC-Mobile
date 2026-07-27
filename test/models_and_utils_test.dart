@@ -167,6 +167,27 @@ void main() {
   });
 
   group('quality variant filenames', () {
+    test('estimates average bitrate without decoding the audio file', () {
+      expect(
+        estimateAverageBitrateKbps(
+          fileSizeBytes: 42.9 * 1000 * 1000 ~/ 1,
+          durationSeconds: 204,
+        ),
+        1682,
+      );
+      expect(
+        estimateAverageBitrateKbps(fileSizeBytes: null, durationSeconds: 204),
+        isNull,
+      );
+      expect(
+        estimateAverageBitrateKbps(
+          fileSizeBytes: 42 * 1000 * 1000,
+          durationSeconds: 0,
+        ),
+        isNull,
+      );
+    });
+
     test('uses measured lossless specifications instead of request labels', () {
       expect(
         buildQualityVariantFilenameLabel(
