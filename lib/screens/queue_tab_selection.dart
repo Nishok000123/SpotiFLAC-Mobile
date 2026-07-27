@@ -476,10 +476,9 @@ extension _QueueTabSelectionActions on _QueueTabState {
       for (final id in _selectedIds) {
         final item = itemsById[id];
         if (item != null) {
-          try {
-            final cleanPath = _cleanFilePath(item.filePath);
-            await deleteFile(cleanPath);
-          } catch (_) {}
+          final cleanPath = _cleanFilePath(item.filePath);
+          final fileDeleted = await deleteFile(cleanPath);
+          if (!fileDeleted) continue;
 
           if (item.source == LibraryItemSource.downloaded) {
             historyNotifier.removeFromHistory(item.historyItem!.id);

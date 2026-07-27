@@ -14,11 +14,35 @@ import 'package:spotiflac_android/services/history_database.dart';
 import 'package:spotiflac_android/utils/artist_utils.dart';
 import 'package:spotiflac_android/utils/audio_conversion_utils.dart';
 import 'package:spotiflac_android/utils/audio_format_utils.dart';
+import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/mime_utils.dart';
 import 'package:spotiflac_android/utils/path_match_keys.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 
 void main() {
+  group('file deletion', () {
+    test('confirms a local file is absent before reporting success', () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'spotiflac-delete-test-',
+      );
+      addTearDown(() async {
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+      final file = File('${tempDir.path}${Platform.pathSeparator}track.flac');
+      await file.writeAsBytes([1, 2, 3]);
+
+      expect(await deleteFile(file.path), isTrue);
+      expect(await file.exists(), isFalse);
+      expect(await deleteFile(file.path), isTrue);
+    });
+
+    test('refuses to delete a virtual CUE track path', () async {
+      expect(await deleteFile('/music/album.cue#track01'), isFalse);
+    });
+  });
+
   group('native worker progress', () {
     test('does not publish 100 percent while finalization is pending', () {
       expect(nativeWorkerFinalizingProgress(0), 0.95);

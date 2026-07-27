@@ -157,9 +157,8 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
       deleteItem: (id) async {
         final item = tracksById[id];
         if (item == null) return false;
-        try {
-          await deleteFile(item.filePath);
-        } catch (_) {}
+        final deleted = await deleteFile(item.filePath);
+        if (!deleted) return false;
         historyNotifier.removeFromHistory(id);
         return true;
       },

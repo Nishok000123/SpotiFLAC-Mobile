@@ -74,7 +74,9 @@ class _DuplicateReviewSheetState extends ConsumerState<DuplicateReviewSheet> {
     if (bitDepth > 0 && sampleRate > 0) {
       final khz = sampleRate / 1000;
       final khzText = khz % 1 == 0 ? khz.toInt().toString() : khz.toString();
-      return format.isEmpty ? '$bitDepth/$khzText' : '$bitDepth/$khzText $format';
+      return format.isEmpty
+          ? '$bitDepth/$khzText'
+          : '$bitDepth/$khzText $format';
     }
     final bitrate = entry.bitrate ?? 0;
     if (bitrate > 0) {
@@ -112,11 +114,10 @@ class _DuplicateReviewSheetState extends ConsumerState<DuplicateReviewSheet> {
     final historyNotifier = ref.read(downloadHistoryProvider.notifier);
     var deleted = 0;
     for (final entry in entries) {
-      try {
-        await deleteFile(
-          DownloadedEmbeddedCoverResolver.cleanFilePath(entry.filePath),
-        );
-      } catch (_) {}
+      final fileDeleted = await deleteFile(
+        DownloadedEmbeddedCoverResolver.cleanFilePath(entry.filePath),
+      );
+      if (!fileDeleted) continue;
       if (entry.source == 'downloaded') {
         historyNotifier.removeFromHistory(entry.id);
       } else {
@@ -200,8 +201,9 @@ class _DuplicateReviewSheetState extends ConsumerState<DuplicateReviewSheet> {
                       padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
                       child: Text(
                         context.l10n.duplicatesEmpty,
-                        style: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     );
                   }

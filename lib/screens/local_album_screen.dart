@@ -130,9 +130,8 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
         final item = tracksById[id];
         if (item == null) return false;
         if (!isCueVirtualPath(item.filePath)) {
-          try {
-            await deleteFile(item.filePath);
-          } catch (_) {}
+          final deleted = await deleteFile(item.filePath);
+          if (!deleted) return false;
         }
         await libraryNotifier.removeItem(id);
         return true;

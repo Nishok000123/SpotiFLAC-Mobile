@@ -120,33 +120,42 @@ extension _TrackMetadataFileActions on _TrackMetadataScreenState {
           ),
           TextButton(
             onPressed: () async {
+              var fileDeleted = true;
               if (_isLocalItem) {
                 if (_isCueVirtualTrack && _localLibraryItem != null) {
                   await ref
                       .read(localLibraryProvider.notifier)
                       .removeItem(_localLibraryItem!.id);
                 } else {
-                  try {
-                    await deleteFile(cleanFilePath);
-                  } catch (e) {
-                    debugPrint('Failed to delete file: $e');
-                  }
-                  if (_localLibraryItem != null) {
+                  fileDeleted = await deleteFile(cleanFilePath);
+                  if (fileDeleted && _localLibraryItem != null) {
                     await ref
                         .read(localLibraryProvider.notifier)
                         .removeItem(_localLibraryItem!.id);
                   }
                 }
               } else {
-                try {
-                  await deleteFile(cleanFilePath);
-                } catch (e) {
-                  debugPrint('Failed to delete file: $e');
+                fileDeleted = await deleteFile(cleanFilePath);
+                if (fileDeleted) {
+                  ref
+                      .read(downloadHistoryProvider.notifier)
+                      .removeFromHistory(_downloadItem!.id);
                 }
+              }
 
-                ref
-                    .read(downloadHistoryProvider.notifier)
-                    .removeFromHistory(_downloadItem!.id);
+              if (!fileDeleted) {
+                if (screenContext.mounted) {
+                  ScaffoldMessenger.of(screenContext).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        screenContext.l10n.snackbarError(
+                          screenContext.l10n.snackbarFailedToWriteStorage,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return;
               }
 
               if (dialogContext.mounted) {
