@@ -98,6 +98,128 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         normalized;
   }
 
+  Future<void> _showMetadataProviderPicker(List<Extension> providers) async {
+    FocusScope.of(context).unfocus();
+    final selectedId = await showModalBottomSheet<String>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        final cs = Theme.of(sheetContext).colorScheme;
+        final currentId =
+            providers.any(
+              (extension) => extension.id == _selectedMetadataProviderId,
+            )
+            ? _selectedMetadataProviderId!
+            : '';
+        final options = <({String id, String name, IconData icon})>[
+          (
+            id: '',
+            name: sheetContext.l10n.editMetadataAutoFillSourceAutomatic,
+            icon: Icons.auto_awesome_outlined,
+          ),
+          for (final extension in providers)
+            (
+              id: extension.id,
+              name: extension.displayName,
+              icon: Icons.extension_outlined,
+            ),
+        ];
+
+        return SafeArea(
+          top: false,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.72,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                  child: Text(
+                    sheetContext.l10n.editMetadataAutoFillSource,
+                    style: Theme.of(sheetContext).textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: SettingsGroup(
+                      children: [
+                        for (var index = 0; index < options.length; index++)
+                          _metadataProviderOption(
+                            context: sheetContext,
+                            id: options[index].id,
+                            name: options[index].name,
+                            icon: options[index].icon,
+                            selected: options[index].id == currentId,
+                            showDivider: index != options.length - 1,
+                            cs: cs,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || selectedId == null) return;
+    setState(() {
+      _selectedMetadataProviderId = selectedId.isEmpty ? null : selectedId;
+      _invalidateAutoFillPreview();
+    });
+  }
+
+  Widget _metadataProviderOption({
+    required BuildContext context,
+    required String id,
+    required String name,
+    required IconData icon,
+    required bool selected,
+    required bool showDivider,
+    required ColorScheme cs,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 4,
+          ),
+          leading: Icon(
+            icon,
+            color: selected ? cs.primary : cs.onSurfaceVariant,
+          ),
+          title: Text(name, maxLines: 2, overflow: TextOverflow.ellipsis),
+          selected: selected,
+          selectedColor: cs.primary,
+          trailing: selected ? const Icon(Icons.check_rounded) : null,
+          onTap: () => Navigator.pop(context, id),
+        ),
+        if (showDivider)
+          Divider(
+            height: 1,
+            indent: 60,
+            endIndent: 20,
+            color: cs.outlineVariant.withValues(alpha: 0.3),
+          ),
+      ],
+    );
+  }
+
   void _invalidateAutoFillPreview() {
     _autoFillPreview = null;
   }
@@ -1409,9 +1531,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     final cs = widget.colorScheme;
 
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(context).bottom,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: DraggableScrollableSheet(
         initialChildSize: 0.85,
         minChildSize: 0.5,
@@ -1600,60 +1720,20 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
             builder: (context, ref, _) {
               final extensionState = ref.watch(extensionProvider);
               final providers = _orderedMetadataProviders(extensionState);
-              final selectedId =
-                  providers.any(
-                    (extension) => extension.id == _selectedMetadataProviderId,
-                  )
-                  ? _selectedMetadataProviderId!
-                  : '';
-              return InputDecorator(
-                decoration: InputDecoration(
-                  labelText: context.l10n.editMetadataAutoFillSource,
-                  prefixIcon: const Icon(Icons.extension_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: selectedId,
-                    isExpanded: true,
-                    items: [
-                      DropdownMenuItem(
-                        value: '',
-                        child: Text(
-                          context.l10n.editMetadataAutoFillSourceAutomatic,
-                        ),
-                      ),
-                      ...providers.map(
-                        (extension) => DropdownMenuItem(
-                          value: extension.id,
-                          child: Text(
-                            extension.displayName,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ],
-                    onChanged: (_fetching || _saving)
-                        ? null
-                        : (value) {
-                            setState(() {
-                              _selectedMetadataProviderId =
-                                  value == null || value.isEmpty ? null : value;
-                              _invalidateAutoFillPreview();
-                            });
-                          },
-                  ),
-                ),
+              final selectedProviderIsAvailable = providers.any(
+                (extension) => extension.id == _selectedMetadataProviderId,
+              );
+              final selectedId = selectedProviderIsAvailable
+                  ? _selectedMetadataProviderId
+                  : null;
+              return _selectionField(
+                label: context.l10n.editMetadataAutoFillSource,
+                value: _metadataProviderName(selectedId),
+                enabled: !_fetching && !_saving,
+                onTap: () => _showMetadataProviderPicker(providers),
               );
             },
           ),
-          const SizedBox(height: 12),
           Row(
             children: [
               _quickSelectButton(
@@ -2130,6 +2210,65 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 15,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _selectionField({
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+    bool enabled = true,
+  }) {
+    final cs = widget.colorScheme;
+    final radius = BorderRadius.circular(14);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 6),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: enabled ? cs.onSurfaceVariant : cs.outline,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.1,
+              ),
+            ),
+          ),
+          Material(
+            color: _fieldFill(cs),
+            borderRadius: radius,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: enabled ? onTap : null,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: enabled ? cs.onSurface : cs.outline,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.expand_more_rounded,
+                      color: enabled ? cs.onSurfaceVariant : cs.outline,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
