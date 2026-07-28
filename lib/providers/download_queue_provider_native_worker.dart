@@ -31,6 +31,57 @@ class _NativeWorkerStartupTimeout implements Exception {
 }
 
 extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
+  Future<bool> _recoverNativeWorkerStorageFailure({
+    required _NativeWorkerRequestContext context,
+    required String errorType,
+    required String errorMessage,
+    required Map<String, _NativeWorkerRequestContext> contexts,
+    required Set<String> reconciledIds,
+  }) async {
+    if (!isStorageWriteFailure(
+      errorType: errorType,
+      errorMessage: errorMessage,
+    )) {
+      return false;
+    }
+
+    final failedOutputDir = context.storageMode == 'saf'
+        ? null
+        : context.outputDir;
+    final fallbackRoot = await _activateAppFolderStorageFallback(
+      failedOutputDir: failedOutputDir,
+    );
+    if (context.storageMode != 'saf' &&
+        _pathIsInside(context.outputDir, fallbackRoot)) {
+      // This request already used the verified fallback. Do not create an
+      // infinite retry loop if the failure has another device-specific cause.
+      return false;
+    }
+
+    _log.w(
+      'Native worker could not write its destination; cancelling this run '
+      'and retrying pending items in $fallbackRoot',
+    );
+    try {
+      await PlatformBridge.cancelNativeDownloadWorker();
+    } catch (e) {
+      _log.w('Failed to cancel native worker for storage fallback: $e');
+    }
+
+    for (final pendingId in contexts.keys) {
+      if (reconciledIds.contains(pendingId)) continue;
+      final pending = _findItemById(pendingId);
+      if (pending == null ||
+          pending.status == DownloadStatus.completed ||
+          pending.status == DownloadStatus.skipped) {
+        continue;
+      }
+      reconciledIds.add(pendingId);
+      updateItemStatus(pendingId, DownloadStatus.queued, progress: 0.0);
+    }
+    return true;
+  }
+
   Future<void> _persistNativeFinalizedHistoryFallback(
     _NativeWorkerRequestContext context,
     Map<String, dynamic> result,
@@ -844,10 +895,10 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
       }
 
       if (status == 'failed' || status == 'skipped') {
-        reconciledIds.add(itemId);
         final result = itemSnapshot['result'];
         final error = itemSnapshot['error']?.toString();
         if (status == 'skipped') {
+          reconciledIds.add(itemId);
           updateItemStatus(itemId, DownloadStatus.skipped);
         } else {
           final resultMap = result is Map
@@ -864,6 +915,20 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
           final errorType = backendErrorType == DownloadErrorType.unknown
               ? _downloadErrorTypeFromMessage(errorMsg)
               : backendErrorType;
+          try {
+            if (await _recoverNativeWorkerStorageFailure(
+              context: context,
+              errorType: resultMap?['error_type']?.toString() ?? '',
+              errorMessage: errorMsg,
+              contexts: contexts,
+              reconciledIds: reconciledIds,
+            )) {
+              continue;
+            }
+          } catch (e) {
+            _log.e('Could not recover native-worker storage failure: $e');
+          }
+          reconciledIds.add(itemId);
           if (errorType == DownloadErrorType.verificationRequired) {
             _log.i(
               'Android native worker requires verification for ${current.track.name}; switching back to interactive queue',

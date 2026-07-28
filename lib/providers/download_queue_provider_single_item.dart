@@ -5,15 +5,11 @@ part of 'download_queue_provider.dart';
 /// the native download call, decrypt/convert/embed finalization, and the
 /// history hand-off. Queue scheduling stays in the main file.
 extension _SingleItemDownload on DownloadQueueNotifier {
-  bool _isSafWriteFailure(Map<String, dynamic> result) {
-    final error = (result['error'] ?? result['message'] ?? '')
-        .toString()
-        .toLowerCase();
-    if (error.isEmpty) return false;
-    return error.contains('saf') ||
-        error.contains('content uri') ||
-        error.contains('permission denied') ||
-        error.contains('documentfile');
+  bool _isStorageWriteFailure(Map<String, dynamic> result) {
+    return isStorageWriteFailure(
+      errorType: result['error_type']?.toString(),
+      errorMessage: (result['error'] ?? result['message'])?.toString(),
+    );
   }
 
   Future<String?> _runPostProcessingHooks(String filePath, Track track) async {
@@ -568,38 +564,43 @@ class _DownloadRun {
       outputDir: effectiveOutputDir,
     );
 
-    if (effectiveSafMode &&
-        result['success'] != true &&
-        n._isSafWriteFailure(result)) {
+    if (result['success'] != true && n._isStorageWriteFailure(result)) {
       if (n._isLocallyCancelled(item.id)) {
-        _log.i('Download was cancelled before SAF fallback, skipping');
+        _log.i('Download was cancelled before storage fallback, skipping');
         return false;
       }
-      _log.w('SAF write failed, retrying with app-private storage');
-      final fallbackDir =
-          appOutputDir ??
-          await n._buildOutputDir(
-            trackToDownload,
-            settings.folderOrganization,
-            separateSingles: settings.separateSingles,
-            albumFolderStructure: settings.albumFolderStructure,
-            createPlaylistFolder: settings.createPlaylistFolder,
-            useAlbumArtistForFolders: settings.useAlbumArtistForFolders,
-            usePrimaryArtistOnly: settings.usePrimaryArtistOnly,
-            filterContributingArtistsInAlbumArtist:
-                settings.filterContributingArtistsInAlbumArtist,
-            playlistName: item.playlistName,
-          );
-      appOutputDir = fallbackDir;
-      final fallbackResult = await _invokeDownload(
-        useSaf: false,
-        outputDir: fallbackDir,
-      );
-      if (fallbackResult['success'] == true) {
-        effectiveSafMode = false;
-        effectiveOutputDir = fallbackDir;
-        finalSafFileName = null;
+      _log.w('Storage write failed, retrying with a writable app folder');
+      try {
+        await n._activateAppFolderStorageFallback(
+          failedOutputDir: effectiveSafMode ? null : effectiveOutputDir,
+        );
+        final fallbackDir =
+            appOutputDir ??
+            await n._buildOutputDir(
+              trackToDownload,
+              settings.folderOrganization,
+              separateSingles: settings.separateSingles,
+              albumFolderStructure: settings.albumFolderStructure,
+              createPlaylistFolder: settings.createPlaylistFolder,
+              useAlbumArtistForFolders: settings.useAlbumArtistForFolders,
+              usePrimaryArtistOnly: settings.usePrimaryArtistOnly,
+              filterContributingArtistsInAlbumArtist:
+                  settings.filterContributingArtistsInAlbumArtist,
+              playlistName: item.playlistName,
+            );
+        appOutputDir = fallbackDir;
+        final fallbackResult = await _invokeDownload(
+          useSaf: false,
+          outputDir: fallbackDir,
+        );
         result = fallbackResult;
+        if (fallbackResult['success'] == true) {
+          effectiveSafMode = false;
+          effectiveOutputDir = fallbackDir;
+          finalSafFileName = null;
+        }
+      } catch (e) {
+        _log.e('App-folder storage fallback failed: $e');
       }
     }
     return true;
@@ -1671,6 +1672,28 @@ class _DownloadRun {
 
     String errorMsg = e.toString();
     DownloadErrorType errorType = DownloadErrorType.unknown;
+
+    if (isStorageWriteFailure(errorMessage: errorMsg)) {
+      try {
+        await n._activateAppFolderStorageFallback(
+          failedOutputDir: n._isSafMode(settings)
+              ? null
+              : (effectiveOutputDir.isNotEmpty
+                    ? effectiveOutputDir
+                    : n.state.outputDir),
+        );
+        n.updateItemStatus(item.id, DownloadStatus.queued, progress: 0.0);
+        _log.w(
+          'Storage exception recovered; re-queued ${item.track.name} in the app folder',
+        );
+        return;
+      } catch (fallbackError) {
+        _log.e(
+          'Could not recover storage exception with app-folder fallback: '
+          '$fallbackError',
+        );
+      }
+    }
 
     if (errorMsg.contains('could not find Deezer equivalent') ||
         errorMsg.contains('track not found on Deezer')) {

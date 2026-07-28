@@ -255,10 +255,35 @@ func attemptVerifiedResumeBeforeMetadata(
 			Service:           selectedProvider,
 		}, false
 	}
+	if lastErr != nil && isOutputStorageWriteFailure(errorType, lastErr.Error()) {
+		return buildOutputStorageFailureResponse(
+			selectedProvider,
+			lastErr,
+			lastRetryAfterSeconds,
+		), false
+	}
 	// A failed fast attempt may still succeed after source enrichment resolves a
 	// better provider-native ID. The normal path below retains strict/stop-
 	// fallback semantics for that prepared retry.
 	return nil, false
+}
+
+func buildOutputStorageFailureResponse(
+	providerID string,
+	err error,
+	retryAfterSeconds int,
+) *DownloadResponse {
+	message := "Output storage is not writable"
+	if err != nil {
+		message = err.Error()
+	}
+	return &DownloadResponse{
+		Success:           false,
+		Error:             "Download failed: " + message,
+		ErrorType:         "permission",
+		RetryAfterSeconds: retryAfterSeconds,
+		Service:           providerID,
+	}
 }
 
 func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, error) {
@@ -511,6 +536,14 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 			if sourceErrType == "" && lastErr != nil {
 				sourceErrType = classifyDownloadErrorType(lastErr.Error())
 			}
+			if lastErr != nil && isOutputStorageWriteFailure(sourceErrType, lastErr.Error()) {
+				GoLog("[DownloadWithExtensionFallback] Source extension %s hit an unwritable output path; stopping provider fallback\n", req.Source)
+				return buildOutputStorageFailureResponse(
+					req.Source,
+					lastErr,
+					lastRetryAfterSeconds,
+				), nil
+			}
 			if strings.EqualFold(sourceErrType, "verification_required") {
 				GoLog("[DownloadWithExtensionFallback] Source extension %s requires verification, not trying other providers\n", req.Source)
 				cachePreparedDownloadRequest(preparationKey, req)
@@ -648,6 +681,14 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 				effType := lastErrType
 				if effType == "" {
 					effType = classifyDownloadErrorType(lastErr.Error())
+				}
+				if isOutputStorageWriteFailure(effType, lastErr.Error()) {
+					GoLog("[DownloadWithExtensionFallback] %s hit an unwritable output path; stopping provider fallback\n", providerID)
+					return buildOutputStorageFailureResponse(
+						providerID,
+						lastErr,
+						lastRetryAfterSeconds,
+					), nil
 				}
 				if strings.EqualFold(effType, "verification_required") {
 					GoLog("[DownloadWithExtensionFallback] %s requires verification; pausing fallback to open the challenge\n", providerID)

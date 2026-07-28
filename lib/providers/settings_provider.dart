@@ -460,6 +460,21 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _saveSettings();
   }
 
+  /// Atomically leaves SAF and persists a writable app-managed destination.
+  ///
+  /// Keeping these fields in one update avoids an intermediate saved state
+  /// where app-folder mode still points at the SAF display name, or where an
+  /// invalid tree URI can switch the mode back to SAF.
+  Future<void> useAppFolderStorage(String directory) async {
+    state = state.copyWith(
+      storageMode: 'app',
+      downloadDirectory: directory,
+      downloadDirectoryBookmark: '',
+      downloadTreeUri: '',
+    );
+    await _saveSettings();
+  }
+
   void setDownloadTreeUri(String uri, {String? displayName}) {
     final nextDisplay = displayName ?? state.downloadDirectory;
     state = state.copyWith(

@@ -44,6 +44,46 @@ func TestDownloadErrorClassificationDetectsVerificationRequired(t *testing.T) {
 	}
 }
 
+func TestOutputStorageWriteFailureDetection(t *testing.T) {
+	cases := []struct {
+		name      string
+		errorType string
+		message   string
+		want      bool
+	}{
+		{
+			name:      "typed permission failure",
+			errorType: "permission",
+			message:   "backend omitted details",
+			want:      true,
+		},
+		{
+			name:    "android operation not permitted",
+			message: "failed to create file: open /storage/song.partial: operation not permitted",
+			want:    true,
+		},
+		{
+			name:    "read only destination",
+			message: "open /music/song.flac: read-only file system",
+			want:    true,
+		},
+		{
+			name:      "provider API error",
+			errorType: "api_error",
+			message:   "HTTP 404 for /download",
+			want:      false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isOutputStorageWriteFailure(tc.errorType, tc.message); got != tc.want {
+				t.Fatalf("isOutputStorageWriteFailure(%q, %q) = %v, want %v", tc.errorType, tc.message, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestGetProviderMetadataPrefersEnabledDeezerExtension(t *testing.T) {
 	dir := t.TempDir()
 	if err := InitExtensionSystem(filepath.Join(dir, "extensions"), filepath.Join(dir, "data")); err != nil {

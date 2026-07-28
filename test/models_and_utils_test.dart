@@ -52,6 +52,53 @@ void main() {
     });
   });
 
+  group('storage write failure detection', () {
+    test('recognizes typed and common Android filesystem failures', () {
+      expect(
+        isStorageWriteFailure(
+          errorType: 'permission',
+          errorMessage: 'provider-specific text',
+        ),
+        isTrue,
+      );
+      expect(
+        isStorageWriteFailure(
+          errorMessage:
+              'failed to create file: open /storage/song.flac.partial: '
+              'operation not permitted',
+        ),
+        isTrue,
+      );
+      expect(
+        isStorageWriteFailure(
+          errorMessage:
+              'Native finalization failed: failed to publish deferred SAF output',
+        ),
+        isTrue,
+      );
+    });
+
+    test(
+      'does not mistake provider or network failures for storage errors',
+      () {
+        expect(
+          isStorageWriteFailure(
+            errorType: 'api_error',
+            errorMessage: 'HTTP 404 for /download',
+          ),
+          isFalse,
+        );
+        expect(
+          isStorageWriteFailure(
+            errorType: 'network',
+            errorMessage: 'Connection reset by peer',
+          ),
+          isFalse,
+        );
+      },
+    );
+  });
+
   group('local library incremental scan', () {
     test('rescans legacy metadata rows exactly once', () {
       expect(

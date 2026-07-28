@@ -83,6 +83,28 @@ double nativeWorkerFinalizingProgress(double progress) {
   return min(normalized, 0.99);
 }
 
+/// Whether a backend failure means the selected destination could not be
+/// written. This intentionally stays provider-agnostic: once an output path is
+/// unwritable, trying more audio providers against that same path only wastes
+/// time and hides the actionable storage failure behind a later network error.
+bool isStorageWriteFailure({String? errorType, String? errorMessage}) {
+  if (errorType?.trim().toLowerCase() == 'permission') return true;
+
+  final message = errorMessage?.trim().toLowerCase() ?? '';
+  if (message.isEmpty) return false;
+  return message.contains('operation not permitted') ||
+      message.contains('permission denied') ||
+      message.contains('read-only file system') ||
+      message.contains('failed to create file') ||
+      message.contains('failed to create directory') ||
+      message.contains('failed to access saf directory') ||
+      message.contains('failed to create saf file') ||
+      message.contains('failed to open saf file') ||
+      message.contains('failed to publish saf') ||
+      message.contains('failed to publish deferred saf') ||
+      message.contains('failed to copy extension output to saf');
+}
+
 final _invalidFolderChars = RegExp(r'[<>:"/\\|?*]');
 final _trimDotsAndSpacesRegex = RegExp(r'^[. ]+|[. ]+$');
 final _trimUnderscoresAndSpacesRegex = RegExp(r'^[_ ]+|[_ ]+$');
@@ -154,6 +176,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   int _queueItemSequence = 0;
   bool _isLoaded = false;
   final Set<String> _ensuredDirs = {};
+  Future<String>? _appFolderStorageFallback;
+  final Set<String> _rejectedAppFolderRoots = {};
   int _idleProgressPollTick = 0;
   bool _networkPausedByWifiOnly = false;
   List<ConnectivityResult>? _lastConnectivityResults;
@@ -1187,10 +1211,67 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   Future<void> _processQueue() async {
     if (state.isProcessing) return;
 
-    final settings = ref.read(settingsProvider);
+    var settings = ref.read(settingsProvider);
     updateSettings(settings);
-    final isSafMode = _isSafMode(settings);
+    var isSafMode = _isSafMode(settings);
     var iosDownloadBookmarkActive = false;
+
+    // Validate SAF before handing the batch to either queue implementation.
+    // A restored/missing tree URI and an OEM-revoked grant both fall back to a
+    // verified writable app folder instead of failing the whole queue.
+    if (Platform.isAndroid && settings.storageMode == 'saf') {
+      var safAccessible = settings.downloadTreeUri.isNotEmpty;
+      if (safAccessible) {
+        try {
+          safAccessible = await PlatformBridge.validateSafTreeAccess(
+            settings.downloadTreeUri,
+          );
+        } catch (e) {
+          safAccessible = false;
+          _log.w('SAF access validation threw an error: $e');
+        }
+      }
+      if (!safAccessible) {
+        _log.w(
+          'SAF grant is missing or no longer writable; using app-folder fallback',
+        );
+        try {
+          await _activateAppFolderStorageFallback();
+          settings = ref.read(settingsProvider);
+          isSafMode = false;
+        } catch (e) {
+          _log.e('Could not activate app-folder storage fallback: $e');
+          for (final item in state.items) {
+            if (item.status == DownloadStatus.queued) {
+              updateItemStatus(
+                item.id,
+                DownloadStatus.failed,
+                error: safPermissionLostErrorMessage,
+                errorType: DownloadErrorType.permission,
+              );
+            }
+          }
+          return;
+        }
+      }
+    }
+    if (Platform.isAndroid &&
+        !isSafMode &&
+        state.outputDir.isNotEmpty &&
+        !await _isDirectoryWritable(Directory(state.outputDir))) {
+      final failedOutputDir = state.outputDir;
+      _log.w(
+        'Configured app-folder path is not writable; resolving a safe fallback',
+      );
+      try {
+        await _activateAppFolderStorageFallback(
+          failedOutputDir: failedOutputDir,
+        );
+        settings = ref.read(settingsProvider);
+      } catch (e) {
+        _log.e('No writable app-folder fallback is available: $e');
+      }
+    }
     if (settings.downloadNetworkMode == 'wifi_only') {
       final connectivityResult = await Connectivity().checkConnectivity();
       final hasWifi = connectivityResult.contains(ConnectivityResult.wifi);
@@ -1284,30 +1365,6 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       _log.d('Output directory: ${state.outputDir}');
     } else {
       _log.d('Output directory: SAF (tree_uri=${settings.downloadTreeUri})');
-      try {
-        final accessible = await PlatformBridge.validateSafTreeAccess(
-          settings.downloadTreeUri,
-        );
-        if (!accessible) {
-          throw const FileSystemException(
-            'Persisted SAF tree grant is missing or no longer writable',
-          );
-        }
-      } catch (e) {
-        _log.e('SAF permission validation failed: $e');
-        _log.w('SAF tree URI may be invalid or permission revoked');
-        for (final item in state.items) {
-          if (item.status == DownloadStatus.queued) {
-            updateItemStatus(
-              item.id,
-              DownloadStatus.failed,
-              error: safPermissionLostErrorMessage,
-            );
-          }
-        }
-        state = state.copyWith(isProcessing: false);
-        return;
-      }
     }
 
     if (!isSafMode &&

@@ -473,6 +473,26 @@ func classifyDownloadErrorType(msg string) string {
 	return "unknown"
 }
 
+// isOutputStorageWriteFailure distinguishes an unwritable destination from a
+// provider-specific failure. Provider fallback cannot repair the former: all
+// providers receive the same output path, so continuing only delays the
+// storage fallback and can replace the useful permission error with an
+// unrelated error from the last provider.
+func isOutputStorageWriteFailure(errorType, message string) bool {
+	if strings.EqualFold(strings.TrimSpace(errorType), "permission") {
+		return true
+	}
+	lowerMsg := strings.ToLower(strings.TrimSpace(message))
+	if lowerMsg == "" {
+		return false
+	}
+	return strings.Contains(lowerMsg, "operation not permitted") ||
+		strings.Contains(lowerMsg, "permission denied") ||
+		strings.Contains(lowerMsg, "read-only file system") ||
+		strings.Contains(lowerMsg, "failed to create file") ||
+		strings.Contains(lowerMsg, "failed to create directory")
+}
+
 func messageHasHTTPStatusCode(lowerMsg, code string) bool {
 	return strings.Contains(lowerMsg, "http "+code) ||
 		strings.Contains(lowerMsg, "http status "+code) ||
