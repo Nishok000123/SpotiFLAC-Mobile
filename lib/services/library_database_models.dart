@@ -2,6 +2,15 @@ part of 'library_database.dart';
 
 // Row models and query descriptors for the local library database.
 
+int libraryIncrementalSnapshotModTime({
+  required int storedModTime,
+  required int storedScanVersion,
+}) {
+  return storedScanVersion >= LibraryDatabase.audioMetadataScanVersion
+      ? storedModTime
+      : -1;
+}
+
 class LocalLibraryItem {
   final String id;
   final String trackName;
@@ -109,6 +118,41 @@ class LocalLibraryItem {
         copyright: json['copyright'] as String?,
         format: json['format'] as String?,
       );
+
+  LocalLibraryItem withAudioMetadata({
+    int? duration,
+    int? bitDepth,
+    int? sampleRate,
+    int? bitrate,
+    String? format,
+  }) {
+    return LocalLibraryItem(
+      id: id,
+      trackName: trackName,
+      artistName: artistName,
+      albumName: albumName,
+      albumArtist: albumArtist,
+      filePath: filePath,
+      coverPath: coverPath,
+      scannedAt: scannedAt,
+      fileModTime: fileModTime,
+      isrc: isrc,
+      trackNumber: trackNumber,
+      totalTracks: totalTracks,
+      discNumber: discNumber,
+      totalDiscs: totalDiscs,
+      duration: duration ?? this.duration,
+      releaseDate: releaseDate,
+      bitDepth: bitDepth ?? this.bitDepth,
+      sampleRate: sampleRate ?? this.sampleRate,
+      bitrate: bitrate ?? this.bitrate,
+      genre: genre,
+      composer: composer,
+      label: label,
+      copyright: copyright,
+      format: format ?? this.format,
+    );
+  }
 
   String get matchKey =>
       '${LibraryDatabase.normalizeLookupText(trackName)}|${LibraryDatabase.normalizeLookupText(artistName)}';

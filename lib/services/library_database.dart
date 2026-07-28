@@ -16,6 +16,8 @@ final _log = AppLogger('LibraryDatabase');
 
 class LibraryDatabase {
   static final LibraryDatabase instance = LibraryDatabase._init();
+  static const int schemaVersion = 9;
+  static const int audioMetadataScanVersion = 1;
   static Database? _database;
   bool _historyAttached = false;
 
@@ -25,7 +27,7 @@ class LibraryDatabase {
     if (_database != null) return _database!;
     _database = await sqlite.openAppDatabase(
       'local_library.db',
-      version: 8,
+      version: schemaVersion,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -78,6 +80,7 @@ class LibraryDatabase {
         label TEXT,
         copyright TEXT,
         format TEXT,
+        audio_metadata_scan_version INTEGER NOT NULL DEFAULT 1,
         track_name_norm TEXT,
         artist_name_norm TEXT,
         album_name_norm TEXT,
@@ -159,6 +162,15 @@ class LibraryDatabase {
       await _createPathKeyTable(db);
       await sqlite.backfillPathKeys(db, 'library', 'library_path_keys');
       _log.i('Added local library path-key lookup table');
+    }
+    if (oldVersion < 9) {
+      await sqlite.addColumnIfMissing(
+        db,
+        'library',
+        'audio_metadata_scan_version',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      _log.i('Marked existing rows for one-time audio metadata rescan');
     }
   }
 
@@ -282,6 +294,9 @@ class LibraryDatabase {
       'label': json['label'],
       'copyright': json['copyright'],
       'format': json['format'],
+      'audio_metadata_scan_version':
+          (json['audioMetadataScanVersion'] as num?)?.toInt() ??
+          audioMetadataScanVersion,
     };
     row.addAll(
       _normalizedColumns(
@@ -828,16 +843,22 @@ class LibraryDatabase {
     final stat = await fileStat(newFilePath);
     final now = DateTime.now();
     final normalizedFormat = _normalizeConvertedFormat(targetFormat);
+    final convertedBitrate =
+        _convertedBitrate(targetFormat: targetFormat, bitrate: bitrate) ??
+        estimateAverageBitrateKbps(
+          fileSizeBytes: stat?.size,
+          durationSeconds: item.duration,
+        );
     final updated = item.toJson()
       ..['id'] = _generateLibraryId(newFilePath)
       ..['filePath'] = newFilePath
       ..['scannedAt'] = now.toIso8601String()
       ..['fileModTime'] = stat?.modified?.millisecondsSinceEpoch
       ..['format'] = normalizedFormat
-      ..['bitrate'] = _convertedBitrate(
-        targetFormat: targetFormat,
-        bitrate: bitrate,
-      );
+      ..['bitrate'] = convertedBitrate
+      ..['audioMetadataScanVersion'] = convertedBitrate != null
+          ? audioMetadataScanVersion
+          : 0;
 
     if (normalizedFormat == 'mp3' ||
         normalizedFormat == 'opus' ||
@@ -903,6 +924,7 @@ class LibraryDatabase {
       values['format'] = normalizedFormat;
     }
     if (values.isEmpty) return;
+    values['audio_metadata_scan_version'] = audioMetadataScanVersion;
 
     final db = await database;
     await db.update('library', values, where: 'id = ?', whereArgs: [id]);
@@ -998,13 +1020,21 @@ class LibraryDatabase {
   Future<Map<String, int>> getFileModTimes() async {
     final db = await database;
     final rows = await db.rawQuery(
-      'SELECT file_path, COALESCE(file_mod_time, 0) AS file_mod_time FROM library',
+      'SELECT file_path, COALESCE(file_mod_time, 0) AS file_mod_time, '
+      'audio_metadata_scan_version FROM library',
     );
     final result = <String, int>{};
     for (final row in rows) {
       final path = row['file_path'] as String;
       final modTime = (row['file_mod_time'] as num?)?.toInt() ?? 0;
-      result[path] = modTime;
+      final scanVersion =
+          (row['audio_metadata_scan_version'] as num?)?.toInt() ?? 0;
+      // A sentinel timestamp keeps the path in deletion/dedup checks while
+      // making the incremental scanner treat a legacy row as changed once.
+      result[path] = libraryIncrementalSnapshotModTime(
+        storedModTime: modTime,
+        storedScanVersion: scanVersion,
+      );
     }
     return result;
   }
@@ -1012,7 +1042,8 @@ class LibraryDatabase {
   Future<String> writeFileModTimesSnapshot() async {
     final db = await database;
     final rows = await db.rawQuery(
-      'SELECT file_path, COALESCE(file_mod_time, 0) AS file_mod_time FROM library',
+      'SELECT file_path, COALESCE(file_mod_time, 0) AS file_mod_time, '
+      'audio_metadata_scan_version FROM library',
     );
     final tempDir = await getTemporaryDirectory();
     final file = File(
@@ -1026,8 +1057,15 @@ class LibraryDatabase {
       final path = row['file_path'] as String?;
       if (path == null || path.isEmpty) continue;
       final modTime = (row['file_mod_time'] as num?)?.toInt() ?? 0;
+      final scanVersion =
+          (row['audio_metadata_scan_version'] as num?)?.toInt() ?? 0;
       buffer
-        ..write(modTime)
+        ..write(
+          libraryIncrementalSnapshotModTime(
+            storedModTime: modTime,
+            storedScanVersion: scanVersion,
+          ),
+        )
         ..write('\t')
         ..writeln(path);
     }

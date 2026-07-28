@@ -11,6 +11,7 @@ import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/services/app_remote_config_service.dart';
 import 'package:spotiflac_android/services/download_request_payload.dart';
 import 'package:spotiflac_android/services/history_database.dart';
+import 'package:spotiflac_android/services/library_database.dart';
 import 'package:spotiflac_android/utils/artist_utils.dart';
 import 'package:spotiflac_android/utils/audio_conversion_utils.dart';
 import 'package:spotiflac_android/utils/audio_format_utils.dart';
@@ -48,6 +49,46 @@ void main() {
       expect(nativeWorkerFinalizingProgress(0), 0.95);
       expect(nativeWorkerFinalizingProgress(0.7), 0.7);
       expect(nativeWorkerFinalizingProgress(1), 0.99);
+    });
+  });
+
+  group('local library incremental scan', () {
+    test('rescans legacy metadata rows exactly once', () {
+      expect(
+        libraryIncrementalSnapshotModTime(
+          storedModTime: 1234,
+          storedScanVersion: 0,
+        ),
+        -1,
+      );
+      expect(
+        libraryIncrementalSnapshotModTime(
+          storedModTime: 1234,
+          storedScanVersion: LibraryDatabase.audioMetadataScanVersion,
+        ),
+        1234,
+      );
+    });
+
+    test('keeps a local item current after an audio metadata probe', () {
+      final item = LocalLibraryItem(
+        id: 'local-1',
+        trackName: 'Song',
+        artistName: 'Artist',
+        albumName: 'Album',
+        filePath: '/music/song.flac',
+        scannedAt: DateTime(2026),
+        bitDepth: 24,
+        sampleRate: 96000,
+      );
+
+      final updated = item.withAudioMetadata(bitrate: 1840);
+
+      expect(updated.bitrate, 1840);
+      expect(updated.bitDepth, 24);
+      expect(updated.sampleRate, 96000);
+      expect(updated.trackName, 'Song');
+      expect(updated.filePath, '/music/song.flac');
     });
   });
 

@@ -411,6 +411,17 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
               needsDuration ||
               needsComposer ||
               (isPlaceholderQualityLabel(_quality) && resolvedQuality != null));
+      final localItem = _localLibraryItem;
+      final localAudioMetadataChanged =
+          localItem != null &&
+          ((resolvedBitDepth != null &&
+                  resolvedBitDepth != localItem.bitDepth) ||
+              (resolvedSampleRate != null &&
+                  resolvedSampleRate != localItem.sampleRate) ||
+              (resolvedBitrate != null &&
+                  resolvedBitrate != localItem.bitrate) ||
+              needsDuration ||
+              formatChanged);
 
       if ((resolvedBitDepth != null ||
               resolvedSampleRate != null ||
@@ -493,12 +504,28 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
             );
           });
         }
-      } else if (_isLocalItem && (needsDuration || formatChanged)) {
+      } else if (_isLocalItem && localAudioMetadataChanged) {
         await LibraryDatabase.instance.updateAudioMetadata(
-          _localLibraryItem!.id,
+          localItem.id,
           duration: resolvedDuration,
+          bitDepth: resolvedBitDepth,
+          sampleRate: resolvedSampleRate,
+          bitrate: resolvedBitrate,
           format: formatChanged ? resolvedFormat : null,
         );
+        if (mounted &&
+            generation == _metadataLoadGeneration &&
+            sourcePath == cleanFilePath) {
+          setState(() {
+            _currentLocalLibraryItem = localItem.withAudioMetadata(
+              duration: resolvedDuration,
+              bitDepth: resolvedBitDepth,
+              sampleRate: resolvedSampleRate,
+              bitrate: resolvedBitrate,
+              format: resolvedFormat,
+            );
+          });
+        }
         await ref.read(localLibraryProvider.notifier).reloadFromStorage();
       }
     } catch (e) {
