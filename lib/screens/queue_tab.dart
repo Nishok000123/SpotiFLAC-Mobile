@@ -42,6 +42,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:spotiflac_android/services/cover_cache_manager.dart';
 import 'package:spotiflac_android/screens/library_tracks_folder_screen.dart';
 import 'package:spotiflac_android/screens/local_album_screen.dart';
+import 'package:spotiflac_android/screens/queue_library_refresh_policy.dart';
 import 'package:spotiflac_android/utils/clickable_metadata.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/widgets/download_service_picker.dart';
@@ -440,16 +441,24 @@ class _QueueTabState extends ConsumerState<QueueTab> {
 
   QueueLibraryCounts _resolveQueueLibraryCounts(
     AsyncValue<QueueLibraryCounts> value,
-    _QueueLibraryCountsRequest request,
-  ) {
+    _QueueLibraryCountsRequest request, {
+    QueueLibraryCounts? nonEmptyFallback,
+  }) {
     return value.maybeWhen(
       data: (counts) {
-        _queueLibraryCountsCache[request] = counts;
+        final cached = _queueLibraryCountsCache[request];
+        final resolved = resolveQueueLibraryCountsSnapshot(
+          current: counts,
+          cached: cached,
+          activeDownloadFallback: nonEmptyFallback,
+        );
+        _queueLibraryCountsCache[request] = resolved;
         _trimQueueLibraryCountsCache();
-        return counts;
+        return resolved;
       },
       orElse: () =>
           _queueLibraryCountsCache[request] ??
+          nonEmptyFallback ??
           const QueueLibraryCounts(
             allTrackCount: 0,
             albumCount: 0,
@@ -460,20 +469,28 @@ class _QueueTabState extends ConsumerState<QueueTab> {
 
   _QueueLibraryPageData _resolveQueueLibraryPageData(
     AsyncValue<_QueueLibraryPageData>? value,
-    _QueueLibraryPageRequest request,
-  ) {
+    _QueueLibraryPageRequest request, {
+    _QueueLibraryPageData? nonEmptyFallback,
+  }) {
+    void storePage(_QueueLibraryPageData data) {
+      final cached = _queueLibraryPageDataCache[request];
+      if (shouldRetainQueueLibraryPageSnapshot(
+        currentIsEmpty: data.isEmpty,
+        cachedHasContent: cached != null && !cached.isEmpty,
+        activeDownloadFallbackAvailable: nonEmptyFallback != null,
+      )) {
+        return;
+      }
+      _queueLibraryPageDataCache[request] = data;
+      _trimQueueLibraryPageDataCache(protectedRequest: request);
+    }
+
     if (value != null) {
       final liveData = value.asData?.value;
       if (liveData != null) {
-        _queueLibraryPageDataCache[request] = liveData;
-        _trimQueueLibraryPageDataCache(protectedRequest: request);
+        storePage(liveData);
       }
-      value.whenOrNull(
-        data: (data) {
-          _queueLibraryPageDataCache[request] = data;
-          _trimQueueLibraryPageDataCache(protectedRequest: request);
-        },
-      );
+      value.whenOrNull(data: storePage);
     }
 
     final pages = <_QueueLibraryPageData>[];
@@ -494,7 +511,11 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       if (page != null) pages.add(page);
     }
 
-    return _QueueLibraryPageData.combine(pages);
+    final combined = _QueueLibraryPageData.combine(pages);
+    if (combined.isEmpty && nonEmptyFallback != null) {
+      return nonEmptyFallback;
+    }
+    return combined;
   }
 
   void _invalidateLibraryDataCaches() {
@@ -1261,7 +1282,21 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       localLibraryEnabled: localLibraryEnabled,
     );
     final countsValue = ref.watch(_queueLibraryCountsProvider(countsRequest));
-    final queueCounts = _resolveQueueLibraryCounts(countsValue, countsRequest);
+    final historySnapshotFallbackEnabled =
+        hasQueueItems &&
+        inMemoryHistoryItems.isNotEmpty &&
+        countsRequest.allowsInMemoryHistoryFallback;
+    final historySnapshotCounts = historySnapshotFallbackEnabled
+        ? _historySnapshotCounts(
+            inMemoryHistoryItems,
+            persistedTotalCount: historyTotalCount,
+          )
+        : null;
+    final queueCounts = _resolveQueueLibraryCounts(
+      countsValue,
+      countsRequest,
+      nonEmptyFallback: historySnapshotCounts,
+    );
 
     _QueueLibraryPageRequest pageRequest(String filterMode) =>
         _QueueLibraryPageRequest(
@@ -1286,9 +1321,20 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       final request = filterMode == historyFilterMode
           ? activePageRequest
           : pageRequest(filterMode);
+      final historySnapshot =
+          hasQueueItems &&
+              inMemoryHistoryItems.isNotEmpty &&
+              request.allowsInMemoryHistoryFallback
+          ? _QueueLibraryPageData.fromHistorySnapshot(
+              inMemoryHistoryItems,
+              filterMode: request.filterMode,
+              limit: request.limit,
+            )
+          : null;
       return _resolveQueueLibraryPageData(
         filterMode == historyFilterMode ? activePageValue : null,
         request,
+        nonEmptyFallback: historySnapshot,
       );
     }
 
@@ -1322,6 +1368,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         queueCounts.allTrackCount > 0 || queueCounts.albumCount > 0;
     final hasLibraryContent =
         historyTotalCount > 0 ||
+        inMemoryHistoryItems.isNotEmpty ||
         (localLibraryEnabled && localLibraryTotalCount > 0);
     final hasActiveSearch =
         _searchQuery.isNotEmpty || _searchController.text.trim().isNotEmpty;
