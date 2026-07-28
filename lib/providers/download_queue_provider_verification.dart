@@ -51,21 +51,7 @@ extension _DownloadQueueVerificationGate on DownloadQueueNotifier {
               'Verification required for $normalizedExtensionId while app is in '
               'background; deferring challenge until the app is foregrounded',
             );
-            try {
-              await _notificationService.showVerificationRequired();
-            } catch (error) {
-              _log.w(
-                'Failed to show the verification-required notification: $error',
-              );
-            }
             await _waitForForeground();
-            try {
-              await _notificationService.cancelVerificationRequired();
-            } catch (error) {
-              _log.w(
-                'Failed to clear the verification-required notification: $error',
-              );
-            }
           }
         },
       );
@@ -105,7 +91,24 @@ extension _DownloadQueueVerificationGate on DownloadQueueNotifier {
       errorType: DownloadErrorType.verificationRequired,
     );
 
-    final verified = await _openVerificationAndWait(targetService);
+    try {
+      await _notificationService.showVerificationRequired();
+    } catch (error) {
+      _log.w('Failed to show the verification-required notification: $error');
+    }
+
+    late final bool verified;
+    try {
+      verified = await _openVerificationAndWait(targetService);
+    } finally {
+      try {
+        await _notificationService.cancelVerificationRequired();
+      } catch (error) {
+        _log.w(
+          'Failed to clear the verification-required notification: $error',
+        );
+      }
+    }
     final current = _findItemById(item.id);
     if (current == null || _isLocallyCancelled(item.id, item: current)) {
       _log.i('Verification completed after item was removed or cancelled');

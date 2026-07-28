@@ -949,7 +949,11 @@ class DownloadService : Service() {
                                 settingsJson = settingsJson,
                                 includeItems = true,
                             )
-                            scheduleNativeVerificationNotification(generation)
+                            // Publish immediately. If Flutter is alive it will
+                            // replace this same notification ID while owning
+                            // the interactive challenge; if Flutter is
+                            // suspended, the native alert remains visible.
+                            showNativeVerificationRequired()
                             updateNotification(0L, 0L)
                             retryCurrentRequest = true
                         } else {
@@ -1264,21 +1268,6 @@ class DownloadService : Service() {
                 "DownloadService",
                 "Completion notification permission denied: ${e.message}",
             )
-        }
-    }
-
-    private fun scheduleNativeVerificationNotification(generation: Long) {
-        serviceScope.launch {
-            // Give an active Flutter poller time to take ownership of the
-            // verification flow. If Flutter is suspended, the service remains
-            // paused and publishes the alert itself.
-            delay(2_000L)
-            if (generation == nativeWorkerGeneration &&
-                nativeWorkerVerificationPaused &&
-                !nativeWorkerCancelRequested
-            ) {
-                showNativeVerificationRequired()
-            }
         }
     }
 
