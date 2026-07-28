@@ -1226,7 +1226,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           await PlatformBridge.downloadCoverToFile(
             preview.coverUrl!,
             coverOutput,
-            maxQuality: false,
+            maxQuality: true,
           );
           final file = File(coverOutput);
           if (await file.exists() && await file.length() > 0) {
