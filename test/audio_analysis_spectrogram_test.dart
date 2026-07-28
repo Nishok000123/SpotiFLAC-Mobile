@@ -117,17 +117,40 @@ lavfi.r128.true_peak=0.907
       expect(arguments, isNot(contains('-ac')));
       expect(arguments, isNot(contains('-loglevel')));
     });
+
+    test('renders a monotonic cutoff plane beside the display image', () {
+      final arguments = buildAudioSpectrogramArguments(
+        inputPath: 'source.flac',
+        outputPath: 'spectrum.rgba',
+        cutoffOutputPath: 'cutoff.gray',
+      );
+      final filter = arguments[arguments.indexOf('-filter_complex') + 1];
+
+      expect(filter, contains('asplit=2'));
+      expect(filter, contains('color=intensity'));
+      expect(filter, contains('s=400x800'));
+      expect(filter, contains('color=green'));
+      expect(filter, contains('format=gray[cutoff]'));
+      expect(
+        arguments,
+        containsAllInOrder(['-map', '[cutoff]', '-frames:v', '1']),
+      );
+      expect(
+        arguments,
+        containsAllInOrder(['-pix_fmt', 'gray', 'cutoff.gray']),
+      );
+    });
   });
 
-  group('broadband spectral cutoff', () {
+  group('effective spectral cutoff', () {
     const width = 200;
     const height = 800;
     const nyquist = 96000.0;
 
     test('ignores a narrow ultrasonic pilot above a 22 kHz music band', () {
-      final rgba = _blankRgba(width, height);
+      final intensity = _blankIntensity(width, height, value: 12);
       _paintFrequencyBand(
-        rgba,
+        intensity,
         width: width,
         height: height,
         maxFrequencyHz: nyquist,
@@ -136,7 +159,7 @@ lavfi.r128.true_peak=0.907
         intensity: 220,
       );
       _paintFrequencyBand(
-        rgba,
+        intensity,
         width: width,
         height: height,
         maxFrequencyHz: nyquist,
@@ -145,8 +168,8 @@ lavfi.r128.true_peak=0.907
         intensity: 255,
       );
 
-      final cutoff = estimateBroadbandSpectralCutoffHz(
-        rgba: rgba,
+      final cutoff = estimateEffectiveSpectralCutoffHz(
+        intensity: intensity,
         width: width,
         height: height,
         maxFrequencyHz: nyquist,
@@ -156,10 +179,45 @@ lavfi.r128.true_peak=0.907
       expect(cutoff!, inInclusiveRange(21000, 23500));
     });
 
-    test('retains genuine broadband ultrasonic content', () {
-      final rgba = _blankRgba(width, height);
+    test('rejects a low noise floor above a 15.8 kHz bandwidth edge', () {
+      const cdNyquist = 22050.0;
+      final intensity = _blankIntensity(width, height, value: 42);
       _paintFrequencyBand(
-        rgba,
+        intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: cdNyquist,
+        lowHz: 0,
+        highHz: 15800,
+        intensity: 100,
+      );
+      _paintFrequencyBand(
+        intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: cdNyquist,
+        lowHz: 15800,
+        highHz: cdNyquist,
+        intensity: 85,
+        startColumn: 0,
+        endColumn: 10,
+      );
+
+      final cutoff = estimateEffectiveSpectralCutoffHz(
+        intensity: intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: cdNyquist,
+      );
+
+      expect(cutoff, isNotNull);
+      expect(cutoff!, inInclusiveRange(15300, 16300));
+    });
+
+    test('retains genuine broadband ultrasonic content', () {
+      final intensity = _blankIntensity(width, height, value: 10);
+      _paintFrequencyBand(
+        intensity,
         width: width,
         height: height,
         maxFrequencyHz: nyquist,
@@ -168,8 +226,8 @@ lavfi.r128.true_peak=0.907
         intensity: 180,
       );
 
-      final cutoff = estimateBroadbandSpectralCutoffHz(
-        rgba: rgba,
+      final cutoff = estimateEffectiveSpectralCutoffHz(
+        intensity: intensity,
         width: width,
         height: height,
         maxFrequencyHz: nyquist,
@@ -179,10 +237,23 @@ lavfi.r128.true_peak=0.907
       expect(cutoff!, inInclusiveRange(47000, 49500));
     });
 
+    test('reports Nyquist for full-bandwidth content', () {
+      final intensity = _blankIntensity(width, height, value: 180);
+
+      final cutoff = estimateEffectiveSpectralCutoffHz(
+        intensity: intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: nyquist,
+      );
+
+      expect(cutoff, nyquist);
+    });
+
     test('does not report an isolated line as a broadband cutoff', () {
-      final rgba = _blankRgba(width, height);
+      final intensity = _blankIntensity(width, height);
       _paintFrequencyBand(
-        rgba,
+        intensity,
         width: width,
         height: height,
         maxFrequencyHz: nyquist,
@@ -191,8 +262,8 @@ lavfi.r128.true_peak=0.907
         intensity: 255,
       );
 
-      final cutoff = estimateBroadbandSpectralCutoffHz(
-        rgba: rgba,
+      final cutoff = estimateEffectiveSpectralCutoffHz(
+        intensity: intensity,
         width: width,
         height: height,
         maxFrequencyHz: nyquist,
@@ -203,8 +274,8 @@ lavfi.r128.true_peak=0.907
 
     test('rejects invalid or incomplete images', () {
       expect(
-        estimateBroadbandSpectralCutoffHz(
-          rgba: Uint8List(3),
+        estimateEffectiveSpectralCutoffHz(
+          intensity: Uint8List(0),
           width: 1,
           height: 1,
           maxFrequencyHz: nyquist,
@@ -215,31 +286,29 @@ lavfi.r128.true_peak=0.907
   });
 }
 
-Uint8List _blankRgba(int width, int height) {
-  final rgba = Uint8List(width * height * 4);
-  for (var offset = 3; offset < rgba.length; offset += 4) {
-    rgba[offset] = 255;
-  }
-  return rgba;
+Uint8List _blankIntensity(int width, int height, {int value = 0}) {
+  final intensity = Uint8List(width * height);
+  if (value > 0) intensity.fillRange(0, intensity.length, value);
+  return intensity;
 }
 
 void _paintFrequencyBand(
-  Uint8List rgba, {
+  Uint8List values, {
   required int width,
   required int height,
   required double maxFrequencyHz,
   required double lowHz,
   required double highHz,
   required int intensity,
+  int startColumn = 0,
+  int? endColumn,
 }) {
+  final columnEnd = endColumn ?? width;
   for (var y = 0; y < height; y++) {
     final frequency = (height - y - 0.5) / height * maxFrequencyHz;
     if (frequency < lowHz || frequency > highHz) continue;
-    for (var x = 0; x < width; x++) {
-      final offset = (y * width + x) * 4;
-      rgba[offset] = intensity;
-      rgba[offset + 1] = intensity;
-      rgba[offset + 2] = intensity;
+    for (var x = startColumn; x < columnEnd; x++) {
+      values[y * width + x] = intensity;
     }
   }
 }

@@ -21,29 +21,60 @@ part 'audio_analysis_spectrogram.dart';
 
 const int audioSpectrogramWidth = 1600;
 const int audioSpectrogramHeight = 800;
+const int audioSpectralAnalysisWidth = 400;
 const double audioSpectrogramDynamicRangeDb = 120;
 
-String buildAudioSpectrogramFilter({int channel = -1}) {
-  final channelFilter = channel >= 0 ? 'pan=mono|c0=c$channel,' : '';
-  return '[0:a:0]${channelFilter}aformat=sample_fmts=fltp,'
-      'showspectrumpic='
-      's=${audioSpectrogramWidth}x$audioSpectrogramHeight:'
-      'legend=0:mode=combined:color=intensity:scale=log:fscale=lin:'
+String _buildShowspectrumOptions({required int width, required String color}) {
+  return 'showspectrumpic='
+      's=${width}x$audioSpectrogramHeight:'
+      'legend=0:mode=combined:color=$color:scale=log:fscale=lin:'
       'win_func=hann:drange=${audioSpectrogramDynamicRangeDb.toStringAsFixed(0)}:'
-      'limit=0,format=rgba[spectrum]';
+      'limit=0';
+}
+
+String buildAudioSpectrogramFilter({
+  int channel = -1,
+  bool includeCutoffPlane = false,
+}) {
+  final channelFilter = channel >= 0 ? 'pan=mono|c0=c$channel,' : '';
+  final input = '[0:a:0]${channelFilter}aformat=sample_fmts=fltp';
+  final display = _buildShowspectrumOptions(
+    width: audioSpectrogramWidth,
+    color: 'intensity',
+  );
+  if (!includeCutoffPlane) {
+    return '$input,$display,format=rgba[spectrum]';
+  }
+
+  // The display palette encodes quiet bins as saturated blue/purple pixels,
+  // so RGB brightness is not a monotonic measure of spectral magnitude. Keep
+  // the colorful UI output, but generate a small fixed-hue plane whose gray
+  // values can be used safely for effective-bandwidth detection.
+  final cutoff = _buildShowspectrumOptions(
+    width: audioSpectralAnalysisWidth,
+    color: 'green',
+  );
+  return '$input,asplit=2[display_input][cutoff_input];'
+      '[display_input]$display,format=rgba[spectrum];'
+      '[cutoff_input]$cutoff,format=gray[cutoff]';
 }
 
 List<String> buildAudioSpectrogramArguments({
   required String inputPath,
   required String outputPath,
+  String? cutoffOutputPath,
   int channel = -1,
 }) {
-  return [
+  final arguments = <String>[
     '-hide_banner',
+    '-y',
     '-i',
     inputPath,
     '-filter_complex',
-    buildAudioSpectrogramFilter(channel: channel),
+    buildAudioSpectrogramFilter(
+      channel: channel,
+      includeCutoffPlane: cutoffOutputPath != null,
+    ),
     '-map',
     '[spectrum]',
     '-frames:v',
@@ -52,9 +83,22 @@ List<String> buildAudioSpectrogramArguments({
     'rawvideo',
     '-pix_fmt',
     'rgba',
-    '-y',
     outputPath,
   ];
+  if (cutoffOutputPath != null) {
+    arguments.addAll([
+      '-map',
+      '[cutoff]',
+      '-frames:v',
+      '1',
+      '-f',
+      'rawvideo',
+      '-pix_fmt',
+      'gray',
+      cutoffOutputPath,
+    ]);
+  }
+  return arguments;
 }
 
 class AudioAstatsSummary {
@@ -216,8 +260,8 @@ double? _parseLastMetadataValue(String metadata, String key) {
   return value;
 }
 
-double? estimateBroadbandSpectralCutoffHz({
-  required Uint8List rgba,
+double? estimateEffectiveSpectralCutoffHz({
+  required Uint8List intensity,
   required int width,
   required int height,
   required double maxFrequencyHz,
@@ -225,83 +269,159 @@ double? estimateBroadbandSpectralCutoffHz({
   if (width <= 0 ||
       height <= 0 ||
       maxFrequencyHz <= 0 ||
-      rgba.length < width * height * 4) {
+      intensity.length < width * height) {
     return null;
   }
 
-  // A high percentile captures musical energy without letting a handful of
-  // transient pixels dictate the cutoff. Work in an integer histogram so the
-  // calculation stays deterministic and cheap enough for a background isolate.
-  final rowStrength = Float64List(height);
+  // Use a high temporal percentile so sustained musical bandwidth wins over
+  // silence, while short ultrasonic transients do not define the cutoff.
+  // These bytes come from FFmpeg's fixed-hue `color=green` output, where gray
+  // value is monotonic with magnitude; display-palette RGB is deliberately not
+  // accepted here because its blue noise floor has deceptively large channels.
+  final profile = Float64List(height);
   final histogram = Uint32List(256);
   final percentileTarget = math.max(0, (width * 0.90).floor());
   for (var y = 0; y < height; y++) {
     histogram.fillRange(0, histogram.length, 0);
-    final rowStart = y * width * 4;
+    final rowStart = y * width;
     for (var x = 0; x < width; x++) {
-      final offset = rowStart + x * 4;
-      final intensity = math.max(
-        rgba[offset],
-        math.max(rgba[offset + 1], rgba[offset + 2]),
-      );
-      histogram[intensity]++;
+      histogram[intensity[rowStart + x]]++;
     }
 
     var cumulative = 0;
     for (var value = 0; value < histogram.length; value++) {
       cumulative += histogram[value];
       if (cumulative > percentileTarget) {
-        rowStrength[y] = value / 255.0;
+        // showspectrumpic stores Nyquist at the top. Reverse it here so array
+        // indices increase with frequency, which makes edge detection clearer.
+        profile[height - y - 1] = value.toDouble();
         break;
       }
     }
   }
 
   final hzPerRow = maxFrequencyHz / height;
-  final smoothingRadius = math.max(1, (375 / hzPerRow).ceil());
+  final smoothingRadius = math.max(1, (50 / hzPerRow).ceil());
   final smoothed = Float64List(height);
-  var maximum = 0.0;
   var running = 0.0;
   var windowStart = 0;
   var windowEnd = -1;
-  for (var y = 0; y < height; y++) {
-    final desiredStart = math.max(0, y - smoothingRadius);
-    final desiredEnd = math.min(height - 1, y + smoothingRadius);
+  for (var index = 0; index < height; index++) {
+    final desiredStart = math.max(0, index - smoothingRadius);
+    final desiredEnd = math.min(height - 1, index + smoothingRadius);
     while (windowEnd < desiredEnd) {
       windowEnd++;
-      running += rowStrength[windowEnd];
+      running += profile[windowEnd];
     }
     while (windowStart < desiredStart) {
-      running -= rowStrength[windowStart];
+      running -= profile[windowStart];
       windowStart++;
     }
-    final value = running / (windowEnd - windowStart + 1);
-    smoothed[y] = value;
-    if (value > maximum) maximum = value;
+    smoothed[index] = running / (windowEnd - windowStart + 1);
   }
-  if (maximum <= 0) return null;
 
-  // Absolute floor rejects the deep-blue -100 dBFS noise floor. The relative
-  // term adapts to quiet masters. A valid edge must span at least 1.5 kHz,
-  // which deliberately rejects isolated ultrasonic pilot tones.
-  final activeThreshold = math.max(0.035, maximum * 0.10);
-  final minimumBandRows = math.max(3, (1500 / hzPerRow).ceil());
-  var runStart = -1;
-  var runLength = 0;
-  for (var y = 0; y < height; y++) {
-    if (smoothed[y] >= activeThreshold) {
-      if (runStart < 0) runStart = y;
-      runLength++;
-      if (runLength >= minimumBandRows) {
-        final frequency = (height - runStart) / height * maxFrequencyHz;
-        return frequency.clamp(0.0, maxFrequencyHz).toDouble();
+  final centralStart = math.max(0, (height * 0.05).floor());
+  final centralEnd = math.min(height, (height * 0.95).ceil());
+  final lowLevel = _spectralPercentile(
+    smoothed,
+    centralStart,
+    centralEnd,
+    0.10,
+  );
+  final highLevel = _spectralPercentile(
+    smoothed,
+    centralStart,
+    centralEnd,
+    0.95,
+  );
+  final dynamicSpan = highLevel - lowLevel;
+  if (highLevel < 24) return null;
+  if (dynamicSpan < 1) return maxFrequencyHz;
+
+  // Locate a sharp downward edge over roughly 200 Hz, then validate it using
+  // wider bands on both sides. This detects codec/low-pass bandwidth edges but
+  // rejects a gradual musical roll-off or a narrow ultrasonic pilot.
+  final edgeSpanRows = math.max(2, (200 / hzPerRow).ceil());
+  final topGuardRows = math.max(edgeSpanRows, (500 / hzPerRow).ceil());
+  final minSearchHz = math.max(1000.0, math.min(4000.0, maxFrequencyHz * 0.20));
+  final searchStart = math.max(edgeSpanRows, (minSearchHz / hzPerRow).floor());
+  final searchEnd = height - edgeSpanRows - topGuardRows;
+  final candidateStarts = <int>[];
+  for (var start = searchStart; start < searchEnd; start++) {
+    final drop = smoothed[start] - smoothed[start + edgeSpanRows];
+    if (drop > 0) candidateStarts.add(start);
+  }
+  candidateStarts.sort((a, b) {
+    final aDrop = smoothed[a] - smoothed[a + edgeSpanRows];
+    final bDrop = smoothed[b] - smoothed[b + edgeSpanRows];
+    return bDrop.compareTo(aDrop);
+  });
+
+  final minimumDrop = math.max(12.0, dynamicSpan * 0.18);
+  for (final bestStart in candidateStarts) {
+    final bestLocalDrop =
+        smoothed[bestStart] - smoothed[bestStart + edgeSpanRows];
+    if (bestLocalDrop < minimumDrop * 0.60) break;
+    final edgeIndex = (bestStart + edgeSpanRows / 2).round();
+    final gapRows = math.max(1, (100 / hzPerRow).ceil());
+    final supportRows = math.max(3, (1200 / hzPerRow).ceil());
+    final belowEnd = edgeIndex - gapRows;
+    final belowStart = math.max(0, belowEnd - supportRows);
+    final aboveStart = edgeIndex + gapRows;
+    final aboveEnd = math.min(height, aboveStart + supportRows);
+    if (belowEnd > belowStart && aboveEnd > aboveStart) {
+      final belowLevel = _spectralMedian(smoothed, belowStart, belowEnd);
+      final aboveLevel = _spectralMedian(smoothed, aboveStart, aboveEnd);
+      final tailLevel = _spectralMedian(smoothed, aboveStart, height);
+      final baseStart = math.max(0, edgeIndex - (3000 / hzPerRow).ceil());
+      final baseLevel = _spectralMedian(smoothed, baseStart, belowEnd);
+      if (belowLevel - aboveLevel >= minimumDrop &&
+          belowLevel - tailLevel >= minimumDrop &&
+          baseLevel - tailLevel >= minimumDrop) {
+        final cutoff = (edgeIndex + 0.5) * hzPerRow;
+        return cutoff.clamp(0.0, maxFrequencyHz).toDouble();
       }
-    } else {
-      runStart = -1;
-      runLength = 0;
     }
   }
+
+  // A genuinely broadband signal with no internal falling edge reaches the
+  // analysis ceiling. Report Nyquist only when both its baseband and top band
+  // are populated; silence or an isolated high-frequency line returns null.
+  final basebandLevel = _spectralMedian(
+    smoothed,
+    (height * 0.05).floor(),
+    math.max(1, (height * 0.50).floor()),
+  );
+  final topBandLevel = _spectralMedian(
+    smoothed,
+    (height * 0.90).floor(),
+    math.max(1, (height * 0.98).floor()),
+  );
+  if (basebandLevel >= 24 && topBandLevel >= basebandLevel - minimumDrop) {
+    return maxFrequencyHz;
+  }
   return null;
+}
+
+double _spectralMedian(Float64List values, int start, int end) {
+  return _spectralPercentile(values, start, end, 0.50);
+}
+
+double _spectralPercentile(
+  Float64List values,
+  int start,
+  int end,
+  double percentile,
+) {
+  final safeStart = start.clamp(0, values.length).toInt();
+  final safeEnd = end.clamp(safeStart, values.length).toInt();
+  if (safeEnd <= safeStart) return 0;
+  final sorted = values.sublist(safeStart, safeEnd)..sort();
+  final index = ((sorted.length - 1) * percentile)
+      .round()
+      .clamp(0, sorted.length - 1)
+      .toInt();
+  return sorted[index];
 }
 
 class AudioAnalysisCard extends StatefulWidget {
@@ -608,12 +728,20 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
       final info = await _getMediaInfo(workingPath);
       _GeneratedSpectrogram? spectrogram;
       try {
-        spectrogram = await _generateSpectrogram(workingPath, channel: -1);
+        spectrogram = await _generateSpectrogram(
+          workingPath,
+          channel: -1,
+          includeCutoffPlane: true,
+        );
+        final cutoffIntensity = spectrogram.cutoffIntensity;
+        if (cutoffIntensity == null) {
+          throw Exception('FFmpeg spectral cutoff plane was not generated');
+        }
         final spectralCutoffHz = await compute(
-          _estimateBroadbandSpectralCutoffInIsolate,
+          _estimateEffectiveSpectralCutoffInIsolate,
           _SpectralCutoffParams(
-            rgba: spectrogram.rgba,
-            width: audioSpectrogramWidth,
+            intensity: cutoffIntensity,
+            width: audioSpectralAnalysisWidth,
             height: audioSpectrogramHeight,
             maxFrequencyHz: info.sampleRate / 2,
           ),
@@ -701,17 +829,20 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
   Future<_GeneratedSpectrogram> _generateSpectrogram(
     String inputPath, {
     required int channel,
+    bool includeCutoffPlane = false,
   }) async {
     final tempDir = await getTemporaryDirectory();
     final rawPath =
         '${tempDir.path}/analysis_spectrum_'
         '${DateTime.now().microsecondsSinceEpoch}_${channel + 1}.rgba';
+    final cutoffPath = includeCutoffPlane ? '$rawPath.cutoff.gray' : null;
 
     try {
       final session = await FFmpegKit.executeWithArguments(
         buildAudioSpectrogramArguments(
           inputPath: inputPath,
           outputPath: rawPath,
+          cutoffOutputPath: cutoffPath,
           channel: channel,
         ),
       );
@@ -733,6 +864,21 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
       final rgba = rawBytes.length == expectedLength
           ? rawBytes
           : Uint8List.sublistView(rawBytes, 0, expectedLength);
+      Uint8List? cutoffIntensity;
+      if (cutoffPath != null) {
+        final expectedCutoffLength =
+            audioSpectralAnalysisWidth * audioSpectrogramHeight;
+        final cutoffBytes = await File(cutoffPath).readAsBytes();
+        if (cutoffBytes.length < expectedCutoffLength) {
+          throw Exception(
+            'Incomplete spectral cutoff output '
+            '(${cutoffBytes.length}/$expectedCutoffLength bytes)',
+          );
+        }
+        cutoffIntensity = cutoffBytes.length == expectedCutoffLength
+            ? cutoffBytes
+            : Uint8List.sublistView(cutoffBytes, 0, expectedCutoffLength);
+      }
       final completer = Completer<ui.Image>();
       ui.decodeImageFromPixels(
         rgba,
@@ -741,11 +887,20 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
         ui.PixelFormat.rgba8888,
         completer.complete,
       );
-      return _GeneratedSpectrogram(image: await completer.future, rgba: rgba);
+      return _GeneratedSpectrogram(
+        image: await completer.future,
+        rgba: rgba,
+        cutoffIntensity: cutoffIntensity,
+      );
     } finally {
       try {
         await File(rawPath).delete();
       } catch (_) {}
+      if (cutoffPath != null) {
+        try {
+          await File(cutoffPath).delete();
+        } catch (_) {}
+      }
     }
   }
 

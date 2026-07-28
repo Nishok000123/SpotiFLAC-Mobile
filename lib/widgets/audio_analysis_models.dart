@@ -3,7 +3,7 @@ part of 'audio_analysis_widget.dart';
 // Analysis result models and per-run parameter records.
 
 class AudioAnalysisData {
-  static const cacheVersion = 6;
+  static const cacheVersion = 7;
 
   final String filePath;
   final int fileSize;
@@ -145,8 +145,13 @@ class ChannelAnalysisStats {
 class _GeneratedSpectrogram {
   final ui.Image image;
   final Uint8List rgba;
+  final Uint8List? cutoffIntensity;
 
-  const _GeneratedSpectrogram({required this.image, required this.rgba});
+  const _GeneratedSpectrogram({
+    required this.image,
+    required this.rgba,
+    this.cutoffIntensity,
+  });
 }
 
 class _AudioAnalysisRunResult {
@@ -160,24 +165,24 @@ class _AudioAnalysisRunResult {
 }
 
 class _SpectralCutoffParams {
-  final Uint8List rgba;
+  final Uint8List intensity;
   final int width;
   final int height;
   final double maxFrequencyHz;
 
   const _SpectralCutoffParams({
-    required this.rgba,
+    required this.intensity,
     required this.width,
     required this.height,
     required this.maxFrequencyHz,
   });
 }
 
-double? _estimateBroadbandSpectralCutoffInIsolate(
+double? _estimateEffectiveSpectralCutoffInIsolate(
   _SpectralCutoffParams params,
 ) {
-  return estimateBroadbandSpectralCutoffHz(
-    rgba: params.rgba,
+  return estimateEffectiveSpectralCutoffHz(
+    intensity: params.intensity,
     width: params.width,
     height: params.height,
     maxFrequencyHz: params.maxFrequencyHz,
