@@ -5555,8 +5555,50 @@ abstract class AppLocalizations {
   /// Description for the auto-fill section
   ///
   /// In en, this message translates to:
-  /// **'Select fields to fill automatically from online metadata'**
+  /// **'Choose a metadata extension, select fields, then review its data before applying'**
   String get editMetadataAutoFillDesc;
+
+  /// Label for the metadata extension selector in online auto-fill
+  ///
+  /// In en, this message translates to:
+  /// **'Metadata source'**
+  String get editMetadataAutoFillSource;
+
+  /// Automatic source option that follows configured metadata provider priority
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic (provider priority)'**
+  String get editMetadataAutoFillSourceAutomatic;
+
+  /// Button label for finding an online metadata candidate
+  ///
+  /// In en, this message translates to:
+  /// **'Find metadata'**
+  String get editMetadataAutoFillFind;
+
+  /// Title for the online metadata preview
+  ///
+  /// In en, this message translates to:
+  /// **'Data from {source}'**
+  String editMetadataAutoFillPreview(String source);
+
+  /// Preview value when the selected metadata source provides cover artwork
+  ///
+  /// In en, this message translates to:
+  /// **'Cover artwork available'**
+  String get editMetadataAutoFillCoverAvailable;
+
+  /// Button label for applying the previewed metadata
+  ///
+  /// In en, this message translates to:
+  /// **'Apply selected data'**
+  String get editMetadataAutoFillApply;
+
+  /// Snackbar confirming fields applied from a selected metadata source
+  ///
+  /// In en, this message translates to:
+  /// **'Filled {count} {count, plural, =1{field} other{fields}} from {source}'**
+  String editMetadataAutoFillDoneFromSource(int count, String source);
 
   /// Button label to fetch online metadata and fill selected fields
   ///

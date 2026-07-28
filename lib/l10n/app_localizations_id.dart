@@ -3316,7 +3316,33 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get editMetadataAutoFillDesc =>
-      'Select fields to fill automatically from online metadata';
+      'Pilih extension metadata dan field, lalu periksa datanya sebelum diterapkan';
+
+  @override
+  String get editMetadataAutoFillSource => 'Sumber metadata';
+
+  @override
+  String get editMetadataAutoFillSourceAutomatic =>
+      'Otomatis (prioritas provider)';
+
+  @override
+  String get editMetadataAutoFillFind => 'Cari metadata';
+
+  @override
+  String editMetadataAutoFillPreview(String source) {
+    return 'Data dari $source';
+  }
+
+  @override
+  String get editMetadataAutoFillCoverAvailable => 'Sampul tersedia';
+
+  @override
+  String get editMetadataAutoFillApply => 'Terapkan data terpilih';
+
+  @override
+  String editMetadataAutoFillDoneFromSource(int count, String source) {
+    return 'Mengisi $count field dari $source';
+  }
 
   @override
   String get editMetadataAutoFillFetch => 'Fetch & Fill';

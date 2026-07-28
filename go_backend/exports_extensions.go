@@ -442,6 +442,16 @@ func SearchTracksWithMetadataProvidersJSON(query string, limit int, includeExten
 	return marshalJSONString(tracks)
 }
 
+func SearchTracksWithMetadataProviderJSON(providerID, query string, limit int) (string, error) {
+	manager := getExtensionManager()
+	tracks, err := manager.SearchTracksWithMetadataProvider(providerID, query, limit)
+	if err != nil {
+		return "", err
+	}
+
+	return marshalJSONString(tracks)
+}
+
 func preflightExtensionDownloadSession(extensionID string) (bool, error) {
 	extensionID = strings.TrimSpace(extensionID)
 	if extensionID == "" {

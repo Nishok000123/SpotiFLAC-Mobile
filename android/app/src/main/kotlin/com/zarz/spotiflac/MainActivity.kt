@@ -1853,6 +1853,26 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(response)
                         }
+                        "searchTracksWithMetadataProvider" -> {
+                            val extensionId = call.argument<String>("extension_id") ?: ""
+                            val query = call.argument<String>("query") ?: ""
+                            val limit = call.argument<Int>("limit") ?: 20
+                            val response = withContext(Dispatchers.IO) {
+                                val method = Gobackend::class.java.getMethod(
+                                    "searchTracksWithMetadataProviderJSON",
+                                    String::class.java,
+                                    String::class.java,
+                                    java.lang.Long.TYPE
+                                )
+                                method.invoke(
+                                    null,
+                                    extensionId,
+                                    query,
+                                    limit.toLong()
+                                ) as? String ?: "[]"
+                            }
+                            result.success(response)
+                        }
                         "findCollectionAcrossExtensions" -> {
                             val requestJson = call.arguments as? String ?: "{}"
                             val response: String = withContext(Dispatchers.IO) {

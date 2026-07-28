@@ -51,6 +51,46 @@ func (m *extensionManager) SearchTracksWithMetadataProviders(query string, limit
 	return m.SearchTracksWithMetadataProvidersForItemID(query, limit, includeExtensions, "")
 }
 
+// SearchTracksWithMetadataProvider searches one explicitly selected metadata
+// provider. Unlike the priority-based search, this never falls through to a
+// different extension, so callers can reliably attribute the returned fields
+// to the provider selected by the user.
+func (m *extensionManager) SearchTracksWithMetadataProvider(providerID, query string, limit int) ([]ExtTrackMetadata, error) {
+	providerID = strings.TrimSpace(providerID)
+	if providerID == "" {
+		return nil, fmt.Errorf("metadata provider ID is required")
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+
+	ext, err := m.GetExtension(providerID)
+	if err != nil {
+		return nil, err
+	}
+	if ext == nil || ext.Manifest == nil || !ext.Manifest.IsMetadataProvider() {
+		return nil, fmt.Errorf("extension '%s' is not a metadata provider", providerID)
+	}
+	if !ext.Enabled {
+		return nil, fmt.Errorf("extension '%s' is disabled", providerID)
+	}
+	if ext.Error != "" {
+		return nil, fmt.Errorf("extension '%s' is unavailable: %s", providerID, ext.Error)
+	}
+
+	result, err := newExtensionProviderWrapper(ext).SearchTracks(query, limit)
+	if err != nil {
+		return nil, err
+	}
+	if result == nil || len(result.Tracks) <= limit {
+		if result == nil {
+			return []ExtTrackMetadata{}, nil
+		}
+		return result.Tracks, nil
+	}
+	return result.Tracks[:limit], nil
+}
+
 func (m *extensionManager) SearchTracksWithMetadataProvidersForItemID(query string, limit int, includeExtensions bool, itemID string) ([]ExtTrackMetadata, error) {
 	priority := GetMetadataProviderPriority()
 	if limit <= 0 {

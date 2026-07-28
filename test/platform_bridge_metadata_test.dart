@@ -75,4 +75,33 @@ void main() {
       expect(result['audio_codec'], 'opus');
     },
   );
+
+  test('metadata search sends the explicitly selected extension', () async {
+    MethodCall? capturedCall;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(backendChannel, (call) async {
+          capturedCall = call;
+          return jsonEncode([
+            {
+              'id': 'track-1',
+              'name': 'Song',
+              'provider_id': 'selected-metadata',
+            },
+          ]);
+        });
+
+    final results = await PlatformBridge.searchTracksWithMetadataProvider(
+      'selected-metadata',
+      'Song Artist',
+      limit: 5,
+    );
+
+    expect(capturedCall?.method, 'searchTracksWithMetadataProvider');
+    expect(capturedCall?.arguments, {
+      'extension_id': 'selected-metadata',
+      'query': 'Song Artist',
+      'limit': 5,
+    });
+    expect(results.single['provider_id'], 'selected-metadata');
+  });
 }

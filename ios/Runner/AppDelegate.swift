@@ -808,6 +808,20 @@ import Gobackend
             )
             if let error = error { throw error }
             return response
+
+        case "searchTracksWithMetadataProvider":
+            let args = call.arguments as! [String: Any]
+            let extensionId = args["extension_id"] as? String ?? ""
+            let query = args["query"] as? String ?? ""
+            let limit = args["limit"] as? Int ?? 20
+            let response = GobackendSearchTracksWithMetadataProviderJSON(
+                extensionId,
+                query,
+                Int(limit),
+                &error
+            )
+            if let error = error { throw error }
+            return response
             
         case "enrichTrackWithExtension":
             let args = call.arguments as! [String: Any]

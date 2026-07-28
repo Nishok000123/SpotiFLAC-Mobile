@@ -7,6 +7,18 @@ class _ResolvedAutoFillTrack {
   const _ResolvedAutoFillTrack({required this.track, this.deezerId});
 }
 
+class _AutoFillPreview {
+  final Map<String, String> values;
+  final String sourceName;
+  final String? coverUrl;
+
+  const _AutoFillPreview({
+    required this.values,
+    required this.sourceName,
+    this.coverUrl,
+  });
+}
+
 class _EditMetadataSheet extends StatefulWidget {
   static const _onlineCoverSentinel = '__online_cover__';
   final ColorScheme colorScheme;
@@ -46,8 +58,49 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
   String? _currentCoverPath;
   String? _currentCoverTempDir;
   bool _loadingCurrentCover = false;
+  String? _selectedMetadataProviderId;
+  _AutoFillPreview? _autoFillPreview;
 
   final Set<String> _autoFillFields = {};
+
+  List<Extension> _orderedMetadataProviders(ExtensionState state) {
+    final providersById = <String, Extension>{
+      for (final extension in state.extensions)
+        if (extension.enabled && extension.hasMetadataProvider)
+          extension.id: extension,
+    };
+    final ordered = <Extension>[];
+    for (final id in state.metadataProviderPriority) {
+      final extension = providersById.remove(id);
+      if (extension != null) ordered.add(extension);
+    }
+    final remaining = providersById.values.toList()
+      ..sort(
+        (a, b) =>
+            a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
+      );
+    return [...ordered, ...remaining];
+  }
+
+  String _metadataProviderName(String? providerId) {
+    final normalized = providerId?.trim() ?? '';
+    if (normalized.isEmpty) {
+      return context.l10n.editMetadataAutoFillSourceAutomatic;
+    }
+    final extensionState = ProviderScope.containerOf(
+      context,
+      listen: false,
+    ).read(extensionProvider);
+    return extensionState.extensions
+            .where((extension) => extension.id == normalized)
+            .firstOrNull
+            ?.displayName ??
+        normalized;
+  }
+
+  void _invalidateAutoFillPreview() {
+    _autoFillPreview = null;
+  }
 
   static const _fieldDefs = <String, String>{
     'title': 'title',
@@ -330,12 +383,14 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
   void _selectAllFields() {
     setState(() {
+      _invalidateAutoFillPreview();
       _autoFillFields.addAll(_fieldDefs.keys);
     });
   }
 
   void _selectEmptyFields() {
     setState(() {
+      _invalidateAutoFillPreview();
       _autoFillFields.clear();
       for (final key in _fieldDefs.keys) {
         if (key == 'cover') {
@@ -353,7 +408,10 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
   }
 
   void _selectNoFields() {
-    setState(_autoFillFields.clear);
+    setState(() {
+      _invalidateAutoFillPreview();
+      _autoFillFields.clear();
+    });
   }
 
   String _normalizeMetadataText(String value) {
@@ -656,7 +714,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     return false;
   }
 
-  Future<void> _fetchAndFill() async {
+  Future<void> _fetchAutoFillPreview() async {
     if (_autoFillFields.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.editMetadataAutoFillNoneSelected)),
@@ -664,7 +722,10 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       return;
     }
 
-    setState(() => _fetching = true);
+    setState(() {
+      _fetching = true;
+      _invalidateAutoFillPreview();
+    });
     final settingsNotifier = ProviderScope.containerOf(
       context,
       listen: false,
@@ -675,12 +736,30 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       final artist = _artistCtrl.text.trim();
       final album = _albumCtrl.text.trim();
       final currentIsrc = _isrcCtrl.text.trim().toUpperCase();
+      final configuredProviderId = _selectedMetadataProviderId?.trim();
+      final extensionState = ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).read(extensionProvider);
+      final selectedProviderId =
+          configuredProviderId != null &&
+              extensionState.extensions.any(
+                (extension) =>
+                    extension.id == configuredProviderId &&
+                    extension.enabled &&
+                    extension.hasMetadataProvider,
+              )
+          ? configuredProviderId
+          : null;
+      final usesAutomaticProvider =
+          selectedProviderId == null || selectedProviderId.isEmpty;
       final shouldFetchLyrics = _autoFillFields.contains('lyrics');
       final needsTrackLookup = _autoFillFields.any((key) => key != 'lyrics');
       Map<String, dynamic>? best;
       String? deezerId;
+      String? lyricsSourceName;
 
-      if (needsTrackLookup) {
+      if (needsTrackLookup && usesAutomaticProvider) {
         try {
           final resolved = await _resolveAutoFillTrackFromIdentifiers(
             currentIsrc,
@@ -714,10 +793,16 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
       if (needsTrackLookup && best == null) {
         final query = queryParts.join(' ');
-        final results = await PlatformBridge.searchTracksWithMetadataProviders(
-          query,
-          limit: 5,
-        );
+        final results = usesAutomaticProvider
+            ? await PlatformBridge.searchTracksWithMetadataProviders(
+                query,
+                limit: 5,
+              )
+            : await PlatformBridge.searchTracksWithMetadataProvider(
+                selectedProviderId,
+                query,
+                limit: 5,
+              );
 
         if (!mounted) return;
 
@@ -761,6 +846,32 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
             SnackBar(content: Text(context.l10n.editMetadataAutoFillNoResults)),
           );
           return;
+        }
+
+        if (!usesAutomaticProvider) {
+          final trackId = best['id']?.toString().trim() ?? '';
+          if (trackId.isNotEmpty) {
+            try {
+              final details = await PlatformBridge.getProviderMetadata(
+                selectedProviderId,
+                'track',
+                trackId,
+              );
+              final mergedDetails = <String, dynamic>{...best};
+              for (final entry in _unwrapTrackPayload(details).entries) {
+                final value = entry.value;
+                if (value != null && value.toString().trim().isNotEmpty) {
+                  mergedDetails[entry.key] = value;
+                }
+              }
+              best = mergedDetails;
+            } catch (e) {
+              _log.w(
+                'Detailed metadata lookup failed for '
+                '$selectedProviderId/$trackId: $e',
+              );
+            }
+          }
         }
       }
 
@@ -810,7 +921,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           ? currentIsrc
           : (_looksLikeIsrc(candidateIsrc) ? candidateIsrc : '');
 
-      if (needsIsrc || needsExtended) {
+      if (usesAutomaticProvider && (needsIsrc || needsExtended)) {
         try {
           if (deezerId == null && deezerLookupIsrc.isNotEmpty) {
             final deezerResult = await PlatformBridge.searchDeezerByISRC(
@@ -840,7 +951,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
       if (!mounted) return;
 
-      if (needsIsrc &&
+      if (usesAutomaticProvider &&
+          needsIsrc &&
           (enriched['isrc'] ?? '').trim().isEmpty &&
           deezerId != null) {
         try {
@@ -860,7 +972,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
       if (!mounted) return;
 
-      if (needsExtended && deezerId != null) {
+      if (usesAutomaticProvider && needsExtended && deezerId != null) {
         try {
           final extended = await PlatformBridge.getDeezerExtendedMetadata(
             deezerId,
@@ -898,6 +1010,9 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
               durationMs: widget.durationMs,
             );
             final lyricsText = lyricsResult['lyrics']?.toString().trim() ?? '';
+            final lyricsSource =
+                lyricsResult['source']?.toString().trim() ?? '';
+            if (lyricsSource.isNotEmpty) lyricsSourceName = lyricsSource;
             final instrumental =
                 (lyricsResult['instrumental'] as bool? ?? false) ||
                 lyricsText == '[instrumental:true]';
@@ -912,72 +1027,116 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
       if (!mounted) return;
 
+      final availableValues = <String, String>{};
+      for (final entry in enriched.entries) {
+        final value = entry.value.trim();
+        if (value.isNotEmpty && value != '0' && value != 'null') {
+          availableValues[entry.key] = value;
+        }
+      }
+      final coverUrl = selectedBest == null
+          ? null
+          : (selectedBest['cover_url'] ?? selectedBest['images'] ?? '')
+                .toString()
+                .trim();
+      final hasSelectedValue = _autoFillFields.any(
+        (key) => key == 'cover'
+            ? coverUrl != null && coverUrl.isNotEmpty
+            : availableValues.containsKey(key),
+      );
+      if (!hasSelectedValue) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.editMetadataAutoFillNoResults)),
+        );
+        return;
+      }
+
+      final resolvedSourceId = selectedProviderId?.isNotEmpty == true
+          ? selectedProviderId!
+          : (selectedBest?['provider_id']?.toString().trim() ?? '');
+      final resolvedSourceName =
+          selectedBest == null && lyricsSourceName?.isNotEmpty == true
+          ? lyricsSourceName!
+          : _metadataProviderName(resolvedSourceId);
+      setState(() {
+        _autoFillPreview = _AutoFillPreview(
+          values: availableValues,
+          sourceName: resolvedSourceName,
+          coverUrl: coverUrl?.isNotEmpty == true ? coverUrl : null,
+        );
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.snackbarError(e.toString()))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _fetching = false);
+    }
+  }
+
+  Future<void> _applyAutoFillPreview() async {
+    final preview = _autoFillPreview;
+    if (preview == null || _saving || _fetching) return;
+
+    setState(() => _fetching = true);
+    try {
       var filledCount = 0;
       for (final key in _autoFillFields) {
         if (key == 'cover') continue;
-        final value = enriched[key];
-        if (value != null &&
-            value.isNotEmpty &&
-            value != '0' &&
-            value != 'null') {
-          final ctrl = _controllerForKey(key);
-          if (ctrl != null) {
-            ctrl.text = value;
-            filledCount++;
-          }
+        final value = preview.values[key];
+        final ctrl = _controllerForKey(key);
+        if (value != null && ctrl != null) {
+          ctrl.text = value;
+          filledCount++;
         }
       }
 
-      if (_autoFillFields.contains('cover') && selectedBest != null) {
-        final coverUrl =
-            (selectedBest['cover_url'] ?? selectedBest['images'] ?? '')
-                .toString();
-        if (coverUrl.isNotEmpty) {
-          try {
-            final tempDir = await Directory.systemTemp.createTemp(
-              'autofill_cover_',
-            );
-            final coverOutput =
-                '${tempDir.path}${Platform.pathSeparator}cover.jpg';
-            await PlatformBridge.downloadCoverToFile(
-              coverUrl,
-              coverOutput,
-              maxQuality: false,
-            );
-            final file = File(coverOutput);
-            if (await file.exists() && await file.length() > 0) {
-              await _cleanupSelectedCoverTemp();
-              if (mounted) {
-                setState(() {
-                  _selectedCoverPath = coverOutput;
-                  _selectedCoverTempDir = tempDir.path;
-                  _selectedCoverName = _EditMetadataSheet._onlineCoverSentinel;
-                });
-                filledCount++;
-              }
-            } else {
-              try {
-                await tempDir.delete(recursive: true);
-              } catch (_) {}
-            }
-          } catch (_) {
-            // Cover download is best-effort
-          }
-        }
-      }
-
-      if (mounted) {
-        setState(() {});
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              filledCount > 0
-                  ? context.l10n.editMetadataAutoFillDone(filledCount)
-                  : context.l10n.editMetadataAutoFillNoResults,
-            ),
-          ),
+      if (_autoFillFields.contains('cover') && preview.coverUrl != null) {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'autofill_cover_',
         );
+        final coverOutput = '${tempDir.path}${Platform.pathSeparator}cover.jpg';
+        try {
+          await PlatformBridge.downloadCoverToFile(
+            preview.coverUrl!,
+            coverOutput,
+            maxQuality: false,
+          );
+          final file = File(coverOutput);
+          if (await file.exists() && await file.length() > 0) {
+            await _cleanupSelectedCoverTemp();
+            if (mounted) {
+              _selectedCoverPath = coverOutput;
+              _selectedCoverTempDir = tempDir.path;
+              _selectedCoverName = _EditMetadataSheet._onlineCoverSentinel;
+              filledCount++;
+            }
+          } else {
+            await tempDir.delete(recursive: true);
+          }
+        } catch (_) {
+          try {
+            if (await tempDir.exists()) await tempDir.delete(recursive: true);
+          } catch (_) {}
+        }
       }
+
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            filledCount > 0
+                ? context.l10n.editMetadataAutoFillDoneFromSource(
+                    filledCount,
+                    preview.sourceName,
+                  )
+                : context.l10n.editMetadataAutoFillNoResults,
+          ),
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1437,6 +1596,64 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
             ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
+          Consumer(
+            builder: (context, ref, _) {
+              final extensionState = ref.watch(extensionProvider);
+              final providers = _orderedMetadataProviders(extensionState);
+              final selectedId =
+                  providers.any(
+                    (extension) => extension.id == _selectedMetadataProviderId,
+                  )
+                  ? _selectedMetadataProviderId!
+                  : '';
+              return InputDecorator(
+                decoration: InputDecoration(
+                  labelText: context.l10n.editMetadataAutoFillSource,
+                  prefixIcon: const Icon(Icons.extension_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedId,
+                    isExpanded: true,
+                    items: [
+                      DropdownMenuItem(
+                        value: '',
+                        child: Text(
+                          context.l10n.editMetadataAutoFillSourceAutomatic,
+                        ),
+                      ),
+                      ...providers.map(
+                        (extension) => DropdownMenuItem(
+                          value: extension.id,
+                          child: Text(
+                            extension.displayName,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ],
+                    onChanged: (_fetching || _saving)
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _selectedMetadataProviderId =
+                                  value == null || value.isEmpty ? null : value;
+                              _invalidateAutoFillPreview();
+                            });
+                          },
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               _quickSelectButton(
@@ -1471,6 +1688,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
                     ? null
                     : (val) {
                         setState(() {
+                          _invalidateAutoFillPreview();
                           if (val) {
                             _autoFillFields.add(key);
                           } else {
@@ -1494,7 +1712,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
             child: FilledButton.icon(
               onPressed: (_fetching || _saving || _autoFillFields.isEmpty)
                   ? null
-                  : _fetchAndFill,
+                  : _fetchAutoFillPreview,
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -1514,10 +1732,14 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
               label: Text(
                 _fetching
                     ? context.l10n.editMetadataAutoFillSearching
-                    : context.l10n.editMetadataAutoFillFetch,
+                    : context.l10n.editMetadataAutoFillFind,
               ),
             ),
           ),
+          if (_autoFillPreview case final preview?) ...[
+            const SizedBox(height: 12),
+            _buildAutoFillPreview(cs, preview),
+          ],
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
@@ -1544,6 +1766,82 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           const SizedBox(height: 8),
         ],
       ],
+    );
+  }
+
+  Widget _buildAutoFillPreview(ColorScheme cs, _AutoFillPreview preview) {
+    final previewFields = _autoFillFields
+        .where((key) {
+          if (key == 'cover') return preview.coverUrl != null;
+          return preview.values.containsKey(key);
+        })
+        .toList(growable: false);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.fact_check_outlined, size: 18, color: cs.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  context.l10n.editMetadataAutoFillPreview(preview.sourceName),
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...previewFields.map((key) {
+            final value = key == 'cover'
+                ? context.l10n.editMetadataAutoFillCoverAvailable
+                : preview.values[key]!;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 104,
+                    child: Text(
+                      _fieldLabel(key),
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      value,
+                      maxLines: key == 'lyrics' ? 3 : 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: (_fetching || _saving) ? null : _applyAutoFillPreview,
+              icon: const Icon(Icons.check),
+              label: Text(context.l10n.editMetadataAutoFillApply),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1585,9 +1883,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.l10n.editMetadataMusicBrainzNothing),
-          ),
+          SnackBar(content: Text(context.l10n.editMetadataMusicBrainzNothing)),
         );
       }
     } finally {

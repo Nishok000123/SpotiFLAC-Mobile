@@ -1365,6 +1365,19 @@ class PlatformBridge {
     return _decodeMapListResult(result, 'searchTracksWithMetadataProviders');
   }
 
+  static Future<List<Map<String, dynamic>>> searchTracksWithMetadataProvider(
+    String extensionId,
+    String query, {
+    int limit = 20,
+  }) async {
+    _log.d('searchTracksWithMetadataProvider: $extensionId, query="$query"');
+    final result = await _channel.invokeMethod(
+      'searchTracksWithMetadataProvider',
+      {'extension_id': extensionId, 'query': query, 'limit': limit},
+    );
+    return _decodeMapListResult(result, 'searchTracksWithMetadataProvider');
+  }
+
   static Future<List<Map<String, dynamic>>> findCollectionAcrossExtensions({
     required String name,
     required String artists,

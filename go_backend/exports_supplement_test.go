@@ -104,6 +104,40 @@ func TestExtensionTrackExportsPreserveExplicitFlag(t *testing.T) {
 	assertExplicit("URL handler", jsonText, err)
 }
 
+func TestSearchTracksWithMetadataProviderUsesOnlySelectedExtension(t *testing.T) {
+	dir := t.TempDir()
+	if err := InitExtensionSystem(filepath.Join(dir, "extensions"), filepath.Join(dir, "data")); err != nil {
+		t.Fatalf("InitExtensionSystem: %v", err)
+	}
+
+	selected := newTestLoadedExtension(t, ExtensionTypeMetadataProvider)
+	selected.ID = "selected-metadata"
+	selected.Manifest.Name = selected.ID
+	other := newTestLoadedExtension(t, ExtensionTypeMetadataProvider)
+	other.ID = "other-metadata"
+	other.Manifest.Name = other.ID
+
+	manager := getExtensionManager()
+	manager.mu.Lock()
+	manager.extensions = map[string]*loadedExtension{
+		selected.ID: selected,
+		other.ID:    other,
+	}
+	manager.mu.Unlock()
+	defer CleanupExtensions()
+
+	jsonText, err := SearchTracksWithMetadataProviderJSON(selected.ID, "needle", 5)
+	if err != nil {
+		t.Fatalf("SearchTracksWithMetadataProviderJSON: %v", err)
+	}
+	if !strings.Contains(jsonText, `"provider_id":"selected-metadata"`) {
+		t.Fatalf("expected selected provider attribution, got %s", jsonText)
+	}
+	if strings.Contains(jsonText, `"provider_id":"other-metadata"`) {
+		t.Fatalf("unexpected fallback to another provider: %s", jsonText)
+	}
+}
+
 func TestExportsJSONWrappersAndExtensionManagerSurface(t *testing.T) {
 	dir := t.TempDir()
 	dataDir := filepath.Join(dir, "data")
