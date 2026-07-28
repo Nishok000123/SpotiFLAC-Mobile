@@ -204,7 +204,10 @@ class _ExtensionDetailPageState extends ConsumerState<ExtensionDetailPage> {
                       if (hasError && extension.errorMessage != null)
                         _InfoRow(
                           label: context.l10n.extensionError,
-                          value: extension.errorMessage!,
+                          value: context.friendlyError(
+                            extension.errorMessage,
+                            fallback: context.l10n.extensionsErrorLoading,
+                          ),
                           isError: true,
                         ),
                     ],
@@ -805,7 +808,10 @@ class _HealthCheckItem extends StatelessWidget {
       if (check.required) context.l10n.extensionHealthRequired,
     ];
     final message = check.error?.trim().isNotEmpty == true
-        ? check.error!
+        ? context.friendlyError(
+            check.error,
+            fallback: context.l10n.extensionHealthServiceUnknown,
+          )
         : check.message;
 
     return Column(
@@ -1115,9 +1121,16 @@ class _SettingItemState extends State<_SettingItem> {
               payload['error'] as String? ??
               result['error'] as String? ??
               context.l10n.extensionActionFailed;
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(error)));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                context.friendlyError(
+                  error,
+                  fallback: context.l10n.extensionActionFailed,
+                ),
+              ),
+            ),
+          );
         } else {
           if (widget.onActionPayload != null) {
             await widget.onActionPayload!(payload);
@@ -1150,7 +1163,9 @@ class _SettingItemState extends State<_SettingItem> {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.snackbarError(e.toString()))),
+          SnackBar(
+            content: Text(context.l10n.snackbarError(context.friendlyError(e))),
+          ),
         );
       }
     } finally {

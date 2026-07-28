@@ -1124,7 +1124,11 @@ extension _TrackMetadataConvertAndCueSplit on _TrackMetadataScreenState {
       if (mounted) {
         _setState(() => _isConverting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.trackSaveFailed(e.toString()))),
+          SnackBar(
+            content: Text(
+              context.l10n.trackSaveFailed(context.friendlyError(e)),
+            ),
+          ),
         );
       }
     } finally {

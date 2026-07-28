@@ -486,7 +486,10 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
             success = true;
           }
         } else {
-          error = result['error']?.toString() ?? l10nFailedToEmbedLyrics;
+          error = userFacingErrorMessage(
+            result['error'],
+            fallback: l10nFailedToEmbedLyrics,
+          );
         }
       } else if (isMp3 || isOpus || isM4A) {
         final metadata = _buildFallbackMetadata();
@@ -579,7 +582,9 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
       if (mounted) {
         _setState(() => _isEmbedding = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.snackbarError(e.toString()))),
+          SnackBar(
+            content: Text(context.l10n.snackbarError(context.friendlyError(e))),
+          ),
         );
       }
     } finally {
@@ -677,7 +682,9 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  context.l10n.trackSaveFailed(result['error'].toString()),
+                  context.l10n.trackSaveFailed(
+                    context.friendlyError(result['error']),
+                  ),
                 ),
               ),
             );
@@ -771,7 +778,9 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                context.l10n.trackSaveFailed(result['error'].toString()),
+                context.l10n.trackSaveFailed(
+                  context.friendlyError(result['error']),
+                ),
               ),
             ),
           );
@@ -784,7 +793,11 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.trackSaveFailed(e.toString()))),
+          SnackBar(
+            content: Text(
+              context.l10n.trackSaveFailed(context.friendlyError(e)),
+            ),
+          ),
         );
       }
     }
@@ -823,7 +836,9 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
               ..showSnackBar(
                 SnackBar(
                   content: Text(
-                    context.l10n.trackSaveFailed(result['error'].toString()),
+                    context.l10n.trackSaveFailed(
+                      context.friendlyError(result['error']),
+                    ),
                   ),
                 ),
               );
@@ -908,7 +923,9 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
             ..showSnackBar(
               SnackBar(
                 content: Text(
-                  context.l10n.trackSaveFailed(result['error'].toString()),
+                  context.l10n.trackSaveFailed(
+                    context.friendlyError(result['error']),
+                  ),
                 ),
               ),
             );
@@ -925,7 +942,11 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
-            SnackBar(content: Text(context.l10n.trackSaveFailed(e.toString()))),
+            SnackBar(
+              content: Text(
+                context.l10n.trackSaveFailed(context.friendlyError(e)),
+              ),
+            ),
           );
       }
     }
@@ -1131,7 +1152,10 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
         }
       } else {
         if (mounted) {
-          final error = result['error']?.toString() ?? 'Unknown error';
+          final error = context.friendlyError(
+            result['error'],
+            fallback: context.l10n.metadataSaveFailedFfmpeg,
+          );
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(context.l10n.trackSaveFailed(error))),
           );
@@ -1140,7 +1164,11 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.trackSaveFailed(e.toString()))),
+          SnackBar(
+            content: Text(
+              context.l10n.trackSaveFailed(context.friendlyError(e)),
+            ),
+          ),
         );
       }
     }

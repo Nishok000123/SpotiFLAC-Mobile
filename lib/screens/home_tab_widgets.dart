@@ -685,7 +685,7 @@ class _LoadingOrErrorScaffold extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              error!,
+              context.friendlyError(error),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
             const SizedBox(height: 16),
@@ -969,7 +969,7 @@ class _ExtensionAlbumScreenState extends ConsumerState<ExtensionAlbumScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = context.l10n.snackbarError(e.toString());
+        _error = context.l10n.snackbarError(context.friendlyError(e));
         _isLoading = false;
       });
     }
@@ -1115,7 +1115,7 @@ class _ExtensionPlaylistScreenState
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = context.l10n.snackbarError(e.toString());
+        _error = context.l10n.snackbarError(context.friendlyError(e));
         _isLoading = false;
       });
     }
@@ -1267,7 +1267,7 @@ class _ExtensionArtistScreenState extends ConsumerState<ExtensionArtistScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = context.l10n.snackbarError(e.toString());
+        _error = context.l10n.snackbarError(context.friendlyError(e));
         _isLoading = false;
       });
     }

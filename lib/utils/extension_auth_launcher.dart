@@ -329,7 +329,11 @@ Future<void> _completeSessionGrantFromClipboard(
   } catch (e) {
     if (!context.mounted) return;
     messenger?.showSnackBar(
-      SnackBar(content: Text('Verification callback failed: $e')),
+      SnackBar(
+        content: Text(
+          'Verification callback failed: ${context.friendlyError(e)}',
+        ),
+      ),
     );
   }
 }

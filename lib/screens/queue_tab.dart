@@ -1863,7 +1863,9 @@ class _QueueTabState extends ConsumerState<QueueTab> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                context.l10n.snackbarFolderPickerFailed(e.toString()),
+                context.l10n.snackbarFolderPickerFailed(
+                  context.friendlyError(e),
+                ),
               ),
             ),
           );

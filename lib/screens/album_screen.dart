@@ -183,7 +183,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = context.friendlyError(e);
           _isLoading = false;
         });
       }

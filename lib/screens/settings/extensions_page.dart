@@ -23,17 +23,6 @@ class ExtensionsPage extends ConsumerStatefulWidget {
 }
 
 class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
-  static final RegExp _platformExceptionPattern = RegExp(
-    r'PlatformException\([^,]+,\s*([^,]+(?:,[^,]+)?),',
-  );
-  static final RegExp _platformExceptionSimplePattern = RegExp(
-    r'PlatformException\([^,]+,\s*(.+?),\s*null',
-  );
-  static final RegExp _trailingNullsPattern = RegExp(
-    r',\s*null\s*,\s*null\)?$',
-  );
-  static final RegExp _leadingCommaPattern = RegExp(r'^\s*,\s*');
-
   @override
   void initState() {
     super.initState();
@@ -94,7 +83,7 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            extState.error!,
+                            context.friendlyError(extState.error),
                             style: TextStyle(
                               color: colorScheme.onErrorContainer,
                             ),
@@ -308,26 +297,10 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   }
 
   String _getFriendlyErrorMessage(String? error) {
-    if (error == null) return context.l10n.snackbarFailedToInstall;
-
-    String message = error;
-
-    if (message.contains('PlatformException')) {
-      final match = _platformExceptionPattern.firstMatch(message);
-      if (match != null) {
-        message = match.group(1)?.trim() ?? message;
-      } else {
-        final simpleMatch = _platformExceptionSimplePattern.firstMatch(message);
-        if (simpleMatch != null) {
-          message = simpleMatch.group(1)?.trim() ?? message;
-        }
-      }
-    }
-
-    message = message.replaceAll(_trailingNullsPattern, '');
-    message = message.replaceAll(_leadingCommaPattern, '');
-
-    return message;
+    return context.friendlyError(
+      error,
+      fallback: context.l10n.snackbarFailedToInstall,
+    );
   }
 }
 
@@ -414,8 +387,10 @@ class _ExtensionItem extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         hasError
-                            ? extension.errorMessage ??
-                                  context.l10n.extensionsErrorLoading
+                            ? context.friendlyError(
+                                extension.errorMessage,
+                                fallback: context.l10n.extensionsErrorLoading,
+                              )
                             : serviceHealthStatus == null
                             ? 'v${extension.version}'
                             : 'v${extension.version} · ${_extensionHealthLabel(context, serviceHealthStatus)}',

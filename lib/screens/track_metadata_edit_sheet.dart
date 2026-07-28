@@ -434,7 +434,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       });
     } catch (e) {
       if (!mounted) return;
-      _showSheetSnackBar(context.l10n.snackbarError(e.toString()));
+      _showSheetSnackBar(context.l10n.snackbarError(context.friendlyError(e)));
     }
   }
 
@@ -1191,7 +1191,9 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       });
     } catch (e) {
       if (mounted) {
-        _showSheetSnackBar(context.l10n.snackbarError(e.toString()));
+        _showSheetSnackBar(
+          context.l10n.snackbarError(context.friendlyError(e)),
+        );
       }
     } finally {
       if (mounted) setState(() => _fetching = false);
@@ -1261,7 +1263,9 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       );
     } catch (e) {
       if (mounted) {
-        _showSheetSnackBar(context.l10n.snackbarError(e.toString()));
+        _showSheetSnackBar(
+          context.l10n.snackbarError(context.friendlyError(e)),
+        );
       }
     } finally {
       if (mounted) setState(() => _fetching = false);
@@ -1346,7 +1350,12 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
       if (result['error'] != null) {
         if (mounted) {
-          _showSheetSnackBar('${result['error']}');
+          _showSheetSnackBar(
+            context.friendlyError(
+              result['error'],
+              fallback: context.l10n.metadataSaveFailedFfmpeg,
+            ),
+          );
         }
         setState(() => _saving = false);
         return;
@@ -1509,7 +1518,9 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       }
     } catch (e) {
       if (mounted) {
-        _showSheetSnackBar(context.l10n.snackbarError(e.toString()));
+        _showSheetSnackBar(
+          context.l10n.snackbarError(context.friendlyError(e)),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);

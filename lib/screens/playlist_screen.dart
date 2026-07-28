@@ -163,7 +163,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = context.friendlyError(e);
         _isLoading = false;
       });
     }

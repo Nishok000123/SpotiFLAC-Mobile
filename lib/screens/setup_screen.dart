@@ -258,7 +258,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  context.l10n.snackbarCannotOpenFile(e.toString()),
+                  context.l10n.snackbarCannotOpenFile(context.friendlyError(e)),
                 ),
               ),
             );
@@ -371,7 +371,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          context.l10n.snackbarFolderPickerFailed(e.toString()),
+                          context.l10n.snackbarFolderPickerFailed(
+                            context.friendlyError(e),
+                          ),
                         ),
                         backgroundColor: Theme.of(context).colorScheme.error,
                         duration: const Duration(seconds: 4),
@@ -479,7 +481,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.snackbarError(e.toString()))),
+          SnackBar(
+            content: Text(context.l10n.snackbarError(context.friendlyError(e))),
+          ),
         );
       }
     } finally {

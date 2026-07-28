@@ -221,7 +221,7 @@ class _MainShellState extends ConsumerState<MainShell>
                                     SnackBar(
                                       content: Text(
                                         context.l10n.snackbarCannotOpenFile(
-                                          e.toString(),
+                                          context.friendlyError(e),
                                         ),
                                       ),
                                     ),

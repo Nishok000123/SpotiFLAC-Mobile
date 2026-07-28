@@ -397,7 +397,7 @@ class _RepoTabState extends ConsumerState<RepoTab> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          error,
+                          context.friendlyError(error),
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: colorScheme.onErrorContainer),
                         ),
@@ -539,7 +539,7 @@ class _RepoTabState extends ConsumerState<RepoTab> {
             ),
             const SizedBox(height: 8),
             Text(
-              error,
+              context.friendlyError(error),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),

@@ -24,7 +24,9 @@ extension _QueueTabNavigation on _QueueTabState {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.l10n.snackbarCannotOpenFile(e.toString())),
+            content: Text(
+              context.l10n.snackbarCannotOpenFile(context.friendlyError(e)),
+            ),
           ),
         );
       }
@@ -60,7 +62,9 @@ extension _QueueTabNavigation on _QueueTabState {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.l10n.snackbarCannotOpenFile(e.toString())),
+            content: Text(
+              context.l10n.snackbarCannotOpenFile(context.friendlyError(e)),
+            ),
           ),
         );
       }

@@ -246,7 +246,9 @@ class AppSettingsPage extends ConsumerWidget {
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.snackbarError(e.toString()))),
+          SnackBar(
+            content: Text(context.l10n.snackbarError(context.friendlyError(e))),
+          ),
         );
       }
     }

@@ -687,7 +687,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.l10n.snackbarCannotOpenFile(e.toString())),
+          content: Text(
+            context.l10n.snackbarCannotOpenFile(context.friendlyError(e)),
+          ),
         ),
       );
     }
@@ -717,7 +719,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            context.l10n.nowPlayingShuffleLibraryFailed(e.toString()),
+            context.l10n.nowPlayingShuffleLibraryFailed(
+              context.friendlyError(e),
+            ),
           ),
         ),
       );

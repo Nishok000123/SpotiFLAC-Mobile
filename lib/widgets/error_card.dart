@@ -11,6 +11,7 @@ class ErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayError = context.friendlyError(error);
     final isRateLimit =
         error.contains('429') ||
         error.toLowerCase().contains('rate limit') ||
@@ -66,7 +67,10 @@ class ErrorCard extends StatelessWidget {
             Icon(Icons.error_outline, color: colorScheme.error),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(error, style: TextStyle(color: colorScheme.error)),
+              child: Text(
+                displayError,
+                style: TextStyle(color: colorScheme.error),
+              ),
             ),
           ],
         ),

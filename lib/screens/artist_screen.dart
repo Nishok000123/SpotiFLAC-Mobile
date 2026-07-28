@@ -366,7 +366,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = context.friendlyError(e);
           _isLoadingDiscography = false;
         });
       }

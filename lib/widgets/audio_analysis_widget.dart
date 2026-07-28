@@ -584,7 +584,7 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = context.friendlyError(e);
           _analyzing = false;
         });
       }

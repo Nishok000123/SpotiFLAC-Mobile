@@ -332,7 +332,10 @@ extension _QueueTabItemWidgets on _QueueTabState {
     if (raw == downloadFolderAccessLostErrorMessage) {
       return context.l10n.downloadErrorFolderAccessLost;
     }
-    return raw;
+    return context.friendlyError(
+      raw,
+      fallback: context.l10n.updateDownloadFailed,
+    );
   }
 
   Widget _buildDownloadFailureMessage(

@@ -639,7 +639,9 @@ class _FilesSettingsPageState extends ConsumerState<FilesSettingsPage> {
                     ScaffoldMessenger.of(ctx).showSnackBar(
                       SnackBar(
                         content: Text(
-                          ctx.l10n.snackbarFolderPickerFailed(e.toString()),
+                          ctx.l10n.snackbarFolderPickerFailed(
+                            ctx.friendlyError(e),
+                          ),
                         ),
                         backgroundColor: Theme.of(ctx).colorScheme.error,
                         duration: const Duration(seconds: 4),
@@ -822,8 +824,9 @@ class _FilesSettingsPageState extends ConsumerState<FilesSettingsPage> {
                   leading: Icon(option.$4),
                   title: Text(option.$2),
                   subtitle: Text(option.$3),
-                  trailing:
-                      current == option.$1 ? const Icon(Icons.check) : null,
+                  trailing: current == option.$1
+                      ? const Icon(Icons.check)
+                      : null,
                   onTap: () {
                     ref
                         .read(settingsProvider.notifier)
@@ -974,7 +977,6 @@ class _FolderOption extends StatelessWidget {
   }
 }
 
-
 /// Bottom sheet for editing a filename format. Owns its controller and disposes
 /// it in [dispose] to avoid use-after-dispose during the close animation.
 class _FilenameFormatEditorSheet extends StatefulWidget {
@@ -1101,9 +1103,9 @@ class _FilenameFormatEditorSheetState
                 ),
                 Text(
                   widget.title ?? context.l10n.filenameFormat,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
