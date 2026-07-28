@@ -60,6 +60,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
   bool _loadingCurrentCover = false;
   String? _selectedMetadataProviderId;
   _AutoFillPreview? _autoFillPreview;
+  final GlobalKey<ScaffoldMessengerState> _sheetMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
 
   final Set<String> _autoFillFields = {};
 
@@ -222,6 +224,18 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
   void _invalidateAutoFillPreview() {
     _autoFillPreview = null;
+  }
+
+  void _showSheetSnackBar(String message) {
+    final snackBar = SnackBar(content: Text(message));
+    final messenger = _sheetMessengerKey.currentState;
+    if (messenger != null) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(snackBar);
+      return;
+    }
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(snackBar);
   }
 
   static const _fieldDefs = <String, String>{
@@ -420,9 +434,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.snackbarError(e.toString()))),
-      );
+      _showSheetSnackBar(context.l10n.snackbarError(e.toString()));
     }
   }
 
@@ -838,9 +850,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
   Future<void> _fetchAutoFillPreview() async {
     if (_autoFillFields.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.editMetadataAutoFillNoneSelected)),
-      );
+      _showSheetSnackBar(context.l10n.editMetadataAutoFillNoneSelected);
       return;
     }
 
@@ -902,9 +912,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
       if (needsTrackLookup && best == null && queryParts.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.editMetadataAutoFillNoResults)),
-          );
+          _showSheetSnackBar(context.l10n.editMetadataAutoFillNoResults);
         }
         return;
       }
@@ -929,9 +937,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         if (!mounted) return;
 
         if (results.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.editMetadataAutoFillNoResults)),
-          );
+          _showSheetSnackBar(context.l10n.editMetadataAutoFillNoResults);
           return;
         }
 
@@ -964,9 +970,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         }
 
         if (best == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.editMetadataAutoFillNoResults)),
-          );
+          _showSheetSnackBar(context.l10n.editMetadataAutoFillNoResults);
           return;
         }
 
@@ -1167,9 +1171,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
             : availableValues.containsKey(key),
       );
       if (!hasSelectedValue) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.editMetadataAutoFillNoResults)),
-        );
+        _showSheetSnackBar(context.l10n.editMetadataAutoFillNoResults);
         return;
       }
 
@@ -1189,9 +1191,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.snackbarError(e.toString()))),
-        );
+        _showSheetSnackBar(context.l10n.snackbarError(e.toString()));
       }
     } finally {
       if (mounted) setState(() => _fetching = false);
@@ -1246,24 +1246,22 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       }
 
       if (!mounted) return;
-      setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            filledCount > 0
-                ? context.l10n.editMetadataAutoFillDoneFromSource(
-                    filledCount,
-                    preview.sourceName,
-                  )
-                : context.l10n.editMetadataAutoFillNoResults,
-          ),
-        ),
+      setState(() {
+        if (filledCount > 0) {
+          _invalidateAutoFillPreview();
+        }
+      });
+      _showSheetSnackBar(
+        filledCount > 0
+            ? context.l10n.editMetadataAutoFillDoneFromSource(
+                filledCount,
+                preview.sourceName,
+              )
+            : context.l10n.editMetadataAutoFillNoResults,
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.snackbarError(e.toString()))),
-        );
+        _showSheetSnackBar(context.l10n.snackbarError(e.toString()));
       }
     } finally {
       if (mounted) setState(() => _fetching = false);
@@ -1348,9 +1346,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
       if (result['error'] != null) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('${result['error']}')));
+          _showSheetSnackBar('${result['error']}');
         }
         setState(() => _saving = false);
         return;
@@ -1492,9 +1488,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
         if (ffmpegResult == null) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(context.l10n.metadataSaveFailedFfmpeg)),
-            );
+            _showSheetSnackBar(context.l10n.metadataSaveFailedFfmpeg);
           }
           setState(() => _saving = false);
           return;
@@ -1503,9 +1497,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         if (tempPath != null && safUri != null) {
           final ok = await PlatformBridge.writeTempToSaf(ffmpegResult, safUri);
           if (!ok && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(context.l10n.metadataSaveFailedStorage)),
-            );
+            _showSheetSnackBar(context.l10n.metadataSaveFailedStorage);
             setState(() => _saving = false);
             return;
           }
@@ -1517,9 +1509,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.snackbarError(e.toString()))),
-        );
+        _showSheetSnackBar(context.l10n.snackbarError(e.toString()));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -1537,165 +1527,189 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         minChildSize: 0.5,
         maxChildSize: 0.95,
         expand: false,
-        builder: (context, scrollController) => Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 8),
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(2),
+        builder: (context, scrollController) => ScaffoldMessenger(
+          key: _sheetMessengerKey,
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            resizeToAvoidBottomInset: false,
+            body: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 12, bottom: 8),
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      context.l10n.trackEditMetadata,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  if (_saving)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  else
-                    FilledButton.icon(
-                      onPressed: _save,
-                      icon: const Icon(Icons.check, size: 18),
-                      label: Text(context.l10n.dialogSave),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-            Expanded(
-              child: ListView(
-                controller: scrollController,
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
-                children: [
-                  _buildCoverEditor(cs),
-                  _buildAutoFillSection(cs),
-                  _sectionCard(
-                    icon: Icons.info_outline,
-                    title: context.l10n.trackMetadata,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                  child: Row(
                     children: [
-                      _field(context.l10n.editMetadataFieldTitle, _titleCtrl),
-                      _field(context.l10n.editMetadataFieldArtist, _artistCtrl),
-                      _field(context.l10n.editMetadataFieldAlbum, _albumCtrl),
-                      _field(
-                        context.l10n.editMetadataFieldAlbumArtist,
-                        _albumArtistCtrl,
+                      Expanded(
+                        child: Text(
+                          context.l10n.trackEditMetadata,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
                       ),
-                      _field(
-                        context.l10n.editMetadataFieldDate,
-                        _dateCtrl,
-                        hint: context.l10n.editMetadataFieldDateHint,
-                      ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _field(
-                              context.l10n.editMetadataFieldTrackNum,
-                              _trackNumCtrl,
-                              keyboard: TextInputType.number,
+                      if (_saving)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      else
+                        FilledButton.icon(
+                          onPressed: _save,
+                          icon: const Icon(Icons.check, size: 18),
+                          label: Text(context.l10n.dialogSave),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _field(
-                              context.l10n.editMetadataFieldTrackTotal,
-                              _trackTotalCtrl,
-                              keyboard: TextInputType.number,
-                            ),
+                        ),
+                    ],
+                  ),
+                ),
+                Divider(
+                  height: 1,
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                ),
+                Expanded(
+                  child: ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
+                    children: [
+                      _buildCoverEditor(cs),
+                      _buildAutoFillSection(cs),
+                      _sectionCard(
+                        icon: Icons.info_outline,
+                        title: context.l10n.trackMetadata,
+                        children: [
+                          _field(
+                            context.l10n.editMetadataFieldTitle,
+                            _titleCtrl,
+                          ),
+                          _field(
+                            context.l10n.editMetadataFieldArtist,
+                            _artistCtrl,
+                          ),
+                          _field(
+                            context.l10n.editMetadataFieldAlbum,
+                            _albumCtrl,
+                          ),
+                          _field(
+                            context.l10n.editMetadataFieldAlbumArtist,
+                            _albumArtistCtrl,
+                          ),
+                          _field(
+                            context.l10n.editMetadataFieldDate,
+                            _dateCtrl,
+                            hint: context.l10n.editMetadataFieldDateHint,
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _field(
+                                  context.l10n.editMetadataFieldTrackNum,
+                                  _trackNumCtrl,
+                                  keyboard: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _field(
+                                  context.l10n.editMetadataFieldTrackTotal,
+                                  _trackTotalCtrl,
+                                  keyboard: TextInputType.number,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _field(
+                                  context.l10n.editMetadataFieldDiscNum,
+                                  _discNumCtrl,
+                                  keyboard: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _field(
+                                  context.l10n.editMetadataFieldDiscTotal,
+                                  _discTotalCtrl,
+                                  keyboard: TextInputType.number,
+                                ),
+                              ),
+                            ],
+                          ),
+                          _field(
+                            context.l10n.editMetadataFieldGenre,
+                            _genreCtrl,
+                          ),
+                          _field(context.l10n.editMetadataFieldIsrc, _isrcCtrl),
+                        ],
+                      ),
+                      _sectionCard(
+                        icon: Icons.lyrics_outlined,
+                        title: context.l10n.trackLyrics,
+                        children: [
+                          _field(
+                            context.l10n.trackLyrics,
+                            _lyricsCtrl,
+                            maxLines: 8,
+                            keyboard: TextInputType.multiline,
                           ),
                         ],
                       ),
-                      Row(
+                      _sectionCard(
+                        icon: Icons.tune,
+                        title: context.l10n.editMetadataAdvanced,
+                        onHeaderTap: () =>
+                            setState(() => _showAdvanced = !_showAdvanced),
+                        expanded: _showAdvanced,
                         children: [
-                          Expanded(
-                            child: _field(
-                              context.l10n.editMetadataFieldDiscNum,
-                              _discNumCtrl,
-                              keyboard: TextInputType.number,
+                          if (_showAdvanced) ...[
+                            _field(
+                              context.l10n.editMetadataFieldLabel,
+                              _labelCtrl,
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _field(
-                              context.l10n.editMetadataFieldDiscTotal,
-                              _discTotalCtrl,
-                              keyboard: TextInputType.number,
+                            _field(
+                              context.l10n.editMetadataFieldCopyright,
+                              _copyrightCtrl,
                             ),
-                          ),
+                            _field(
+                              context.l10n.editMetadataFieldComposer,
+                              _composerCtrl,
+                            ),
+                            _field(
+                              context.l10n.editMetadataFieldComment,
+                              _commentCtrl,
+                              maxLines: 3,
+                            ),
+                          ],
                         ],
                       ),
-                      _field(context.l10n.editMetadataFieldGenre, _genreCtrl),
-                      _field(context.l10n.editMetadataFieldIsrc, _isrcCtrl),
                     ],
                   ),
-                  _sectionCard(
-                    icon: Icons.lyrics_outlined,
-                    title: context.l10n.trackLyrics,
-                    children: [
-                      _field(
-                        context.l10n.trackLyrics,
-                        _lyricsCtrl,
-                        maxLines: 8,
-                        keyboard: TextInputType.multiline,
-                      ),
-                    ],
-                  ),
-                  _sectionCard(
-                    icon: Icons.tune,
-                    title: context.l10n.editMetadataAdvanced,
-                    onHeaderTap: () =>
-                        setState(() => _showAdvanced = !_showAdvanced),
-                    expanded: _showAdvanced,
-                    children: [
-                      if (_showAdvanced) ...[
-                        _field(context.l10n.editMetadataFieldLabel, _labelCtrl),
-                        _field(
-                          context.l10n.editMetadataFieldCopyright,
-                          _copyrightCtrl,
-                        ),
-                        _field(
-                          context.l10n.editMetadataFieldComposer,
-                          _composerCtrl,
-                        ),
-                        _field(
-                          context.l10n.editMetadataFieldComment,
-                          _commentCtrl,
-                          maxLines: 3,
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1930,9 +1944,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
   Future<void> _fetchFromMusicBrainz() async {
     final isrc = _isrcCtrl.text.trim();
     if (isrc.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.editMetadataMusicBrainzNeedsIsrc)),
-      );
+      _showSheetSnackBar(context.l10n.editMetadataMusicBrainzNeedsIsrc);
       return;
     }
     setState(() => _fetchingMusicBrainz = true);
@@ -1951,20 +1963,14 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         _albumArtistCtrl.text = tags.albumArtist;
         filled++;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            filled > 0
-                ? context.l10n.editMetadataMusicBrainzFilled
-                : context.l10n.editMetadataMusicBrainzNothing,
-          ),
-        ),
+      _showSheetSnackBar(
+        filled > 0
+            ? context.l10n.editMetadataMusicBrainzFilled
+            : context.l10n.editMetadataMusicBrainzNothing,
       );
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.editMetadataMusicBrainzNothing)),
-        );
+        _showSheetSnackBar(context.l10n.editMetadataMusicBrainzNothing);
       }
     } finally {
       if (mounted) setState(() => _fetchingMusicBrainz = false);
