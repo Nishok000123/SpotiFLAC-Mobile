@@ -1409,7 +1409,35 @@ class PlatformBridge {
     });
   }
 
+  static final Map<String, Future<bool>> _extensionSessionGrantCompletions =
+      <String, Future<bool>>{};
+
   static Future<bool> completeExtensionSessionGrant(
+    String extensionId,
+    String grant,
+  ) {
+    final normalizedExtensionId = extensionId.trim();
+    final key = normalizedExtensionId.toLowerCase();
+    final activeCompletion = _extensionSessionGrantCompletions[key];
+    if (activeCompletion != null) {
+      _log.d(
+        'Joining active completeExtensionSessionGrant: $normalizedExtensionId',
+      );
+      return activeCompletion;
+    }
+
+    late final Future<bool> completion;
+    completion = _completeExtensionSessionGrant(normalizedExtensionId, grant)
+        .whenComplete(() {
+          if (identical(_extensionSessionGrantCompletions[key], completion)) {
+            _extensionSessionGrantCompletions.remove(key);
+          }
+        });
+    _extensionSessionGrantCompletions[key] = completion;
+    return completion;
+  }
+
+  static Future<bool> _completeExtensionSessionGrant(
     String extensionId,
     String grant,
   ) async {
