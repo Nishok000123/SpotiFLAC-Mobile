@@ -33,6 +33,51 @@ void main() {
 
       expect(parseAudioAstatsSummary(incompleteLogs), isNull);
     });
+
+    test('reads per-session metadata without depending on FFmpeg logs', () {
+      const metadata = '''
+lavfi.astats.1.Peak_level=-0.847144
+lavfi.astats.1.RMS_level=-12.935500
+lavfi.astats.1.Peak_count=2.000000
+lavfi.astats.2.Peak_level=-0.861847
+lavfi.astats.2.RMS_level=-12.752564
+lavfi.astats.2.Peak_count=2.000000
+lavfi.astats.Overall.Peak_level=-0.847144
+lavfi.astats.Overall.RMS_level=-12.843069
+lavfi.r128.I=-9.708
+lavfi.r128.true_peak=0.907
+''';
+
+      final summary = parseAudioAnalysisMetadata(metadata);
+
+      expect(summary, isNotNull);
+      expect(summary!.peakDb, closeTo(-0.847144, 0.000001));
+      expect(summary.rmsDb, closeTo(-12.843069, 0.000001));
+      expect(summary.integratedLufs, closeTo(-9.708, 0.000001));
+      expect(summary.truePeakDb, closeTo(-0.8476, 0.001));
+      expect(summary.channelStats, hasLength(2));
+      expect(summary.channelStats.first.channel, 1);
+      expect(summary.channelStats.first.peakCount, 2);
+    });
+
+    test('keeps the analyzer independent from process-global log level', () {
+      final arguments = buildAudioMetricsArguments(
+        inputPath: 'source.flac',
+        metadataPath: '/tmp/metrics.txt',
+        durationSeconds: 203.94,
+      );
+
+      expect(arguments, isNot(contains('-v')));
+      expect(arguments, isNot(contains('-loglevel')));
+      expect(arguments.join(' '), contains('ametadata=print'));
+      expect(arguments.join(' '), contains("aselect='gte(t,201.940)'"));
+    });
+
+    test('rejects incomplete per-session metadata instead of using zero', () {
+      const metadata = 'lavfi.astats.Overall.Peak_level=-0.8';
+
+      expect(parseAudioAnalysisMetadata(metadata), isNull);
+    });
   });
 
   group('audio spectrogram filter', () {
@@ -70,6 +115,7 @@ void main() {
       expect(arguments, isNot(contains('-ss')));
       expect(arguments, isNot(contains('-ar')));
       expect(arguments, isNot(contains('-ac')));
+      expect(arguments, isNot(contains('-loglevel')));
     });
   });
 

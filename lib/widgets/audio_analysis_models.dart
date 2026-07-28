@@ -215,20 +215,17 @@ class _MediaInfo {
 class _LevelMetrics {
   final double peakDb;
   final double rmsDb;
+  final double? integratedLufs;
+  final double? truePeakDb;
   final int clippingSamples;
   final List<ChannelAnalysisStats> channelStats;
 
   const _LevelMetrics({
     required this.peakDb,
     required this.rmsDb,
+    this.integratedLufs,
+    this.truePeakDb,
     this.clippingSamples = 0,
     this.channelStats = const [],
   });
-}
-
-class _LoudnessMetrics {
-  final double? integratedLufs;
-  final double? truePeakDb;
-
-  const _LoudnessMetrics({this.integratedLufs, this.truePeakDb});
 }

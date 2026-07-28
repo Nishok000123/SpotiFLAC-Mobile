@@ -5,9 +5,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:ffmpeg_kit_flutter_new_full/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter_new_full/ffmpeg_kit_config.dart';
 import 'package:ffmpeg_kit_flutter_new_full/ffprobe_kit.dart';
-import 'package:ffmpeg_kit_flutter_new_full/level.dart';
 import 'package:ffmpeg_kit_flutter_new_full/return_code.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -42,8 +40,6 @@ List<String> buildAudioSpectrogramArguments({
 }) {
   return [
     '-hide_banner',
-    '-loglevel',
-    'error',
     '-i',
     inputPath,
     '-filter_complex',
@@ -68,6 +64,20 @@ class AudioAstatsSummary {
   const AudioAstatsSummary({required this.peakDb, required this.rmsDb});
 }
 
+class AudioAnalysisMetadataSummary extends AudioAstatsSummary {
+  final double? integratedLufs;
+  final double? truePeakDb;
+  final List<ChannelAnalysisStats> channelStats;
+
+  const AudioAnalysisMetadataSummary({
+    required super.peakDb,
+    required super.rmsDb,
+    this.integratedLufs,
+    this.truePeakDb,
+    this.channelStats = const [],
+  });
+}
+
 AudioAstatsSummary? parseAudioAstatsSummary(String logs) {
   final overallMatch = RegExp(r'Overall([\s\S]*)').firstMatch(logs);
   final section = overallMatch?.group(1) ?? logs;
@@ -88,6 +98,120 @@ double? _parseLastAudioAstatsValue(String text, String label) {
     if (parsed != null && parsed.isFinite) {
       value = parsed;
     }
+  }
+  return value;
+}
+
+String buildAudioMetricsFilter({
+  required double durationSeconds,
+  required String metadataPath,
+}) {
+  final metadataStart = math.max(0.0, durationSeconds - 2.0);
+  final escapedPath = metadataPath
+      .replaceAll(r'\', r'\\')
+      .replaceAll(':', r'\:')
+      .replaceAll("'", r"\'");
+  return 'astats=metadata=1:reset=0:'
+      'measure_perchannel=Peak_level+RMS_level+Peak_count:'
+      'measure_overall=Peak_level+RMS_level,'
+      'ebur128=peak=true:metadata=1:framelog=quiet,'
+      "aselect='gte(t,${metadataStart.toStringAsFixed(3)})',"
+      "ametadata=print:file='$escapedPath'";
+}
+
+List<String> buildAudioMetricsArguments({
+  required String inputPath,
+  required String metadataPath,
+  required double durationSeconds,
+}) {
+  // FFmpegKit's log level is process-global. A native download finalizer can
+  // run `-v error` concurrently, so analyzer results must come from this
+  // session's metadata file rather than info-level log callbacks.
+  return [
+    '-hide_banner',
+    '-nostats',
+    '-i',
+    inputPath,
+    '-map',
+    '0:a:0',
+    '-vn',
+    '-sn',
+    '-dn',
+    '-af',
+    buildAudioMetricsFilter(
+      durationSeconds: durationSeconds,
+      metadataPath: metadataPath,
+    ),
+    '-f',
+    'null',
+    '-',
+  ];
+}
+
+AudioAnalysisMetadataSummary? parseAudioAnalysisMetadata(String metadata) {
+  final peak = _parseLastMetadataValue(
+    metadata,
+    'lavfi.astats.Overall.Peak_level',
+  );
+  final rms = _parseLastMetadataValue(
+    metadata,
+    'lavfi.astats.Overall.RMS_level',
+  );
+  if (peak == null || rms == null) return null;
+
+  final channelNumbers = RegExp(
+    r'^lavfi\.astats\.(\d+)\.',
+    multiLine: true,
+  ).allMatches(metadata).map((match) => int.parse(match.group(1)!)).toSet();
+  final channelStats = channelNumbers.toList()..sort();
+
+  final truePeakLinear = _parseLastMetadataValue(
+    metadata,
+    'lavfi.r128.true_peak',
+  );
+  return AudioAnalysisMetadataSummary(
+    peakDb: peak,
+    rmsDb: rms,
+    integratedLufs: _parseLastMetadataValue(metadata, 'lavfi.r128.I'),
+    truePeakDb: truePeakLinear != null && truePeakLinear > 0
+        ? 20 * math.log(truePeakLinear) / math.ln10
+        : null,
+    channelStats: channelStats.map((channel) {
+      final channelPeak = _parseLastMetadataValue(
+        metadata,
+        'lavfi.astats.$channel.Peak_level',
+      );
+      final channelRms = _parseLastMetadataValue(
+        metadata,
+        'lavfi.astats.$channel.RMS_level',
+      );
+      return ChannelAnalysisStats(
+        channel: channel,
+        peakDb: channelPeak,
+        rmsDb: channelRms,
+        dynamicRangeDb: channelPeak != null && channelRms != null
+            ? channelPeak - channelRms
+            : null,
+        peakCount:
+            _parseLastMetadataValue(
+              metadata,
+              'lavfi.astats.$channel.Peak_count',
+            )?.round() ??
+            0,
+      );
+    }).toList(),
+  );
+}
+
+double? _parseLastMetadataValue(String metadata, String key) {
+  final matches = RegExp(
+    '^${RegExp.escape(key)}=([^\\r\\n]+)',
+    multiLine: true,
+  ).allMatches(metadata);
+  double? value;
+  for (final match in matches) {
+    final parsed = double.tryParse(match.group(1)?.trim() ?? '');
+    if (parsed != null && parsed.isFinite) value = parsed;
   }
   return value;
 }
@@ -470,8 +594,6 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
   }
 
   Future<_AudioAnalysisRunResult> _runAnalysis(String filePath) async {
-    await FFmpegKitConfig.setLogLevel(Level.avLogError);
-
     String workingPath = filePath;
     String? tempCopy;
     if (filePath.startsWith('content://')) {
@@ -496,11 +618,16 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
             maxFrequencyHz: info.sampleRate / 2,
           ),
         );
-        final levelMetrics = await _runFullStreamLevelAnalysis(workingPath);
+        final effectiveDuration = info.totalSamples > 0 && info.sampleRate > 0
+            ? info.totalSamples / info.sampleRate
+            : info.duration;
+        final levelMetrics = await _runFullStreamLevelAnalysis(
+          workingPath,
+          durationSeconds: effectiveDuration,
+        );
         if (levelMetrics == null) {
           throw Exception('FFmpeg level analysis returned no usable metrics');
         }
-        final loudnessMetrics = await _runLoudnessAnalysis(workingPath);
         final peakAmplitude = levelMetrics.peakDb;
         final rmsLevel = levelMetrics.rmsDb;
         final dynamicRange = peakAmplitude - rmsLevel;
@@ -524,8 +651,8 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
             dynamicRange: dynamicRange,
             peakAmplitude: peakAmplitude,
             rmsLevel: rmsLevel,
-            integratedLufs: loudnessMetrics?.integratedLufs,
-            truePeakDb: loudnessMetrics?.truePeakDb,
+            integratedLufs: levelMetrics.integratedLufs,
+            truePeakDb: levelMetrics.truePeakDb,
             clippingSamples: levelMetrics.clippingSamples,
             spectralCutoffHz: spectralCutoffHz,
             channelStats: levelMetrics.channelStats,
@@ -543,7 +670,6 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
           await File(tempCopy).delete();
         } catch (_) {}
       }
-      await FFmpegKitConfig.setLogLevel(Level.avLogInfo);
     }
   }
 
@@ -835,39 +961,41 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
         codecName.startsWith('pcm_');
   }
 
-  Future<_LevelMetrics?> _runFullStreamLevelAnalysis(String inputPath) async {
-    await FFmpegKitConfig.setLogLevel(Level.avLogInfo);
+  Future<_LevelMetrics?> _runFullStreamLevelAnalysis(
+    String inputPath, {
+    required double durationSeconds,
+  }) async {
+    final tempDir = await getTemporaryDirectory();
+    final metadataFile = File(
+      '${tempDir.path}/analysis_metrics_'
+      '${DateTime.now().microsecondsSinceEpoch}.txt',
+    );
     try {
-      final session = await FFmpegKit.executeWithArguments([
-        '-v',
-        'info',
-        '-hide_banner',
-        '-nostats',
-        '-i',
-        inputPath,
-        '-map',
-        '0:a:0',
-        '-vn',
-        '-sn',
-        '-dn',
-        '-af',
-        'astats=metadata=1:reset=0',
-        '-f',
-        'null',
-        '-',
-      ]);
+      final session = await FFmpegKit.executeWithArguments(
+        buildAudioMetricsArguments(
+          inputPath: inputPath,
+          metadataPath: metadataFile.path,
+          durationSeconds: durationSeconds,
+        ),
+      );
 
       final returnCode = await session.getReturnCode();
       if (!ReturnCode.isSuccess(returnCode)) {
         return null;
       }
 
-      // FFmpegKit delivers logs asynchronously even after the process exits.
-      // The non-waiting getLogsAsString() can miss the final astats summary.
-      final logs = await session.getAllLogsAsString() ?? '';
-      final summary = parseAudioAstatsSummary(logs);
+      final metadata = await metadataFile.exists()
+          ? await metadataFile.readAsString()
+          : '';
+      final metadataSummary = parseAudioAnalysisMetadata(metadata);
+      final logs = metadataSummary == null
+          ? await session.getAllLogsAsString() ?? ''
+          : '';
+      final summary = metadataSummary ?? parseAudioAstatsSummary(logs);
       if (summary == null) return null;
-      final channelStats = _parseChannelStats(logs);
+      final channelStats = metadataSummary?.channelStats.isNotEmpty == true
+          ? metadataSummary!.channelStats
+          : _parseChannelStats(logs);
       final clippingSamples = channelStats.fold<int>(0, (sum, stats) {
         if (stats.peakDb == null || stats.peakDb! < -0.1) return sum;
         return sum + stats.peakCount;
@@ -875,56 +1003,15 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
       return _LevelMetrics(
         peakDb: summary.peakDb,
         rmsDb: summary.rmsDb,
+        integratedLufs: metadataSummary?.integratedLufs,
+        truePeakDb: metadataSummary?.truePeakDb,
         clippingSamples: clippingSamples,
         channelStats: channelStats,
       );
     } finally {
-      await FFmpegKitConfig.setLogLevel(Level.avLogError);
-    }
-  }
-
-  Future<_LoudnessMetrics?> _runLoudnessAnalysis(String inputPath) async {
-    await FFmpegKitConfig.setLogLevel(Level.avLogInfo);
-    try {
-      final session = await FFmpegKit.executeWithArguments([
-        '-hide_banner',
-        '-nostats',
-        '-i',
-        inputPath,
-        '-map',
-        '0:a:0',
-        '-vn',
-        '-sn',
-        '-dn',
-        '-af',
-        'ebur128=peak=true:framelog=quiet',
-        '-f',
-        'null',
-        '-',
-      ]);
-
-      final logs = await session.getAllLogsAsString() ?? '';
-      final integratedMatches = RegExp(
-        r'I:\s+(-?\d+\.?\d*)\s+LUFS',
-      ).allMatches(logs);
-      final integrated = integratedMatches.isEmpty
-          ? null
-          : double.tryParse(integratedMatches.last.group(1) ?? '');
-
-      double? truePeak;
-      for (final match in RegExp(
-        r'Peak:\s+(-?\d+\.?\d*)\s+dBFS',
-      ).allMatches(logs)) {
-        final value = double.tryParse(match.group(1) ?? '');
-        if (value != null && (truePeak == null || value > truePeak)) {
-          truePeak = value;
-        }
-      }
-
-      if (integrated == null && truePeak == null) return null;
-      return _LoudnessMetrics(integratedLufs: integrated, truePeakDb: truePeak);
-    } finally {
-      await FFmpegKitConfig.setLogLevel(Level.avLogError);
+      try {
+        if (await metadataFile.exists()) await metadataFile.delete();
+      } catch (_) {}
     }
   }
 
