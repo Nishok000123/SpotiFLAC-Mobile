@@ -524,7 +524,12 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 		}
 	}
 
-	priority = prioritizeFallbackProvidersByHealth(priority, extManager, req.Source)
+	healthProtectedProvider := selectedProvider
+	if strings.TrimSpace(healthProtectedProvider) == "" {
+		healthProtectedProvider = req.Source
+	}
+	priority = prioritizeFallbackProvidersByHealth(priority, extManager, healthProtectedProvider)
+	priority = moveProviderToFront(priority, selectedProvider)
 
 	for _, providerID := range priority {
 		if isDownloadCancelled(req.ItemID) {

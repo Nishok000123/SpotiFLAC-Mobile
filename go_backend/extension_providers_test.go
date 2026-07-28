@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -454,6 +455,19 @@ func TestShouldStopProviderFallback(t *testing.T) {
 	}
 	if !shouldStopProviderFallback(&ExtAvailabilityResult{Available: false, SkipFallback: true}) {
 		t.Fatal("skip_fallback availability should stop fallback")
+	}
+}
+
+func TestMoveProviderToFrontPreservesExplicitSelection(t *testing.T) {
+	priority := []string{"qobuz-web", "amazon-web", "tidal-web"}
+	got := moveProviderToFront(priority, "AMAZON-WEB")
+	want := []string{"amazon-web", "qobuz-web", "tidal-web"}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("moveProviderToFront() = %#v, want %#v", got, want)
+	}
+	if !reflect.DeepEqual(priority, []string{"qobuz-web", "amazon-web", "tidal-web"}) {
+		t.Fatalf("moveProviderToFront mutated input: %#v", priority)
 	}
 }
 

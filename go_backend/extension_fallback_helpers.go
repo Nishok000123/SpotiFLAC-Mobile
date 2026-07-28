@@ -280,7 +280,7 @@ func fallbackRuntimeHealthStatus(ext *loadedExtension) string {
 	}
 }
 
-func prioritizeFallbackProvidersByHealth(priority []string, extManager *extensionManager, sourceProvider string) []string {
+func prioritizeFallbackProvidersByHealth(priority []string, extManager *extensionManager, protectedProvider string) []string {
 	if len(priority) == 0 || extManager == nil {
 		return priority
 	}
@@ -294,7 +294,7 @@ func prioritizeFallbackProvidersByHealth(priority []string, extManager *extensio
 		if providerID == "" {
 			continue
 		}
-		if strings.EqualFold(providerID, sourceProvider) || !isExtensionFallbackAllowed(providerID) {
+		if strings.EqualFold(providerID, protectedProvider) || !isExtensionFallbackAllowed(providerID) {
 			unknown = append(unknown, providerID)
 			continue
 		}
@@ -322,6 +322,33 @@ func prioritizeFallbackProvidersByHealth(priority []string, extManager *extensio
 	result = append(result, degraded...)
 	result = append(result, unknown...)
 	return result
+}
+
+// moveProviderToFront preserves the user's explicit provider selection after
+// health-based fallback sorting. Health may order the remaining fallback
+// candidates, but it must never silently replace the provider the user picked.
+func moveProviderToFront(priority []string, providerID string) []string {
+	providerID = strings.TrimSpace(providerID)
+	if providerID == "" || len(priority) < 2 {
+		return priority
+	}
+
+	selectedIndex := -1
+	for i, candidate := range priority {
+		if strings.EqualFold(strings.TrimSpace(candidate), providerID) {
+			selectedIndex = i
+			break
+		}
+	}
+	if selectedIndex <= 0 {
+		return priority
+	}
+
+	reordered := make([]string, 0, len(priority))
+	reordered = append(reordered, priority[selectedIndex])
+	reordered = append(reordered, priority[:selectedIndex]...)
+	reordered = append(reordered, priority[selectedIndex+1:]...)
+	return reordered
 }
 
 func resolveExtensionAvailabilityReason(availability *ExtAvailabilityResult, err error) string {
