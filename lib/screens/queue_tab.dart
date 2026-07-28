@@ -412,8 +412,12 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   int _libraryPageOffsetFor(String filterMode) =>
       _libraryPageOffsetByFilter[filterMode] ?? 0;
 
-  void _resetLibraryPaging() {
+  void _resetLibraryOffsets() {
     _libraryPageOffsetByFilter.clear();
+  }
+
+  void _resetLibraryPaging() {
+    _resetLibraryOffsets();
     _queueLibraryPageDataCache.clear();
   }
 
@@ -1188,7 +1192,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         // The family provider already reruns for the new revision. Retain its
         // last successful page while SQLite is loading so metadata backfills
         // and download completions cannot flash the Library as empty.
-        _resetLibraryPaging();
+        _resetLibraryOffsets();
         if (mounted) setState(() {});
       },
     );
@@ -1197,7 +1201,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       (previous, next) {
         if (previous == null || previous == next) return;
         // Keep stale rows visible until the refreshed query replaces them.
-        _resetLibraryPaging();
+        _resetLibraryOffsets();
         if (mounted) setState(() {});
       },
     );
