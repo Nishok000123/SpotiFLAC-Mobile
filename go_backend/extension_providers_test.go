@@ -471,6 +471,45 @@ func TestMoveProviderToFrontPreservesExplicitSelection(t *testing.T) {
 	}
 }
 
+func TestDiscardRejectedExtensionOutputStaysInsideRequestedDirectory(t *testing.T) {
+	outputDir := t.TempDir()
+	requestedPath := filepath.Join(outputDir, "Artist - Song.flac")
+	rejectedPath := filepath.Join(outputDir, "Artist - Song.m4a")
+	outsidePath := filepath.Join(t.TempDir(), "keep.flac")
+	if err := os.WriteFile(rejectedPath, []byte("wrong audio"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(outsidePath, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	discardRejectedExtensionOutput(&ExtDownloadResult{FilePath: rejectedPath}, requestedPath)
+	if _, err := os.Stat(rejectedPath); !os.IsNotExist(err) {
+		t.Fatalf("rejected output was not removed: %v", err)
+	}
+
+	discardRejectedExtensionOutput(&ExtDownloadResult{FilePath: outsidePath}, requestedPath)
+	if _, err := os.Stat(outsidePath); err != nil {
+		t.Fatalf("output outside requested directory was removed: %v", err)
+	}
+}
+
+func TestDiscardRejectedExtensionOutputPreservesExistingLibraryHit(t *testing.T) {
+	outputDir := t.TempDir()
+	path := filepath.Join(outputDir, "existing.flac")
+	if err := os.WriteFile(path, []byte("existing audio"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	discardRejectedExtensionOutput(&ExtDownloadResult{
+		FilePath:      path,
+		AlreadyExists: true,
+	}, filepath.Join(outputDir, "requested.flac"))
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("existing library file was removed: %v", err)
+	}
+}
+
 func TestBuildExtensionFallbackStoppedResponsePrefersAvailabilityReason(t *testing.T) {
 	resp := buildExtensionFallbackStoppedResponse("soundcloud", &ExtAvailabilityResult{
 		Reason:       "direct SoundCloud track ID",
@@ -685,6 +724,7 @@ func TestParseExtensionMetadataAndDownloadResults(t *testing.T) {
 		alreadyExists: true,
 		bitDepth: 24,
 		sampleRate: 96000,
+		durationMs: 181000,
 		title: "Song",
 		albumArtist: "Album Artist",
 		lyricsLrc: "[00:00.00]Line",
@@ -706,6 +746,7 @@ func TestParseExtensionMetadataAndDownloadResults(t *testing.T) {
 		!download.AlreadyExists ||
 		download.BitDepth != 24 ||
 		download.SampleRate != 96000 ||
+		download.DurationMS != 181000 ||
 		download.AlbumArtist != "Album Artist" ||
 		download.LyricsLRC != "[00:00.00]Line" ||
 		download.Decryption == nil ||

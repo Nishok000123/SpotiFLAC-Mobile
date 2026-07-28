@@ -43,6 +43,23 @@ func attemptExtensionDownload(
 		}
 	})
 	downloadSucceeded := err == nil && result != nil && result.Success
+	if downloadSucceeded {
+		resolved := resolvedTrackInfo{
+			Title:      result.Title,
+			ArtistName: result.Artist,
+			AlbumName:  result.Album,
+			ISRC:       result.ISRC,
+			Duration:   result.DurationMS / 1000,
+			SkipNameVerification: strings.EqualFold(strings.TrimSpace(req.Source), strings.TrimSpace(providerLabel)) ||
+				ext.Manifest.HasCustomMatching(),
+		}
+		if !trackMatchesRequest(req, resolved, "Extension "+providerLabel) {
+			discardRejectedExtensionOutput(result, outputPath)
+			*lastErr = fmt.Errorf("provider %s returned a different track", providerLabel)
+			*lastErrType = "not_found"
+			return nil, false
+		}
+	}
 	if req.ItemID != "" && downloadSucceeded {
 		SetItemFinalizing(req.ItemID)
 	}

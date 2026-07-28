@@ -3,6 +3,8 @@ package gobackend
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -130,6 +132,39 @@ func normalizeDownloadResultExtension(candidates ...string) string {
 		return ext
 	}
 	return ""
+}
+
+// discardRejectedExtensionOutput removes only a newly downloaded file inside
+// the host-selected output directory. Existing-library hits are never removed,
+// nor are paths outside that narrow directory.
+func discardRejectedExtensionOutput(result *ExtDownloadResult, requestedOutputPath string) {
+	if result == nil || result.AlreadyExists {
+		return
+	}
+
+	resultPath := strings.TrimSpace(result.FilePath)
+	requestedPath := strings.TrimSpace(requestedOutputPath)
+	if resultPath == "" || requestedPath == "" ||
+		strings.HasPrefix(resultPath, "content://") ||
+		strings.HasPrefix(resultPath, "/proc/self/fd/") {
+		return
+	}
+
+	resultAbs, resultErr := filepath.Abs(resultPath)
+	outputDirAbs, outputErr := filepath.Abs(filepath.Dir(requestedPath))
+	if resultErr != nil || outputErr != nil {
+		return
+	}
+	relative, err := filepath.Rel(outputDirAbs, resultAbs)
+	if err != nil || relative == "." || relative == ".." ||
+		strings.HasPrefix(relative, ".."+string(filepath.Separator)) ||
+		filepath.IsAbs(relative) {
+		return
+	}
+
+	if err := os.Remove(resultAbs); err != nil && !os.IsNotExist(err) {
+		GoLog("[DownloadWithExtensionFallback] Warning: failed to remove rejected provider output %q: %v\n", resultAbs, err)
+	}
 }
 
 func normalizeExtensionDownloadResult(result *ExtDownloadResult) (DownloadResult, bool) {
