@@ -126,6 +126,10 @@ final _qualityFilenameTokenPattern = RegExp(
   r'\{quality_variant\}',
   caseSensitive: false,
 );
+final _explicitQualityFilenameTokenPattern = RegExp(
+  r'\{(?:quality|quality_variant)\}',
+  caseSensitive: false,
+);
 
 class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   Timer? _queuePersistDebounce;
@@ -176,9 +180,31 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   int _queueItemSequence = 0;
   bool _isLoaded = false;
   final Set<String> _ensuredDirs = {};
+  final Map<String, Future<void>> _qualityVariantFileLocks = {};
   Future<String>? _appFolderStorageFallback;
   final Set<String> _rejectedAppFolderRoots = {};
   int _idleProgressPollTick = 0;
+
+  Future<T> _withQualityVariantFileLock<T>(
+    String path,
+    Future<T> Function() action,
+  ) async {
+    final key = path.toLowerCase();
+    final previous = _qualityVariantFileLocks[key];
+    final completer = Completer<void>();
+    final current = completer.future;
+    _qualityVariantFileLocks[key] = current;
+    if (previous != null) await previous;
+    try {
+      return await action();
+    } finally {
+      completer.complete();
+      if (identical(_qualityVariantFileLocks[key], current)) {
+        _qualityVariantFileLocks.remove(key);
+      }
+    }
+  }
+
   bool _networkPausedByWifiOnly = false;
   List<ConnectivityResult>? _lastConnectivityResults;
   DateTime _lastConnectionCleanupAt = DateTime.fromMillisecondsSinceEpoch(0);
@@ -444,6 +470,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     String? label,
     String? copyright,
     bool stageSafForDeferredPublish = false,
+    bool qualityVariantCollisionOnly = false,
   }) {
     final resolvedAlbumArtist = _resolveAlbumArtistForMetadata(track, settings);
     final postProcessingEnabled =
@@ -529,6 +556,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       qualityVariant: item.preserveQualityVariant
           ? qualityVariantStagingLabel(item.id)
           : '',
+      qualityVariantCollisionOnly: qualityVariantCollisionOnly,
       songLinkRegion: settings.songLinkRegion,
     );
   }

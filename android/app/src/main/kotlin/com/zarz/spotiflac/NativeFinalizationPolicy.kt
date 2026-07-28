@@ -157,6 +157,36 @@ internal object NativeFinalizationPolicy {
         return "$stem - $qualityLabel$extension"
     }
 
+    fun removeQualityVariantStagingLabel(
+        fileName: String,
+        stagingLabel: String,
+    ): String {
+        if (stagingLabel.isEmpty() || !fileName.contains(stagingLabel)) return fileName
+        val dotIndex = fileName.lastIndexOf('.')
+        val hasExtension = dotIndex > 0
+        val stem = if (hasExtension) fileName.substring(0, dotIndex) else fileName
+        val extension = if (hasExtension) fileName.substring(dotIndex) else ""
+        val cleanedStem = stem
+            .replace(stagingLabel, "")
+            .replace(Regex("[\\s_-]+$"), "")
+            .trim()
+            .ifBlank { "track" }
+        return "$cleanedStem$extension"
+    }
+
+    fun resolveQualityVariantFilename(
+        fileName: String,
+        stagingLabel: String,
+        qualityLabel: String,
+        collisionOnly: Boolean,
+        cleanNameExists: Boolean,
+    ): String {
+        if (!collisionOnly || cleanNameExists) {
+            return applyQualityVariantFilenameLabel(fileName, stagingLabel, qualityLabel)
+        }
+        return removeQualityVariantStagingLabel(fileName, stagingLabel)
+    }
+
     /**
      * Returns the user-facing name that a deferred SAF download was assigned
      * before its audio was materialized in the app cache. Container and

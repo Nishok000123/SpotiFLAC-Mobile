@@ -6769,7 +6769,7 @@ abstract class AppLocalizations {
   /// Description for retaining multiple quality versions
   ///
   /// In en, this message translates to:
-  /// **'Add the selected quality to the filename and keep each version in download history'**
+  /// **'Keep every quality version; add its measured quality to the filename only when the name is already used'**
   String get downloadQualityVariantsDescription;
 
   /// Track menu action to download another quality version

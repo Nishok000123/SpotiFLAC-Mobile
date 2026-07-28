@@ -4087,7 +4087,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get downloadQualityVariantsDescription =>
-      'Tambahkan kualitas yang dipilih ke nama file dan simpan setiap versi di riwayat unduhan';
+      'Simpan setiap versi kualitas; tambahkan kualitas terukur ke nama file hanya jika namanya sudah digunakan';
 
   @override
   String get trackOptionDownloadQualityVariant => 'Unduh kualitas lain';

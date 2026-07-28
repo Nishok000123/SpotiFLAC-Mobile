@@ -11,6 +11,7 @@ class _NativeWorkerRequestContext {
   final String? downloadTreeUri;
   final String? safRelativeDir;
   final String? safFileName;
+  final bool qualityVariantCollisionOnly;
 
   const _NativeWorkerRequestContext({
     required this.item,
@@ -22,6 +23,7 @@ class _NativeWorkerRequestContext {
     this.downloadTreeUri,
     this.safRelativeDir,
     this.safFileName,
+    this.qualityVariantCollisionOnly = false,
   });
 }
 
@@ -730,6 +732,9 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
       item,
       baseFilenameFormat,
     );
+    final qualityVariantCollisionOnly =
+        item.preserveQualityVariant &&
+        !_explicitQualityFilenameTokenPattern.hasMatch(baseFilenameFormat);
     if (isSafMode) {
       safFileName = await _buildSafFileNameForItem(
         item,
@@ -775,6 +780,7 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
       label: extendedMetadata?.label,
       copyright: extendedMetadata?.copyright,
       stageSafForDeferredPublish: isSafMode,
+      qualityVariantCollisionOnly: qualityVariantCollisionOnly,
     ).withStrategy(useExtensions: true, useFallback: state.autoFallback);
 
     return _NativeWorkerRequestContext(
@@ -787,6 +793,7 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
       downloadTreeUri: isSafMode ? settings.downloadTreeUri : null,
       safRelativeDir: isSafMode ? outputDir : null,
       safFileName: safFileName,
+      qualityVariantCollisionOnly: qualityVariantCollisionOnly,
     );
   }
 
@@ -1177,6 +1184,7 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
         downloadTreeUri: context.downloadTreeUri,
         safRelativeDir: context.safRelativeDir,
         fileName: result['file_name'] as String? ?? context.safFileName,
+        collisionOnly: context.qualityVariantCollisionOnly,
       );
       filePath = variantOutcome.filePath;
       actualBitDepth = readPositiveInt(result['actual_bit_depth']);

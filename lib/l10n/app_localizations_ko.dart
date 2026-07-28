@@ -3968,7 +3968,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get downloadQualityVariantsDescription =>
-      '선택된 음질을 파일 이름에 추가하고, 각 버전을 다운로드 기록에 유지합니다';
+      '각 음질 버전을 유지하고, 같은 이름이 이미 사용 중일 때만 측정된 음질을 파일 이름에 추가합니다';
 
   @override
   String get trackOptionDownloadQualityVariant => '다른 음질 다운로드';

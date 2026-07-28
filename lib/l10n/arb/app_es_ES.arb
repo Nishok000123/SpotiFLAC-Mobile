@@ -6006,7 +6006,7 @@
   "@downloadQualityVariants": {
     "description": "Setting to retain multiple quality versions of the same track"
   },
-  "downloadQualityVariantsDescription": "Add the selected quality to the filename and keep each version in download history",
+  "downloadQualityVariantsDescription": "Conservar cada versión de calidad; añadir la calidad medida al nombre solo cuando el nombre ya esté en uso",
   "@downloadQualityVariantsDescription": {
     "description": "Description for retaining multiple quality versions"
   },

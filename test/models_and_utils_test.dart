@@ -333,6 +333,38 @@ void main() {
         'Post Processed Song - 16bit-44.1kHz.flac',
       );
     });
+
+    test('adds measured quality only when a clean filename collides', () {
+      const staging = 'qv_12345678';
+      const stagedName = 'Artist - Song - qv_12345678.flac';
+      expect(
+        removeQualityVariantStagingLabel(
+          fileName: stagedName,
+          stagingLabel: staging,
+        ),
+        'Artist - Song.flac',
+      );
+      expect(
+        resolveQualityVariantFilename(
+          fileName: stagedName,
+          stagingLabel: staging,
+          qualityLabel: '24bit-96kHz',
+          collisionOnly: true,
+          cleanNameExists: false,
+        ),
+        'Artist - Song.flac',
+      );
+      expect(
+        resolveQualityVariantFilename(
+          fileName: stagedName,
+          stagingLabel: staging,
+          qualityLabel: '24bit-96kHz',
+          collisionOnly: true,
+          cleanNameExists: true,
+        ),
+        'Artist - Song - 24bit-96kHz.flac',
+      );
+    });
   });
 
   group('Library collections', () {
@@ -783,6 +815,7 @@ void main() {
         outputExt: '.flac',
         allowQualityVariant: true,
         qualityVariant: 'qv_12345678',
+        qualityVariantCollisionOnly: true,
         songLinkRegion: 'ID',
       );
 
@@ -836,6 +869,7 @@ void main() {
         'requires_container_conversion': false,
         'allow_quality_variant': true,
         'quality_variant': 'qv_12345678',
+        'quality_variant_collision_only': true,
         'songlink_region': 'ID',
       });
     });
@@ -859,6 +893,10 @@ void main() {
       expect(updated.filenameFormat, payload.filenameFormat);
       expect(updated.allowQualityVariant, payload.allowQualityVariant);
       expect(updated.qualityVariant, payload.qualityVariant);
+      expect(
+        updated.qualityVariantCollisionOnly,
+        payload.qualityVariantCollisionOnly,
+      );
     });
   });
 

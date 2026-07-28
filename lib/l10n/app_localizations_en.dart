@@ -4090,7 +4090,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get downloadQualityVariantsDescription =>
-      'Add the selected quality to the filename and keep each version in download history';
+      'Keep every quality version; add its measured quality to the filename only when the name is already used';
 
   @override
   String get trackOptionDownloadQualityVariant => 'Download another quality';

@@ -5320,7 +5320,7 @@
   "@downloadQualityVariants": {
     "description": "Setting to retain multiple quality versions of the same track"
   },
-  "downloadQualityVariantsDescription": "Add the selected quality to the filename and keep each version in download history",
+  "downloadQualityVariantsDescription": "Keep every quality version; add its measured quality to the filename only when the name is already used",
   "@downloadQualityVariantsDescription": {
     "description": "Description for retaining multiple quality versions"
   },

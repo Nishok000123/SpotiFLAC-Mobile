@@ -5962,7 +5962,7 @@
   "@downloadQualityVariants": {
     "description": "Pengaturan untuk menyimpan beberapa versi kualitas dari lagu yang sama"
   },
-  "downloadQualityVariantsDescription": "Tambahkan kualitas yang dipilih ke nama file dan simpan setiap versi di riwayat unduhan",
+  "downloadQualityVariantsDescription": "Simpan setiap versi kualitas; tambahkan kualitas terukur ke nama file hanya jika namanya sudah digunakan",
   "@downloadQualityVariantsDescription": {
     "description": "Deskripsi penyimpanan beberapa versi kualitas"
   },

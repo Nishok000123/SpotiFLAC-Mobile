@@ -1052,6 +1052,38 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(response)
                         }
+                        "safCreateCollisionAwareFromPath" -> {
+                            val treeUriStr = call.argument<String>("tree_uri") ?: ""
+                            val relativeDir = call.argument<String>("relative_dir") ?: ""
+                            val cleanFileName = call.argument<String>("clean_file_name") ?: ""
+                            val variantFileName = call.argument<String>("variant_file_name") ?: ""
+                            val mimeType = call.argument<String>("mime_type") ?: "application/octet-stream"
+                            val srcPath = call.argument<String>("src_path") ?: ""
+                            val preservedSuffix = call.argument<String>("preserved_suffix") ?: ""
+                            val response = withContext(Dispatchers.IO) {
+                                if (
+                                    treeUriStr.isBlank() ||
+                                    cleanFileName.isBlank() ||
+                                    variantFileName.isBlank()
+                                ) return@withContext null
+                                SafDownloadHandler.writeFileToSafCollisionAware(
+                                    context = this@MainActivity,
+                                    treeUriStr = treeUriStr,
+                                    relativeDir = relativeDir,
+                                    cleanFileName = cleanFileName,
+                                    variantFileName = variantFileName,
+                                    mimeType = mimeType,
+                                    srcPath = srcPath,
+                                    preservedSuffix = preservedSuffix,
+                                )?.let { writeResult ->
+                                    JSONObject()
+                                        .put("uri", writeResult.uri)
+                                        .put("file_name", writeResult.fileName)
+                                        .toString()
+                                }
+                            }
+                            result.success(response)
+                        }
                         "openContentUri" -> {
                             val uriStr = call.argument<String>("uri") ?: ""
                             val mimeType = call.argument<String>("mime_type") ?: ""

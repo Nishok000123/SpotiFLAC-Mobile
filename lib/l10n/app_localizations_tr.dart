@@ -4120,7 +4120,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get downloadQualityVariantsDescription =>
-      'Add the selected quality to the filename and keep each version in download history';
+      'Her kalite sürümünü sakla; ölçülen kaliteyi yalnızca ad zaten kullanılıyorsa dosya adına ekle';
 
   @override
   String get trackOptionDownloadQualityVariant => 'Download another quality';

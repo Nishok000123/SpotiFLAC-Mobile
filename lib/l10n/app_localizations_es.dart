@@ -4084,7 +4084,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get downloadQualityVariantsDescription =>
-      'Add the selected quality to the filename and keep each version in download history';
+      'Keep every quality version; add its measured quality to the filename only when the name is already used';
 
   @override
   String get trackOptionDownloadQualityVariant => 'Download another quality';
@@ -8790,7 +8790,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get downloadQualityVariantsDescription =>
-      'Add the selected quality to the filename and keep each version in download history';
+      'Conservar cada versión de calidad; añadir la calidad medida al nombre solo cuando el nombre ya esté en uso';
 
   @override
   String get trackOptionDownloadQualityVariant => 'Download another quality';

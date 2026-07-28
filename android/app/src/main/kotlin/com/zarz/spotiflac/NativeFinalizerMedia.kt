@@ -21,6 +21,8 @@ import com.zarz.spotiflac.NativeFinalizationPolicy.formatIndexTag
 import com.zarz.spotiflac.NativeFinalizationPolicy.isLosslessAudioCodec
 import com.zarz.spotiflac.NativeFinalizationPolicy.isLossyAudioCodec
 import com.zarz.spotiflac.NativeFinalizationPolicy.logicalOutputFileName
+import com.zarz.spotiflac.NativeFinalizationPolicy.removeQualityVariantStagingLabel
+import com.zarz.spotiflac.NativeFinalizationPolicy.resolveQualityVariantFilename
 import com.zarz.spotiflac.NativeFinalizationPolicy.normalizeAudioCodec
 import com.zarz.spotiflac.NativeFinalizationPolicy.resolvePreferredDecryptionExtension
 import gobackend.Gobackend
@@ -68,11 +70,14 @@ internal fun NativeDownloadFinalizer.finalizeQualityVariantFilename(
         requestSafFileName = input.request.optString("saf_file_name", ""),
         currentFileName = state.fileName,
     )
-    val preferredName = applyQualityVariantFilenameLabel(
+    val variantName = applyQualityVariantFilenameLabel(
         fileName = logicalFileName,
         stagingLabel = stagingLabel,
         qualityLabel = qualityLabel,
     )
+    val cleanName = removeQualityVariantStagingLabel(logicalFileName, stagingLabel)
+    val collisionOnly = input.request.optBoolean("quality_variant_collision_only", false)
+    val preferredName = variantName
     if (preferredName == logicalFileName && preferredName == state.fileName) return
     input.result.put("quality_variant_file_name", preferredName)
     if (isDeferredSafPublish(input)) {
@@ -83,15 +88,30 @@ internal fun NativeDownloadFinalizer.finalizeQualityVariantFilename(
     if (state.filePath.startsWith("content://")) {
         val tempPath = SafDownloadHandler.copyContentUriToTemp(context, state.filePath) ?: return
         try {
-            val writeResult = SafDownloadHandler.writeFileToSafUnique(
-                context = context,
-                treeUriStr = input.request.optString("saf_tree_uri", ""),
-                relativeDir = input.request.optString("saf_relative_dir", ""),
-                fileName = preferredName,
-                mimeType = mimeTypeForExt(File(preferredName).extension),
-                srcPath = tempPath,
-                preservedSuffix = qualityLabel,
-            ) ?: return
+            val treeUri = input.request.optString("saf_tree_uri", "")
+            val relativeDir = input.request.optString("saf_relative_dir", "")
+            val writeResult = if (collisionOnly) {
+                SafDownloadHandler.writeFileToSafCollisionAware(
+                    context = context,
+                    treeUriStr = treeUri,
+                    relativeDir = relativeDir,
+                    cleanFileName = cleanName,
+                    variantFileName = variantName,
+                    mimeType = mimeTypeForExt(File(variantName).extension),
+                    srcPath = tempPath,
+                    preservedSuffix = qualityLabel,
+                )
+            } else {
+                SafDownloadHandler.writeFileToSafUnique(
+                    context = context,
+                    treeUriStr = treeUri,
+                    relativeDir = relativeDir,
+                    fileName = preferredName,
+                    mimeType = mimeTypeForExt(File(preferredName).extension),
+                    srcPath = tempPath,
+                    preservedSuffix = qualityLabel,
+                )
+            } ?: return
             SafDownloadHandler.deleteContentUri(context, state.filePath)
             state.filePath = writeResult.uri
             state.fileName = writeResult.fileName
@@ -100,13 +120,32 @@ internal fun NativeDownloadFinalizer.finalizeQualityVariantFilename(
         }
     } else {
         val source = File(state.filePath)
-        val target = uniqueLocalFile(source.parentFile, preferredName)
-        if (!source.renameTo(target)) {
-            Log.w(TAG, "Could not rename quality variant output: ${source.absolutePath}")
-            return
+        val cleanTarget = File(source.parentFile, cleanName)
+        val lockTarget = if (collisionOnly) cleanTarget else File(source.parentFile, preferredName)
+        val lockKey = lockTarget.absolutePath.lowercase(Locale.ROOT)
+        val lock = qualityVariantNameLocks.computeIfAbsent(lockKey) { Any() }
+        synchronized(lock) {
+            val selectedName = if (collisionOnly) {
+                resolveQualityVariantFilename(
+                    fileName = logicalFileName,
+                    stagingLabel = stagingLabel,
+                    qualityLabel = qualityLabel,
+                    collisionOnly = true,
+                    cleanNameExists = cleanTarget.absolutePath != source.absolutePath && cleanTarget.exists(),
+                )
+            } else {
+                preferredName
+            }
+            input.result.put("quality_variant_file_name", selectedName)
+            if (selectedName == state.fileName) return@synchronized
+            val target = uniqueLocalFile(source.parentFile, selectedName)
+            if (!source.renameTo(target)) {
+                Log.w(TAG, "Could not rename quality variant output: ${source.absolutePath}")
+                return@synchronized
+            }
+            state.filePath = target.absolutePath
+            state.fileName = target.name
         }
-        state.filePath = target.absolutePath
-        state.fileName = target.name
     }
 
     input.result.put("file_path", state.filePath)

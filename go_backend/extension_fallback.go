@@ -26,6 +26,23 @@ func attemptExtensionDownload(
 	lastRetryAfterSeconds *int,
 ) (resp *DownloadResponse, cancelledOuter bool) {
 	outputPath := buildOutputPathForExtension(req, ext)
+	if shouldReuseExistingOutput(req, outputPath) {
+		result := DownloadResult{FilePath: outputPath}
+		enrichResultQualityFromFile(&result)
+		built := buildDownloadSuccessResponse(
+			req,
+			result,
+			providerLabel,
+			"File already exists",
+			outputPath,
+			true,
+		)
+		if req.ItemID != "" {
+			CompleteItemProgress(req.ItemID)
+		}
+		GoLog("[DownloadWithExtensionFallback] Keeping existing output instead of replacing it: %s\n", outputPath)
+		return &built, false
+	}
 	if req.ItemID != "" {
 		SetItemPreparingStage(req.ItemID, "resolving_stream")
 	}

@@ -100,6 +100,7 @@ class _DownloadRun {
   String effectiveOutputDir = '';
   String? appOutputDir;
   String? safFileName;
+  bool qualityVariantCollisionOnly = false;
   String? safBaseName;
   String? finalSafFileName;
 
@@ -419,6 +420,9 @@ class _DownloadRun {
       item,
       baseFilenameFormat,
     );
+    qualityVariantCollisionOnly =
+        item.preserveQualityVariant &&
+        !_explicitQualityFilenameTokenPattern.hasMatch(baseFilenameFormat);
     if (isSafMode) {
       final builtSafFileName = await n._buildSafFileNameForItem(
         item,
@@ -549,6 +553,7 @@ class _DownloadRun {
       genre: genre,
       label: label,
       copyright: copyright,
+      qualityVariantCollisionOnly: qualityVariantCollisionOnly,
     );
 
     return PlatformBridge.downloadByStrategy(
@@ -705,6 +710,7 @@ class _DownloadRun {
         downloadTreeUri: settings.downloadTreeUri,
         safRelativeDir: effectiveOutputDir,
         fileName: finalSafFileName ?? safFileName,
+        collisionOnly: qualityVariantCollisionOnly,
       );
       filePath = variantOutcome.filePath;
       if (variantOutcome.fileName != null) {

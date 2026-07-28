@@ -44,6 +44,7 @@ object NativeDownloadFinalizer {
     internal val nativeFFmpegSessionIds = mutableSetOf<Long>()
     internal val activeFFmpegSessionLock = Any()
     internal val ffmpegCompleteCallbackLock = Any()
+    internal val qualityVariantNameLocks = java.util.concurrent.ConcurrentHashMap<String, Any>()
     internal var forwardedFFmpegCompleteCallback: FFmpegSessionCompleteCallback? = null
     internal val nativeFilteringFFmpegCompleteCallback = FFmpegSessionCompleteCallback { session ->
         val isNativeSession = synchronized(activeFFmpegSessionLock) {
@@ -257,6 +258,7 @@ object NativeDownloadFinalizer {
                 .optBoolean("allow_quality_variant", false)
             val history = if (
                 saveDownloadHistory &&
+                !result.optBoolean("publish_collision_existing", false) &&
                 !(preserveQualityVariant && result.optBoolean("already_exists", false))
             ) {
                 try {

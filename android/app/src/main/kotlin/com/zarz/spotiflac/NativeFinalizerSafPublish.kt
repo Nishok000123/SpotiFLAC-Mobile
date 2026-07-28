@@ -21,6 +21,7 @@ import com.zarz.spotiflac.NativeFinalizationPolicy.formatIndexTag
 import com.zarz.spotiflac.NativeFinalizationPolicy.isLosslessAudioCodec
 import com.zarz.spotiflac.NativeFinalizationPolicy.isLossyAudioCodec
 import com.zarz.spotiflac.NativeFinalizationPolicy.normalizeAudioCodec
+import com.zarz.spotiflac.NativeFinalizationPolicy.removeQualityVariantStagingLabel
 import com.zarz.spotiflac.NativeFinalizationPolicy.resolvePreferredDecryptionExtension
 import gobackend.Gobackend
 import org.json.JSONObject
@@ -85,32 +86,54 @@ internal fun NativeDownloadFinalizer.publishDeferredSafOutput(
         .ifBlank { input.request.optString("saf_relative_dir", "") }
     val mimeType = mimeTypeForExt(outputFile.extension)
     val preserveQualityVariant = input.request.optBoolean("allow_quality_variant", false)
-    val uniqueWrite = if (preserveQualityVariant) {
-        SafDownloadHandler.writeFileToSafUnique(
-            context = context,
-            treeUriStr = treeUri,
-            relativeDir = relativeDir,
-            fileName = finalName,
-            mimeType = mimeType,
-            srcPath = outputFile.absolutePath,
-            preservedSuffix = qualityVariantFilenameLabel(state).orEmpty(),
-        )
+    val qualityLabel = qualityVariantFilenameLabel(state).orEmpty()
+    val collisionOnly = preserveQualityVariant &&
+        input.request.optBoolean("quality_variant_collision_only", false)
+    val stagingLabel = input.request.optString("quality_variant", "").trim()
+    val logicalVariantName = input.request.optString("saf_file_name", "")
+        .ifBlank { finalName }
+    val cleanName = removeQualityVariantStagingLabel(logicalVariantName, stagingLabel)
+    val variantName = if (qualityLabel.isNotEmpty()) {
+        applyQualityVariantFilenameLabel(logicalVariantName, stagingLabel, qualityLabel)
     } else {
-        null
+        finalName
     }
-    val newUri = uniqueWrite?.uri ?: if (!preserveQualityVariant) {
-        SafDownloadHandler.writeFileToSaf(
+
+    var alreadyExists = false
+    val published = when {
+        collisionOnly -> SafDownloadHandler.writeFileToSafCollisionAware(
+            context = context,
+            treeUriStr = treeUri,
+            relativeDir = relativeDir,
+            cleanFileName = cleanName,
+            variantFileName = variantName,
+            mimeType = mimeType,
+            srcPath = outputFile.absolutePath,
+            preservedSuffix = qualityLabel,
+        )
+        preserveQualityVariant -> SafDownloadHandler.writeFileToSafUnique(
             context = context,
             treeUriStr = treeUri,
             relativeDir = relativeDir,
             fileName = finalName,
             mimeType = mimeType,
             srcPath = outputFile.absolutePath,
+            preservedSuffix = qualityLabel,
         )
-    } else {
-        null
+        else -> SafDownloadHandler.writeFileToSafIfAbsent(
+            context = context,
+            treeUriStr = treeUri,
+            relativeDir = relativeDir,
+            fileName = finalName,
+            mimeType = mimeType,
+            srcPath = outputFile.absolutePath,
+        )?.let { result ->
+            alreadyExists = result.alreadyExists
+            SafDownloadHandler.UniqueWriteResult(result.uri, result.fileName)
+        }
     } ?: throw IllegalStateException("failed to publish deferred SAF output")
-    val publishedName = uniqueWrite?.fileName ?: finalName
+    val newUri = published.uri
+    val publishedName = published.fileName
 
     Log.i(TAG, "Published deferred SAF output once: file=$publishedName bytes=${outputFile.length()}")
     outputFile.delete()
@@ -118,6 +141,11 @@ internal fun NativeDownloadFinalizer.publishDeferredSafOutput(
     state.fileName = publishedName
     input.result.put("file_path", newUri)
     input.result.put("file_name", publishedName)
+    if (alreadyExists) {
+        input.result.put("already_exists", true)
+        input.result.put("message", "File already exists")
+        input.result.put("publish_collision_existing", true)
+    }
     input.result.optJSONObject("replaygain")?.let { replayGain ->
         replayGain.put("file_path", newUri)
         replayGain.put("file_name", publishedName)

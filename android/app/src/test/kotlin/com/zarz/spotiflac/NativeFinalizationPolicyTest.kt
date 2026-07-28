@@ -151,6 +151,38 @@ class NativeFinalizationPolicyTest {
     }
 
     @Test
+    fun measuredQualityIsAddedOnlyAfterCleanNameCollision() {
+        val stagedName = "Artist - Track - qv_ab12cd34.flac"
+        assertEquals(
+            "Artist - Track.flac",
+            NativeFinalizationPolicy.removeQualityVariantStagingLabel(
+                fileName = stagedName,
+                stagingLabel = "qv_ab12cd34",
+            ),
+        )
+        assertEquals(
+            "Artist - Track.flac",
+            NativeFinalizationPolicy.resolveQualityVariantFilename(
+                fileName = stagedName,
+                stagingLabel = "qv_ab12cd34",
+                qualityLabel = "24bit-96kHz",
+                collisionOnly = true,
+                cleanNameExists = false,
+            ),
+        )
+        assertEquals(
+            "Artist - Track - 24bit-96kHz.flac",
+            NativeFinalizationPolicy.resolveQualityVariantFilename(
+                fileName = stagedName,
+                stagingLabel = "qv_ab12cd34",
+                qualityLabel = "24bit-96kHz",
+                collisionOnly = true,
+                cleanNameExists = true,
+            ),
+        )
+    }
+
+    @Test
     fun deferredSafNamingNeverPublishesTheNativeCacheName() {
         val logicalName = NativeFinalizationPolicy.logicalOutputFileName(
             deferredSafPublish = true,

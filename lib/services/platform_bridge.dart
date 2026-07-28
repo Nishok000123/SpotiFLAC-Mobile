@@ -678,6 +678,26 @@ class PlatformBridge {
     });
   }
 
+  static Future<Map<String, dynamic>> createCollisionAwareSafFileFromPath({
+    required String treeUri,
+    required String relativeDir,
+    required String cleanFileName,
+    required String variantFileName,
+    required String mimeType,
+    required String srcPath,
+    String preservedSuffix = '',
+  }) {
+    return _invokeMap('safCreateCollisionAwareFromPath', {
+      'tree_uri': treeUri,
+      'relative_dir': relativeDir,
+      'clean_file_name': cleanFileName,
+      'variant_file_name': variantFileName,
+      'mime_type': mimeType,
+      'src_path': srcPath,
+      'preserved_suffix': preservedSuffix,
+    });
+  }
+
   static Future<void> openContentUri(String uri, {String mimeType = ''}) async {
     await _channel.invokeMethod('openContentUri', {
       'uri': uri,
@@ -1069,9 +1089,10 @@ class PlatformBridge {
   static Future<Map<String, dynamic>> getNativeDownloadWorkerSnapshot({
     int sinceStateSerial = 0,
   }) async {
-    final result = await _channel.invokeMethod('getNativeDownloadWorkerSnapshot', {
-      'since_state_serial': sinceStateSerial,
-    });
+    final result = await _channel.invokeMethod(
+      'getNativeDownloadWorkerSnapshot',
+      {'since_state_serial': sinceStateSerial},
+    );
     return _decodeMapResult(result);
   }
 
@@ -1212,9 +1233,7 @@ class PlatformBridge {
     });
   }
 
-  static Future<Map<String, dynamic>> loadExtensionsFromDir(
-    String dirPath,
-  ) {
+  static Future<Map<String, dynamic>> loadExtensionsFromDir(String dirPath) {
     _log.d('loadExtensionsFromDir: $dirPath');
     return _invokeMap('loadExtensionsFromDir', {'dir_path': dirPath});
   }
@@ -1249,9 +1268,7 @@ class PlatformBridge {
     return _invokeMap('upgradeExtension', {'file_path': filePath});
   }
 
-  static Future<Map<String, dynamic>> checkExtensionUpgrade(
-    String filePath,
-  ) {
+  static Future<Map<String, dynamic>> checkExtensionUpgrade(String filePath) {
     _log.d('checkExtensionUpgrade: $filePath');
     return _invokeMap('checkExtensionUpgrade', {'file_path': filePath});
   }
@@ -1311,15 +1328,11 @@ class PlatformBridge {
     return _decodeStringListResult(result, 'getMetadataProviderPriority');
   }
 
-  static Future<Map<String, dynamic>> getExtensionSettings(
-    String extensionId,
-  ) {
+  static Future<Map<String, dynamic>> getExtensionSettings(String extensionId) {
     return _invokeMap('getExtensionSettings', {'extension_id': extensionId});
   }
 
-  static Future<Map<String, dynamic>> checkExtensionHealth(
-    String extensionId,
-  ) {
+  static Future<Map<String, dynamic>> checkExtensionHealth(String extensionId) {
     return _invokeMap('checkExtensionHealth', {'extension_id': extensionId});
   }
 

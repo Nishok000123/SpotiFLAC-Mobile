@@ -83,6 +83,18 @@ func buildOutputPathForExtension(req DownloadRequest, ext *loadedExtension) stri
 	return filepath.Join(tempDir, buildDownloadFilename(req))
 }
 
+func shouldReuseExistingOutput(req DownloadRequest, outputPath string) bool {
+	if req.AllowQualityVariant || isFDOutput(req.OutputFD) {
+		return false
+	}
+	path := strings.TrimSpace(outputPath)
+	if path == "" || strings.HasPrefix(path, "content://") || strings.HasPrefix(path, "/proc/self/fd/") {
+		return false
+	}
+	info, err := os.Stat(path)
+	return err == nil && info.Mode().IsRegular() && info.Size() > 0
+}
+
 func canEmbedGenreLabel(filePath string) bool {
 	path := strings.TrimSpace(filePath)
 	if path == "" || strings.HasPrefix(path, "content://") || strings.HasPrefix(path, "/proc/self/fd/") {

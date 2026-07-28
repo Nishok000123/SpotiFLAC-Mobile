@@ -4079,7 +4079,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get downloadQualityVariantsDescription =>
-      'Add the selected quality to the filename and keep each version in download history';
+      '各品質版を保持し、同じ名前が既に使用されている場合のみ測定品質をファイル名に追加します';
 
   @override
   String get trackOptionDownloadQualityVariant => 'Download another quality';

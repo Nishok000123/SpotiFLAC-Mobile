@@ -222,6 +222,44 @@ String applyQualityVariantFilenameLabel({
   return '$stem - $qualityLabel$extension';
 }
 
+String removeQualityVariantStagingLabel({
+  required String fileName,
+  required String stagingLabel,
+}) {
+  if (stagingLabel.isEmpty || !fileName.contains(stagingLabel)) {
+    return fileName;
+  }
+  final dotIndex = fileName.lastIndexOf('.');
+  final hasExtension = dotIndex > 0;
+  final stem = hasExtension ? fileName.substring(0, dotIndex) : fileName;
+  final extension = hasExtension ? fileName.substring(dotIndex) : '';
+  final cleanedStem = stem
+      .replaceAll(stagingLabel, '')
+      .replaceFirst(RegExp(r'[\s_-]+$'), '')
+      .trim();
+  return '${cleanedStem.isEmpty ? 'track' : cleanedStem}$extension';
+}
+
+String resolveQualityVariantFilename({
+  required String fileName,
+  required String stagingLabel,
+  required String qualityLabel,
+  required bool collisionOnly,
+  required bool cleanNameExists,
+}) {
+  if (!collisionOnly || cleanNameExists) {
+    return applyQualityVariantFilenameLabel(
+      fileName: fileName,
+      stagingLabel: stagingLabel,
+      qualityLabel: qualityLabel,
+    );
+  }
+  return removeQualityVariantStagingLabel(
+    fileName: fileName,
+    stagingLabel: stagingLabel,
+  );
+}
+
 String lossyFormatForSetting(String value) {
   final normalized = value.trim().toLowerCase();
   if (normalized.startsWith('opus')) return 'opus';

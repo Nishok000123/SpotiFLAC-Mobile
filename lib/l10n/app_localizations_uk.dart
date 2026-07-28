@@ -4138,7 +4138,7 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get downloadQualityVariantsDescription =>
-      'Add the selected quality to the filename and keep each version in download history';
+      'Зберігати кожну версію якості; додавати виміряну якість до назви файлу лише тоді, коли назва вже використовується';
 
   @override
   String get trackOptionDownloadQualityVariant => 'Download another quality';
