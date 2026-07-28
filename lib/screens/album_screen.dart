@@ -82,6 +82,9 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
   String? _headerVideoUrl;
   String? _headerImageUrl;
   List<String> _audioTraits = const [];
+  OverlayEntry? _selectionOverlayEntry;
+  List<Track> _selectionOverlayTracks = const [];
+  double _selectionOverlayBottomPadding = 0;
 
   String _effectiveMetadataProviderIdFromAlbumId() {
     if (widget.extensionId != null && widget.extensionId!.isNotEmpty) {
@@ -128,6 +131,24 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
     if (_tracks == null || _tracks!.isEmpty) {
       _fetchTracks();
     }
+  }
+
+  @override
+  void dispose() {
+    _hideSelectionOverlay();
+    super.dispose();
+  }
+
+  @override
+  void exitSelectionMode() {
+    super.exitSelectionMode();
+    _hideSelectionOverlay();
+  }
+
+  @override
+  void toggleSelection(String itemId) {
+    super.toggleSelection(itemId);
+    if (!isSelectionMode) _hideSelectionOverlay();
   }
 
   Future<void> _fetchTracks() async {
@@ -333,6 +354,13 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
         _trackSelectionId(tracks[index], index),
     });
 
+    if (isSelectionMode || _selectionOverlayEntry != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _syncSelectionOverlay(tracks: tracks, bottomPadding: bottomPadding);
+      });
+    }
+
     return PopScope(
       canPop: !isSelectionMode,
       onPopInvokedWithResult: (didPop, result) {
@@ -340,51 +368,31 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
       },
       child: Scaffold(
         backgroundColor: pageBackgroundColor,
-        body: Stack(
-          children: [
-            CustomScrollView(
-              controller: scrollController,
-              slivers: [
-                _buildAppBar(context, colorScheme, pageBackgroundColor),
-                if (_isLoading)
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: AlbumTrackListSkeleton(itemCount: 10),
-                    ),
-                  ),
-                if (_error != null)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: ErrorCard(
-                        error: _error!,
-                        colorScheme: colorScheme,
-                      ),
-                    ),
-                  ),
-                if (!_isLoading && _error == null && tracks.isNotEmpty) ...[
-                  _buildTrackList(context, colorScheme, tracks),
-                  _buildAlbumFooter(context, colorScheme, tracks),
-                ],
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: (isSelectionMode ? 140 : 32) + bottomInset,
-                  ),
+        body: CustomScrollView(
+          controller: scrollController,
+          slivers: [
+            _buildAppBar(context, colorScheme, pageBackgroundColor),
+            if (_isLoading)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: AlbumTrackListSkeleton(itemCount: 10),
                 ),
-              ],
-            ),
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOutCubic,
-              left: 0,
-              right: 0,
-              bottom: isSelectionMode ? 0 : -(200 + bottomPadding),
-              child: _buildSelectionBottomBar(
-                context,
-                colorScheme,
-                tracks,
-                bottomPadding,
+              ),
+            if (_error != null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: ErrorCard(error: _error!, colorScheme: colorScheme),
+                ),
+              ),
+            if (!_isLoading && _error == null && tracks.isNotEmpty) ...[
+              _buildTrackList(context, colorScheme, tracks),
+              _buildAlbumFooter(context, colorScheme, tracks),
+            ],
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: (isSelectionMode ? 140 : 32) + bottomInset,
               ),
             ),
           ],
@@ -651,8 +659,51 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
         tracks[index],
   ];
 
+  void _hideSelectionOverlay() {
+    _selectionOverlayEntry?.remove();
+    _selectionOverlayEntry = null;
+  }
+
+  void _syncSelectionOverlay({
+    required List<Track> tracks,
+    required double bottomPadding,
+  }) {
+    if (!isSelectionMode) {
+      _hideSelectionOverlay();
+      return;
+    }
+
+    _selectionOverlayTracks = tracks;
+    _selectionOverlayBottomPadding = bottomPadding;
+    if (_selectionOverlayEntry != null) {
+      _selectionOverlayEntry!.markNeedsBuild();
+      return;
+    }
+
+    final overlay = Overlay.of(context, rootOverlay: true);
+    _selectionOverlayEntry = OverlayEntry(
+      builder: (overlayContext) => Positioned(
+        left: 0,
+        right: 0,
+        bottom: 0,
+        child: AnimatedSelectionBottomBar(
+          child: Material(
+            color: Colors.transparent,
+            child: _buildSelectionBottomBar(
+              overlayContext,
+              Theme.of(overlayContext).colorScheme,
+              _selectionOverlayTracks,
+              _selectionOverlayBottomPadding,
+            ),
+          ),
+        ),
+      ),
+    );
+    overlay.insert(_selectionOverlayEntry!);
+  }
+
   Widget _buildSelectionBottomBar(
-    BuildContext context,
+    BuildContext barContext,
     ColorScheme colorScheme,
     List<Track> tracks,
     double bottomPadding,
@@ -680,7 +731,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
           width: double.infinity,
           child: SelectionActionButton(
             icon: Icons.download_rounded,
-            label: '${context.l10n.dialogDownload} ($selectedCount)',
+            label: '${barContext.l10n.dialogDownload} ($selectedCount)',
             onPressed: selectedCount == 0
                 ? null
                 : () => _downloadSelected(context, tracks),

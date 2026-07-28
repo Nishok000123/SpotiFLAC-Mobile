@@ -77,7 +77,7 @@ extension _QueueTabSelectionActions on _QueueTabState {
           left: 0,
           right: 0,
           bottom: 0,
-          child: _AnimatedOverlayBottomBar(
+          child: AnimatedSelectionBottomBar(
             child: Material(
               color: Colors.transparent,
               child: _buildSelectionBottomBar(
@@ -127,7 +127,7 @@ extension _QueueTabSelectionActions on _QueueTabState {
           left: 0,
           right: 0,
           bottom: 0,
-          child: _AnimatedOverlayBottomBar(
+          child: AnimatedSelectionBottomBar(
             child: Material(
               color: Colors.transparent,
               child: _buildPlaylistSelectionBottomBar(
