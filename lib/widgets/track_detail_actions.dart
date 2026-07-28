@@ -118,6 +118,12 @@ void showQueuedSnackbar(BuildContext context, int added, int skipped) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
+bool shouldShowBatchDownloadPicker({
+  required bool forceQualityPicker,
+  required bool askQualityBeforeDownload,
+  required bool allowQualityVariants,
+}) => forceQualityPicker || askQualityBeforeDownload || allowQualityVariants;
+
 /// Shared batch "add to queue" flow for detail screens: skips tracks already
 /// present in download history or the local library, then either shows the
 /// quality/service picker or resolves a default service, before enqueueing
@@ -126,6 +132,9 @@ void showQueuedSnackbar(BuildContext context, int added, int skipped) {
 /// Set [resolveDefaultService] to false to match screens that pass
 /// `settings.defaultService` straight through without resolving it against
 /// enabled extensions (playlist / library-folder screens do this today).
+/// [forceQualityPicker] lets an explicit multi-select action choose one
+/// provider and quality for the complete batch. [onQueued] runs only after
+/// tracks are actually added, not when the picker is merely opened.
 Future<void> queueTracksSkippingDownloaded(
   BuildContext context,
   WidgetRef ref,
@@ -134,6 +143,8 @@ Future<void> queueTracksSkippingDownloaded(
   String? recommendedService,
   String? playlistName,
   bool resolveDefaultService = true,
+  bool forceQualityPicker = false,
+  VoidCallback? onQueued,
 }) async {
   if (tracks.isEmpty) return;
 
@@ -198,7 +209,11 @@ Future<void> queueTracksSkippingDownloaded(
     return;
   }
 
-  if (settings.askQualityBeforeDownload || settings.allowQualityVariants) {
+  if (shouldShowBatchDownloadPicker(
+    forceQualityPicker: forceQualityPicker,
+    askQualityBeforeDownload: settings.askQualityBeforeDownload,
+    allowQualityVariants: settings.allowQualityVariants,
+  )) {
     DownloadServicePicker.show(
       context,
       trackName: '${tracksToQueue.length} tracks',
@@ -213,6 +228,7 @@ Future<void> queueTracksSkippingDownloaded(
               qualityOverride: quality,
               playlistName: playlistName,
             );
+        onQueued?.call();
         showQueuedSnackbar(context, tracksToQueue.length, skippedCount);
       },
     );
@@ -238,6 +254,7 @@ Future<void> queueTracksSkippingDownloaded(
   ref
       .read(downloadQueueProvider.notifier)
       .addMultipleToQueue(tracksToQueue, service, playlistName: playlistName);
+  onQueued?.call();
   showQueuedSnackbar(context, tracksToQueue.length, skippedCount);
 }
 
