@@ -30,8 +30,6 @@ extension _ArtistScreenSections on _ArtistScreenState {
         headerVideoUrl.isNotEmpty &&
         Uri.tryParse(headerVideoUrl)?.hasAuthority == true;
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     String? listenersText;
     final listeners = _monthlyListeners ?? widget.monthlyListeners;
     if (listeners != null && listeners > 0) {
@@ -52,6 +50,37 @@ extension _ArtistScreenSections on _ArtistScreenState {
       ),
     );
 
+    return CoverPaletteBuilder(
+      imageSource: hasValidImage ? imageUrl : null,
+      builder: (context, headerScheme) => _buildArtistAppBar(
+        context,
+        colorScheme,
+        headerScheme,
+        albums: albums,
+        hasDiscography: hasDiscography,
+        imageUrl: imageUrl,
+        hasValidImage: hasValidImage,
+        headerVideoUrl: headerVideoUrl,
+        hasMotionBanner: hasMotionBanner,
+        listenersText: listenersText,
+        isFavoriteArtist: isFavoriteArtist,
+      ),
+    );
+  }
+
+  Widget _buildArtistAppBar(
+    BuildContext context,
+    ColorScheme colorScheme,
+    ColorScheme headerScheme, {
+    required List<ArtistAlbum> albums,
+    required bool hasDiscography,
+    required String? imageUrl,
+    required bool hasValidImage,
+    required String? headerVideoUrl,
+    required bool hasMotionBanner,
+    required String? listenersText,
+    required bool isFavoriteArtist,
+  }) {
     return SliverAppBar(
       expandedHeight: hasDiscography ? 420 : 380,
       pinned: true,
@@ -79,10 +108,10 @@ extension _ArtistScreenSections on _ArtistScreenState {
           children: [
             if (hasMotionBanner)
               MotionHeaderBanner(
-                videoUrl: headerVideoUrl,
+                videoUrl: headerVideoUrl!,
                 fallback: hasValidImage
                     ? CachedCoverImage(
-                        imageUrl: imageUrl,
+                        imageUrl: imageUrl!,
                         fit: BoxFit.cover,
                         alignment: Alignment.topCenter,
                         memCacheWidth: 800,
@@ -109,7 +138,7 @@ extension _ArtistScreenSections on _ArtistScreenState {
               )
             else if (hasValidImage)
               CachedCoverImage(
-                imageUrl: imageUrl,
+                imageUrl: imageUrl!,
                 fit: BoxFit.cover,
                 alignment: Alignment.topCenter,
                 memCacheWidth: 800,
@@ -139,12 +168,10 @@ extension _ArtistScreenSections on _ArtistScreenState {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.3),
-                    Colors.black.withValues(alpha: 0.7),
-                    isDark
-                        ? colorScheme.surface
-                        : Colors.black.withValues(alpha: 0.85),
+                    headerScheme.surface.withValues(alpha: 0),
+                    headerScheme.surface.withValues(alpha: 0.35),
+                    headerScheme.surface.withValues(alpha: 0.75),
+                    headerScheme.surface,
                   ],
                   stops: const [0.0, 0.5, 0.75, 1.0],
                 ),
@@ -167,14 +194,7 @@ extension _ArtistScreenSections on _ArtistScreenState {
                           style: Theme.of(context).textTheme.headlineLarge
                               ?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                shadows: [
-                                  Shadow(
-                                    offset: const Offset(0, 1),
-                                    blurRadius: 4,
-                                    color: Colors.black.withValues(alpha: 0.5),
-                                  ),
-                                ],
+                                color: headerScheme.onSurface,
                               ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -185,16 +205,7 @@ extension _ArtistScreenSections on _ArtistScreenState {
                             listenersText,
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(
-                                  color: Colors.white,
-                                  shadows: [
-                                    Shadow(
-                                      offset: const Offset(0, 1),
-                                      blurRadius: 2,
-                                      color: Colors.black.withValues(
-                                        alpha: 0.5,
-                                      ),
-                                    ),
-                                  ],
+                                  color: headerScheme.onSurfaceVariant,
                                 ),
                           ),
                         ],
@@ -206,8 +217,8 @@ extension _ArtistScreenSections on _ArtistScreenState {
                     Container(
                       width: 52,
                       height: 52,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
+                      decoration: BoxDecoration(
+                        color: headerScheme.primaryContainer,
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
@@ -219,8 +230,8 @@ extension _ArtistScreenSections on _ArtistScreenState {
                           size: 26,
                         ),
                         color: isFavoriteArtist
-                            ? colorScheme.error
-                            : Colors.black87,
+                            ? headerScheme.error
+                            : headerScheme.onPrimaryContainer,
                         tooltip: isFavoriteArtist
                             ? context.l10n.artistOptionRemoveFromFavorites
                             : context.l10n.artistOptionAddToFavorites,
@@ -232,8 +243,8 @@ extension _ArtistScreenSections on _ArtistScreenState {
                     Container(
                       width: 52,
                       height: 52,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
+                      decoration: BoxDecoration(
+                        color: headerScheme.primaryContainer,
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
@@ -243,7 +254,7 @@ extension _ArtistScreenSections on _ArtistScreenState {
                           albums,
                         ),
                         icon: const Icon(Icons.download_rounded, size: 26),
-                        color: Colors.black87,
+                        color: headerScheme.onPrimaryContainer,
                         tooltip: context.l10n.discographyDownload,
                       ),
                     ),
@@ -255,31 +266,17 @@ extension _ArtistScreenSections on _ArtistScreenState {
         ),
         stretchModes: const [StretchMode.zoomBackground],
       ),
-      leading: IconButton(
+      leading: HeaderCircleButton(
+        icon: Icons.arrow_back,
         tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-        icon: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.4),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.arrow_back, color: Colors.white),
-        ),
         onPressed: () => Navigator.pop(context),
       ),
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 8),
-          child: IconButton(
+          child: HeaderCircleButton(
+            icon: Icons.open_in_new_rounded,
             tooltip: context.l10n.openInOtherServices,
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.4),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.open_in_new_rounded, color: Colors.white),
-            ),
             onPressed: () => _showShareSheet(context),
           ),
         ),

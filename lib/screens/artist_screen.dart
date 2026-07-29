@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/widgets/album_detail_header.dart';
+import 'package:spotiflac_android/theme/cover_palette.dart';
+import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -22,6 +25,7 @@ import 'package:spotiflac_android/screens/home_tab.dart'
 import 'package:spotiflac_android/utils/local_playback.dart';
 import 'package:spotiflac_android/widgets/download_service_picker.dart';
 import 'package:spotiflac_android/widgets/error_card.dart';
+import 'package:spotiflac_android/widgets/selection_bottom_bar.dart';
 import 'package:spotiflac_android/widgets/in_library_badge.dart';
 import 'package:spotiflac_android/widgets/track_collection_quick_actions.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
@@ -122,6 +126,8 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
   bool _showTitleInAppBar = false;
   final ScrollController _scrollController = ScrollController();
   final PageController _popularPageController = PageController();
+  final SelectionOverlayController _selectionOverlay =
+      SelectionOverlayController();
   int _popularCurrentPage = 0;
 
   bool _isFetchingDiscography = false;
@@ -253,6 +259,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
 
   @override
   void dispose() {
+    _selectionOverlay.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _popularPageController.dispose();
@@ -260,7 +267,10 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
   }
 
   Future<void> _fetchDiscography() async {
-    setState(() => _isLoadingDiscography = true);
+    setState(() {
+      _isLoadingDiscography = true;
+      _error = null;
+    });
     try {
       List<ArtistAlbum> albums;
       List<ArtistAlbum>? releases;
@@ -360,6 +370,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
           _headerImageUrl = finalHeaderImage;
           _headerVideoUrl = finalHeaderVideo;
           _monthlyListeners = finalListeners;
+          _error = null;
           _isLoadingDiscography = false;
         });
       }
@@ -465,6 +476,14 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
     final hasDiscography =
         !_isLoadingDiscography && _error == null && albums.isNotEmpty;
 
+    if (isSelectionMode || _selectionOverlay.isVisible) {
+      final bottomPadding = MediaQuery.paddingOf(context).bottom;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _syncSelectionOverlay(albums: albums, bottomPadding: bottomPadding);
+      });
+    }
+
     return PopScope(
       canPop: !isSelectionMode,
       onPopInvokedWithResult: (didPop, result) {
@@ -505,6 +524,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
                       child: ErrorCard(
                         error: _error!,
                         colorScheme: colorScheme,
+                        onRetry: _fetchDiscography,
                       ),
                     ),
                   ),
@@ -553,10 +573,27 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
                 SliverToBoxAdapter(child: SizedBox(height: bottomInset)),
               ],
             ),
-            if (isSelectionMode)
-              _buildSelectionBar(context, colorScheme, albums),
           ],
         ),
+      ),
+    );
+  }
+
+  void _syncSelectionOverlay({
+    required List<ArtistAlbum> albums,
+    required double bottomPadding,
+  }) {
+    if (!isSelectionMode) {
+      _selectionOverlay.hide();
+      return;
+    }
+    _selectionOverlay.show(
+      context,
+      (overlayContext) => _buildSelectionBar(
+        overlayContext,
+        Theme.of(overlayContext).colorScheme,
+        albums,
+        bottomPadding,
       ),
     );
   }
@@ -583,8 +620,10 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
     BuildContext context,
     ColorScheme colorScheme,
     List<ArtistAlbum> allAlbums,
+    double bottomPadding,
   ) {
-    final allSelected = selectedIds.length == allAlbums.length;
+    final allSelected =
+        selectedIds.length == allAlbums.length && allAlbums.isNotEmpty;
     final selectedCount = selectedIds.length;
     final selectedAlbums = allAlbums
         .where((a) => selectedIds.contains(a.id))
@@ -593,171 +632,34 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
       0,
       (sum, a) => sum + a.totalTracks,
     );
-    final textScale = MediaQuery.textScalerOf(context).scale(1.0);
-    final compactLayout =
-        MediaQuery.sizeOf(context).width < 430 || textScale > 1.15;
 
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: 0,
-      child: Container(
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHigh,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
+    return SelectionBottomBar(
+      selectedCount: selectedCount,
+      allSelected: allSelected,
+      onClose: exitSelectionMode,
+      onToggleSelectAll: allSelected
+          ? _deselectAll
+          : () => selectAll(allAlbums.map((a) => a.id)),
+      bottomPadding: bottomPadding,
+      allSelectedLabel: context.l10n.tracksCount(totalTracks),
+      tapToSelectLabel: selectedCount > 0
+          ? context.l10n.tracksCount(totalTracks)
+          : context.l10n.discographySelectAlbumsSubtitle,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: selectedCount > 0
+                    ? () => _downloadSelectedAlbums(context, selectedAlbums)
+                    : null,
+                icon: const Icon(Icons.download, size: 18),
+                label: Text(context.l10n.discographyDownloadSelected),
+              ),
             ),
           ],
         ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: compactLayout
-                ? Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          IconButton(
-                            onPressed: exitSelectionMode,
-                            icon: const Icon(Icons.close),
-                            tooltip: context.l10n.dialogCancel,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  context.l10n.discographySelectedCount(
-                                    selectedCount,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(fontWeight: FontWeight.w600),
-                                ),
-                                if (selectedCount > 0)
-                                  Text(
-                                    context.l10n.tracksCount(totalTracks),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: allSelected
-                                  ? _deselectAll
-                                  : () => selectAll(allAlbums.map((a) => a.id)),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  allSelected
-                                      ? context.l10n.actionDeselect
-                                      : context.l10n.actionSelectAll,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: selectedCount > 0
-                                  ? () => _downloadSelectedAlbums(
-                                      context,
-                                      selectedAlbums,
-                                    )
-                                  : null,
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  context.l10n.discographyDownloadSelected,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      IconButton(
-                        onPressed: exitSelectionMode,
-                        icon: const Icon(Icons.close),
-                        tooltip: context.l10n.dialogCancel,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              context.l10n.discographySelectedCount(
-                                selectedCount,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w600),
-                            ),
-                            if (selectedCount > 0)
-                              Text(
-                                context.l10n.tracksCount(totalTracks),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: allSelected
-                            ? _deselectAll
-                            : () => selectAll(allAlbums.map((a) => a.id)),
-                        child: Text(
-                          allSelected
-                              ? context.l10n.actionDeselect
-                              : context.l10n.actionSelectAll,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton.icon(
-                        onPressed: selectedCount > 0
-                            ? () => _downloadSelectedAlbums(
-                                context,
-                                selectedAlbums,
-                              )
-                            : null,
-                        icon: const Icon(Icons.download, size: 18),
-                        label: Text(context.l10n.discographyDownloadSelected),
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-      ),
+      ],
     );
   }
 
@@ -782,24 +684,13 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
       context: context,
       useRootNavigator: true,
       backgroundColor: colorScheme.surfaceContainerHigh,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+              const AppSheetHandle(),
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
                 child: Row(
