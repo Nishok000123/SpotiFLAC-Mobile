@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/theme/app_tokens.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 
 /// Background fill for grouped cards, matching the Settings group look. Blends a
@@ -31,7 +32,7 @@ class SettingsGroup extends StatelessWidget {
 
     final decoration = BoxDecoration(
       color: cardColor,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(context.tokens.radiusCard),
       border: Border.all(
         color: colorScheme.outlineVariant.withValues(alpha: 0.5),
       ),
@@ -293,6 +294,244 @@ class SettingsSectionHeader extends StatelessWidget {
           color: Theme.of(context).colorScheme.primary,
           fontWeight: FontWeight.w600,
         ),
+      ),
+    );
+  }
+}
+
+/// How a [SettingsChoiceChip] stacks its icon and label.
+enum SettingsChipLayout {
+  /// Icon beside the label. Fits wide chips in a grid.
+  row,
+
+  /// Icon above the label. Fits equal-width chips in a row.
+  column,
+}
+
+/// Single-select chip used across the settings pages.
+///
+/// Five private copies of this existed (theme mode, view mode, update channel,
+/// download service, generic choice), each re-deriving the same unselected
+/// fill and re-declaring radius 12. They now share one implementation, so the
+/// selected/unselected treatment is identical everywhere.
+class SettingsChoiceChip extends StatelessWidget {
+  const SettingsChoiceChip({
+    super.key,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    this.icon,
+    this.layout = SettingsChipLayout.row,
+    this.expand = false,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final SettingsChipLayout layout;
+
+  /// Wraps the chip in [Expanded] so a row of chips divides the width evenly.
+  final bool expand;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final borderRadius = BorderRadius.circular(tokens.radiusCover);
+
+    final unselectedColor = isDark
+        ? Color.alphaBlend(
+            Colors.white.withValues(alpha: 0.05),
+            colorScheme.surface,
+          )
+        : colorScheme.surfaceContainerHigh;
+    final foreground = isSelected
+        ? colorScheme.onPrimaryContainer
+        : colorScheme.onSurfaceVariant;
+
+    final labelText = Text(
+      label,
+      textAlign: TextAlign.center,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.bodyMedium?.copyWith(
+        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        color: foreground,
+      ),
+    );
+
+    final Widget content;
+    if (icon == null) {
+      content = Center(child: labelText);
+    } else if (layout == SettingsChipLayout.column) {
+      content = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: foreground),
+          SizedBox(height: tokens.gapXs + 2),
+          labelText,
+        ],
+      );
+    } else {
+      content = Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 18, color: foreground),
+          SizedBox(width: tokens.gapSm),
+          Flexible(child: labelText),
+        ],
+      );
+    }
+
+    final chip = Material(
+      color: isSelected ? colorScheme.primaryContainer : unselectedColor,
+      borderRadius: borderRadius,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: borderRadius,
+        child: ConstrainedBox(
+          // Keeps every chip a comfortable tap target regardless of layout.
+          constraints: BoxConstraints(minHeight: tokens.minTouchTarget),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              vertical: tokens.gapMd,
+              horizontal: tokens.gapMd,
+            ),
+            child: content,
+          ),
+        ),
+      ),
+    );
+
+    return expand ? Expanded(child: chip) : chip;
+  }
+}
+
+/// Lays out [SettingsChoiceChip]s in an even grid that reflows by width.
+class SettingsChoiceGrid extends StatelessWidget {
+  const SettingsChoiceGrid({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = context.tokens.gapSm;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = (constraints.maxWidth / 320).floor().clamp(2, 4);
+        final chipWidth =
+            (constraints.maxWidth - spacing * (columns - 1)) / columns;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (final child in children)
+              SizedBox(width: chipWidth, child: child),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Tone of a [SettingsInfoCard].
+enum SettingsInfoTone { neutral, warning, error }
+
+/// Inline explanatory or warning callout inside a settings page.
+///
+/// The `Container` + icon + text combination was inlined at a dozen call sites
+/// with three different radii and four different container colours.
+class SettingsInfoCard extends StatelessWidget {
+  const SettingsInfoCard({
+    super.key,
+    required this.message,
+    this.icon,
+    this.title,
+    this.tone = SettingsInfoTone.neutral,
+    this.action,
+    this.margin,
+  });
+
+  final String message;
+  final IconData? icon;
+  final String? title;
+  final SettingsInfoTone tone;
+
+  /// Optional trailing action, e.g. a retry or "grant permission" button.
+  final Widget? action;
+
+  final EdgeInsetsGeometry? margin;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final (background, foreground) = switch (tone) {
+      SettingsInfoTone.neutral => (
+        colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        colorScheme.onSurfaceVariant,
+      ),
+      SettingsInfoTone.warning => (
+        colorScheme.tertiaryContainer.withValues(alpha: 0.5),
+        colorScheme.onTertiaryContainer,
+      ),
+      SettingsInfoTone.error => (
+        colorScheme.errorContainer.withValues(alpha: 0.6),
+        colorScheme.onErrorContainer,
+      ),
+    };
+
+    return Container(
+      margin:
+          margin ??
+          EdgeInsets.symmetric(
+            horizontal: tokens.gapLg,
+            vertical: tokens.gapXs,
+          ),
+      padding: EdgeInsets.all(tokens.gapLg),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: tokens.borderRadiusCard,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 20, color: foreground),
+            SizedBox(width: tokens.gapMd),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (title != null) ...[
+                  Text(
+                    title!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: foreground,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: tokens.gapXs),
+                ],
+                Text(
+                  message,
+                  style: theme.textTheme.bodySmall?.copyWith(color: foreground),
+                ),
+                if (action != null) ...[
+                  SizedBox(height: tokens.gapSm),
+                  Align(alignment: Alignment.centerLeft, child: action!),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

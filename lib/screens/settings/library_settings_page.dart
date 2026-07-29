@@ -12,7 +12,7 @@ import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 import 'package:spotiflac_android/widgets/duplicate_review_sheet.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
-import 'package:spotiflac_android/widgets/settings_sliver_app_bar.dart';
+import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 
 class LibrarySettingsPage extends ConsumerStatefulWidget {
   const LibrarySettingsPage({super.key});
@@ -259,9 +259,6 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
       context: context,
       useRootNavigator: true,
       backgroundColor: colorScheme.surfaceContainerHigh,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -368,9 +365,6 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
       context: context,
       useRootNavigator: true,
       backgroundColor: colorScheme.surfaceContainerHigh,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -432,9 +426,6 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
       context: context,
       useRootNavigator: true,
       backgroundColor: colorScheme.surfaceContainerHigh,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -477,7 +468,7 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SettingsSliverAppBar(title: context.l10n.libraryTitle),
+          AppSliverHeader.page(title: context.l10n.libraryTitle),
 
           // Scan snapshots land ~2.5x/s; keep the per-snapshot rebuild scoped
           // to the widgets that actually display scan state instead of the
@@ -829,34 +820,11 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: colorScheme.tertiaryContainer.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      size: 20,
-                      color: colorScheme.tertiary,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        context.l10n.libraryBuiltInPlayerInfo,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            child: SettingsInfoCard(
+              icon: Icons.info_outline,
+              tone: SettingsInfoTone.warning,
+              message: context.l10n.libraryBuiltInPlayerInfo,
+              margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             ),
           ),
 
