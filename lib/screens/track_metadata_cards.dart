@@ -224,7 +224,8 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
                     if (_displayAudioQuality != null &&
                         _displayAudioQuality!.isNotEmpty)
                       HeaderMetaItem(_displayAudioQuality!),
-                    if (duration != null) HeaderMetaItem(formatClock(duration!)),
+                    if (duration != null)
+                      HeaderMetaItem(formatClock(duration!)),
                     if (_service != 'local')
                       HeaderMetaItem(
                         _service[0].toUpperCase() + _service.substring(1),
@@ -798,5 +799,4 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
       ),
     );
   }
-
 }

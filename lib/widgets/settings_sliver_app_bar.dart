@@ -29,7 +29,8 @@ class SettingsSliverAppBar extends StatelessWidget {
       pinned: true,
       backgroundColor: colorScheme.surface,
       surfaceTintColor: Colors.transparent,
-      leading: leading ??
+      leading:
+          leading ??
           IconButton(
             tooltip: MaterialLocalizations.of(context).backButtonTooltip,
             icon: const Icon(Icons.arrow_back),

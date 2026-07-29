@@ -83,9 +83,7 @@ class M3uPlaylistService {
       final track = entry.track;
       final duration = track.duration > 0 ? track.duration : -1;
       final artist = track.artistName.trim();
-      final display = artist.isEmpty
-          ? track.name
-          : '$artist - ${track.name}';
+      final display = artist.isEmpty ? track.name : '$artist - ${track.name}';
       buffer
         ..write('#EXTINF:')
         ..write(duration)
@@ -135,7 +133,10 @@ class M3uPlaylistService {
   }
 
   /// Writes the playlist to a shareable temp file named after the playlist.
-  static Future<File> writeExportFile(String playlistName, String content) async {
+  static Future<File> writeExportFile(
+    String playlistName,
+    String content,
+  ) async {
     final dir = await getTemporaryDirectory();
     final safeName = playlistName
         .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')

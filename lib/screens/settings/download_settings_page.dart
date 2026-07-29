@@ -1061,7 +1061,6 @@ class _ServiceChip extends StatelessWidget {
 class _MetadataSourceSelector extends ConsumerWidget {
   const _MetadataSourceSelector();
 
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;

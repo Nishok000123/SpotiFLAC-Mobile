@@ -477,9 +477,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     if (_restoringSession) return;
     if (_media.isEmpty || _index < 0 || _index >= _media.length) {
       unawaited(
-        AppStateDatabase.instance.clearPlaybackSession().catchError((
-          Object e,
-        ) {
+        AppStateDatabase.instance.clearPlaybackSession().catchError((Object e) {
           _log.w('Failed to clear playback session: $e');
         }),
       );
@@ -798,8 +796,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     }
     if (_index >= 0 && _index < _media.length - 1) {
       await _playIndex(_index + 1);
-    } else if (_repeatMode == AudioServiceRepeatMode.all &&
-        _media.isNotEmpty) {
+    } else if (_repeatMode == AudioServiceRepeatMode.all && _media.isNotEmpty) {
       await _playIndex(0);
     } else {
       _broadcastState(playerState: PlayerState.completed);

@@ -1045,4 +1045,3 @@ final localLibraryFirstCoverProvider = FutureProvider.autoDispose
       }
       return null;
     });
-

@@ -633,11 +633,7 @@ class _LibraryTracksFolderScreenState
                 color: Colors.black.withValues(alpha: 0.4),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.ios_share,
-                color: Colors.white,
-                size: 20,
-              ),
+              child: const Icon(Icons.ios_share, color: Colors.white, size: 20),
             ),
             onPressed: () => _exportAsM3u8(context, title, entries),
           ),
