@@ -147,6 +147,10 @@ PlayableMedia playableFromHistory(DownloadHistoryItem item) {
     duration: (item.duration != null && item.duration! > 0)
         ? Duration(seconds: item.duration!)
         : null,
+    bitDepth: item.bitDepth,
+    sampleRate: item.sampleRate,
+    bitrate: item.bitrate,
+    format: item.format,
   );
 }
 
@@ -168,5 +172,9 @@ PlayableMedia playableFromLocal(LocalLibraryItem item) {
     duration: (item.duration != null && item.duration! > 0)
         ? Duration(seconds: item.duration!)
         : null,
+    bitDepth: item.bitDepth,
+    sampleRate: item.sampleRate,
+    bitrate: item.bitrate,
+    format: item.format,
   );
 }

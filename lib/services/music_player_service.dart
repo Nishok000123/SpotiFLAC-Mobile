@@ -8,6 +8,7 @@ import 'package:audio_session/audio_session.dart'
 import 'package:audioplayers/audioplayers.dart';
 import 'package:spotiflac_android/services/app_state_database.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
+import 'package:spotiflac_android/utils/int_utils.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 
 final _log = AppLogger('MusicPlayer');
@@ -51,6 +52,10 @@ class PlayableMedia {
   final String album;
   final String? artUri;
   final Duration? duration;
+  final int? bitDepth;
+  final int? sampleRate;
+  final int? bitrate;
+  final String? format;
 
   const PlayableMedia({
     required this.id,
@@ -60,6 +65,10 @@ class PlayableMedia {
     this.album = '',
     this.artUri,
     this.duration,
+    this.bitDepth,
+    this.sampleRate,
+    this.bitrate,
+    this.format,
   });
 
   bool get isContentUri => source.startsWith('content://');
@@ -72,6 +81,10 @@ class PlayableMedia {
     'album': album,
     if (artUri != null && artUri!.isNotEmpty) 'artUri': artUri,
     if (duration != null) 'durationMs': duration!.inMilliseconds,
+    if (bitDepth != null && bitDepth! > 0) 'bitDepth': bitDepth,
+    if (sampleRate != null && sampleRate! > 0) 'sampleRate': sampleRate,
+    if (bitrate != null && bitrate! > 0) 'bitrate': bitrate,
+    if (format != null && format!.trim().isNotEmpty) 'format': format,
   };
 
   static PlayableMedia? fromJson(Map<String, dynamic> json) {
@@ -91,6 +104,10 @@ class PlayableMedia {
       duration: (durationMs != null && durationMs > 0)
           ? Duration(milliseconds: durationMs)
           : null,
+      bitDepth: readPositiveInt(json['bitDepth']),
+      sampleRate: readPositiveInt(json['sampleRate']),
+      bitrate: readPositiveInt(json['bitrate']),
+      format: json['format']?.toString(),
     );
   }
 
@@ -108,9 +125,55 @@ class PlayableMedia {
         'source': source,
         if (resolvedSource != null && resolvedSource.isNotEmpty)
           'resolvedSource': resolvedSource,
+        if (bitDepth != null && bitDepth! > 0) 'bit_depth': bitDepth,
+        if (sampleRate != null && sampleRate! > 0) 'sample_rate': sampleRate,
+        if (bitrate != null && bitrate! > 0) 'bitrate': bitrate,
+        if (format != null && format!.trim().isNotEmpty)
+          'format': format!.trim(),
       },
     );
   }
+}
+
+/// Technical audio metadata carried with a queue item. This is available
+/// immediately when tracks change, before a fresh file probe completes.
+Map<String, dynamic> playbackAudioMetadataFromMediaItem(MediaItem item) {
+  final extras = item.extras;
+  if (extras == null || extras.isEmpty) return const {};
+
+  final metadata = <String, dynamic>{};
+  final bitDepth = readPositiveInt(extras['bit_depth']);
+  final sampleRate = readPositiveInt(extras['sample_rate']);
+  final bitrate = readPositiveInt(extras['bitrate']);
+  final format = extras['format']?.toString().trim();
+  if (bitDepth != null) metadata['bit_depth'] = bitDepth;
+  if (sampleRate != null) metadata['sample_rate'] = sampleRate;
+  if (bitrate != null) metadata['bitrate'] = bitrate;
+  if (format != null && format.isNotEmpty) metadata['format'] = format;
+  return metadata;
+}
+
+/// Combines the immediate queue metadata with the richer file probe while
+/// retaining known quality fields when a decoder omits or reports them as 0.
+Map<String, dynamic> mergePlaybackFileMetadata(
+  Map<String, dynamic> fallback,
+  Map<String, dynamic> probed,
+) {
+  final merged = <String, dynamic>{...fallback, ...probed};
+  for (final key in const ['bit_depth', 'sample_rate', 'bitrate']) {
+    if (readPositiveInt(probed[key]) == null &&
+        readPositiveInt(fallback[key]) != null) {
+      merged[key] = fallback[key];
+    }
+  }
+  final probedFormat = probed['format']?.toString().trim();
+  final fallbackFormat = fallback['format']?.toString().trim();
+  if ((probedFormat == null || probedFormat.isEmpty) &&
+      fallbackFormat != null &&
+      fallbackFormat.isNotEmpty) {
+    merged['format'] = fallbackFormat;
+  }
+  return merged;
 }
 
 class MusicPlayerHandler extends BaseAudioHandler
@@ -716,7 +779,13 @@ class MusicPlayerHandler extends BaseAudioHandler
       if (!_isCurrentPlayRequest(generation, media)) return;
       _activeResolvedPath = media.isContentUri ? resolved : null;
       await _cleanupPendingResolvedPaths();
-      mediaItem.add(media.toMediaItem(resolvedSource: resolved));
+      // Plain file paths were already published before loading. Re-publishing
+      // them with an identical resolved path made Now Playing clear and probe
+      // the same metadata twice on every Next. SAF needs this second event so
+      // the UI can inspect its temporary local copy.
+      if (media.isContentUri) {
+        mediaItem.add(media.toMediaItem(resolvedSource: resolved));
+      }
       _broadcastPosition(Duration.zero, force: true);
       _broadcastState(playerState: PlayerState.playing);
       _persistSession();

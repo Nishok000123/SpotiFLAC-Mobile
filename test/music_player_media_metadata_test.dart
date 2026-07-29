@@ -1,0 +1,48 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:spotiflac_android/services/music_player_service.dart';
+
+void main() {
+  const media = PlayableMedia(
+    id: 'track-1',
+    source: '/music/track.flac',
+    title: 'Track',
+    artist: 'Artist',
+    bitDepth: 24,
+    sampleRate: 96000,
+    bitrate: 2860,
+    format: 'flac',
+  );
+
+  test('queue media exposes technical quality to Now Playing immediately', () {
+    final metadata = playbackAudioMetadataFromMediaItem(media.toMediaItem());
+
+    expect(metadata, {
+      'bit_depth': 24,
+      'sample_rate': 96000,
+      'bitrate': 2860,
+      'format': 'flac',
+    });
+  });
+
+  test('persisted playback keeps technical quality across app restarts', () {
+    final restored = PlayableMedia.fromJson(media.toJson());
+
+    expect(restored, isNotNull);
+    expect(restored!.bitDepth, 24);
+    expect(restored.sampleRate, 96000);
+    expect(restored.bitrate, 2860);
+    expect(restored.format, 'flac');
+  });
+
+  test('file probe cannot erase valid queue quality with empty values', () {
+    final merged = mergePlaybackFileMetadata(
+      playbackAudioMetadataFromMediaItem(media.toMediaItem()),
+      {'title': 'Track', 'bit_depth': 0, 'sample_rate': null, 'format': ''},
+    );
+
+    expect(merged['bit_depth'], 24);
+    expect(merged['sample_rate'], 96000);
+    expect(merged['format'], 'flac');
+    expect(merged['title'], 'Track');
+  });
+}

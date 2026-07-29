@@ -7,8 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
 import 'package:spotiflac_android/services/library_database.dart';
+import 'package:spotiflac_android/services/music_player_service.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
+import 'package:spotiflac_android/utils/int_utils.dart';
 import 'package:spotiflac_android/utils/lyrics_parser.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
@@ -202,20 +204,33 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     final source = item.extras?['source']?.toString() ?? '';
     if (source.isEmpty) return;
     final resolvedSource = item.extras?['resolvedSource']?.toString();
-    unawaited(_loadMetadataFor(source, resolvedSource: resolvedSource));
+    unawaited(
+      _loadMetadataFor(
+        source,
+        resolvedSource: resolvedSource,
+        fallbackMetadata: playbackAudioMetadataFromMediaItem(item),
+      ),
+    );
   }
 
-  Future<void> _loadMetadataFor(String source, {String? resolvedSource}) async {
+  Future<void> _loadMetadataFor(
+    String source, {
+    String? resolvedSource,
+    Map<String, dynamic> fallbackMetadata = const {},
+  }) async {
     final effectiveResolvedSource = resolvedSource?.trim();
     if (source == _loadedSource &&
         effectiveResolvedSource == _loadedResolvedSource) {
+      if (_metadata == null && fallbackMetadata.isNotEmpty) {
+        setState(() => _metadata = fallbackMetadata);
+      }
       return;
     }
     _loadedSource = source;
     _loadedResolvedSource = effectiveResolvedSource;
     setState(() {
       _loadingMeta = true;
-      _metadata = null;
+      _metadata = fallbackMetadata.isEmpty ? null : fallbackMetadata;
       _lyrics = ParsedLyrics.empty;
     });
     try {
@@ -237,7 +252,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         return;
       }
       setState(() {
-        _metadata = meta;
+        _metadata = mergePlaybackFileMetadata(fallbackMetadata, meta);
         _lyrics = LyricsParser.parse((meta['lyrics'] ?? '').toString());
         _loadingMeta = false;
       });
@@ -249,7 +264,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         return;
       }
       setState(() {
-        _metadata = null;
+        _metadata = fallbackMetadata.isEmpty ? null : fallbackMetadata;
         _lyrics = ParsedLyrics.empty;
         _loadingMeta = false;
       });
@@ -267,10 +282,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         .toUpperCase();
     if (format.isNotEmpty) parts.add(format);
 
-    final bitDepth = (meta['bit_depth'] as num?)?.toInt() ?? 0;
+    final bitDepth = readPositiveInt(meta['bit_depth']) ?? 0;
     if (bitDepth > 0) parts.add('$bitDepth-bit');
 
-    final sampleRate = (meta['sample_rate'] as num?)?.toDouble() ?? 0;
+    final sampleRate = readPositiveInt(meta['sample_rate'])?.toDouble() ?? 0;
     if (sampleRate > 0) {
       final khz = sampleRate / 1000;
       final khzStr = khz == khz.roundToDouble()
@@ -279,7 +294,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       parts.add('$khzStr kHz');
     }
 
-    final bitrate = (meta['bitrate'] as num?)?.toInt() ?? 0;
+    final bitrate = readPositiveInt(meta['bitrate']) ?? 0;
     if (bitDepth == 0 && bitrate > 0) parts.add('$bitrate kbps');
 
     if (parts.isEmpty) return null;
