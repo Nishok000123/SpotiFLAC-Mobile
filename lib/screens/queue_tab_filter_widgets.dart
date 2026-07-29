@@ -839,26 +839,16 @@ extension _QueueTabFilterWidgets on _QueueTabState {
         icon = Icons.history;
     }
 
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 64, color: colorScheme.onSurfaceVariant),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-            ),
-          ),
-        ],
+    return EmptyState(
+      icon: icon,
+      title: message,
+      message: subtitle,
+      // Every empty branch here means "you have not downloaded anything of
+      // this kind yet", so the way forward is always search.
+      action: FilledButton.icon(
+        onPressed: () => ShellNavigationService.requestTab(ShellTab.home),
+        icon: const Icon(Icons.search),
+        label: Text(context.l10n.navHome),
       ),
     );
   }

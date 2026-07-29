@@ -24,7 +24,30 @@ extension _HomeTabRecentUI on _HomeTabState {
               ),
               if (uniqueItems.isNotEmpty)
                 TextButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    // Clearing history is not undoable, so ask first.
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (dialogContext) => AlertDialog(
+                        title: Text(dialogContext.l10n.dialogClearAll),
+                        content: Text(
+                          dialogContext.l10n.dialogClearHistoryMessage,
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.of(dialogContext).pop(false),
+                            child: Text(dialogContext.l10n.dialogCancel),
+                          ),
+                          FilledButton(
+                            onPressed: () =>
+                                Navigator.of(dialogContext).pop(true),
+                            child: Text(dialogContext.l10n.dialogClearAll),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed != true) return;
                     for (final id in downloadIds) {
                       ref
                           .read(recentAccessProvider.notifier)
@@ -34,7 +57,9 @@ extension _HomeTabRecentUI on _HomeTabState {
                   },
                   child: Text(
                     context.l10n.dialogClearAll,
-                    style: TextStyle(color: colorScheme.primary, fontSize: 12),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: colorScheme.primary,
+                    ),
                   ),
                 ),
             ],

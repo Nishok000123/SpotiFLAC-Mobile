@@ -9,16 +9,23 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
         error.toLowerCase().contains('rate limit') ||
         error.toLowerCase().contains('too many requests');
     final isUrlNotRecognized = error == 'url_not_recognized';
+    // Re-runs the current query. Skipped for an unrecognized URL, where the
+    // outcome is deterministic and retrying would just fail again.
+    final retry = _urlController.text.trim().isEmpty
+        ? null
+        : () => _performSearch(_urlController.text.trim());
 
     if (isRateLimit) {
-      return ErrorCard(error: error, colorScheme: colorScheme);
+      return ErrorCard(error: error, colorScheme: colorScheme, onRetry: retry);
     }
 
     if (isUrlNotRecognized) {
       return Card(
         elevation: 0,
         color: colorScheme.errorContainer.withValues(alpha: 0.5),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: context.tokens.borderRadiusCard,
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -39,7 +46,9 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
                     const SizedBox(height: 4),
                     Text(
                       l10n.errorUrlNotRecognizedMessage,
-                      style: TextStyle(color: colorScheme.error, fontSize: 12),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: colorScheme.error),
                     ),
                   ],
                 ),
@@ -50,7 +59,11 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
       );
     }
 
-    return ErrorCard(error: l10n.errorUrlFetchFailed, colorScheme: colorScheme);
+    return ErrorCard(
+      error: l10n.errorUrlFetchFailed,
+      colorScheme: colorScheme,
+      onRetry: retry,
+    );
   }
 
   Widget _buildEmptySearchResultWidget(ColorScheme colorScheme) {
@@ -124,9 +137,6 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
       useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: colorScheme.surfaceContainerLow,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) {
           return SafeArea(
@@ -136,17 +146,7 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Center(
-                    child: Container(
-                      width: 32,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: colorScheme.outlineVariant,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
+                  const AppSheetHandle(),
                   Row(
                     children: [
                       Text(
