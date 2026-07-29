@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/theme/cover_palette.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart';
@@ -24,7 +25,7 @@ import 'package:spotiflac_android/screens/collapsing_header_scroll_mixin.dart';
 import 'package:spotiflac_android/screens/selection_mode_mixin.dart';
 import 'package:spotiflac_android/screens/track_metadata_screen.dart';
 import 'package:spotiflac_android/services/downloaded_embedded_cover_resolver.dart';
-import 'package:spotiflac_android/widgets/album_scaffold_body.dart';
+import 'package:spotiflac_android/widgets/collection_scaffold.dart';
 import 'package:spotiflac_android/widgets/cached_cover_image.dart';
 import 'package:spotiflac_android/widgets/album_track_tile.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
@@ -274,20 +275,19 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
 
     pruneSelection(tracks.map((t) => t.id).toSet());
 
-    return AlbumScaffoldBody(
+    return CollectionScaffold(
       scrollController: scrollController,
       isSelectionMode: isSelectionMode,
       onExitSelectionMode: exitSelectionMode,
       appBar: _buildAppBar(context, colorScheme, tracks, qualityLabelMode),
-      trackList: _buildTrackList(context, colorScheme, tracks),
-      bottomBar: _buildSelectionBottomBar(
+      slivers: [_buildTrackList(context, colorScheme, tracks)],
+      selectionBar: _buildSelectionBottomBar(
         context,
         colorScheme,
         tracks,
         bottomPadding,
       ),
       bottomInset: bottomInset,
-      bottomPadding: bottomPadding,
     );
   }
 
@@ -355,6 +355,7 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
       expandedHeight: expandedHeight,
       showTitleInAppBar: showTitleInAppBar,
       background: background,
+      paletteSource: embeddedCoverPath ?? widget.coverUrl,
       blurAndScrimBackground:
           embeddedCoverPath != null || widget.coverUrl != null,
       coverBuilder: (context, coverSize) => _buildSquareCover(
@@ -366,8 +367,8 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
       ),
       subtitle: Text(
         widget.artistName,
-        style: const TextStyle(
-          color: Colors.white70,
+        style: TextStyle(
+          color: HeaderPalette.of(context).onSurfaceVariant,
           fontSize: 16,
           fontWeight: FontWeight.w600,
         ),

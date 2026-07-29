@@ -2,6 +2,10 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/widgets/collection_scaffold.dart';
+import 'package:spotiflac_android/theme/app_tokens.dart';
+import 'package:spotiflac_android/widgets/track_card.dart';
+import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:share_plus/share_plus.dart' show ShareParams, SharePlus, XFile;
 import 'package:spotiflac_android/widgets/album_detail_header.dart';
 import 'package:spotiflac_android/widgets/cached_cover_image.dart';
@@ -307,87 +311,62 @@ class _LibraryTracksFolderScreenState
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
     final bottomInset = context.navBarBottomInset;
 
-    return PopScope(
-      canPop: !isSelectionMode,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && isSelectionMode) {
-          exitSelectionMode();
-        }
-      },
-      child: Scaffold(
-        body: Stack(
-          children: [
-            CustomScrollView(
-              controller: scrollController,
-              slivers: [
-                _buildAppBar(context, colorScheme, title, entries, playlist),
-                if (entries.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: _EmptyFolderState(
-                      title: emptyTitle,
-                      subtitle: emptySubtitle,
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: wideListInset(context),
-                    ),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final entry = entries[index];
-                        final isSelected = selectedIds.contains(entry.key);
-                        final isInHistory = existingHistoryKeys.contains(
-                          historyLookups[index].lookupKey,
-                        );
-                        return KeyedSubtree(
-                          key: ValueKey(entry.key),
-                          child: StaggeredListItem(
-                            index: index,
-                            child: _CollectionTrackTile(
-                              entry: entry,
-                              mode: widget.mode,
-                              playlistId: widget.playlistId,
-                              folderTracks: folderTracks,
-                              isInHistory: isInHistory,
-                              isSelectionMode: isSelectionMode,
-                              isSelected: isSelected,
-                              onTap: isSelectionMode
-                                  ? () => toggleSelection(entry.key)
-                                  : null,
-                              onLongPress: isSelectionMode
-                                  ? null
-                                  : () => enterSelectionMode(entry.key),
-                            ),
-                          ),
-                        );
-                      }, childCount: entries.length),
+    return CollectionScaffold(
+      scrollController: scrollController,
+      isSelectionMode: isSelectionMode,
+      onExitSelectionMode: exitSelectionMode,
+      bottomInset: bottomInset,
+      selectionBar: _buildSelectionBottomBar(
+        context,
+        colorScheme,
+        entries,
+        bottomPadding,
+      ),
+      appBar: _buildAppBar(context, colorScheme, title, entries, playlist),
+      slivers: [
+        if (entries.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _EmptyFolderState(
+              title: emptyTitle,
+              subtitle: emptySubtitle,
+            ),
+          )
+        else
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: wideListInset(context)),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final entry = entries[index];
+                final isSelected = selectedIds.contains(entry.key);
+                final isInHistory = existingHistoryKeys.contains(
+                  historyLookups[index].lookupKey,
+                );
+                return KeyedSubtree(
+                  key: ValueKey(entry.key),
+                  child: StaggeredListItem(
+                    index: index,
+                    child: _CollectionTrackTile(
+                      entry: entry,
+                      mode: widget.mode,
+                      playlistId: widget.playlistId,
+                      folderTracks: folderTracks,
+                      isInHistory: isInHistory,
+                      isSelectionMode: isSelectionMode,
+                      isSelected: isSelected,
+                      onTap: isSelectionMode
+                          ? () => toggleSelection(entry.key)
+                          : null,
+                      onLongPress: isSelectionMode
+                          ? null
+                          : () => enterSelectionMode(entry.key),
                     ),
                   ),
-                SliverToBoxAdapter(
-                  child: SizedBox(height: isSelectionMode ? 200 : 32),
-                ),
-                SliverToBoxAdapter(child: SizedBox(height: bottomInset)),
-              ],
+                );
+              }, childCount: entries.length),
             ),
-
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOutCubic,
-              left: 0,
-              right: 0,
-              bottom: isSelectionMode ? 0 : -(280 + bottomPadding),
-              child: _buildSelectionBottomBar(
-                context,
-                colorScheme,
-                entries,
-                bottomPadding,
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 
@@ -574,6 +553,7 @@ class _LibraryTracksFolderScreenState
       expandedHeight: expandedHeight,
       showTitleInAppBar: showTitleInAppBar,
       background: background,
+      paletteSource: coverUrl,
       blurAndScrimBackground: hasCustomCover || hasCoverUrl,
       coverBuilder: (context, coverSize) {
         if (hasCustomCover) {
@@ -748,22 +728,11 @@ class _LibraryTracksFolderScreenState
       context: context,
       useRootNavigator: true,
       backgroundColor: colorScheme.surfaceContainerHigh,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+            const AppSheetHandle(),
             const SizedBox(height: 16),
             ListTile(
               contentPadding: const EdgeInsets.symmetric(
@@ -964,116 +933,68 @@ class _CollectionTrackTile extends ConsumerWidget {
         ? 'cover_${inMemoryHistoryItem.id}'
         : null;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Card(
-        elevation: 0,
-        color: isSelected
-            ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-            : Colors.transparent,
-        margin: const EdgeInsets.symmetric(vertical: 2),
-        child: ListTile(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          leading: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isSelectionMode) ...[
-                AnimatedSelectionCheckbox(
-                  visible: true,
-                  selected: isSelected,
-                  colorScheme: colorScheme,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-              ],
-              HeroMode(
-                enabled: heroTag != null,
-                child: heroTag != null
-                    ? Hero(
-                        tag: heroTag,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child:
-                              effectiveCoverUrl != null &&
-                                  effectiveCoverUrl.isNotEmpty
-                              ? _buildTrackCover(context, effectiveCoverUrl, 52)
-                              : Container(
-                                  width: 52,
-                                  height: 52,
-                                  color: colorScheme.surfaceContainerHighest,
-                                  child: Icon(
-                                    Icons.music_note,
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                        ),
-                      )
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child:
-                            effectiveCoverUrl != null &&
-                                effectiveCoverUrl.isNotEmpty
-                            ? _buildTrackCover(context, effectiveCoverUrl, 52)
-                            : Container(
-                                width: 52,
-                                height: 52,
-                                color: colorScheme.surfaceContainerHighest,
-                                child: Icon(
-                                  Icons.music_note,
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                      ),
-              ),
-            ],
-          ),
-          title: Text(track.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Row(
-            children: [
-              Flexible(
-                child: Text(
-                  track.artistName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (isInLocalLibrary || isInHistory) ...[
-                const SizedBox(width: 6),
-                const InLibraryBadge(),
-              ],
-            ],
-          ),
-          trailing: isSelectionMode
-              ? null
-              : isInHistory || isInLocalLibrary
-              ? IconButton(
-                  tooltip: context.l10n.tooltipPlay,
-                  onPressed: () {
-                    ref.read(playbackProvider.notifier).playTrackList([track]);
-                  },
-                  icon: Icon(Icons.play_arrow, color: colorScheme.primary),
-                  style: IconButton.styleFrom(
-                    backgroundColor: colorScheme.primaryContainer.withValues(
-                      alpha: 0.3,
-                    ),
-                  ),
-                )
-              : null,
-          onTap: isSelectionMode
-              ? onTap
-              : () {
-                  if (mode == LibraryTracksFolderMode.wishlist) {
-                    _downloadTrack(context, ref);
-                    return;
-                  }
-
-                  _navigateToMetadata(context, ref);
-                },
-          onLongPress: isSelectionMode ? onTap : onLongPress,
+    return TrackCard(
+      style: TrackCardStyle.flat,
+      isSelectionMode: isSelectionMode,
+      isSelected: isSelected,
+      leading: HeroMode(
+        enabled: heroTag != null,
+        child: Builder(
+          builder: (context) {
+            final size = context.tokens.coverCompact;
+            final cover = ClipRRect(
+              borderRadius: context.tokens.borderRadiusThumb,
+              child: effectiveCoverUrl != null && effectiveCoverUrl.isNotEmpty
+                  ? _buildTrackCover(context, effectiveCoverUrl, size)
+                  : TrackCoverPlaceholder(size: size),
+            );
+            return heroTag != null ? Hero(tag: heroTag, child: cover) : cover;
+          },
         ),
       ),
+      title: track.name,
+      subtitle: Row(
+        children: [
+          Flexible(
+            child: Text(
+              track.artistName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
+          ),
+          if (isInLocalLibrary || isInHistory) ...[
+            const SizedBox(width: 6),
+            const InLibraryBadge(),
+          ],
+        ],
+      ),
+      trailing: isInHistory || isInLocalLibrary
+          ? IconButton(
+              tooltip: context.l10n.tooltipPlay,
+              onPressed: () {
+                ref.read(playbackProvider.notifier).playTrackList([track]);
+              },
+              icon: Icon(Icons.play_arrow, color: colorScheme.primary),
+              style: IconButton.styleFrom(
+                minimumSize: Size.square(context.tokens.minTouchTarget),
+                backgroundColor: colorScheme.primaryContainer.withValues(
+                  alpha: 0.3,
+                ),
+              ),
+            )
+          : null,
+      onTap: isSelectionMode
+          ? onTap
+          : () {
+              if (mode == LibraryTracksFolderMode.wishlist) {
+                _downloadTrack(context, ref);
+                return;
+              }
+
+              _navigateToMetadata(context, ref);
+            },
+      onLongPress: isSelectionMode ? onTap : onLongPress,
     );
   }
 

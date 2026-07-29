@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/widgets/collection_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:spotiflac_android/services/cover_cache_manager.dart';
@@ -82,9 +83,6 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
   String? _headerVideoUrl;
   String? _headerImageUrl;
   List<String> _audioTraits = const [];
-  OverlayEntry? _selectionOverlayEntry;
-  List<Track> _selectionOverlayTracks = const [];
-  double _selectionOverlayBottomPadding = 0;
 
   String _effectiveMetadataProviderIdFromAlbumId() {
     if (widget.extensionId != null && widget.extensionId!.isNotEmpty) {
@@ -133,26 +131,11 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
     }
   }
 
-  @override
-  void dispose() {
-    _hideSelectionOverlay();
-    super.dispose();
-  }
-
-  @override
-  void exitSelectionMode() {
-    super.exitSelectionMode();
-    _hideSelectionOverlay();
-  }
-
-  @override
-  void toggleSelection(String itemId) {
-    super.toggleSelection(itemId);
-    if (!isSelectionMode) _hideSelectionOverlay();
-  }
-
   Future<void> _fetchTracks() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final directProviderId = _directMetadataProviderId();
       if (directProviderId != null) {
@@ -242,6 +225,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
         _audioTraits = (audioTraits != null && audioTraits.isNotEmpty)
             ? audioTraits
             : _audioTraits;
+        _error = null;
         _isLoading = false;
       });
     }
@@ -354,50 +338,43 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
         _trackSelectionId(tracks[index], index),
     });
 
-    if (isSelectionMode || _selectionOverlayEntry != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _syncSelectionOverlay(tracks: tracks, bottomPadding: bottomPadding);
-      });
-    }
-
-    return PopScope(
-      canPop: !isSelectionMode,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && isSelectionMode) exitSelectionMode();
-      },
-      child: Scaffold(
-        backgroundColor: pageBackgroundColor,
-        body: CustomScrollView(
-          controller: scrollController,
-          slivers: [
-            _buildAppBar(context, colorScheme, pageBackgroundColor),
-            if (_isLoading)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: AlbumTrackListSkeleton(itemCount: 10),
-                ),
-              ),
-            if (_error != null)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: ErrorCard(error: _error!, colorScheme: colorScheme),
-                ),
-              ),
-            if (!_isLoading && _error == null && tracks.isNotEmpty) ...[
-              _buildTrackList(context, colorScheme, tracks),
-              _buildAlbumFooter(context, colorScheme, tracks),
-            ],
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: (isSelectionMode ? 140 : 32) + bottomInset,
+    return CollectionScaffold(
+      scrollController: scrollController,
+      isSelectionMode: isSelectionMode,
+      onExitSelectionMode: exitSelectionMode,
+      backgroundColor: pageBackgroundColor,
+      bottomInset: bottomInset,
+      selectionBar: _buildSelectionBottomBar(
+        context,
+        colorScheme,
+        tracks,
+        bottomPadding,
+      ),
+      appBar: _buildAppBar(context, colorScheme, pageBackgroundColor),
+      slivers: [
+        if (_isLoading)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: AlbumTrackListSkeleton(itemCount: 10),
+            ),
+          ),
+        if (_error != null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: ErrorCard(
+                error: _error!,
+                colorScheme: colorScheme,
+                onRetry: _fetchTracks,
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        if (!_isLoading && _error == null && tracks.isNotEmpty) ...[
+          _buildTrackList(context, colorScheme, tracks),
+          _buildAlbumFooter(context, colorScheme, tracks),
+        ],
+      ],
     );
   }
 
@@ -453,6 +430,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
       showTitleInAppBar: showTitleInAppBar,
       backgroundColor: pageBackgroundColor,
       background: background,
+      paletteSource: coverThumbUrl,
       blurAndScrimBackground: showSquareCover,
       coverBuilder: showSquareCover
           ? (context, coverSize) => coverThumbUrl != null
@@ -508,28 +486,12 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
                 _buildLoveAllButton(),
                 const SizedBox(width: 12),
                 Flexible(
-                  child: FilledButton.icon(
+                  child: HeaderFilledButton(
+                    icon: Icons.download,
+                    label: context.l10n.downloadAllCount(tracks.length),
                     onPressed: tracks.isEmpty
                         ? null
                         : () => _downloadAll(context),
-                    icon: const Icon(Icons.download, size: 18),
-                    label: Text(
-                      context.l10n.downloadAllCount(tracks.length),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black87,
-                      disabledBackgroundColor: Colors.white.withValues(
-                        alpha: 0.45,
-                      ),
-                      disabledForegroundColor: Colors.black54,
-                      minimumSize: const Size(0, 48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -542,17 +504,10 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
       leading: isSelectionMode
           ? Padding(
               padding: const EdgeInsets.only(left: 8),
-              child: IconButton(
+              child: HeaderCircleButton(
+                icon: Icons.close,
                 tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                 onPressed: exitSelectionMode,
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.close, color: Colors.white),
-                ),
               ),
             )
           : null,
@@ -561,19 +516,9 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
           : [
               Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: IconButton(
+                child: HeaderCircleButton(
+                  icon: Icons.open_in_new_rounded,
                   tooltip: context.l10n.openInOtherServices,
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.open_in_new_rounded,
-                      color: Colors.white,
-                    ),
-                  ),
                   onPressed: () => _showShareSheet(context, tracks, artistName),
                 ),
               ),
@@ -658,49 +603,6 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
       if (selectedIds.contains(_trackSelectionId(tracks[index], index)))
         tracks[index],
   ];
-
-  void _hideSelectionOverlay() {
-    _selectionOverlayEntry?.remove();
-    _selectionOverlayEntry = null;
-  }
-
-  void _syncSelectionOverlay({
-    required List<Track> tracks,
-    required double bottomPadding,
-  }) {
-    if (!isSelectionMode) {
-      _hideSelectionOverlay();
-      return;
-    }
-
-    _selectionOverlayTracks = tracks;
-    _selectionOverlayBottomPadding = bottomPadding;
-    if (_selectionOverlayEntry != null) {
-      _selectionOverlayEntry!.markNeedsBuild();
-      return;
-    }
-
-    final overlay = Overlay.of(context, rootOverlay: true);
-    _selectionOverlayEntry = OverlayEntry(
-      builder: (overlayContext) => Positioned(
-        left: 0,
-        right: 0,
-        bottom: 0,
-        child: AnimatedSelectionBottomBar(
-          child: Material(
-            color: Colors.transparent,
-            child: _buildSelectionBottomBar(
-              overlayContext,
-              Theme.of(overlayContext).colorScheme,
-              _selectionOverlayTracks,
-              _selectionOverlayBottomPadding,
-            ),
-          ),
-        ),
-      ),
-    );
-    overlay.insert(_selectionOverlayEntry!);
-  }
 
   Widget _buildSelectionBottomBar(
     BuildContext barContext,
@@ -796,7 +698,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
 
     return HeaderCircleButton(
       icon: allLoved ? Icons.favorite : Icons.favorite_border,
-      iconColor: allLoved ? Colors.redAccent : Colors.white,
+      iconColor: allLoved ? Theme.of(context).colorScheme.error : null,
       tooltip: allLoved
           ? context.l10n.trackOptionRemoveFromLoved
           : context.l10n.tooltipLoveAll,

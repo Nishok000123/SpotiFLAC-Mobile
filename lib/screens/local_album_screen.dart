@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/theme/cover_palette.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/track.dart';
@@ -28,7 +29,7 @@ import 'package:spotiflac_android/providers/playback_provider.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
 import 'package:spotiflac_android/screens/collapsing_header_scroll_mixin.dart';
 import 'package:spotiflac_android/screens/selection_mode_mixin.dart';
-import 'package:spotiflac_android/widgets/album_scaffold_body.dart';
+import 'package:spotiflac_android/widgets/collection_scaffold.dart';
 import 'package:spotiflac_android/widgets/album_track_tile.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
 import 'package:spotiflac_android/widgets/destructive_selection_button.dart';
@@ -188,20 +189,19 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
 
     pruneSelection(tracks.map((t) => t.id).toSet());
 
-    return AlbumScaffoldBody(
+    return CollectionScaffold(
       scrollController: scrollController,
       isSelectionMode: isSelectionMode,
       onExitSelectionMode: exitSelectionMode,
       appBar: _buildAppBar(context, colorScheme, qualityLabelMode),
-      trackList: _buildTrackList(context, colorScheme, tracks),
-      bottomBar: _buildSelectionBottomBar(
+      slivers: [_buildTrackList(context, colorScheme, tracks)],
+      selectionBar: _buildSelectionBottomBar(
         context,
         colorScheme,
         tracks,
         bottomPadding,
       ),
       bottomInset: bottomInset,
-      bottomPadding: bottomPadding,
     );
   }
 
@@ -236,6 +236,7 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
       expandedHeight: expandedHeight,
       showTitleInAppBar: showTitleInAppBar,
       background: background,
+      paletteSource: widget.coverPath,
       blurAndScrimBackground: widget.coverPath != null,
       coverBuilder: (context, coverSize) => widget.coverPath != null
           ? Image.file(
@@ -264,8 +265,8 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
             ),
       subtitle: Text(
         widget.artistName,
-        style: const TextStyle(
-          color: Colors.white70,
+        style: TextStyle(
+          color: HeaderPalette.of(context).onSurfaceVariant,
           fontSize: 16,
           fontWeight: FontWeight.w600,
         ),
