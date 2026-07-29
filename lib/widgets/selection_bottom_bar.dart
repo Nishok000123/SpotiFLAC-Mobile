@@ -1,5 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/theme/app_tokens.dart';
+import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
+
+/// Mounts a selection bar in the **root** overlay.
+///
+/// The bar has to float above the shell's navigation bar, which lives outside
+/// the per-tab navigators, so an in-tree `Positioned` inside the screen is not
+/// enough. Five screens each solved this differently (two hand-rolled
+/// `OverlayEntry` blocks, two `AnimatedPositioned` stacks and one bespoke
+/// `Positioned` container); they now all go through this controller, which also
+/// guarantees the same entrance animation everywhere.
+class SelectionOverlayController {
+  OverlayEntry? _entry;
+  WidgetBuilder? _builder;
+
+  bool get isVisible => _entry != null;
+
+  /// Shows the bar, or rebuilds it in place when already visible so the
+  /// entrance animation does not replay on every selection change.
+  void show(BuildContext context, WidgetBuilder builder) {
+    _builder = builder;
+    if (_entry != null) {
+      _entry!.markNeedsBuild();
+      return;
+    }
+    _entry = OverlayEntry(
+      builder: (overlayContext) => Positioned(
+        left: 0,
+        right: 0,
+        bottom: 0,
+        child: AnimatedSelectionBottomBar(
+          child: Material(
+            color: Colors.transparent,
+            child: _builder!(overlayContext),
+          ),
+        ),
+      ),
+    );
+    Overlay.of(context, rootOverlay: true).insert(_entry!);
+  }
+
+  void hide() {
+    _entry?.remove();
+    _entry = null;
+    _builder = null;
+  }
+
+  /// Call from the host `State.dispose`; an entry left in the root overlay
+  /// outlives the screen that created it.
+  void dispose() => hide();
+}
 
 /// Entrance animation shared by selection bars mounted in the root overlay.
 class AnimatedSelectionBottomBar extends StatefulWidget {
@@ -83,15 +134,18 @@ class SelectionBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHigh,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(tokens.radiusSheet),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
+            color: colorScheme.shadow.withValues(alpha: 0.15),
             blurRadius: 12,
             offset: const Offset(0, -4),
           ),
@@ -104,15 +158,7 @@ class SelectionBottomBar extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 32,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+              const AppSheetHandle(),
 
               Row(
                 children: [
