@@ -29,11 +29,11 @@
   "@homeSubtitle": {
     "description": "Subtitle shown below search box"
   },
-  "homeEmptyTitle": "No search providers yet",
+  "homeEmptyTitle": "Нет поставщиков поиска",
   "@homeEmptyTitle": {
     "description": "Title shown on home when no providers are available yet"
   },
-  "homeEmptySubtitle": "Install an extension to continue.",
+  "homeEmptySubtitle": "Установите расширение, чтобы продолжить.",
   "@homeEmptySubtitle": {
     "description": "Subtitle shown on home when no providers are available yet"
   },
@@ -162,7 +162,7 @@
   "@optionsDefaultSearchTab": {
     "description": "Title for the preferred default search tab setting"
   },
-  "optionsDefaultSearchTabSubtitle": "Choose which tab opens first for new search results.",
+  "optionsDefaultSearchTabSubtitle": "Выберите, какая вкладка открывает новые результаты поиска.",
   "@optionsDefaultSearchTabSubtitle": {
     "description": "Subtitle for the preferred default search tab setting"
   },
@@ -194,27 +194,27 @@
   "@optionsReplayGain": {
     "description": "Title for ReplayGain setting toggle"
   },
-  "optionsReplayGainSubtitleOn": "Scan loudness and embed ReplayGain tags (EBU R128)",
+  "optionsReplayGainSubtitleOn": "Сканировать громкость и вставить теги ReplayGain (EBU R128)",
   "@optionsReplayGainSubtitleOn": {
     "description": "Subtitle when ReplayGain is enabled"
   },
-  "optionsReplayGainSubtitleOff": "Disabled: no loudness normalization tags",
+  "optionsReplayGainSubtitleOff": "Выключено: нет тегов нормализации громкости",
   "@optionsReplayGainSubtitleOff": {
     "description": "Subtitle when ReplayGain is disabled"
   },
-  "trackReplayGain": "Rescan ReplayGain",
+  "trackReplayGain": "Пересканировать ReplayGain",
   "@trackReplayGain": {
     "description": "Three-dot menu option to scan loudness and write ReplayGain tags"
   },
-  "trackReplayGainScanning": "Analyzing loudness...",
+  "trackReplayGainScanning": "Анализ громкости...",
   "@trackReplayGainScanning": {
     "description": "Snackbar/progress message while scanning ReplayGain for a single track"
   },
-  "trackReplayGainSuccess": "ReplayGain tags added",
+  "trackReplayGainSuccess": "Добавлены теги ReplayGain",
   "@trackReplayGainSuccess": {
     "description": "Snackbar message after ReplayGain tags written for a single track"
   },
-  "trackReplayGainFailed": "Failed to add ReplayGain tags",
+  "trackReplayGainFailed": "Не удалось добавить теги ReplayGain",
   "@trackReplayGainFailed": {
     "description": "Snackbar message when ReplayGain scan/write fails"
   },
@@ -227,11 +227,11 @@
       }
     }
   },
-  "replayGainBatchConfirmTitle": "Add ReplayGain",
+  "replayGainBatchConfirmTitle": "Добавить ReplayGain",
   "@replayGainBatchConfirmTitle": {
     "description": "Title of the batch ReplayGain confirmation dialog"
   },
-  "replayGainBatchConfirmMessage": "Analyze loudness and write ReplayGain tags to {count} track(s)?",
+  "replayGainBatchConfirmMessage": "Проанализировать громкость и записать ReplayGain теги на {count} трек(-а)?",
   "@replayGainBatchConfirmMessage": {
     "description": "Message of the batch ReplayGain confirmation dialog",
     "placeholders": {
@@ -240,11 +240,11 @@
       }
     }
   },
-  "replayGainBatchAnalyzing": "Analyzing ReplayGain...",
+  "replayGainBatchAnalyzing": "Анализ ReplayGain...",
   "@replayGainBatchAnalyzing": {
     "description": "Progress dialog title while batch scanning ReplayGain"
   },
-  "replayGainBatchSuccess": "ReplayGain added to {success} of {total} tracks",
+  "replayGainBatchSuccess": "ReplayGain добавлен к {success} треков {total}",
   "@replayGainBatchSuccess": {
     "description": "Snackbar after batch ReplayGain completes",
     "placeholders": {
@@ -256,11 +256,11 @@
       }
     }
   },
-  "optionsArtistTagMode": "Artist Tag Mode",
+  "optionsArtistTagMode": "Режим тега исполнителя",
   "@optionsArtistTagMode": {
     "description": "Setting title for how artist metadata is written into files"
   },
-  "optionsArtistTagModeDescription": "Choose how multiple artists are written into embedded tags.",
+  "optionsArtistTagModeDescription": "Выберите, как несколько исполнителей записываются встроенные теги.",
   "@optionsArtistTagModeDescription": {
     "description": "Bottom-sheet description for artist tag mode setting"
   },
@@ -272,7 +272,7 @@
   "@optionsArtistTagModeJoinedSubtitle": {
     "description": "Subtitle for joined artist tag mode"
   },
-  "optionsArtistTagModeSplitVorbis": "Split tags for FLAC/Opus",
+  "optionsArtistTagModeSplitVorbis": "Разделить теги для FLAC/Opus",
   "@optionsArtistTagModeSplitVorbis": {
     "description": "Artist tag mode option that writes repeated ARTIST tags for Vorbis formats"
   },
@@ -284,7 +284,7 @@
   "@optionsExtensionStore": {
     "description": "Show/hide repo tab"
   },
-  "optionsExtensionStoreSubtitle": "Show Repo tab in navigation",
+  "optionsExtensionStoreSubtitle": "Показывать вкладку репозитория в навигации",
   "@optionsExtensionStoreSubtitle": {
     "description": "Subtitle for extension repo toggle"
   },
@@ -413,7 +413,7 @@
   "@aboutPCSource": {
     "description": "Link to PC GitHub repo"
   },
-  "aboutKeepAndroidOpen": "Keep Android Open",
+  "aboutKeepAndroidOpen": "Сохранить Android открытым",
   "@aboutKeepAndroidOpen": {
     "description": "Link to Keep Android Open campaign website"
   },
@@ -473,7 +473,7 @@
   "@aboutSjdonadoDesc": {
     "description": "Credit description for sjdonado"
   },
-  "aboutAppDescription": "Search music metadata, manage extensions, and organize your library.",
+  "aboutAppDescription": "Ищите метаданных музыки, управляйте расширениями и организуйте свою библиотеку.",
   "@aboutAppDescription": {
     "description": "App description in header card"
   },
@@ -666,15 +666,15 @@
   "@setupAllowAccessToManageFiles": {
     "description": "Instruction for file access permission"
   },
-  "setupLanguageTitle": "Choose Language",
+  "setupLanguageTitle": "Выберите язык",
   "@setupLanguageTitle": {
     "description": "Title for the language selection step in setup"
   },
-  "setupLanguageDescription": "Select your preferred language for the app. You can change this later in Settings.",
+  "setupLanguageDescription": "Выберите язык для приложения. Вы можете изменить его позже в настройках.",
   "@setupLanguageDescription": {
     "description": "Description for the language selection step in setup"
   },
-  "setupLanguageSystemDefault": "System Default",
+  "setupLanguageSystemDefault": "Системные настройки",
   "@setupLanguageSystemDefault": {
     "description": "Option to use the system language"
   },
@@ -710,15 +710,15 @@
   "@dialogDownload": {
     "description": "Confirm button in Download All dialog"
   },
-  "previewPlay": "Play preview",
+  "previewPlay": "Предпросмотр проигрывания",
   "@previewPlay": {
     "description": "Tooltip for the button that plays a short track preview snippet"
   },
-  "previewStop": "Stop preview",
+  "previewStop": "Остановить предпросмотр",
   "@previewStop": {
     "description": "Tooltip for the button that stops the playing track preview snippet"
   },
-  "previewUnavailable": "Preview unavailable",
+  "previewUnavailable": "Предпросмотр недоступен",
   "@previewUnavailable": {
     "description": "Snackbar shown when a track preview snippet cannot be played"
   },
@@ -779,7 +779,7 @@
   "@dialogDeleteSelectedTitle": {
     "description": "Dialog title - delete selected items"
   },
-  "dialogDeleteSelectedMessage": "Delete {count} {count, plural, =1{track} other{tracks}} from history?\n\nThis will also delete the files from storage.",
+  "dialogDeleteSelectedMessage": "Удалить {count} {count, plural, one {трек} few {трека} many {треков} =1{трек} other{треков}} из истории?\n\nЭто также удалит файлы из хранилища.",
   "@dialogDeleteSelectedMessage": {
     "description": "Dialog message - delete selected tracks",
     "placeholders": {
@@ -850,7 +850,7 @@
   "@snackbarHistoryCleared": {
     "description": "Snackbar - history deleted"
   },
-  "snackbarDeletedTracks": "Deleted {count} {count, plural, =1{track} other{tracks}}",
+  "snackbarDeletedTracks": "Удалено {count} {count, plural, one {трек} few {трека} many {треков} =1{трек} other{треков}}",
   "@snackbarDeletedTracks": {
     "description": "Snackbar - tracks deleted",
     "placeholders": {
@@ -936,7 +936,7 @@
   "@errorNoTracksFound": {
     "description": "Error - search returned no results"
   },
-  "searchEmptyResultSubtitle": "Try another keyword",
+  "searchEmptyResultSubtitle": "Попробуйте другое ключевое слово",
   "@searchEmptyResultSubtitle": {
     "description": "Subtitle shown under the empty search result state on the home screen"
   },
@@ -1154,11 +1154,11 @@
   "@updateNewVersionReady": {
     "description": "Update subtitle"
   },
-  "updateRequiredTitle": "Update required",
+  "updateRequiredTitle": "Требуется обновление",
   "@updateRequiredTitle": {
     "description": "Title of the mandatory update dialog shown when the installed version is too old"
   },
-  "updateRequiredNotice": "This version is {count} releases behind and is no longer supported. Update to keep using the app.",
+  "updateRequiredNotice": "Эта версия {count} больше не поддерживается. Обновите, чтобы продолжить использовать приложение.",
   "@updateRequiredNotice": {
     "description": "Subtitle of the mandatory update dialog; explains why the dialog cannot be dismissed",
     "placeholders": {
@@ -1207,7 +1207,7 @@
   "@providerPriorityFallbackExtensionsDescription": {
     "description": "Section description for extension fallback selection"
   },
-  "providerPriorityFallbackExtensionsHint": "Only enabled extensions with download-provider capability are listed here.",
+  "providerPriorityFallbackExtensionsHint": "Здесь перечислены только включенные расширения с возможностями поставщика загрузок.",
   "@providerPriorityFallbackExtensionsHint": {
     "description": "Hint below the extension fallback selection list"
   },
@@ -1397,7 +1397,7 @@
   "@settingsAppearanceSubtitle": {
     "description": "Appearance settings description"
   },
-  "settingsDownloadSubtitle": "Service, quality, fallback",
+  "settingsDownloadSubtitle": "Сервис, качество, откат",
   "@settingsDownloadSubtitle": {
     "description": "Download settings description"
   },
@@ -1426,7 +1426,7 @@
       }
     }
   },
-  "tracksCount": "{count, plural, =1{1 track} other{{count} tracks}}",
+  "tracksCount": "{count, plural, one {{count} трек} few {{count} трека} many {{count} треков} =1 {1 трек} other {{count} треков}}",
   "@tracksCount": {
     "description": "Track count display",
     "placeholders": {
@@ -1527,7 +1527,7 @@
   "@trackCopyLyrics": {
     "description": "Action - copy lyrics to clipboard"
   },
-  "trackLyricsSource": "Source: {source}",
+  "trackLyricsSource": "Источник: {source}",
   "@trackLyricsSource": {
     "description": "Label showing the lyrics source/provider",
     "placeholders": {
@@ -1540,11 +1540,11 @@
   "@trackLyricsNotAvailable": {
     "description": "Message when lyrics not found"
   },
-  "trackLyricsNotInFile": "No lyrics found in this file",
+  "trackLyricsNotInFile": "В этом файле не найдено текстов песен",
   "@trackLyricsNotInFile": {
     "description": "Message when no embedded lyrics in audio file"
   },
-  "trackFetchOnlineLyrics": "Fetch from Online",
+  "trackFetchOnlineLyrics": "Поиск в сети",
   "@trackFetchOnlineLyrics": {
     "description": "Action - fetch lyrics from online providers"
   },
@@ -1643,15 +1643,15 @@
   "@storeClearFilters": {
     "description": "Button to clear all filters"
   },
-  "storeAddRepoTitle": "Add Extension Repository",
+  "storeAddRepoTitle": "Добавить репозиторий расширения",
   "@storeAddRepoTitle": {
     "description": "Store setup screen - heading when no repo is configured"
   },
-  "storeAddRepoDescription": "Enter a GitHub repository URL that contains a registry.json file to browse and install extensions.",
+  "storeAddRepoDescription": "Введите URL-адрес репозитория GitHub, который содержит файл registry.json для просмотра и установки расширений.",
   "@storeAddRepoDescription": {
     "description": "Store setup screen - explanatory text"
   },
-  "storeRepoUrlLabel": "Repository URL",
+  "storeRepoUrlLabel": "Ссылка на репозиторий",
   "@storeRepoUrlLabel": {
     "description": "Label for the repository URL input field"
   },
@@ -1667,7 +1667,7 @@
   "@storeChangeRepoTooltip": {
     "description": "Tooltip for the change-repository icon button in the app bar"
   },
-  "storeRepoDialogTitle": "Extension Repository",
+  "storeRepoDialogTitle": "Репозиторий расширения",
   "@storeRepoDialogTitle": {
     "description": "Title of the change/remove repository dialog"
   },
@@ -1675,7 +1675,7 @@
   "@storeRepoDialogCurrent": {
     "description": "Label shown above the current repository URL in the dialog"
   },
-  "storeNewRepoUrlLabel": "New Repository URL",
+  "storeNewRepoUrlLabel": "Новый URL репозитория",
   "@storeNewRepoUrlLabel": {
     "description": "Label for the new repository URL field inside the dialog"
   },
