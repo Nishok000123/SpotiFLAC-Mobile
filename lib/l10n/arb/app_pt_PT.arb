@@ -6021,7 +6021,7 @@
   "queueResumingAfterVerification": "Resuming after verification...",
   "settingsSearchHint": "Pesquisar definições",
   "settingsSearchNoResults": "Nenhuma definição corresponde a \"{query}\"",
-  "settingsGroupInterface": "Interface",
+  "settingsGroupInterface": "Extensões e aparência",
   "settingsGroupContent": "Conteúdo e metadados",
   "settingsGroupDownloads": "Transferências e ficheiros",
   "settingsGroupSystem": "Sistema",

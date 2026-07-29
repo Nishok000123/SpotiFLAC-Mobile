@@ -6021,7 +6021,7 @@
   "queueResumingAfterVerification": "Reprise après vérification...",
   "settingsSearchHint": "Rechercher dans les paramètres",
   "settingsSearchNoResults": "Aucun paramètre ne correspond à « {query} »",
-  "settingsGroupInterface": "Interface",
+  "settingsGroupInterface": "Extensions et apparence",
   "settingsGroupContent": "Contenu et métadonnées",
   "settingsGroupDownloads": "Téléchargements et fichiers",
   "settingsGroupSystem": "Système",

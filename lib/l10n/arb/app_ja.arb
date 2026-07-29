@@ -6021,7 +6021,7 @@
   "queueResumingAfterVerification": "Resuming after verification...",
   "settingsSearchHint": "設定を検索",
   "settingsSearchNoResults": "「{query}」に一致する設定はありません",
-  "settingsGroupInterface": "インターフェース",
+  "settingsGroupInterface": "拡張機能と外観",
   "settingsGroupContent": "コンテンツとメタデータ",
   "settingsGroupDownloads": "ダウンロードとファイル",
   "settingsGroupSystem": "システム",

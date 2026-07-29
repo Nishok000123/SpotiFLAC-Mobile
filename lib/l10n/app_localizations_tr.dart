@@ -4841,7 +4841,7 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String get settingsGroupInterface => 'Arayüz';
+  String get settingsGroupInterface => 'Uzantılar ve görünüm';
 
   @override
   String get settingsGroupContent => 'İçerik ve meta veriler';

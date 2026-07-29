@@ -6021,7 +6021,7 @@
   "queueResumingAfterVerification": "Resuming after verification...",
   "settingsSearchHint": "Einstellungen durchsuchen",
   "settingsSearchNoResults": "Keine Einstellungen für \"{query}\" gefunden",
-  "settingsGroupInterface": "Oberfläche",
+  "settingsGroupInterface": "Erweiterungen & Darstellung",
   "settingsGroupContent": "Inhalte & Metadaten",
   "settingsGroupDownloads": "Downloads & Dateien",
   "settingsGroupSystem": "System",

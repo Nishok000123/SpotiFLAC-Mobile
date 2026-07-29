@@ -4282,7 +4282,7 @@
   },
   "settingsSearchHint": "Buscar en los ajustes",
   "settingsSearchNoResults": "Ningún ajuste coincide con \"{query}\"",
-  "settingsGroupInterface": "Interfaz",
+  "settingsGroupInterface": "Extensiones y apariencia",
   "settingsGroupContent": "Contenido y metadatos",
   "settingsGroupDownloads": "Descargas y archivos",
   "settingsGroupSystem": "Sistema",

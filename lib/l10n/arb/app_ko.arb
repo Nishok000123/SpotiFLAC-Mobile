@@ -6021,7 +6021,7 @@
   },
   "settingsSearchHint": "설정 검색",
   "settingsSearchNoResults": "\"{query}\"와(과) 일치하는 설정이 없습니다",
-  "settingsGroupInterface": "인터페이스",
+  "settingsGroupInterface": "확장 기능 및 외관",
   "settingsGroupContent": "콘텐츠 및 메타데이터",
   "settingsGroupDownloads": "다운로드 및 파일",
   "settingsGroupSystem": "시스템",

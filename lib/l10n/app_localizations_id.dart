@@ -4809,7 +4809,7 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get settingsGroupInterface => 'Antarmuka';
+  String get settingsGroupInterface => 'Ekstensi & tampilan';
 
   @override
   String get settingsGroupContent => 'Konten & metadata';

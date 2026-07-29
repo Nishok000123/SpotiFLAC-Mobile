@@ -6021,7 +6021,7 @@
   "queueResumingAfterVerification": "Resuming after verification...",
   "settingsSearchHint": "Поиск в настройках",
   "settingsSearchNoResults": "Нет настроек, соответствующих запросу «{query}»",
-  "settingsGroupInterface": "Интерфейс",
+  "settingsGroupInterface": "Расширения и внешний вид",
   "settingsGroupContent": "Контент и метаданные",
   "settingsGroupDownloads": "Загрузки и файлы",
   "settingsGroupSystem": "Система",

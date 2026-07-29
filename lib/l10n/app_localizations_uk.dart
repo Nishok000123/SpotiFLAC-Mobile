@@ -4859,7 +4859,7 @@ class AppLocalizationsUk extends AppLocalizations {
   }
 
   @override
-  String get settingsGroupInterface => 'Інтерфейс';
+  String get settingsGroupInterface => 'Розширення та вигляд';
 
   @override
   String get settingsGroupContent => 'Вміст і метадані';

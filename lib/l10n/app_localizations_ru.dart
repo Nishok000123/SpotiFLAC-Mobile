@@ -4842,7 +4842,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get settingsGroupInterface => 'Интерфейс';
+  String get settingsGroupInterface => 'Расширения и внешний вид';
 
   @override
   String get settingsGroupContent => 'Контент и метаданные';

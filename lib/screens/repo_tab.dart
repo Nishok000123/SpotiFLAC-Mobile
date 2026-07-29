@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:spotiflac_android/widgets/extension_row.dart';
 import 'package:spotiflac_android/theme/app_tokens.dart';
+import 'package:spotiflac_android/widgets/app_search_field.dart';
 import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -107,60 +108,14 @@ class _RepoTabState extends ConsumerState<RepoTab> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: _searchController,
-                    builder: (context, value, _) {
-                      return TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: context.l10n.storeSearch,
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: value.text.isNotEmpty
-                              ? IconButton(
-                                  tooltip: context.l10n.dialogClear,
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    ref
-                                        .read(repoProvider.notifier)
-                                        .setSearchQuery('');
-                                  },
-                                )
-                              : null,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(28),
-                            borderSide: BorderSide(
-                              color: colorScheme.outlineVariant,
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(28),
-                            borderSide: BorderSide(
-                              color: colorScheme.outlineVariant,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(28),
-                            borderSide: BorderSide(
-                              color: colorScheme.primary,
-                              width: 2,
-                            ),
-                          ),
-                          filled: true,
-                          fillColor: settingsGroupColor(context),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 16,
-                          ),
-                        ),
-                        onChanged: (value) {
-                          ref.read(repoProvider.notifier).setSearchQuery(value);
-                        },
-                        onTapOutside: (_) {
-                          FocusScope.of(context).unfocus();
-                        },
-                      );
-                    },
+                  child: AppSearchField(
+                    controller: _searchController,
+                    hintText: context.l10n.storeSearch,
+                    clearTooltip: context.l10n.dialogClear,
+                    onChanged: (value) =>
+                        ref.read(repoProvider.notifier).setSearchQuery(value),
+                    onClear: () =>
+                        ref.read(repoProvider.notifier).setSearchQuery(''),
                   ),
                 ),
               ),

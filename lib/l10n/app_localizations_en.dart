@@ -4811,7 +4811,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsGroupInterface => 'Interface';
+  String get settingsGroupInterface => 'Extensions & appearance';
 
   @override
   String get settingsGroupContent => 'Content & metadata';

@@ -6236,7 +6236,7 @@
       }
     }
   },
-  "settingsGroupInterface": "Interface",
+  "settingsGroupInterface": "Extensions & appearance",
   "@settingsGroupInterface": {
     "description": "Settings group covering look and feel"
   },

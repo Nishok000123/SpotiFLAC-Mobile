@@ -7885,7 +7885,7 @@ abstract class AppLocalizations {
   /// Settings group covering look and feel
   ///
   /// In en, this message translates to:
-  /// **'Interface'**
+  /// **'Extensions & appearance'**
   String get settingsGroupInterface;
 
   /// Settings group covering the library, metadata and lyrics

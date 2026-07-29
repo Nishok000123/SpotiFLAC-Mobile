@@ -4856,7 +4856,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get settingsGroupInterface => 'Oberfläche';
+  String get settingsGroupInterface => 'Erweiterungen & Darstellung';
 
   @override
   String get settingsGroupContent => 'Inhalte & Metadaten';

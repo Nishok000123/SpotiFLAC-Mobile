@@ -6062,7 +6062,7 @@
   },
   "settingsSearchHint": "Cari pengaturan",
   "settingsSearchNoResults": "Tidak ada pengaturan yang cocok dengan \"{query}\"",
-  "settingsGroupInterface": "Antarmuka",
+  "settingsGroupInterface": "Ekstensi & tampilan",
   "settingsGroupContent": "Konten & metadata",
   "settingsGroupDownloads": "Unduhan & file",
   "settingsGroupSystem": "Sistem",

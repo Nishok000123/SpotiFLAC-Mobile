@@ -4681,7 +4681,7 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get settingsGroupInterface => '인터페이스';
+  String get settingsGroupInterface => '확장 기능 및 외관';
 
   @override
   String get settingsGroupContent => '콘텐츠 및 메타데이터';

@@ -4800,7 +4800,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get settingsGroupInterface => 'インターフェース';
+  String get settingsGroupInterface => '拡張機能と外観';
 
   @override
   String get settingsGroupContent => 'コンテンツとメタデータ';

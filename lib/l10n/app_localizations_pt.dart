@@ -4805,7 +4805,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get settingsGroupInterface => 'Interface';
+  String get settingsGroupInterface => 'Extensões e aparência';
 
   @override
   String get settingsGroupContent => 'Conteúdo e metadados';
@@ -9496,7 +9496,7 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
   }
 
   @override
-  String get settingsGroupInterface => 'Interface';
+  String get settingsGroupInterface => 'Extensões e aparência';
 
   @override
   String get settingsGroupContent => 'Conteúdo e metadados';

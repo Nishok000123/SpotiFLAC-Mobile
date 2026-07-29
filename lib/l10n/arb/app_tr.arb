@@ -6021,7 +6021,7 @@
   "queueResumingAfterVerification": "Resuming after verification...",
   "settingsSearchHint": "Ayarlarda ara",
   "settingsSearchNoResults": "\"{query}\" ile eşleşen ayar bulunamadı",
-  "settingsGroupInterface": "Arayüz",
+  "settingsGroupInterface": "Uzantılar ve görünüm",
   "settingsGroupContent": "İçerik ve meta veriler",
   "settingsGroupDownloads": "İndirmeler ve dosyalar",
   "settingsGroupSystem": "Sistem",

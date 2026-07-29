@@ -19,6 +19,7 @@ import 'package:spotiflac_android/theme/app_tokens.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 import 'package:spotiflac_android/utils/nav_bar_inset.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
+import 'package:spotiflac_android/widgets/app_search_field.dart';
 import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 
@@ -48,11 +49,12 @@ class _Destination {
   }
 }
 
-/// A labelled group of destinations.
+/// A settings group. The optional label lets priority shortcuts sit directly
+/// below search without a misleading section heading.
 class _Group {
-  const _Group({required this.label, required this.destinations});
+  const _Group({this.label, required this.destinations});
 
-  final String label;
+  final String? label;
   final List<_Destination> destinations;
 }
 
@@ -83,8 +85,26 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     final l10n = context.l10n;
     return [
       _Group(
+        destinations: [
+          _Destination(
+            icon: Icons.favorite_outline,
+            title: l10n.settingsDonate,
+            subtitle: l10n.settingsDonateSubtitle,
+            keywords: const ['support', 'ko-fi', 'sponsor'],
+            pageBuilder: () => const DonatePage(),
+          ),
+        ],
+      ),
+      _Group(
         label: l10n.settingsGroupInterface,
         destinations: [
+          _Destination(
+            icon: Icons.extension_outlined,
+            title: l10n.settingsExtensions,
+            subtitle: l10n.settingsExtensionsSubtitle,
+            keywords: const ['plugin', 'provider', 'priority', 'store'],
+            pageBuilder: () => const ExtensionsPage(),
+          ),
           _Destination(
             icon: Icons.palette_outlined,
             title: l10n.settingsAppearance,
@@ -168,13 +188,6 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             ],
             pageBuilder: () => const FilesSettingsPage(),
           ),
-          _Destination(
-            icon: Icons.extension_outlined,
-            title: l10n.settingsExtensions,
-            subtitle: l10n.settingsExtensionsSubtitle,
-            keywords: const ['plugin', 'provider', 'priority', 'store'],
-            pageBuilder: () => const ExtensionsPage(),
-          ),
         ],
       ),
       _Group(
@@ -213,13 +226,6 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
       _Group(
         label: l10n.settingsGroupHelp,
         destinations: [
-          _Destination(
-            icon: Icons.favorite_outline,
-            title: l10n.settingsDonate,
-            subtitle: l10n.settingsDonateSubtitle,
-            keywords: const ['support', 'ko-fi', 'sponsor'],
-            pageBuilder: () => const DonatePage(),
-          ),
           _Destination(
             icon: Icons.info_outline,
             title: l10n.settingsAbout,
@@ -266,12 +272,13 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     if (query.isEmpty) {
       body = [
         for (final group in groups) ...[
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.only(left: wideInset, right: wideInset),
-              child: SettingsSectionHeader(title: group.label),
+          if (group.label != null)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(left: wideInset, right: wideInset),
+                child: SettingsSectionHeader(title: group.label!),
+              ),
             ),
-          ),
           SliverToBoxAdapter(
             child: SettingsGroup(
               margin: margin,
@@ -333,24 +340,12 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               tokens.gapLg + wideInset,
               tokens.gapSm,
             ),
-            child: TextField(
+            child: AppSearchField(
               controller: _searchController,
-              textInputAction: TextInputAction.search,
+              hintText: context.l10n.settingsSearchHint,
+              clearTooltip: context.l10n.dialogClear,
               onChanged: (value) => setState(() => _query = value),
-              decoration: InputDecoration(
-                hintText: context.l10n.settingsSearchHint,
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: query.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: context.l10n.dialogClear,
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _query = '');
-                        },
-                      ),
-              ),
+              onClear: () => setState(() => _query = ''),
             ),
           ),
         ),
