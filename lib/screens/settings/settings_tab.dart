@@ -2,221 +2,362 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/constants/app_info.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/screens/settings/about_page.dart';
+import 'package:spotiflac_android/screens/settings/app_settings_page.dart';
 import 'package:spotiflac_android/screens/settings/appearance_settings_page.dart';
+import 'package:spotiflac_android/screens/settings/backup_restore_page.dart';
+import 'package:spotiflac_android/screens/settings/cache_management_page.dart';
+import 'package:spotiflac_android/screens/settings/donate_page.dart';
 import 'package:spotiflac_android/screens/settings/download_settings_page.dart';
+import 'package:spotiflac_android/screens/settings/extensions_page.dart';
 import 'package:spotiflac_android/screens/settings/files_settings_page.dart';
+import 'package:spotiflac_android/screens/settings/library_settings_page.dart';
+import 'package:spotiflac_android/screens/settings/log_screen.dart';
 import 'package:spotiflac_android/screens/settings/lyrics_settings_page.dart';
 import 'package:spotiflac_android/screens/settings/metadata_settings_page.dart';
-import 'package:spotiflac_android/screens/settings/extensions_page.dart';
-import 'package:spotiflac_android/screens/settings/library_settings_page.dart';
-import 'package:spotiflac_android/screens/settings/app_settings_page.dart';
-import 'package:spotiflac_android/screens/settings/about_page.dart';
-import 'package:spotiflac_android/screens/settings/cache_management_page.dart';
-import 'package:spotiflac_android/screens/settings/backup_restore_page.dart';
-import 'package:spotiflac_android/screens/settings/donate_page.dart';
-import 'package:spotiflac_android/screens/settings/log_screen.dart';
+import 'package:spotiflac_android/theme/app_tokens.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
-import 'package:spotiflac_android/utils/app_bar_layout.dart';
 import 'package:spotiflac_android/utils/nav_bar_inset.dart';
-import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
+import 'package:spotiflac_android/widgets/app_sliver_header.dart';
+import 'package:spotiflac_android/widgets/settings_group.dart';
 
-class SettingsTab extends ConsumerWidget {
+/// One entry on the Settings tab.
+class _Destination {
+  const _Destination({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.pageBuilder,
+    this.keywords = const [],
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget Function() pageBuilder;
+
+  /// Extra search terms for things the title does not spell out (e.g. "SAF"
+  /// for the Files page), so a user can find a page by what it does.
+  final List<String> keywords;
+
+  bool matches(String query) {
+    if (query.isEmpty) return true;
+    final haystack = [title, subtitle, ...keywords].join(' ').toLowerCase();
+    return haystack.contains(query);
+  }
+}
+
+/// A labelled group of destinations.
+class _Group {
+  const _Group({required this.label, required this.destinations});
+
+  final String label;
+  final List<_Destination> destinations;
+}
+
+class SettingsTab extends ConsumerStatefulWidget {
   const SettingsTab({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final topPadding = normalizedHeaderTopPadding(context);
-    final bottomInset = context.navBarBottomInset;
-    final wideInset = wideListInset(context);
+  ConsumerState<SettingsTab> createState() => _SettingsTabState();
+}
 
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          expandedHeight: 120 + topPadding,
-          collapsedHeight: kToolbarHeight,
-          floating: false,
-          pinned: true,
-          backgroundColor: colorScheme.surface,
-          surfaceTintColor: Colors.transparent,
-          automaticallyImplyLeading: false,
-          flexibleSpace: LayoutBuilder(
-            builder: (context, constraints) {
-              final maxHeight = 120 + topPadding;
-              final minHeight = kToolbarHeight + topPadding;
-              final expandRatio =
-                  ((constraints.maxHeight - minHeight) /
-                          (maxHeight - minHeight))
-                      .clamp(0.0, 1.0);
+class _SettingsTabState extends ConsumerState<SettingsTab> {
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
 
-              return FlexibleSpaceBar(
-                expandedTitleScale: 1.0,
-                titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
-                title: Text(
-                  context.l10n.settingsTitle,
-                  style: TextStyle(
-                    fontSize: 20 + (14 * expandRatio),
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-              );
-            },
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Destinations grouped by intent.
+  ///
+  /// They used to sit in three unlabelled groups whose logic was hard to infer
+  /// (the local library grouped with appearance, cache grouped with backup).
+  /// Labelling them and regrouping by what the user is trying to do makes the
+  /// list scannable.
+  List<_Group> _groups(BuildContext context) {
+    final l10n = context.l10n;
+    return [
+      _Group(
+        label: l10n.settingsGroupInterface,
+        destinations: [
+          _Destination(
+            icon: Icons.palette_outlined,
+            title: l10n.settingsAppearance,
+            subtitle: l10n.settingsAppearanceSubtitle,
+            keywords: const [
+              'theme',
+              'dark',
+              'light',
+              'amoled',
+              'color',
+              'language',
+              'locale',
+              'layout',
+              'grid',
+            ],
+            pageBuilder: () => const AppearanceSettingsPage(),
           ),
-        ),
-
-        SliverToBoxAdapter(
-          child: Builder(
-            builder: (context) {
-              final l10n = context.l10n;
-              return SettingsGroup(
-                margin: EdgeInsets.fromLTRB(
-                  16 + wideInset,
-                  16,
-                  16 + wideInset,
-                  4,
-                ),
-                children: [
-                  SettingsItem(
-                    icon: Icons.palette_outlined,
-                    title: l10n.settingsAppearance,
-                    subtitle: l10n.settingsAppearanceSubtitle,
-                    onTap: () =>
-                        _navigateTo(context, const AppearanceSettingsPage()),
-                  ),
-                  SettingsItem(
-                    icon: Icons.library_music_outlined,
-                    title: l10n.settingsLocalLibrary,
-                    subtitle: l10n.settingsLocalLibrarySubtitle,
-                    onTap: () =>
-                        _navigateTo(context, const LibrarySettingsPage()),
-                  ),
-                  SettingsItem(
-                    icon: Icons.extension_outlined,
-                    title: l10n.settingsExtensions,
-                    subtitle: l10n.settingsExtensionsSubtitle,
-                    onTap: () => _navigateTo(context, const ExtensionsPage()),
-                    showDivider: false,
-                  ),
-                ],
-              );
-            },
+        ],
+      ),
+      _Group(
+        label: l10n.settingsGroupContent,
+        destinations: [
+          _Destination(
+            icon: Icons.library_music_outlined,
+            title: l10n.settingsLocalLibrary,
+            subtitle: l10n.settingsLocalLibrarySubtitle,
+            keywords: const [
+              'scan',
+              'local',
+              'player',
+              'playback',
+              'duplicate',
+            ],
+            pageBuilder: () => const LibrarySettingsPage(),
           ),
-        ),
-
-        SliverToBoxAdapter(
-          child: Builder(
-            builder: (context) {
-              final l10n = context.l10n;
-              return SettingsGroup(
-                margin: EdgeInsets.fromLTRB(
-                  16 + wideInset,
-                  4,
-                  16 + wideInset,
-                  4,
-                ),
-                children: [
-                  SettingsItem(
-                    icon: Icons.download_outlined,
-                    title: l10n.settingsDownload,
-                    subtitle: l10n.settingsDownloadSubtitle,
-                    onTap: () =>
-                        _navigateTo(context, const DownloadSettingsPage()),
-                  ),
-                  SettingsItem(
-                    icon: Icons.folder_outlined,
-                    title: l10n.settingsFiles,
-                    subtitle: l10n.settingsFilesSubtitle,
-                    onTap: () =>
-                        _navigateTo(context, const FilesSettingsPage()),
-                  ),
-                  SettingsItem(
-                    icon: Icons.sell_outlined,
-                    title: l10n.settingsMetadata,
-                    subtitle: l10n.settingsMetadataSubtitle,
-                    onTap: () =>
-                        _navigateTo(context, const MetadataSettingsPage()),
-                  ),
-                  SettingsItem(
-                    icon: Icons.lyrics_outlined,
-                    title: l10n.settingsLyrics,
-                    subtitle: l10n.settingsLyricsSubtitle,
-                    onTap: () =>
-                        _navigateTo(context, const LyricsSettingsPage()),
-                    showDivider: false,
-                  ),
-                ],
-              );
-            },
+          _Destination(
+            icon: Icons.sell_outlined,
+            title: l10n.settingsMetadata,
+            subtitle: l10n.settingsMetadataSubtitle,
+            keywords: const ['tag', 'cover', 'artwork', 'isrc', 'provider'],
+            pageBuilder: () => const MetadataSettingsPage(),
           ),
-        ),
-
-        SliverToBoxAdapter(
-          child: Builder(
-            builder: (context) {
-              final l10n = context.l10n;
-              return SettingsGroup(
-                margin: EdgeInsets.fromLTRB(
-                  16 + wideInset,
-                  4,
-                  16 + wideInset,
-                  4,
-                ),
-                children: [
-                  SettingsItem(
-                    icon: Icons.storage_outlined,
-                    title: l10n.settingsCache,
-                    subtitle: l10n.settingsCacheSubtitle,
-                    onTap: () =>
-                        _navigateTo(context, const CacheManagementPage()),
-                  ),
-                  SettingsItem(
-                    icon: Icons.tune_outlined,
-                    title: l10n.settingsApp,
-                    subtitle: l10n.settingsAppSubtitle,
-                    onTap: () => _navigateTo(context, const AppSettingsPage()),
-                  ),
-                  SettingsItem(
-                    icon: Icons.settings_backup_restore,
-                    title: l10n.settingsBackup,
-                    subtitle: l10n.settingsBackupSubtitle,
-                    onTap: () =>
-                        _navigateTo(context, const BackupRestorePage()),
-                  ),
-                  SettingsItem(
-                    icon: Icons.article_outlined,
-                    title: l10n.logTitle,
-                    subtitle: l10n.settingsLogsSubtitle,
-                    onTap: () => _navigateTo(context, const LogScreen()),
-                  ),
-                  SettingsItem(
-                    icon: Icons.favorite_outline,
-                    title: l10n.settingsDonate,
-                    subtitle: l10n.settingsDonateSubtitle,
-                    onTap: () => _navigateTo(context, const DonatePage()),
-                  ),
-                  SettingsItem(
-                    icon: Icons.info_outline,
-                    title: l10n.settingsAbout,
-                    subtitle: '${l10n.aboutVersion} ${AppInfo.displayVersion}',
-                    onTap: () => _navigateTo(context, const AboutPage()),
-                    showDivider: false,
-                  ),
-                ],
-              );
-            },
+          _Destination(
+            icon: Icons.lyrics_outlined,
+            title: l10n.settingsLyrics,
+            subtitle: l10n.settingsLyricsSubtitle,
+            keywords: const ['lrc', 'synced', 'provider'],
+            pageBuilder: () => const LyricsSettingsPage(),
           ),
-        ),
-
-        SliverToBoxAdapter(child: SizedBox(height: bottomInset)),
-        const SliverFillRemaining(hasScrollBody: false, child: SizedBox()),
-      ],
-    );
+        ],
+      ),
+      _Group(
+        label: l10n.settingsGroupDownloads,
+        destinations: [
+          _Destination(
+            icon: Icons.download_outlined,
+            title: l10n.settingsDownload,
+            subtitle: l10n.settingsDownloadSubtitle,
+            keywords: const [
+              'quality',
+              'flac',
+              'concurrent',
+              'network',
+              'wifi',
+              'service',
+              'region',
+            ],
+            pageBuilder: () => const DownloadSettingsPage(),
+          ),
+          _Destination(
+            icon: Icons.folder_outlined,
+            title: l10n.settingsFiles,
+            subtitle: l10n.settingsFilesSubtitle,
+            keywords: const [
+              'saf',
+              'storage',
+              'folder',
+              'filename',
+              'path',
+              'permission',
+            ],
+            pageBuilder: () => const FilesSettingsPage(),
+          ),
+          _Destination(
+            icon: Icons.extension_outlined,
+            title: l10n.settingsExtensions,
+            subtitle: l10n.settingsExtensionsSubtitle,
+            keywords: const ['plugin', 'provider', 'priority', 'store'],
+            pageBuilder: () => const ExtensionsPage(),
+          ),
+        ],
+      ),
+      _Group(
+        label: l10n.settingsGroupSystem,
+        destinations: [
+          _Destination(
+            icon: Icons.tune_outlined,
+            title: l10n.settingsApp,
+            subtitle: l10n.settingsAppSubtitle,
+            keywords: const ['update', 'channel', 'debug', 'logging'],
+            pageBuilder: () => const AppSettingsPage(),
+          ),
+          _Destination(
+            icon: Icons.storage_outlined,
+            title: l10n.settingsCache,
+            subtitle: l10n.settingsCacheSubtitle,
+            keywords: const ['clear', 'space', 'image', 'temp'],
+            pageBuilder: () => const CacheManagementPage(),
+          ),
+          _Destination(
+            icon: Icons.settings_backup_restore,
+            title: l10n.settingsBackup,
+            subtitle: l10n.settingsBackupSubtitle,
+            keywords: const ['export', 'import', 'restore', 'json'],
+            pageBuilder: () => const BackupRestorePage(),
+          ),
+          _Destination(
+            icon: Icons.article_outlined,
+            title: l10n.logTitle,
+            subtitle: l10n.settingsLogsSubtitle,
+            keywords: const ['debug', 'error', 'report'],
+            pageBuilder: () => const LogScreen(),
+          ),
+        ],
+      ),
+      _Group(
+        label: l10n.settingsGroupHelp,
+        destinations: [
+          _Destination(
+            icon: Icons.favorite_outline,
+            title: l10n.settingsDonate,
+            subtitle: l10n.settingsDonateSubtitle,
+            keywords: const ['support', 'ko-fi', 'sponsor'],
+            pageBuilder: () => const DonatePage(),
+          ),
+          _Destination(
+            icon: Icons.info_outline,
+            title: l10n.settingsAbout,
+            subtitle: '${l10n.aboutVersion} ${AppInfo.displayVersion}',
+            keywords: const ['version', 'license', 'contributor'],
+            pageBuilder: () => const AboutPage(),
+          ),
+        ],
+      ),
+    ];
   }
 
   void _navigateTo(BuildContext context, Widget page) {
     FocusManager.instance.primaryFocus?.unfocus();
     Navigator.of(context).push(slidePageRoute<void>(page: page));
+  }
+
+  Widget _itemFor(_Destination destination, {required bool showDivider}) {
+    return SettingsItem(
+      icon: destination.icon,
+      title: destination.title,
+      subtitle: destination.subtitle,
+      showDivider: showDivider,
+      onTap: () => _navigateTo(context, destination.pageBuilder()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final bottomInset = context.navBarBottomInset;
+    final wideInset = wideListInset(context);
+    final query = _query.trim().toLowerCase();
+    final groups = _groups(context);
+
+    final margin = EdgeInsets.fromLTRB(
+      tokens.gapLg + wideInset,
+      tokens.gapXs,
+      tokens.gapLg + wideInset,
+      tokens.gapXs,
+    );
+
+    final List<Widget> body;
+    if (query.isEmpty) {
+      body = [
+        for (final group in groups) ...[
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.only(left: wideInset, right: wideInset),
+              child: SettingsSectionHeader(title: group.label),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: SettingsGroup(
+              margin: margin,
+              children: [
+                for (var i = 0; i < group.destinations.length; i++)
+                  _itemFor(
+                    group.destinations[i],
+                    showDivider: i != group.destinations.length - 1,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ];
+    } else {
+      final matches = [
+        for (final group in groups)
+          ...group.destinations.where((d) => d.matches(query)),
+      ];
+      body = matches.isEmpty
+          ? [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(tokens.gapXl),
+                  child: Text(
+                    context.l10n.settingsSearchNoResults(_query.trim()),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+            ]
+          : [
+              SliverToBoxAdapter(
+                child: SettingsGroup(
+                  margin: margin,
+                  children: [
+                    for (var i = 0; i < matches.length; i++)
+                      _itemFor(
+                        matches[i],
+                        showDivider: i != matches.length - 1,
+                      ),
+                  ],
+                ),
+              ),
+            ];
+    }
+
+    return CustomScrollView(
+      slivers: [
+        AppSliverHeader.tabRoot(title: context.l10n.settingsTitle),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              tokens.gapLg + wideInset,
+              tokens.gapSm,
+              tokens.gapLg + wideInset,
+              tokens.gapSm,
+            ),
+            child: TextField(
+              controller: _searchController,
+              textInputAction: TextInputAction.search,
+              onChanged: (value) => setState(() => _query = value),
+              decoration: InputDecoration(
+                hintText: context.l10n.settingsSearchHint,
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: query.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: context.l10n.dialogClear,
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _query = '');
+                        },
+                      ),
+              ),
+            ),
+          ),
+        ),
+        ...body,
+        SliverToBoxAdapter(child: SizedBox(height: bottomInset)),
+        const SliverFillRemaining(hasScrollBody: false, child: SizedBox()),
+      ],
+    );
   }
 }
