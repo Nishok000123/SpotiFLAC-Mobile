@@ -133,6 +133,8 @@ class _MainShellState extends ConsumerState<MainShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && _initialSafRepairComplete) {
       unawaited(_repairSafAccessIfNeeded());
+    } else if (state == AppLifecycleState.paused) {
+      unawaited(persistCurrentPlaybackSession());
     }
   }
 

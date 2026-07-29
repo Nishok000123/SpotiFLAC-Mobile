@@ -1005,6 +1005,7 @@ class _PlaybackControls extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final position = ref.watch(playbackPositionProvider);
     final isPlaying = ref.watch(playbackPlayingProvider);
+    final isLoading = ref.watch(playbackLoadingProvider);
     final shuffleOn = ref.watch(
       playbackStateProvider.select(
         (s) => s.value?.shuffleMode == AudioServiceShuffleMode.all,
@@ -1116,8 +1117,15 @@ class _PlaybackControls extends ConsumerWidget {
                 iconSize: 44,
                 padding: const EdgeInsets.all(12),
                 color: colorScheme.onPrimary,
-                icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-                onPressed: () => controller.togglePlayPause(isPlaying),
+                icon: isLoading
+                    ? const SizedBox.square(
+                        dimension: 32,
+                        child: CircularProgressIndicator(strokeWidth: 3),
+                      )
+                    : Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+                onPressed: isLoading
+                    ? null
+                    : () => controller.togglePlayPause(isPlaying),
               ),
             ),
             const SizedBox(width: 20),

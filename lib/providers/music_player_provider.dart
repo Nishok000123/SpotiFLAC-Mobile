@@ -28,6 +28,16 @@ final playbackPlayingProvider = Provider<bool>((ref) {
   );
 });
 
+final playbackLoadingProvider = Provider<bool>((ref) {
+  return ref.watch(
+    playbackStateProvider.select((state) {
+      final processingState = state.value?.processingState;
+      return processingState == AudioProcessingState.loading ||
+          processingState == AudioProcessingState.buffering;
+    }),
+  );
+});
+
 final playQueueProvider = StreamProvider<List<MediaItem>>((ref) {
   return musicPlayerQueueEvents();
 });
@@ -89,10 +99,17 @@ class MusicPlayerController {
   Future<void> previous() async => _handler?.skipToPrevious();
 
   Future<void> togglePlayPause(bool isPlaying) async {
+    final handler = _handler;
+    if (handler == null) return;
+    final processingState = handler.playbackState.value.processingState;
+    if (processingState == AudioProcessingState.loading ||
+        processingState == AudioProcessingState.buffering) {
+      return;
+    }
     if (isPlaying) {
-      await pause();
+      await handler.pause();
     } else {
-      await play();
+      await handler.play();
     }
   }
 

@@ -45,4 +45,26 @@ void main() {
     expect(merged['format'], 'flac');
     expect(merged['title'], 'Track');
   });
+
+  test('restored playback starts at its persisted position', () {
+    const savedPosition = Duration(minutes: 1, seconds: 23);
+
+    expect(
+      normalizedPlaybackResumePosition(
+        savedPosition,
+        duration: const Duration(minutes: 4),
+      ),
+      savedPosition,
+    );
+  });
+
+  test('a completed persisted position restarts safely from zero', () {
+    expect(
+      normalizedPlaybackResumePosition(
+        const Duration(minutes: 4),
+        duration: const Duration(minutes: 4),
+      ),
+      Duration.zero,
+    );
+  });
 }

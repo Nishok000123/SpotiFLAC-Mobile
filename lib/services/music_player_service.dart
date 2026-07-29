@@ -176,6 +176,19 @@ Map<String, dynamic> mergePlaybackFileMetadata(
   return merged;
 }
 
+/// Returns a safe source-start position for restored playback. A completed
+/// snapshot starts over instead of immediately completing again on resume.
+Duration normalizedPlaybackResumePosition(
+  Duration position, {
+  Duration? duration,
+}) {
+  if (position <= Duration.zero) return Duration.zero;
+  if (duration != null && duration > Duration.zero && position >= duration) {
+    return Duration.zero;
+  }
+  return position;
+}
+
 class MusicPlayerHandler extends BaseAudioHandler
     with QueueHandler, SeekHandler {
   final AudioPlayer _player = AudioPlayer(playerId: 'music-player');
@@ -192,6 +205,8 @@ class MusicPlayerHandler extends BaseAudioHandler
   String? _activeResolvedPath;
   bool _disposed = false;
   bool _initialized = false;
+  bool _sourceReady = false;
+  Future<void>? _activePlayOperation;
 
   bool _shuffle = false;
   AudioServiceRepeatMode _repeatMode = AudioServiceRepeatMode.none;
@@ -209,9 +224,12 @@ class MusicPlayerHandler extends BaseAudioHandler
   int _switchingGeneration = 0;
   Duration _lastBroadcastPosition = Duration.zero;
   DateTime? _lastPositionBroadcastAt;
+  DateTime? _lastPeriodicPersistAt;
+  Future<void> _sessionWriteTail = Future<void>.value();
   static const Duration _positionBroadcastInterval = Duration(
     milliseconds: 500,
   );
+  static const Duration _positionPersistInterval = Duration(seconds: 10);
   static const int _maxResolvedPathCacheEntries = 64;
 
   MusicPlayerHandler() {
@@ -243,7 +261,7 @@ class MusicPlayerHandler extends BaseAudioHandler
         }
         _broadcastState(playerState: state);
       }),
-      _player.onPositionChanged.listen(_broadcastPosition),
+      _player.onPositionChanged.listen(_handlePositionChanged),
       _player.onDurationChanged.listen((duration) {
         final current = mediaItem.value;
         if (current != null && duration > Duration.zero) {
@@ -329,7 +347,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     // Force the UI/notification to reflect the pause even if the engine does
     // not emit a state-change event on focus loss.
     _broadcastState(playerState: PlayerState.paused);
-    _persistSession(position: await _currentPositionForPersist());
+    await _persistSession(position: await _currentPositionForPersist());
   }
 
   Future<void> _activateAudioSession() async {
@@ -403,6 +421,26 @@ class MusicPlayerHandler extends BaseAudioHandler
     _lastPositionBroadcastAt = now;
     _lastBroadcastPosition = position;
     playbackState.add(playbackState.value.copyWith(updatePosition: position));
+  }
+
+  void _handlePositionChanged(Duration position) {
+    _broadcastPosition(position);
+    if (_restoringSession ||
+        _player.state != PlayerState.playing ||
+        _media.isEmpty ||
+        _index < 0 ||
+        _index >= _media.length) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final lastPersistAt = _lastPeriodicPersistAt;
+    if (lastPersistAt != null &&
+        now.difference(lastPersistAt) < _positionPersistInterval) {
+      return;
+    }
+    _lastPeriodicPersistAt = now;
+    unawaited(_persistSession(position: position));
   }
 
   // ReplayGain normalization: resolved path -> volume multiplier.
@@ -533,18 +571,27 @@ class MusicPlayerHandler extends BaseAudioHandler
     }
   }
 
+  Future<void> _enqueueSessionWrite(Future<void> Function() operation) {
+    final queued = _sessionWriteTail.then((_) async {
+      try {
+        await operation();
+      } catch (e) {
+        _log.w('Failed to update persisted playback session: $e');
+      }
+    });
+    _sessionWriteTail = queued;
+    return queued;
+  }
+
   /// Persists queue, current index, and position so a killed process can
-  /// restore the session paused on next launch. Writes only on discrete
-  /// events (pause, track change, queue mutation), never on position ticks.
-  void _persistSession({Duration? position}) {
-    if (_restoringSession) return;
+  /// restore the session paused on next launch. Position updates are throttled
+  /// by [_handlePositionChanged], while lifecycle/pause writes flush exactly.
+  Future<void> _persistSession({Duration? position}) {
+    if (_restoringSession) return Future<void>.value();
     if (_media.isEmpty || _index < 0 || _index >= _media.length) {
-      unawaited(
-        AppStateDatabase.instance.clearPlaybackSession().catchError((Object e) {
-          _log.w('Failed to clear playback session: $e');
-        }),
+      return _enqueueSessionWrite(
+        AppStateDatabase.instance.clearPlaybackSession,
       );
-      return;
     }
     final session = <String, dynamic>{
       'version': 1,
@@ -554,16 +601,16 @@ class MusicPlayerHandler extends BaseAudioHandler
       'shuffle': _shuffle,
       'repeat': _repeatMode.name,
     };
-    unawaited(
-      AppStateDatabase.instance.savePlaybackSession(session).catchError((
-        Object e,
-      ) {
-        _log.w('Failed to persist playback session: $e');
-      }),
+    return _enqueueSessionWrite(
+      () => AppStateDatabase.instance.savePlaybackSession(session),
     );
   }
 
   Future<Duration> _currentPositionForPersist() async {
+    // During restore/source preparation the engine may report a stale zero (or
+    // the previous source). The broadcast position already represents the
+    // intended start point for the current queue item.
+    if (!_sourceReady) return playbackState.value.position;
     try {
       final position = await _player.getCurrentPosition();
       if (position != null) return position;
@@ -571,9 +618,19 @@ class MusicPlayerHandler extends BaseAudioHandler
     return playbackState.value.position;
   }
 
+  /// Flushes the live engine position and every older queued session write.
+  /// Called when the app leaves the foreground so a normal restart resumes at
+  /// the latest audible point rather than the beginning of the track.
+  Future<void> persistCurrentSession() async {
+    if (_media.isEmpty || _index < 0 || _index >= _media.length) return;
+    final position = await _currentPositionForPersist();
+    _lastPeriodicPersistAt = DateTime.now();
+    await _persistSession(position: position);
+  }
+
   /// Restores a persisted session paused: queue and current track become
   /// visible (mini player included) without loading any source; the first
-  /// play() starts the track and seeks to the saved position.
+  /// play() prepares the source directly at the saved position.
   Future<void> restoreSession({
     required List<PlayableMedia> items,
     required int index,
@@ -596,6 +653,8 @@ class MusicPlayerHandler extends BaseAudioHandler
       _shuffle = shuffle;
       _repeatMode = repeatMode;
       _pendingRestorePosition = position > Duration.zero ? position : null;
+      _sourceReady = false;
+      _lastPeriodicPersistAt = null;
       queue.add(List<MediaItem>.unmodifiable(_queueItems));
       mediaItem.add(_media[_index].toMediaItem());
       if (position > Duration.zero) {
@@ -655,7 +714,7 @@ class MusicPlayerHandler extends BaseAudioHandler
 
     queue.add(List<MediaItem>.unmodifiable(_queueItems));
     _broadcastState();
-    _persistSession(position: playbackState.value.position);
+    unawaited(_persistSession(position: playbackState.value.position));
   }
 
   Future<void> enqueueAll(
@@ -681,7 +740,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     }
     queue.add(List<MediaItem>.unmodifiable(_queueItems));
     _broadcastState();
-    _persistSession(position: playbackState.value.position);
+    unawaited(_persistSession(position: playbackState.value.position));
   }
 
   void moveQueueItem(int oldIndex, int newIndex) {
@@ -712,13 +771,21 @@ class MusicPlayerHandler extends BaseAudioHandler
 
     queue.add(List<MediaItem>.unmodifiable(_queueItems));
     _broadcastState();
-    _persistSession(position: playbackState.value.position);
+    unawaited(_persistSession(position: playbackState.value.position));
   }
 
-  Future<void> _playIndex(int index, {bool recordHistory = true}) async {
+  Future<void> _playIndex(
+    int index, {
+    bool recordHistory = true,
+    Duration startPosition = Duration.zero,
+  }) async {
     if (index < 0 || index >= _media.length) return;
-    // Any explicit track start supersedes a pending restore position.
-    _pendingRestorePosition = null;
+    // A normal track change supersedes a pending restore. A restored start
+    // keeps it until the source is actually ready so a transient failure can
+    // be retried from the same position.
+    if (startPosition <= Duration.zero) {
+      _pendingRestorePosition = null;
+    }
     final generation = ++_playRequestGeneration;
     _index = index;
     _pausedByInterruption = false;
@@ -739,9 +806,14 @@ class MusicPlayerHandler extends BaseAudioHandler
     }
 
     final media = _media[index];
+    final effectiveStartPosition = normalizedPlaybackResumePosition(
+      startPosition,
+      duration: media.duration,
+    );
     mediaItem.add(media.toMediaItem());
     _lastBroadcastPosition = Duration.zero;
     _lastPositionBroadcastAt = null;
+    _broadcastPosition(effectiveStartPosition, force: true);
     // Claim the playing state up front (while the app is still in the
     // foreground window) so audio_service can start its foreground service
     // before the async source resolve below.
@@ -772,11 +844,19 @@ class MusicPlayerHandler extends BaseAudioHandler
       await _activateAudioSession();
       if (!_isCurrentPlayRequest(generation, media)) return;
       await _player.stop();
+      _sourceReady = false;
       if (!_isCurrentPlayRequest(generation, media)) return;
       await _player.setVolume(normalizationVolume);
       if (!_isCurrentPlayRequest(generation, media)) return;
-      await _player.play(DeviceFileSource(resolved));
+      await _player.play(
+        DeviceFileSource(resolved),
+        position: effectiveStartPosition > Duration.zero
+            ? effectiveStartPosition
+            : null,
+      );
       if (!_isCurrentPlayRequest(generation, media)) return;
+      _sourceReady = true;
+      _pendingRestorePosition = null;
       _activeResolvedPath = media.isContentUri ? resolved : null;
       await _cleanupPendingResolvedPaths();
       // Plain file paths were already published before loading. Re-publishing
@@ -786,15 +866,17 @@ class MusicPlayerHandler extends BaseAudioHandler
       if (media.isContentUri) {
         mediaItem.add(media.toMediaItem(resolvedSource: resolved));
       }
-      _broadcastPosition(Duration.zero, force: true);
+      _broadcastPosition(effectiveStartPosition, force: true);
       _broadcastState(playerState: PlayerState.playing);
-      _persistSession();
+      _lastPeriodicPersistAt = DateTime.now();
+      unawaited(_persistSession(position: effectiveStartPosition));
       _log.i('Playing: ${media.title}');
       // Some files do not emit onDurationChanged reliably (stuck at 0:00);
       // poll the engine for the real duration as a fallback.
       unawaited(_ensureDurationKnown(index, generation));
     } catch (e) {
       if (!_isCurrentPlayRequest(generation, media)) return;
+      _sourceReady = false;
       _log.e('Playback failed for ${media.title}: $e');
       _broadcastState(playerState: PlayerState.stopped);
     } finally {
@@ -886,23 +968,37 @@ class MusicPlayerHandler extends BaseAudioHandler
 
   @override
   Future<void> play() async {
+    final activeOperation = _activePlayOperation;
+    if (activeOperation != null) {
+      await activeOperation;
+      return;
+    }
+
+    final operation = _playInternal();
+    _activePlayOperation = operation;
+    try {
+      await operation;
+    } finally {
+      if (identical(_activePlayOperation, operation)) {
+        _activePlayOperation = null;
+      }
+    }
+  }
+
+  Future<void> _playInternal() async {
     _pausedByInterruption = false;
     _interruptionActive = false;
     _userPaused = false;
-    if ((_player.state == PlayerState.stopped ||
+    if ((!_sourceReady ||
+            _player.state == PlayerState.stopped ||
             _player.state == PlayerState.completed) &&
         _index >= 0 &&
         _index < _media.length) {
-      final restoreIndex = _index;
-      final restorePosition = _pendingRestorePosition;
-      await _playIndex(_index, recordHistory: false);
-      if (restorePosition != null && _index == restoreIndex) {
-        try {
-          await seek(restorePosition);
-        } catch (e) {
-          _log.w('Failed to seek to restored position: $e');
-        }
-      }
+      await _playIndex(
+        _index,
+        recordHistory: false,
+        startPosition: _pendingRestorePosition ?? Duration.zero,
+      );
       return;
     }
     await _activateAudioSession();
@@ -919,7 +1015,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     _pausedByInterruption = false;
     await _player.pause();
     _broadcastState(playerState: PlayerState.paused);
-    _persistSession(position: await _currentPositionForPersist());
+    await _persistSession(position: await _currentPositionForPersist());
   }
 
   @override
@@ -933,7 +1029,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     _shuffle = shuffleMode == AudioServiceShuffleMode.all;
     _broadcastState();
     if (_media.isNotEmpty && _index >= 0) {
-      _persistSession(position: playbackState.value.position);
+      unawaited(_persistSession(position: playbackState.value.position));
     }
   }
 
@@ -945,7 +1041,7 @@ class MusicPlayerHandler extends BaseAudioHandler
         : repeatMode;
     _broadcastState();
     if (_media.isNotEmpty && _index >= 0) {
-      _persistSession(position: playbackState.value.position);
+      unawaited(_persistSession(position: playbackState.value.position));
     }
   }
 
@@ -955,6 +1051,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     _switchingGeneration = 0;
     _userPaused = true;
     await _player.stop();
+    _sourceReady = false;
     _activeResolvedPath = null;
     await _cleanupPendingResolvedPaths();
     _index = -1;
@@ -965,11 +1062,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     _playHistory.clear();
     _pendingRestorePosition = null;
     // An explicit stop ends the session for good; nothing to restore later.
-    unawaited(
-      AppStateDatabase.instance.clearPlaybackSession().catchError((Object e) {
-        _log.w('Failed to clear playback session: $e');
-      }),
-    );
+    await _enqueueSessionWrite(AppStateDatabase.instance.clearPlaybackSession);
     // A stopped session has no current item; this also hides the mini player.
     mediaItem.add(null);
     _broadcastState(playerState: PlayerState.stopped);
@@ -1092,7 +1185,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     } else {
       _index = (_index - removedBeforeCurrent).clamp(0, _media.length - 1);
       _broadcastState();
-      _persistSession(position: playbackState.value.position);
+      unawaited(_persistSession(position: playbackState.value.position));
     }
   }
 
@@ -1103,6 +1196,7 @@ class MusicPlayerHandler extends BaseAudioHandler
       await sub.cancel();
     }
     _subscriptions.clear();
+    _sourceReady = false;
     await _player.dispose();
     _activeResolvedPath = null;
     final tempPaths = <String>{
@@ -1126,6 +1220,13 @@ final StreamController<MusicPlayerHandler> _handlerReadyController =
 MusicPlayerHandler? get musicPlayerHandler => _handler;
 
 Future<void> Function()? musicPlayerExclusiveAudioHook;
+
+/// Flushes the current playback position if the player has been initialized.
+Future<void> persistCurrentPlaybackSession() async {
+  final handler = _handler;
+  if (handler == null) return;
+  await handler.persistCurrentSession();
+}
 
 Future<MusicPlayerHandler> initMusicPlayer() async {
   if (_handler != null) return _handler!;
