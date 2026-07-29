@@ -13,7 +13,7 @@ class AppInfo {
   static const String mobileAuthor = 'zarzet';
   static const String originalAuthor = 'afkarxyz';
 
-  static const String githubRepo = 'zarzet/SpotiFLAC-Mobile';
+  static const String githubRepo = 'spotiflacapp/SpotiFLAC-Mobile';
   static const String githubUrl = 'https://github.com/$githubRepo';
   static const String originalGithubUrl =
       'https://github.com/afkarxyz/SpotiFLAC';

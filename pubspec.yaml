@@ -1,5 +1,5 @@
 name: spotiflac_android
-description: Download Spotify tracks in FLAC using extension providers
+description: Extension-driven music metadata and downloads for mobile devices
 publish_to: "none"
 version: 4.8.1+139
 

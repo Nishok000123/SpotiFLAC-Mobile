@@ -1206,8 +1206,8 @@ Thank you for your understanding and continued support. This decision was made t
 
 ### Highlights
 
-- **Local Library Scanning** ([#117](https://github.com/zarzet/SpotiFLAC-Mobile/issues/117)): Scan existing music collection to detect duplicates (FLAC, M4A, MP3, Opus, OGG)
-- **Duplicate Detection** ([#117](https://github.com/zarzet/SpotiFLAC-Mobile/issues/117)): "In Library" badge on tracks matching by ISRC or track name + artist
+- **Local Library Scanning** ([#117](https://github.com/spotiflacapp/SpotiFLAC-Mobile/issues/117)): Scan existing music collection to detect duplicates (FLAC, M4A, MP3, Opus, OGG)
+- **Duplicate Detection** ([#117](https://github.com/spotiflacapp/SpotiFLAC-Mobile/issues/117)): "In Library" badge on tracks matching by ISRC or track name + artist
 - **Unified Library Tab**: History renamed to Library, shows Downloaded + Local Library tracks with source badges
 
 ### Added
@@ -1275,7 +1275,7 @@ Same as 3.3.1 but fixes crash issues caused by FFmpeg.
 
 ### Added
 
-- **Clear All Queue Button**: Cancel all queued downloads with one tap ([#96](https://github.com/zarzet/SpotiFLAC-Mobile/issues/96))
+- **Clear All Queue Button**: Cancel all queued downloads with one tap ([#96](https://github.com/spotiflacapp/SpotiFLAC-Mobile/issues/96))
 - **IDHS Fallback**: Fallback link resolver when SongLink fails (rate limited 8 req/min)
 - **Lossy Bitrate Options**: MP3 (320/256/192/128kbps), Opus (128/96/64kbps)
 - **Search Filters**: Filter results by type (Tracks, Artists, Albums, Playlists)
@@ -1292,10 +1292,10 @@ Same as 3.3.1 but fixes crash issues caused by FFmpeg.
 
 ### Fixed
 
-- **MP3 Download Error 403**: Fixed 403 Forbidden error when downloading MP3 files ([#108](https://github.com/zarzet/SpotiFLAC-Mobile/issues/108))
+- **MP3 Download Error 403**: Fixed 403 Forbidden error when downloading MP3 files ([#108](https://github.com/spotiflacapp/SpotiFLAC-Mobile/issues/108))
 - **Opus Cover Art**: Implemented METADATA_BLOCK_PICTURE for proper cover embedding
-- **Deezer Pagination**: Fixed >25 tracks only showing first 25 ([#112](https://github.com/zarzet/SpotiFLAC-Mobile/issues/112))
-- **Duplicate Embed Lyrics Setting**: Removed from Options page ([#110](https://github.com/zarzet/SpotiFLAC-Mobile/issues/110))
+- **Deezer Pagination**: Fixed >25 tracks only showing first 25 ([#112](https://github.com/spotiflacapp/SpotiFLAC-Mobile/issues/112))
+- **Duplicate Embed Lyrics Setting**: Removed from Options page ([#110](https://github.com/spotiflacapp/SpotiFLAC-Mobile/issues/110))
 
 ---
 
@@ -1508,7 +1508,7 @@ Same as 3.3.1 but fixes crash issues caused by FFmpeg.
   - Spanish: Credits 125 ([@credits125](https://crowdin.com/profile/credits125))
   - Portuguese: Pedro Marcondes ([@justapedro](https://crowdin.com/profile/justapedro))
   - Russian: Владислав ([@odinokiy_kot](https://crowdin.com/profile/odinokiy_kot))
-- **Quick Search Provider Switcher** ([#76](https://github.com/zarzet/SpotiFLAC-Mobile/issues/76)): Dropdown menu in search bar for instant provider switching
+- **Quick Search Provider Switcher** ([#76](https://github.com/spotiflacapp/SpotiFLAC-Mobile/issues/76)): Dropdown menu in search bar for instant provider switching
   - Tap the search icon to reveal a dropdown menu with all available search providers
   - Shows default provider (Deezer based on metadata source setting) at the top
   - Lists all enabled extensions with custom search capability
@@ -1517,16 +1517,16 @@ Same as 3.3.1 but fixes crash issues caused by FFmpeg.
   - Search hint text updates immediately when switching providers
   - Re-triggers search automatically if there's existing text in the search bar
   - Eliminates need to navigate to Settings > Extensions > Search Provider
-- **Extension Button Setting Type** ([#74](https://github.com/zarzet/SpotiFLAC-Mobile/issues/74)): New setting type for extension actions
+- **Extension Button Setting Type** ([#74](https://github.com/spotiflacapp/SpotiFLAC-Mobile/issues/74)): New setting type for extension actions
   - Extensions can define `button` type in manifest settings
   - Triggers JavaScript function when tapped (e.g., start OAuth flow)
   - Useful for authentication, manual sync, or any custom action
-- **Genre & Label Metadata** ([#75](https://github.com/zarzet/SpotiFLAC-Mobile/issues/75)): Downloaded tracks now include genre and record label information
+- **Genre & Label Metadata** ([#75](https://github.com/spotiflacapp/SpotiFLAC-Mobile/issues/75)): Downloaded tracks now include genre and record label information
   - Fetches genre and label from Deezer album API for each track
   - Embeds GENRE, ORGANIZATION (label), and COPYRIGHT tags into FLAC files
   - Works automatically when Deezer track ID is available (via ISRC matching)
   - Supports all download services (Tidal, Qobuz, Amazon) and extension downloads
-- **MP3 Quality Option** ([#69](https://github.com/zarzet/SpotiFLAC-Mobile/issues/69)): Optional MP3 download format with FLAC-to-MP3 conversion
+- **MP3 Quality Option** ([#69](https://github.com/spotiflacapp/SpotiFLAC-Mobile/issues/69)): Optional MP3 download format with FLAC-to-MP3 conversion
   - New "Enable MP3 Option" toggle in Settings > Download > Audio Quality
   - When enabled, MP3 (320kbps) appears as a quality option alongside FLAC options
   - Available in both the quality picker dialog and default quality settings
@@ -1552,12 +1552,12 @@ Same as 3.3.1 but fixes crash issues caused by FFmpeg.
 - **Artist Name in Album Screen**: Album info card now displays artist name below album title
   - Extracted from first track's artist metadata
   - Styled with `onSurfaceVariant` color for visual hierarchy
-- **Disc Separation for Multi-Disc Albums** ([#70](https://github.com/zarzet/SpotiFLAC-Mobile/issues/70)): Downloaded albums with multiple discs now display tracks grouped by disc
+- **Disc Separation for Multi-Disc Albums** ([#70](https://github.com/spotiflacapp/SpotiFLAC-Mobile/issues/70)): Downloaded albums with multiple discs now display tracks grouped by disc
   - Visual disc separator header showing "Disc 1", "Disc 2", etc.
   - Tracks sorted by disc number first, then by track number
   - Single-disc albums display normally without separators
   - Fixes confusion when albums have duplicate track numbers across discs
-- **Album Grouping in Recents** ([#70](https://github.com/zarzet/SpotiFLAC-Mobile/issues/70)): Downloads now show as albums instead of individual tracks in the Recent section
+- **Album Grouping in Recents** ([#70](https://github.com/spotiflacapp/SpotiFLAC-Mobile/issues/70)): Downloads now show as albums instead of individual tracks in the Recent section
   - Prevents flooding the recents list when downloading full albums
   - Groups tracks by album name and artist
   - Tapping navigates directly to the downloaded album screen
@@ -1697,4 +1697,4 @@ SpotiFLAC 3.0 introduces a powerful extension system that allows third-party int
 
 ---
 
-_For older versions, see [GitHub Releases_](https://github.com/zarzet/SpotiFLAC-Mobile/releases)
+_For older versions, see [GitHub Releases_](https://github.com/spotiflacapp/SpotiFLAC-Mobile/releases)
