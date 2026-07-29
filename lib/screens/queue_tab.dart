@@ -2,13 +2,18 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/services/shell_navigation_service.dart';
+import 'package:spotiflac_android/widgets/error_card.dart';
+import 'package:spotiflac_android/widgets/track_card.dart';
+import 'package:spotiflac_android/theme/app_tokens.dart';
+import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
+import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
-import 'package:spotiflac_android/utils/app_bar_layout.dart';
 import 'package:spotiflac_android/utils/audio_quality_badge_policy.dart';
 import 'package:spotiflac_android/utils/nav_bar_inset.dart';
 import 'package:spotiflac_android/utils/re_enrich_release_policy.dart';
@@ -227,7 +232,8 @@ class _QueueTabState extends ConsumerState<QueueTab> {
 
   bool _isSelectionMode = false;
   final Set<String> _selectedIds = {};
-  OverlayEntry? _selectionOverlayEntry;
+  final SelectionOverlayController _selectionOverlay =
+      SelectionOverlayController();
   List<UnifiedLibraryItem> _selectionOverlayItems = const [];
   double _selectionOverlayBottomPadding = 0;
 
@@ -237,7 +243,8 @@ class _QueueTabState extends ConsumerState<QueueTab> {
 
   bool _isPlaylistSelectionMode = false;
   final Set<String> _selectedPlaylistIds = {};
-  OverlayEntry? _playlistSelectionOverlayEntry;
+  final SelectionOverlayController _playlistSelectionOverlay =
+      SelectionOverlayController();
   List<UserPlaylistCollection> _playlistSelectionOverlayItems = const [];
   double _playlistSelectionOverlayBottomPadding = 0;
 
@@ -751,9 +758,6 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: colorScheme.surfaceContainerLow,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) {
           return SafeArea(
@@ -770,17 +774,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Center(
-                            child: Container(
-                              width: 32,
-                              height: 4,
-                              margin: const EdgeInsets.only(bottom: 16),
-                              decoration: BoxDecoration(
-                                color: colorScheme.outlineVariant,
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                          ),
+                          const AppSheetHandle(),
 
                           Row(
                             children: [
@@ -1272,7 +1266,6 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       settingsProvider.select((s) => s.libraryQualityLabelMode),
     );
     final colorScheme = Theme.of(context).colorScheme;
-    final topPadding = normalizedHeaderTopPadding(context);
     final countsRequest = _QueueLibraryCountsRequest(
       searchQuery: _searchQuery,
       filterSource: _filterSource,
@@ -1424,41 +1417,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
             ).copyWith(overscroll: false),
             child: NestedScrollView(
               headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                SliverAppBar(
-                  expandedHeight: 120 + topPadding,
-                  collapsedHeight: kToolbarHeight,
-                  floating: false,
-                  pinned: true,
-                  backgroundColor: colorScheme.surface,
-                  surfaceTintColor: Colors.transparent,
-                  automaticallyImplyLeading: false,
-                  flexibleSpace: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final maxHeight = 120 + topPadding;
-                      final minHeight = kToolbarHeight + topPadding;
-                      final expandRatio =
-                          ((constraints.maxHeight - minHeight) /
-                                  (maxHeight - minHeight))
-                              .clamp(0.0, 1.0);
-
-                      return FlexibleSpaceBar(
-                        expandedTitleScale: 1.0,
-                        titlePadding: const EdgeInsets.only(
-                          left: 24,
-                          bottom: 16,
-                        ),
-                        title: Text(
-                          context.l10n.navLibrary,
-                          style: TextStyle(
-                            fontSize: 20 + (14 * expandRatio),
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+                AppSliverHeader.tabRoot(title: context.l10n.navLibrary),
 
                 if (shouldShowLibraryControls || hasQueueItems)
                   SliverToBoxAdapter(

@@ -7,7 +7,7 @@ import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/utils/clickable_metadata.dart';
 import 'package:spotiflac_android/utils/local_playback.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
-import 'package:spotiflac_android/widgets/animation_utils.dart';
+import 'package:spotiflac_android/widgets/track_card.dart';
 import 'package:spotiflac_android/widgets/in_library_badge.dart';
 import 'package:spotiflac_android/widgets/preview_button.dart';
 import 'package:spotiflac_android/widgets/track_collection_quick_actions.dart';
@@ -70,106 +70,71 @@ class TrackListTile extends ConsumerWidget {
 
     final isQueued = queueItem != null;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Card(
-        elevation: 0,
-        color: isSelected
-            ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-            : Colors.transparent,
-        margin: const EdgeInsets.symmetric(vertical: 2),
-        child: ListTile(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    return TrackCard(
+      style: TrackCardStyle.flat,
+      isSelectionMode: isSelectionMode,
+      isSelected: isSelected,
+      leading: leading,
+      title: track.name,
+      subtitle: Row(
+        children: [
+          Flexible(
+            child: clickableArtist && !isSelectionMode
+                ? ClickableArtistName(
+                    artistName: track.artistName,
+                    artistId: track.artistId,
+                    coverUrl: track.coverUrl,
+                    extensionId: track.source,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: colorScheme.onSurfaceVariant),
+                  )
+                : Text(
+                    track.artistName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: colorScheme.onSurfaceVariant),
+                  ),
           ),
-          leading: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isSelectionMode) ...[
-                AnimatedSelectionCheckbox(
-                  visible: true,
-                  selected: isSelected,
-                  colorScheme: colorScheme,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-              ],
-              leading,
-            ],
+          ...buildQualityBadges(
+            audioQuality: track.audioQuality,
+            audioModes: track.audioModes,
+            colorScheme: colorScheme,
+            explicit: track.isExplicit,
           ),
-          title: Text(
-            track.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(
+          if (isInLocalLibrary || isInHistory) ...[
+            const SizedBox(width: 6),
+            const InLibraryBadge(),
+          ],
+        ],
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          PreviewButton(track: track),
+          TrackCollectionQuickActions(
+            track: track,
+            hasLocalPlaybackCandidate: isInHistory || isInLocalLibrary,
+          ),
+        ],
+      ),
+      onTap: isSelectionMode
+          ? onToggleSelection
+          : () => _handleTap(
               context,
-            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
-          ),
-          subtitle: Row(
-            children: [
-              Flexible(
-                child: clickableArtist && !isSelectionMode
-                    ? ClickableArtistName(
-                        artistName: track.artistName,
-                        artistId: track.artistId,
-                        coverUrl: track.coverUrl,
-                        extensionId: track.source,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: colorScheme.onSurfaceVariant),
-                      )
-                    : Text(
-                        track.artistName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: colorScheme.onSurfaceVariant),
-                      ),
-              ),
-              ...buildQualityBadges(
-                audioQuality: track.audioQuality,
-                audioModes: track.audioModes,
-                colorScheme: colorScheme,
-                explicit: track.isExplicit,
-              ),
-              if (isInLocalLibrary || isInHistory) ...[
-                const SizedBox(width: 6),
-                const InLibraryBadge(),
-              ],
-            ],
-          ),
-          trailing: isSelectionMode
-              ? null
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    PreviewButton(track: track),
-                    TrackCollectionQuickActions(
-                      track: track,
-                      hasLocalPlaybackCandidate:
-                          isInHistory || isInLocalLibrary,
-                    ),
-                  ],
-                ),
-          onTap: isSelectionMode
-              ? onToggleSelection
-              : () => _handleTap(
+              ref,
+              isQueued: isQueued,
+              isInLocalLibrary: isInLocalLibrary,
+            ),
+      onLongPress: isSelectionMode
+          ? null
+          : onEnterSelectionMode ??
+                () => TrackCollectionQuickActions.showTrackOptionsSheet(
                   context,
                   ref,
-                  isQueued: isQueued,
-                  isInLocalLibrary: isInLocalLibrary,
+                  track,
+                  hasLocalPlaybackCandidate: isInHistory || isInLocalLibrary,
                 ),
-          onLongPress: isSelectionMode
-              ? null
-              : onEnterSelectionMode ??
-                    () => TrackCollectionQuickActions.showTrackOptionsSheet(
-                      context,
-                      ref,
-                      track,
-                      hasLocalPlaybackCandidate:
-                          isInHistory || isInLocalLibrary,
-                    ),
-        ),
-      ),
     );
   }
 
