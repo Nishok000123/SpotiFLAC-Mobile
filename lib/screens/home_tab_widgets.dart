@@ -1534,7 +1534,7 @@ class _QuickPicksPageViewState extends State<_QuickPicksPageView> {
               ),
               onPressed: () => widget.onItemMenu(item),
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
             ),
           ],
         ),

@@ -736,9 +736,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: colorScheme.surfaceContainerHigh,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (context) {
         return DraggableScrollableSheet(
           expand: false,
@@ -923,9 +920,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: colorScheme.surfaceContainerHigh,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (context) {
         return DraggableScrollableSheet(
           expand: false,
@@ -1003,11 +997,13 @@ class _PlaybackControls extends ConsumerWidget {
                     alpha: 0.18,
                   ),
                   thumbColor: colorScheme.primary,
+                  // A 7dp thumb was hard to grab; 10dp with a 24dp overlay
+                  // gives the drag gesture a full-size target.
                   thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 7,
+                    enabledThumbRadius: 10,
                   ),
                   overlayShape: const RoundSliderOverlayShape(
-                    overlayRadius: 16,
+                    overlayRadius: 24,
                   ),
                 ),
                 child: Slider(

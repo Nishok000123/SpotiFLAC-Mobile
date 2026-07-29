@@ -46,8 +46,8 @@ class _AudioInfoCard extends StatelessWidget {
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
+                      minWidth: 48,
+                      minHeight: 48,
                     ),
                     color: cs.onSurfaceVariant,
                     onPressed: onRescan,

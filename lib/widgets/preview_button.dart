@@ -49,7 +49,7 @@ class PreviewButton extends ConsumerWidget {
           padding: EdgeInsets.zero,
           alignment: Alignment.centerRight,
           visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints(minWidth: 24, minHeight: 36),
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           icon: Icon(
             isPlaying
                 ? Icons.pause_circle_filled_rounded
@@ -113,7 +113,7 @@ class PreviewButton extends ConsumerWidget {
         padding: EdgeInsets.zero,
         alignment: Alignment.centerRight,
         visualDensity: VisualDensity.compact,
-        constraints: const BoxConstraints(minWidth: 24, minHeight: 36),
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         icon: icon,
         tooltip: tooltip,
         onPressed: () => _onPressed(context, ref),

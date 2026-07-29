@@ -1281,7 +1281,7 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
                 tooltip: l10n.audioAnalysisRescan,
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                 color: cs.onErrorContainer,
                 onPressed: () => _analyze(forceRefresh: true),
               ),
