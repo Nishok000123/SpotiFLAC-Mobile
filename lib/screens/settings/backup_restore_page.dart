@@ -13,7 +13,7 @@ import 'package:spotiflac_android/services/backup_service.dart';
 import 'package:spotiflac_android/services/history_database.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
-import 'package:spotiflac_android/widgets/settings_sliver_app_bar.dart';
+import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 
 class BackupRestorePage extends ConsumerStatefulWidget {
   const BackupRestorePage({super.key});
@@ -222,7 +222,7 @@ class _BackupRestorePageState extends ConsumerState<BackupRestorePage> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SettingsSliverAppBar(title: l10n.backupTitle),
+          AppSliverHeader.page(title: l10n.backupTitle),
           SliverToBoxAdapter(
             child: SettingsSectionHeader(title: l10n.backupExportSectionTitle),
           ),

@@ -8,7 +8,7 @@ import 'package:spotiflac_android/providers/repo_provider.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/extension_auth_launcher.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
-import 'package:spotiflac_android/widgets/settings_sliver_app_bar.dart';
+import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 
 class ExtensionDetailPage extends ConsumerStatefulWidget {
   final String extensionId;
@@ -89,7 +89,7 @@ class _ExtensionDetailPageState extends ConsumerState<ExtensionDetailPage> {
       child: Scaffold(
         body: CustomScrollView(
           slivers: [
-            SettingsSliverAppBar(title: extension.displayName),
+            AppSliverHeader.page(title: extension.displayName),
 
             SliverToBoxAdapter(
               child: Padding(

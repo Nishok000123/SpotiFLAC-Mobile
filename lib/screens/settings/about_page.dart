@@ -6,7 +6,7 @@ import 'package:spotiflac_android/constants/app_info.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
-import 'package:spotiflac_android/widgets/settings_sliver_app_bar.dart';
+import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
@@ -20,7 +20,7 @@ class AboutPage extends StatelessWidget {
       child: Scaffold(
         body: CustomScrollView(
           slivers: [
-            SettingsSliverAppBar(title: context.l10n.aboutTitle),
+            AppSliverHeader.page(title: context.l10n.aboutTitle),
 
             SliverToBoxAdapter(
               child: Padding(

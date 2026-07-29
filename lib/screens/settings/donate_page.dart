@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:spotiflac_android/services/app_remote_config_service.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 import 'package:spotiflac_android/widgets/donate_icons.dart';
-import 'package:spotiflac_android/widgets/settings_sliver_app_bar.dart';
+import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 
 class DonatePage extends StatefulWidget {
   final AppRemoteConfigService? remoteConfigService;
@@ -61,7 +61,7 @@ class _DonatePageState extends State<DonatePage> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          const SettingsSliverAppBar(title: 'Donate'),
+          AppSliverHeader.page(title: 'Donate'),
           SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(
