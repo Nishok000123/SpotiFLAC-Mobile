@@ -14,6 +14,8 @@ import 'package:spotiflac_android/utils/int_utils.dart';
 import 'package:spotiflac_android/utils/lyrics_parser.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
+import 'package:spotiflac_android/utils/synced_lyrics_scroll.dart';
+import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/player_artwork.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 
@@ -352,38 +354,14 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               icon: const Icon(Icons.queue_music),
               onPressed: () => _showQueueSheet(colorScheme),
             ),
-            PopupMenuButton<String>(
+            IconButton(
+              tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
               icon: const Icon(Icons.more_vert),
-              onSelected: (value) {
-                switch (value) {
-                  case 'details':
-                    _showDetailsSheet(colorScheme);
-                    break;
-                  case 'external':
-                    _openExternally(source);
-                    break;
-                }
-              },
-              itemBuilder: (menuContext) => [
-                PopupMenuItem(
-                  value: 'details',
-                  child: ListTile(
-                    leading: const Icon(Icons.info_outline),
-                    title: Text(menuContext.l10n.nowPlayingDetails),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'external',
-                  child: ListTile(
-                    leading: const Icon(Icons.open_in_new),
-                    title: Text(
-                      menuContext.l10n.nowPlayingOpenInExternalPlayer,
-                    ),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
+              onPressed: () => _showMoreActions(
+                mediaItem: mediaItem,
+                source: source,
+                colorScheme: colorScheme,
+              ),
             ),
           ],
         ),
@@ -707,6 +685,52 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           ),
         ),
       );
+    }
+  }
+
+  Future<void> _showMoreActions({
+    required MediaItem mediaItem,
+    required String source,
+    required ColorScheme colorScheme,
+  }) async {
+    final action = await showAppBottomSheet<String>(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: colorScheme.surfaceContainerHigh,
+      title: mediaItem.title,
+      subtitle: mediaItem.artist,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: SettingsGroup(
+          children: [
+            SettingsItem(
+              icon: Icons.info_outline,
+              title: sheetContext.l10n.nowPlayingDetails,
+              onTap: () => Navigator.of(sheetContext).pop('details'),
+            ),
+            SettingsItem(
+              icon: Icons.open_in_new,
+              title: sheetContext.l10n.nowPlayingOpenInExternalPlayer,
+              trailing: Icon(
+                Icons.open_in_new,
+                size: 18,
+                color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
+              ),
+              showDivider: false,
+              onTap: () => Navigator.of(sheetContext).pop('external'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    switch (action) {
+      case 'details':
+        _showDetailsSheet(colorScheme);
+        break;
+      case 'external':
+        await _openExternally(source);
+        break;
     }
   }
 
@@ -1149,6 +1173,7 @@ class _SyncedLyricsView extends ConsumerStatefulWidget {
 class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   final ScrollController _scroll = ScrollController();
   ProviderSubscription<Duration>? _positionSubscription;
+  late List<GlobalKey> _lineKeys;
   int _active = -1;
   bool _userScrolling = false;
   static const double _estimatedLyricExtent = 64;
@@ -1156,16 +1181,28 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   @override
   void initState() {
     super.initState();
+    _resetLineKeys();
     _syncPositionSubscription();
   }
 
   @override
   void didUpdateWidget(covariant _SyncedLyricsView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.lyrics != widget.lyrics) {
+      _resetLineKeys();
+    }
     if (oldWidget.isActive != widget.isActive ||
         oldWidget.lyrics != widget.lyrics) {
       _syncPositionSubscription();
     }
+  }
+
+  void _resetLineKeys() {
+    _lineKeys = List<GlobalKey>.generate(
+      widget.lyrics.lines.length,
+      (index) => GlobalKey(debugLabel: 'lyric-line-$index'),
+      growable: false,
+    );
   }
 
   void _syncPositionSubscription() {
@@ -1177,6 +1214,9 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       widget.lyrics.lines,
       ref.read(playbackPositionProvider),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_maybeAutoScroll(_active));
+    });
     _positionSubscription = ref.listenManual<Duration>(
       playbackPositionProvider,
       (previous, next) {
@@ -1184,7 +1224,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
         if (active == _active || !mounted) return;
         setState(() => _active = active);
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _maybeAutoScroll(active);
+          if (mounted) unawaited(_maybeAutoScroll(active));
         });
       },
     );
@@ -1197,22 +1237,47 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     super.dispose();
   }
 
-  void _maybeAutoScroll(int index) {
+  Future<void> _maybeAutoScroll(int index) async {
     if (_userScrolling || index < 0 || !_scroll.hasClients) return;
+    if (index < _lineKeys.length) {
+      final lineContext = _lineKeys[index].currentContext;
+      if (lineContext != null) {
+        await Scrollable.ensureVisible(
+          lineContext,
+          alignment: 0.5,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+          duration: const Duration(milliseconds: 380),
+          curve: Curves.easeOutCubic,
+        );
+        return;
+      }
+    }
+
     final position = _scroll.position;
-    final target =
-        (index * _estimatedLyricExtent) -
-        (position.viewportDimension * 0.35) +
-        24;
+    final target = syncedLyricsEstimatedOffset(
+      index: index,
+      estimatedLineExtent: _estimatedLyricExtent,
+    );
     final clamped = target.clamp(
       position.minScrollExtent,
       position.maxScrollExtent,
     );
-    _scroll.animateTo(
+    await _scroll.animateTo(
       clamped.toDouble(),
       duration: const Duration(milliseconds: 380),
       curve: Curves.easeOutCubic,
     );
+    if (!mounted || _userScrolling || index >= _lineKeys.length) return;
+    final lineContext = _lineKeys[index].currentContext;
+    if (lineContext != null && lineContext.mounted) {
+      await Scrollable.ensureVisible(
+        lineContext,
+        alignment: 0.5,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override
@@ -1230,66 +1295,75 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
         }
         return false;
       },
-      child: ListView.builder(
-        controller: _scroll,
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 80),
-        itemCount: lines.length,
-        itemBuilder: (context, index) {
-          final line = lines[index];
-          final isActive = index == active;
-          final isPast = index < active;
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final centerPadding = syncedLyricsCenterPadding(
+            viewportDimension: constraints.maxHeight,
+            estimatedLineExtent: _estimatedLyricExtent,
+          );
+          return ListView.builder(
+            controller: _scroll,
+            padding: EdgeInsets.fromLTRB(24, centerPadding, 24, centerPadding),
+            itemCount: lines.length,
+            itemBuilder: (context, index) {
+              final line = lines[index];
+              final isActive = index == active;
+              final isPast = index < active;
 
-          final color = isActive
-              ? widget.colorScheme.onSurface
-              : isPast
-              ? widget.colorScheme.onSurfaceVariant.withValues(alpha: 0.5)
-              : widget.colorScheme.onSurfaceVariant.withValues(alpha: 0.8);
+              final color = isActive
+                  ? widget.colorScheme.onSurface
+                  : isPast
+                  ? widget.colorScheme.onSurfaceVariant.withValues(alpha: 0.5)
+                  : widget.colorScheme.onSurfaceVariant.withValues(alpha: 0.8);
 
-          final text = line.text.trim().isEmpty
-              ? '\u00b7\u00b7\u00b7'
-              : line.text;
+              final text = line.text.trim().isEmpty
+                  ? '\u00b7\u00b7\u00b7'
+                  : line.text;
 
-          Widget content;
-          if (isActive && line.hasWordTiming) {
-            content = _WordHighlightedLyricLine(
-              line: line,
-              colorScheme: widget.colorScheme,
-            );
-          } else {
-            content = Text(
-              text,
-              textAlign: TextAlign.center,
-              style:
-                  (isActive
-                          ? Theme.of(context).textTheme.headlineSmall
-                          : Theme.of(context).textTheme.titleLarge)
-                      ?.copyWith(
-                        height: 1.4,
-                        fontWeight: isActive
-                            ? FontWeight.bold
-                            : FontWeight.w500,
-                        color: color,
-                      ),
-            );
-          }
+              Widget content;
+              if (isActive && line.hasWordTiming) {
+                content = _WordHighlightedLyricLine(
+                  line: line,
+                  colorScheme: widget.colorScheme,
+                );
+              } else {
+                content = Text(
+                  text,
+                  textAlign: TextAlign.center,
+                  style:
+                      (isActive
+                              ? Theme.of(context).textTheme.headlineSmall
+                              : Theme.of(context).textTheme.titleLarge)
+                          ?.copyWith(
+                            height: 1.4,
+                            fontWeight: isActive
+                                ? FontWeight.bold
+                                : FontWeight.w500,
+                            color: color,
+                          ),
+                );
+              }
 
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: GestureDetector(
-              onTap: () =>
-                  ref.read(musicPlayerControllerProvider).seek(line.time),
-              child: AnimatedScale(
-                scale: isActive ? 1.0 : 0.96,
-                alignment: Alignment.center,
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeOutCubic,
-                child: AnimatedOpacity(
-                  opacity: isActive ? 1.0 : (isPast ? 0.55 : 0.85),
-                  duration: const Duration(milliseconds: 280),
-                  child: content,
+              return Padding(
+                key: _lineKeys[index],
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: GestureDetector(
+                  onTap: () =>
+                      ref.read(musicPlayerControllerProvider).seek(line.time),
+                  child: AnimatedScale(
+                    scale: isActive ? 1.0 : 0.96,
+                    alignment: Alignment.center,
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedOpacity(
+                      opacity: isActive ? 1.0 : (isPast ? 0.55 : 0.85),
+                      duration: const Duration(milliseconds: 280),
+                      child: content,
+                    ),
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           );
         },
       ),
