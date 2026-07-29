@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/theme/app_tokens.dart';
+import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
+import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
@@ -21,7 +24,6 @@ import 'package:spotiflac_android/screens/home_search_logic.dart';
 import 'package:spotiflac_android/services/csv_import_service.dart';
 import 'package:spotiflac_android/services/downloaded_embedded_cover_resolver.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
-import 'package:spotiflac_android/utils/app_bar_layout.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 import 'package:spotiflac_android/utils/nav_bar_inset.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
@@ -747,7 +749,6 @@ class _HomeTabState extends ConsumerState<HomeTab>
       trackProvider.select((s) => s.isShowingRecentAccess),
     );
     final screenHeight = MediaQuery.sizeOf(context).height;
-    final topPadding = normalizedHeaderTopPadding(context);
     final bottomInset = context.navBarBottomInset;
     final hasHistoryItems = ref.watch(
       _homeHistoryPreviewProvider.select((items) => items.isNotEmpty),
@@ -840,38 +841,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
           child: CustomScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             slivers: [
-              SliverAppBar(
-                expandedHeight: 120 + topPadding,
-                collapsedHeight: kToolbarHeight,
-                floating: false,
-                pinned: true,
-                backgroundColor: colorScheme.surface,
-                surfaceTintColor: Colors.transparent,
-                automaticallyImplyLeading: false,
-                flexibleSpace: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final maxHeight = 120 + topPadding;
-                    final minHeight = kToolbarHeight + topPadding;
-                    final expandRatio =
-                        ((constraints.maxHeight - minHeight) /
-                                (maxHeight - minHeight))
-                            .clamp(0.0, 1.0);
-
-                    return FlexibleSpaceBar(
-                      expandedTitleScale: 1.0,
-                      titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
-                      title: Text(
-                        context.l10n.homeTitle,
-                        style: TextStyle(
-                          fontSize: 20 + (14 * expandRatio),
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+              AppSliverHeader.tabRoot(title: context.l10n.homeTitle),
 
               SliverToBoxAdapter(
                 child: AnimatedSize(

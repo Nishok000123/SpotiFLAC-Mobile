@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:flutter/services.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
@@ -20,13 +21,12 @@ class OpenOnPlatformSheet extends StatelessWidget {
     String isrc = '',
   }) {
     final colorScheme = Theme.of(context).colorScheme;
-    return showModalBottomSheet<void>(
+    return showAppBottomSheet<void>(
       context: context,
       useRootNavigator: true,
       backgroundColor: colorScheme.surfaceContainerHigh,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+      title: context.l10n.trackOpenOn,
+      maxHeightFactor: 0.7,
       builder: (_) => OpenOnPlatformSheet(spotifyId: spotifyId, isrc: isrc),
     );
   }
@@ -82,94 +82,54 @@ class OpenOnPlatformSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.7,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  context.l10n.trackOpenOn,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-            Flexible(
-              child: FutureBuilder<Map<String, String>>(
-                future: PlatformBridge.getTrackPlatformLinks(
-                  spotifyId: spotifyId,
-                  isrc: isrc,
-                ),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-                  final links = snapshot.data ?? const <String, String>{};
-                  if (links.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-                      child: Text(
-                        context.l10n.trackOpenOnNoLinks,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    );
-                  }
-                  final entries = links.entries.toList()
-                    ..sort(
-                      (a, b) =>
-                          _displayName(a.key).compareTo(_displayName(b.key)),
-                    );
-                  return SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        SettingsGroup(
-                          children: [
-                            for (final entry in entries)
-                              ListTile(
-                                title: Text(_displayName(entry.key)),
-                                trailing: Icon(
-                                  Icons.open_in_new,
-                                  size: 18,
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                                onTap: () => _openLink(context, entry.value),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+    return FutureBuilder<Map<String, String>>(
+      future: PlatformBridge.getTrackPlatformLinks(
+        spotifyId: spotifyId,
+        isrc: isrc,
       ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final links = snapshot.data ?? const <String, String>{};
+        if (links.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+            child: Text(
+              context.l10n.trackOpenOnNoLinks,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          );
+        }
+        final entries = links.entries.toList()
+          ..sort((a, b) => _displayName(a.key).compareTo(_displayName(b.key)));
+        return SingleChildScrollView(
+          child: Column(
+            children: [
+              SettingsGroup(
+                children: [
+                  for (final entry in entries)
+                    ListTile(
+                      title: Text(_displayName(entry.key)),
+                      trailing: Icon(
+                        Icons.open_in_new,
+                        size: 18,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      onTap: () => _openLink(context, entry.value),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
     );
   }
 }

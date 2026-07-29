@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/track.dart';
@@ -34,9 +35,6 @@ class TrackCollectionQuickActions extends ConsumerWidget {
       useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: colorScheme.surfaceContainerHigh,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (sheetContext) => _TrackOptionsSheet(
         track: track,
         hasLocalPlaybackCandidate: hasLocalPlaybackCandidate,
@@ -62,7 +60,7 @@ class TrackCollectionQuickActions extends ConsumerWidget {
         hasLocalPlaybackCandidate: hasLocalPlaybackCandidate,
       ),
       padding: const EdgeInsets.only(left: 12),
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
     );
   }
 }
@@ -105,17 +103,7 @@ class _TrackOptionsSheet extends ConsumerWidget {
             children: [
               Column(
                 children: [
-                  const SizedBox(height: 8),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: colorScheme.onSurfaceVariant.withValues(
-                        alpha: 0.4,
-                      ),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+                  const AppSheetHandle(),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                     child: Row(

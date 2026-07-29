@@ -12,9 +12,6 @@ extension _TrackMetadataMenu on _TrackMetadataScreenState {
       context: screenContext,
       useRootNavigator: true,
       backgroundColor: colorScheme.surfaceContainerHigh,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       isScrollControlled: true,
       builder: (sheetContext) {
         final l10n = sheetContext.l10n;
@@ -115,19 +112,7 @@ extension _TrackMetadataMenu on _TrackMetadataScreenState {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: colorScheme.onSurfaceVariant.withValues(
-                          alpha: 0.4,
-                        ),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
+                  const AppSheetHandle(),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                     child: Row(

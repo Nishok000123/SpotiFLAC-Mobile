@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:spotiflac_android/l10n/l10n.dart';
@@ -18,14 +19,12 @@ class DuplicateReviewSheet extends ConsumerStatefulWidget {
 
   static Future<void> show(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return showModalBottomSheet<void>(
+    return showAppBottomSheet<void>(
       context: context,
       useRootNavigator: true,
-      isScrollControlled: true,
       backgroundColor: colorScheme.surfaceContainerHigh,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+      title: context.l10n.duplicatesTitle,
+      maxHeightFactor: 0.85,
       builder: (_) => const DuplicateReviewSheet(),
     );
   }
@@ -154,76 +153,39 @@ class _DuplicateReviewSheetState extends ConsumerState<DuplicateReviewSheet> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.85,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+    return FutureBuilder<List<IsrcDuplicateGroup>>(
+      future: _groupsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final groups = snapshot.data ?? const [];
+        if (groups.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+            child: Text(
+              context.l10n.duplicatesEmpty,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  context.l10n.duplicatesTitle,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-            Flexible(
-              child: FutureBuilder<List<IsrcDuplicateGroup>>(
-                future: _groupsFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-                  final groups = snapshot.data ?? const [];
-                  if (groups.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-                      child: Text(
-                        context.l10n.duplicatesEmpty,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    );
-                  }
-                  // shrinkWrap keeps a small sheet compact but builds every
-                  // group eagerly; past a screenful, switch to a lazy
-                  // full-height list so a large duplicate set can't jank the
-                  // opening frame.
-                  final compact = groups.length <= 12;
-                  return ListView.builder(
-                    shrinkWrap: compact,
-                    itemCount: groups.length,
-                    itemBuilder: (context, index) =>
-                        _buildGroup(context, colorScheme, groups[index]),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+          );
+        }
+        // shrinkWrap keeps a small sheet compact but builds every
+        // group eagerly; past a screenful, switch to a lazy
+        // full-height list so a large duplicate set can't jank the
+        // opening frame.
+        final compact = groups.length <= 12;
+        return ListView.builder(
+          shrinkWrap: compact,
+          itemCount: groups.length,
+          itemBuilder: (context, index) =>
+              _buildGroup(context, colorScheme, groups[index]),
+        );
+      },
     );
   }
 

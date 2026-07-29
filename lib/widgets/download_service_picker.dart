@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
@@ -40,9 +41,6 @@ class DownloadServicePicker extends ConsumerStatefulWidget {
       context: context,
       useRootNavigator: true,
       backgroundColor: colorScheme.surfaceContainerHigh,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       isScrollControlled: true,
       builder: (context) => DownloadServicePicker(
         trackName: trackName,
@@ -137,17 +135,7 @@ class _DownloadServicePickerState extends ConsumerState<DownloadServicePicker> {
                 color: colorScheme.outlineVariant.withValues(alpha: 0.5),
               ),
             ] else ...[
-              const SizedBox(height: 8),
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              const AppSheetHandle(),
             ],
 
             Padding(
@@ -517,15 +505,7 @@ class _TrackInfoHeaderState extends State<_TrackInfoHeader> {
         ),
         child: Column(
           children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+            const AppSheetHandle(),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               child: Row(

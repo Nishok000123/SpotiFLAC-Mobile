@@ -54,9 +54,6 @@ extension _TrackMetadataFileActions on _TrackMetadataScreenState {
       useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (sheetContext) => _EditMetadataSheet(
         colorScheme: colorScheme,
         initialValues: initialValues,

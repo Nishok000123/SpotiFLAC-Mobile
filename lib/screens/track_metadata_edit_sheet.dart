@@ -108,9 +108,6 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (sheetContext) {
         final cs = Theme.of(sheetContext).colorScheme;
         final currentId =
@@ -1547,14 +1544,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 12, bottom: 8),
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+                  child: const AppSheetHandle(),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
