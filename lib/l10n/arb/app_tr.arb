@@ -6018,5 +6018,12 @@
   "queueResolvingDownloadMetadata": "Resolving track metadata...",
   "queueResolvingDownloadStream": "Preparing audio stream...",
   "queueWaitingForVerification": "Waiting for verification...",
-  "queueResumingAfterVerification": "Resuming after verification..."
+  "queueResumingAfterVerification": "Resuming after verification...",
+  "settingsSearchHint": "Ayarlarda ara",
+  "settingsSearchNoResults": "\"{query}\" ile eşleşen ayar bulunamadı",
+  "settingsGroupInterface": "Arayüz",
+  "settingsGroupContent": "İçerik ve meta veriler",
+  "settingsGroupDownloads": "İndirmeler ve dosyalar",
+  "settingsGroupSystem": "Sistem",
+  "settingsGroupHelp": "Hakkında ve destek"
 }

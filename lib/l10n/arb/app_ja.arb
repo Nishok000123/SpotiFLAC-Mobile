@@ -6018,5 +6018,12 @@
   "queueResolvingDownloadMetadata": "Resolving track metadata...",
   "queueResolvingDownloadStream": "Preparing audio stream...",
   "queueWaitingForVerification": "Waiting for verification...",
-  "queueResumingAfterVerification": "Resuming after verification..."
+  "queueResumingAfterVerification": "Resuming after verification...",
+  "settingsSearchHint": "設定を検索",
+  "settingsSearchNoResults": "「{query}」に一致する設定はありません",
+  "settingsGroupInterface": "インターフェース",
+  "settingsGroupContent": "コンテンツとメタデータ",
+  "settingsGroupDownloads": "ダウンロードとファイル",
+  "settingsGroupSystem": "システム",
+  "settingsGroupHelp": "アプリ情報とサポート"
 }

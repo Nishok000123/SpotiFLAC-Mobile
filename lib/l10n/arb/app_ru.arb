@@ -6018,5 +6018,12 @@
   "queueResolvingDownloadMetadata": "Resolving track metadata...",
   "queueResolvingDownloadStream": "Preparing audio stream...",
   "queueWaitingForVerification": "Waiting for verification...",
-  "queueResumingAfterVerification": "Resuming after verification..."
+  "queueResumingAfterVerification": "Resuming after verification...",
+  "settingsSearchHint": "Поиск в настройках",
+  "settingsSearchNoResults": "Нет настроек, соответствующих запросу «{query}»",
+  "settingsGroupInterface": "Интерфейс",
+  "settingsGroupContent": "Контент и метаданные",
+  "settingsGroupDownloads": "Загрузки и файлы",
+  "settingsGroupSystem": "Система",
+  "settingsGroupHelp": "О приложении и поддержка"
 }

@@ -4801,4 +4801,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get extensionVerificationOpenBrowser => 'Open browser';
+
+  @override
+  String get settingsSearchHint => 'Search settings';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'No settings match \"$query\"';
+  }
+
+  @override
+  String get settingsGroupInterface => 'Interface';
+
+  @override
+  String get settingsGroupContent => 'Content & metadata';
+
+  @override
+  String get settingsGroupDownloads => 'Downloads & files';
+
+  @override
+  String get settingsGroupSystem => 'System';
+
+  @override
+  String get settingsGroupHelp => 'About & support';
 }

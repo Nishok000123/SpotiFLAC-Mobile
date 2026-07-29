@@ -4795,6 +4795,29 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get extensionVerificationOpenBrowser => 'Open browser';
+
+  @override
+  String get settingsSearchHint => 'Buscar en los ajustes';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'Ningún ajuste coincide con \"$query\"';
+  }
+
+  @override
+  String get settingsGroupInterface => 'Interfaz';
+
+  @override
+  String get settingsGroupContent => 'Contenido y metadatos';
+
+  @override
+  String get settingsGroupDownloads => 'Descargas y archivos';
+
+  @override
+  String get settingsGroupSystem => 'Sistema';
+
+  @override
+  String get settingsGroupHelp => 'Información y soporte';
 }
 
 /// The translations for Spanish Castilian, as used in Spain (`es_ES`).
@@ -9498,4 +9521,27 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get extensionVerificationOpenBrowser => 'Open browser';
+
+  @override
+  String get settingsSearchHint => 'Buscar en los ajustes';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'Ningún ajuste coincide con \"$query\"';
+  }
+
+  @override
+  String get settingsGroupInterface => 'Interfaz';
+
+  @override
+  String get settingsGroupContent => 'Contenido y metadatos';
+
+  @override
+  String get settingsGroupDownloads => 'Descargas y archivos';
+
+  @override
+  String get settingsGroupSystem => 'Sistema';
+
+  @override
+  String get settingsGroupHelp => 'Información y soporte';
 }

@@ -7869,6 +7869,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open browser'**
   String get extensionVerificationOpenBrowser;
+
+  /// Placeholder of the search field on the Settings tab
+  ///
+  /// In en, this message translates to:
+  /// **'Search settings'**
+  String get settingsSearchHint;
+
+  /// Shown when a Settings search returns nothing
+  ///
+  /// In en, this message translates to:
+  /// **'No settings match \"{query}\"'**
+  String settingsSearchNoResults(String query);
+
+  /// Settings group covering look and feel
+  ///
+  /// In en, this message translates to:
+  /// **'Interface'**
+  String get settingsGroupInterface;
+
+  /// Settings group covering the library, metadata and lyrics
+  ///
+  /// In en, this message translates to:
+  /// **'Content & metadata'**
+  String get settingsGroupContent;
+
+  /// Settings group covering download behaviour and storage
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads & files'**
+  String get settingsGroupDownloads;
+
+  /// Settings group covering app-level data, cache and logs
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get settingsGroupSystem;
+
+  /// Settings group covering the about page and donations
+  ///
+  /// In en, this message translates to:
+  /// **'About & support'**
+  String get settingsGroupHelp;
 }
 
 class _AppLocalizationsDelegate

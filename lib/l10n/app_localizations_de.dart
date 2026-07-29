@@ -4846,4 +4846,27 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get extensionVerificationOpenBrowser => 'Open browser';
+
+  @override
+  String get settingsSearchHint => 'Einstellungen durchsuchen';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'Keine Einstellungen für \"$query\" gefunden';
+  }
+
+  @override
+  String get settingsGroupInterface => 'Oberfläche';
+
+  @override
+  String get settingsGroupContent => 'Inhalte & Metadaten';
+
+  @override
+  String get settingsGroupDownloads => 'Downloads & Dateien';
+
+  @override
+  String get settingsGroupSystem => 'System';
+
+  @override
+  String get settingsGroupHelp => 'Info & Unterstützung';
 }

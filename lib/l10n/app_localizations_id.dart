@@ -4799,4 +4799,27 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get extensionVerificationOpenBrowser => 'Open browser';
+
+  @override
+  String get settingsSearchHint => 'Cari pengaturan';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'Tidak ada pengaturan yang cocok dengan \"$query\"';
+  }
+
+  @override
+  String get settingsGroupInterface => 'Antarmuka';
+
+  @override
+  String get settingsGroupContent => 'Konten & metadata';
+
+  @override
+  String get settingsGroupDownloads => 'Unduhan & file';
+
+  @override
+  String get settingsGroupSystem => 'Sistem';
+
+  @override
+  String get settingsGroupHelp => 'Tentang & dukungan';
 }

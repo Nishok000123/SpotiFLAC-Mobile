@@ -4831,4 +4831,27 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get extensionVerificationOpenBrowser => 'Open browser';
+
+  @override
+  String get settingsSearchHint => 'Ayarlarda ara';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return '\"$query\" ile eşleşen ayar bulunamadı';
+  }
+
+  @override
+  String get settingsGroupInterface => 'Arayüz';
+
+  @override
+  String get settingsGroupContent => 'İçerik ve meta veriler';
+
+  @override
+  String get settingsGroupDownloads => 'İndirmeler ve dosyalar';
+
+  @override
+  String get settingsGroupSystem => 'Sistem';
+
+  @override
+  String get settingsGroupHelp => 'Hakkında ve destek';
 }

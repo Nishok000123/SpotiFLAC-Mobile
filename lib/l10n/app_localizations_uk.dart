@@ -4849,4 +4849,27 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get extensionVerificationOpenBrowser => 'Open browser';
+
+  @override
+  String get settingsSearchHint => 'Пошук у налаштуваннях';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'Немає налаштувань, що відповідають запиту «$query»';
+  }
+
+  @override
+  String get settingsGroupInterface => 'Інтерфейс';
+
+  @override
+  String get settingsGroupContent => 'Вміст і метадані';
+
+  @override
+  String get settingsGroupDownloads => 'Завантаження та файли';
+
+  @override
+  String get settingsGroupSystem => 'Система';
+
+  @override
+  String get settingsGroupHelp => 'Про програму та підтримка';
 }

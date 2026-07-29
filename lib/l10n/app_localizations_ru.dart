@@ -4832,4 +4832,27 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get extensionVerificationOpenBrowser => 'Open browser';
+
+  @override
+  String get settingsSearchHint => 'Поиск в настройках';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'Нет настроек, соответствующих запросу «$query»';
+  }
+
+  @override
+  String get settingsGroupInterface => 'Интерфейс';
+
+  @override
+  String get settingsGroupContent => 'Контент и метаданные';
+
+  @override
+  String get settingsGroupDownloads => 'Загрузки и файлы';
+
+  @override
+  String get settingsGroupSystem => 'Система';
+
+  @override
+  String get settingsGroupHelp => 'О приложении и поддержка';
 }

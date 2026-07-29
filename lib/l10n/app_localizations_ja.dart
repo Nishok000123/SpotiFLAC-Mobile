@@ -4790,4 +4790,27 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get extensionVerificationOpenBrowser => 'Open browser';
+
+  @override
+  String get settingsSearchHint => '設定を検索';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return '「$query」に一致する設定はありません';
+  }
+
+  @override
+  String get settingsGroupInterface => 'インターフェース';
+
+  @override
+  String get settingsGroupContent => 'コンテンツとメタデータ';
+
+  @override
+  String get settingsGroupDownloads => 'ダウンロードとファイル';
+
+  @override
+  String get settingsGroupSystem => 'システム';
+
+  @override
+  String get settingsGroupHelp => 'アプリ情報とサポート';
 }

@@ -6018,5 +6018,12 @@
   "queueResolvingDownloadMetadata": "Récupération des métadonnées du morceau...",
   "queueResolvingDownloadStream": "Préparation du flux audio...",
   "queueWaitingForVerification": "En attente de vérification...",
-  "queueResumingAfterVerification": "Reprise après vérification..."
+  "queueResumingAfterVerification": "Reprise après vérification...",
+  "settingsSearchHint": "Rechercher dans les paramètres",
+  "settingsSearchNoResults": "Aucun paramètre ne correspond à « {query} »",
+  "settingsGroupInterface": "Interface",
+  "settingsGroupContent": "Contenu et métadonnées",
+  "settingsGroupDownloads": "Téléchargements et fichiers",
+  "settingsGroupSystem": "Système",
+  "settingsGroupHelp": "À propos et assistance"
 }

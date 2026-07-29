@@ -6018,5 +6018,12 @@
   "queueResolvingDownloadMetadata": "Resolving track metadata...",
   "queueResolvingDownloadStream": "Preparing audio stream...",
   "queueWaitingForVerification": "Waiting for verification...",
-  "queueResumingAfterVerification": "Resuming after verification..."
+  "queueResumingAfterVerification": "Resuming after verification...",
+  "settingsSearchHint": "Pesquisar definições",
+  "settingsSearchNoResults": "Nenhuma definição corresponde a \"{query}\"",
+  "settingsGroupInterface": "Interface",
+  "settingsGroupContent": "Conteúdo e metadados",
+  "settingsGroupDownloads": "Transferências e ficheiros",
+  "settingsGroupSystem": "Sistema",
+  "settingsGroupHelp": "Sobre e suporte"
 }

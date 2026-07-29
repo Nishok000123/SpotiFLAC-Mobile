@@ -4795,6 +4795,29 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get extensionVerificationOpenBrowser => 'Open browser';
+
+  @override
+  String get settingsSearchHint => 'Pesquisar configurações';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'Nenhuma configuração corresponde a \"$query\"';
+  }
+
+  @override
+  String get settingsGroupInterface => 'Interface';
+
+  @override
+  String get settingsGroupContent => 'Conteúdo e metadados';
+
+  @override
+  String get settingsGroupDownloads => 'Downloads e arquivos';
+
+  @override
+  String get settingsGroupSystem => 'Sistema';
+
+  @override
+  String get settingsGroupHelp => 'Sobre e suporte';
 }
 
 /// The translations for Portuguese, as used in Portugal (`pt_PT`).
@@ -9463,4 +9486,27 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
 
   @override
   String get extensionVerificationOpenBrowser => 'Open browser';
+
+  @override
+  String get settingsSearchHint => 'Pesquisar definições';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return 'Nenhuma definição corresponde a \"$query\"';
+  }
+
+  @override
+  String get settingsGroupInterface => 'Interface';
+
+  @override
+  String get settingsGroupContent => 'Conteúdo e metadados';
+
+  @override
+  String get settingsGroupDownloads => 'Transferências e ficheiros';
+
+  @override
+  String get settingsGroupSystem => 'Sistema';
+
+  @override
+  String get settingsGroupHelp => 'Sobre e suporte';
 }

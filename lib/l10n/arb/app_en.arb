@@ -6222,5 +6222,38 @@
   "extensionVerificationOpenBrowser": "Open browser",
   "@extensionVerificationOpenBrowser": {
     "description": "Button to open the extension verification URL in a browser"
+  },
+  "settingsSearchHint": "Search settings",
+  "@settingsSearchHint": {
+    "description": "Placeholder of the search field on the Settings tab"
+  },
+  "settingsSearchNoResults": "No settings match \"{query}\"",
+  "@settingsSearchNoResults": {
+    "description": "Shown when a Settings search returns nothing",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsGroupInterface": "Interface",
+  "@settingsGroupInterface": {
+    "description": "Settings group covering look and feel"
+  },
+  "settingsGroupContent": "Content & metadata",
+  "@settingsGroupContent": {
+    "description": "Settings group covering the library, metadata and lyrics"
+  },
+  "settingsGroupDownloads": "Downloads & files",
+  "@settingsGroupDownloads": {
+    "description": "Settings group covering download behaviour and storage"
+  },
+  "settingsGroupSystem": "System",
+  "@settingsGroupSystem": {
+    "description": "Settings group covering app-level data, cache and logs"
+  },
+  "settingsGroupHelp": "About & support",
+  "@settingsGroupHelp": {
+    "description": "Settings group covering the about page and donations"
   }
 }

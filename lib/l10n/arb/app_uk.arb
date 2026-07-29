@@ -6018,5 +6018,12 @@
   "queueResolvingDownloadMetadata": "Resolving track metadata...",
   "queueResolvingDownloadStream": "Preparing audio stream...",
   "queueWaitingForVerification": "Waiting for verification...",
-  "queueResumingAfterVerification": "Resuming after verification..."
+  "queueResumingAfterVerification": "Resuming after verification...",
+  "settingsSearchHint": "Пошук у налаштуваннях",
+  "settingsSearchNoResults": "Немає налаштувань, що відповідають запиту «{query}»",
+  "settingsGroupInterface": "Інтерфейс",
+  "settingsGroupContent": "Вміст і метадані",
+  "settingsGroupDownloads": "Завантаження та файли",
+  "settingsGroupSystem": "Система",
+  "settingsGroupHelp": "Про програму та підтримка"
 }

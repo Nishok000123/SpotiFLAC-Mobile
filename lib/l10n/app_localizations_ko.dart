@@ -4671,4 +4671,27 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get extensionVerificationOpenBrowser => '브라우저 열기';
+
+  @override
+  String get settingsSearchHint => '설정 검색';
+
+  @override
+  String settingsSearchNoResults(String query) {
+    return '\"$query\"와(과) 일치하는 설정이 없습니다';
+  }
+
+  @override
+  String get settingsGroupInterface => '인터페이스';
+
+  @override
+  String get settingsGroupContent => '콘텐츠 및 메타데이터';
+
+  @override
+  String get settingsGroupDownloads => '다운로드 및 파일';
+
+  @override
+  String get settingsGroupSystem => '시스템';
+
+  @override
+  String get settingsGroupHelp => '정보 및 지원';
 }
