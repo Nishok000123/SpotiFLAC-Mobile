@@ -7,6 +7,7 @@ import 'package:spotiflac_android/theme/app_theme.dart';
 import 'package:spotiflac_android/theme/app_tokens.dart';
 import 'package:spotiflac_android/theme/cover_palette.dart';
 import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
+import 'package:spotiflac_android/widgets/app_search_field.dart';
 import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 import 'package:spotiflac_android/widgets/collection_scaffold.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
@@ -79,6 +80,55 @@ void main() {
 
     test('minimum touch target matches the Material floor', () {
       expect(AppTokens.standard.minTouchTarget, 48);
+    });
+  });
+
+  group('AppSearchField', () {
+    testWidgets('uses the shared filled search style and clears input', (
+      tester,
+    ) async {
+      final controller = TextEditingController(text: 'quality');
+      var cleared = false;
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: AppSearchField(
+              controller: controller,
+              hintText: 'Search settings',
+              clearTooltip: 'Clear',
+              onChanged: (_) {},
+              onClear: () => cleared = true,
+            ),
+          ),
+        ),
+      );
+
+      final field = tester.widget<TextField>(find.byType(TextField));
+      final border = field.decoration!.enabledBorder! as OutlineInputBorder;
+
+      expect(field.decoration!.filled, isTrue);
+      expect(border.borderRadius.topLeft.x, AppTokens.standard.radiusSheet);
+      expect(find.byIcon(Icons.clear), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.clear));
+      await tester.pump();
+
+      expect(controller.text, isEmpty);
+      expect(cleared, isTrue);
+    });
+  });
+
+  group('Now Playing actions', () {
+    test('uses the app bottom sheet instead of a platform popup menu', () {
+      final source = File(
+        'lib/screens/now_playing_screen.dart',
+      ).readAsStringSync();
+
+      expect(source, contains('showAppBottomSheet<String>'));
+      expect(source, isNot(contains('PopupMenuButton')));
     });
   });
 
