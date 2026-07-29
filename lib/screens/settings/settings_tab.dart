@@ -49,12 +49,10 @@ class _Destination {
   }
 }
 
-/// A settings group. The optional label lets priority shortcuts sit directly
-/// below search without a misleading section heading.
+/// Destinations that stay visually connected inside one settings card.
 class _Group {
-  const _Group({this.label, required this.destinations});
+  const _Group({required this.destinations});
 
-  final String? label;
   final List<_Destination> destinations;
 }
 
@@ -75,12 +73,8 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     super.dispose();
   }
 
-  /// Destinations grouped by intent.
-  ///
-  /// They used to sit in three unlabelled groups whose logic was hard to infer
-  /// (the local library grouped with appearance, cache grouped with backup).
-  /// Labelling them and regrouping by what the user is trying to do makes the
-  /// list scannable.
+  /// Related destinations share one card; whitespace separates each group
+  /// without adding section labels that compete with the page title.
   List<_Group> _groups(BuildContext context) {
     final l10n = context.l10n;
     return [
@@ -96,7 +90,6 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
         ],
       ),
       _Group(
-        label: l10n.settingsGroupInterface,
         destinations: [
           _Destination(
             icon: Icons.extension_outlined,
@@ -125,7 +118,6 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
         ],
       ),
       _Group(
-        label: l10n.settingsGroupContent,
         destinations: [
           _Destination(
             icon: Icons.library_music_outlined,
@@ -157,7 +149,6 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
         ],
       ),
       _Group(
-        label: l10n.settingsGroupDownloads,
         destinations: [
           _Destination(
             icon: Icons.download_outlined,
@@ -191,7 +182,6 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
         ],
       ),
       _Group(
-        label: l10n.settingsGroupSystem,
         destinations: [
           _Destination(
             icon: Icons.tune_outlined,
@@ -224,7 +214,6 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
         ],
       ),
       _Group(
-        label: l10n.settingsGroupHelp,
         destinations: [
           _Destination(
             icon: Icons.info_outline,
@@ -263,22 +252,15 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
 
     final margin = EdgeInsets.fromLTRB(
       tokens.gapLg + wideInset,
-      tokens.gapXs,
+      tokens.gapSm,
       tokens.gapLg + wideInset,
-      tokens.gapXs,
+      tokens.gapSm,
     );
 
     final List<Widget> body;
     if (query.isEmpty) {
       body = [
-        for (final group in groups) ...[
-          if (group.label != null)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.only(left: wideInset, right: wideInset),
-                child: SettingsSectionHeader(title: group.label!),
-              ),
-            ),
+        for (final group in groups)
           SliverToBoxAdapter(
             child: SettingsGroup(
               margin: margin,
@@ -291,7 +273,6 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               ],
             ),
           ),
-        ],
       ];
     } else {
       final matches = [
