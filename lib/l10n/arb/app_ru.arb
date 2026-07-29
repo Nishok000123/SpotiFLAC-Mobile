@@ -3167,7 +3167,7 @@
       }
     }
   },
-  "trackConvertConfirmMessageLossless": "Convert from {sourceFormat} to {targetFormat}? (Lossless — no quality loss)\n\nThe original file will be deleted after conversion.",
+  "trackConvertConfirmMessageLossless": "Конвертировать {sourceFormat}  в {targetFormat}? (Lossless — Без потери качества)\n\nОригинальные файлы будут удалены после конвертации.",
   "@trackConvertConfirmMessageLossless": {
     "description": "Confirmation dialog message for lossless-to-lossless conversion",
     "placeholders": {
@@ -3308,7 +3308,7 @@
   "@collectionLoved": {
     "description": "Custom folder for favorite tracks"
   },
-  "collectionFavoriteArtists": "Favorite Artists",
+  "collectionFavoriteArtists": "Избранный исполнитель",
   "@collectionFavoriteArtists": {
     "description": "Custom folder for favorite artists"
   },
@@ -3400,11 +3400,11 @@
   "@collectionLovedEmptySubtitle": {
     "description": "Loved empty state subtitle"
   },
-  "collectionFavoriteArtistsEmptyTitle": "No favorite artists yet",
+  "collectionFavoriteArtistsEmptyTitle": "Нет избранных исполнителей",
   "@collectionFavoriteArtistsEmptyTitle": {
     "description": "Favorite artists empty state title"
   },
-  "collectionFavoriteArtistsEmptySubtitle": "Tap the heart on an artist page to keep them here",
+  "collectionFavoriteArtistsEmptySubtitle": "Нажмите на сердце на странице исполнителя, чтобы сохранить его здесь",
   "@collectionFavoriteArtistsEmptySubtitle": {
     "description": "Favorite artists empty state subtitle"
   },
@@ -3460,7 +3460,7 @@
       }
     }
   },
-  "collectionAddedToFavoriteArtists": "\"{artistName}\" added to Favorite Artists",
+  "collectionAddedToFavoriteArtists": "\"{artistName}\" добавлен в избранные исполнители",
   "@collectionAddedToFavoriteArtists": {
     "description": "Snackbar after adding artist to favorite artists",
     "placeholders": {
@@ -3469,7 +3469,7 @@
       }
     }
   },
-  "collectionRemovedFromFavoriteArtists": "\"{artistName}\" removed from Favorite Artists",
+  "collectionRemovedFromFavoriteArtists": "\"{artistName}\" удалено из избранных исполнителей",
   "@collectionRemovedFromFavoriteArtists": {
     "description": "Snackbar after removing artist from favorite artists",
     "placeholders": {
@@ -3494,11 +3494,11 @@
   "@trackOptionRemoveFromWishlist": {
     "description": "Bottom sheet action label - remove track from wishlist"
   },
-  "artistOptionAddToFavorites": "Add to Favorite Artists",
+  "artistOptionAddToFavorites": "Добавить в избранные исполнители",
   "@artistOptionAddToFavorites": {
     "description": "Action label - add artist to favorite artists"
   },
-  "artistOptionRemoveFromFavorites": "Remove from Favorite Artists",
+  "artistOptionRemoveFromFavorites": "Удалить из избранных исполнителей",
   "@artistOptionRemoveFromFavorites": {
     "description": "Action label - remove artist from favorite artists"
   },
@@ -3510,7 +3510,7 @@
   "@collectionPlaylistRemoveCover": {
     "description": "Bottom sheet action to remove custom cover image from a playlist"
   },
-  "selectionShareCount": "Share {count} {count, plural, =1{track} other{tracks}}",
+  "selectionShareCount": "Отправить {count} {count, plural, one {трек} few {трека} many {треков} =1{трек} other{треков}}",
   "@selectionShareCount": {
     "description": "Share button text with count in selection mode",
     "placeholders": {
@@ -3523,7 +3523,7 @@
   "@selectionShareNoFiles": {
     "description": "Snackbar when no selected files exist on disk"
   },
-  "selectionConvertCount": "Convert {count} {count, plural, =1{track} other{tracks}}",
+  "selectionConvertCount": "Конвертировать {count} {count, plural, one {трек} few {трека} many {треков} =1{трек} other{треков}}",
   "@selectionConvertCount": {
     "description": "Convert button text with count in selection mode",
     "placeholders": {
@@ -3567,7 +3567,7 @@
       }
     }
   },
-  "selectionBatchConvertConfirmKeepOriginal": "Convert {count} {count, plural, =1{track} other{tracks}} to {format}?\n\nOriginal files will be kept and converted files will be added as separate library entries.",
+  "selectionBatchConvertConfirmKeepOriginal": "Конвертировать {count} {count, plural, one {трек} few {трека} many {треков} =1{трек} other{треков}} в {format}?\n\nОригинальные файлы будут храниться и преобразовываться как отдельные элементы библиотеки.",
   "@selectionBatchConvertConfirmKeepOriginal": {
     "description": "Batch conversion confirmation when source files will be preserved",
     "placeholders": {
@@ -3641,11 +3641,11 @@
       }
     }
   },
-  "lyricsProvidersAtLeastOne": "At least one provider must remain enabled",
+  "lyricsProvidersAtLeastOne": "По крайней мере один провайдер должен оставаться включенным",
   "@lyricsProvidersAtLeastOne": {
     "description": "Snackbar when user tries to disable the last enabled provider"
   },
-  "lyricsProvidersSaved": "Lyrics provider priority saved",
+  "lyricsProvidersSaved": "Приоритетный провайдер текстов песен сохранен",
   "@lyricsProvidersSaved": {
     "description": "Snackbar after saving lyrics provider priority"
   },
@@ -3661,7 +3661,7 @@
   "@lyricsProviderNeteaseDesc": {
     "description": "Description for Netease provider"
   },
-  "lyricsProviderMusixmatchDesc": "Largest lyrics database (multi-language)",
+  "lyricsProviderMusixmatchDesc": "Крупнейшая база данных текстов песен (мультиязычная)",
   "@lyricsProviderMusixmatchDesc": {
     "description": "Description for Musixmatch provider"
   },
