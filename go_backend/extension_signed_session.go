@@ -28,7 +28,7 @@ const signedSessionRefreshSkew = time.Hour
 const (
 	signedSessionExchangeMaxAttempts = 3
 	signedSessionMaxRetryAfter       = 5 * time.Minute
-	signedSessionMaxSessionRetries   = 2
+	signedSessionMaxSessionRetries   = 1
 	signedSessionMaxProviderRetries  = 2
 	signedSessionProviderRetryDelay  = time.Second
 )
@@ -39,6 +39,7 @@ var (
 	signedSessionCoordinators    sync.Map
 	signedSessionRetryWait       = time.Sleep
 	signedSessionProviderWait    = sleepRetry
+	signedSessionRequestNow      = time.Now
 )
 
 // signedSessionCoordinator serializes authentication state for every runtime
@@ -53,6 +54,7 @@ type signedSessionCoordinator struct {
 	challengeCreatedAt  time.Time
 	pendingExtensionIDs map[string]struct{}
 	completedGrantHash  string
+	blockedGeneration   string
 }
 
 func (r *extensionRuntime) signedSessionCoordinator(config SignedSessionConfig) (*signedSessionCoordinator, error) {
@@ -88,6 +90,27 @@ func (c *signedSessionCoordinator) activeChallenge() bool {
 	return strings.TrimSpace(c.authURL) != "" &&
 		!c.challengeCreatedAt.IsZero() &&
 		time.Since(c.challengeCreatedAt) < pendingAuthRequestTTL
+}
+
+func signedSessionGeneration(record *signedSessionRecord) string {
+	if record == nil || record.SessionID == "" || record.SessionSecret == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(record.SessionID + "\n" + record.SessionSecret))
+	return hex.EncodeToString(sum[:])
+}
+
+func (c *signedSessionCoordinator) blockGeneration(record *signedSessionRecord) {
+	c.blockedGeneration = signedSessionGeneration(record)
+}
+
+func (c *signedSessionCoordinator) generationIsBlocked(record *signedSessionRecord) bool {
+	generation := signedSessionGeneration(record)
+	return generation != "" && generation == c.blockedGeneration
+}
+
+func (c *signedSessionCoordinator) clearBlockedGeneration() {
+	c.blockedGeneration = ""
 }
 
 type signedSessionRecord struct {
@@ -385,7 +408,8 @@ func (r *extensionRuntime) preflightSignedSession() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if signedSessionRecordIsUsable(record) {
+	if signedSessionRecordIsUsable(record) &&
+		!coordinator.generationIsBlocked(record) {
 		return false, nil
 	}
 
@@ -423,14 +447,16 @@ func (r *extensionRuntime) signedSessionStatus(call goja.FunctionCall) goja.Valu
 	if err != nil {
 		return r.vm.ToValue(map[string]any{"authenticated": false, "error": err.Error()})
 	}
-	authenticated := signedSessionRecordIsUsable(record)
+	blocked := coordinator.generationIsBlocked(record)
+	authenticated := signedSessionRecordIsUsable(record) && !blocked
 	return r.vm.ToValue(map[string]any{
-		"authenticated": authenticated,
-		"expires_at":    record.ExpiresAt,
-		"install_id":    record.InstallID,
-		"session_id":    record.SessionID,
-		"app_version":   config.AppVersion,
-		"platform":      config.Platform,
+		"authenticated":         authenticated,
+		"verification_required": blocked,
+		"expires_at":            record.ExpiresAt,
+		"install_id":            record.InstallID,
+		"session_id":            record.SessionID,
+		"app_version":           config.AppVersion,
+		"platform":              config.Platform,
 	})
 }
 
@@ -452,6 +478,7 @@ func (r *extensionRuntime) signedSessionClear(call goja.FunctionCall) goja.Value
 	if err := r.saveSignedSession(config, record); err != nil {
 		return r.vm.ToValue(map[string]any{"success": false, "error": err.Error()})
 	}
+	coordinator.clearBlockedGeneration()
 	coordinator.clearChallenge()
 	ClearPendingAuthRequest(r.extensionID)
 	return r.vm.ToValue(map[string]any{"success": true})
@@ -510,6 +537,7 @@ func (r *extensionRuntime) exchangeSignedSessionGrantLocked(
 	// instead of consuming the grant again.
 	if coordinator.completedGrantHash == grantHash &&
 		signedSessionRecordIsUsable(record) {
+		coordinator.clearBlockedGeneration()
 		coordinator.clearChallenge()
 		return nil
 	}
@@ -584,6 +612,7 @@ func (r *extensionRuntime) exchangeSignedSessionGrantLocked(
 		return err
 	}
 	coordinator.completedGrantHash = grantHash
+	coordinator.clearBlockedGeneration()
 	coordinator.clearChallenge()
 	return nil
 }
@@ -630,6 +659,33 @@ func (r *extensionRuntime) signedSessionFetch(call goja.FunctionCall) goja.Value
 			return r.vm.ToValue(map[string]any{"ok": false, "error": verificationErr.Error()})
 		}
 		return r.vm.ToValue(map[string]any{"ok": false, "error": err.Error()})
+	}
+	if coordinator.generationIsBlocked(record) {
+		authURL, verificationErr := r.startSignedSessionVerificationLocked(
+			config,
+			coordinator,
+			"signed-fetch-blocked-generation",
+		)
+		if authURL != "" {
+			coordinator.mu.Unlock()
+			return r.signedSessionVerificationRequiredValue(authURL)
+		}
+		if verificationErr != nil {
+			coordinator.mu.Unlock()
+			return r.vm.ToValue(map[string]any{"ok": false, "error": verificationErr.Error()})
+		}
+		record, err = r.loadSignedSession(config)
+		if err != nil {
+			coordinator.mu.Unlock()
+			return r.vm.ToValue(map[string]any{"ok": false, "error": err.Error()})
+		}
+		if !signedSessionRecordIsUsable(record) || coordinator.generationIsBlocked(record) {
+			coordinator.mu.Unlock()
+			return r.vm.ToValue(map[string]any{
+				"ok":    false,
+				"error": "verification_required: signed-session generation is blocked",
+			})
+		}
 	}
 	coordinator.mu.Unlock()
 
@@ -734,6 +790,7 @@ func (r *extensionRuntime) signedSessionFetch(call goja.FunctionCall) goja.Value
 		// VERIFY_REQUIRED is an explicit challenge request, not a revocation.
 		// Only SESSION_INVALID is allowed to clear the current gateway session.
 		if gatewayAction == "bootstrap_session" && sameSignedSession(latest, record) {
+			coordinator.clearBlockedGeneration()
 			latest.SessionID = ""
 			latest.SessionSecret = ""
 			latest.ExpiresAt = ""
@@ -741,6 +798,10 @@ func (r *extensionRuntime) signedSessionFetch(call goja.FunctionCall) goja.Value
 				coordinator.mu.Unlock()
 				return r.vm.ToValue(map[string]any{"ok": false, "error": saveErr.Error()})
 			}
+		} else if gatewayAction == "verify" && sameSignedSession(latest, record) {
+			// Stop subsequent requests from repeatedly hitting the gateway with
+			// a generation that is known to require human verification.
+			coordinator.blockGeneration(record)
 		}
 		authURL, verificationErr := r.startSignedSessionVerificationLocked(
 			config,
@@ -999,6 +1060,7 @@ func (r *extensionRuntime) startSignedSessionVerificationLocked(
 		if err := r.saveSignedSession(config, record); err != nil {
 			return "", fmt.Errorf("save bootstrapped signed session: %w", err)
 		}
+		coordinator.clearBlockedGeneration()
 		coordinator.clearChallenge()
 		return "", nil
 	}
@@ -1082,7 +1144,7 @@ func (r *extensionRuntime) doSignedSessionRequest(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+	ts := signedSessionRequestNow().UTC().Format("2006-01-02T15:04:05.000Z")
 	nonce := randomHex(12)
 	bodyHashBytes := sha256.Sum256(body)
 	bodyHash := hex.EncodeToString(bodyHashBytes[:])

@@ -115,7 +115,12 @@ gateway session state for the exact `SESSION_INVALID/bootstrap_session` or
 applies bounded `Retry-After` handling to retryable `PROVIDER_UNAVAILABLE`
 responses. `403 REQUEST_AUTH_INVALID` preserves the session and only retries
 once when a newer session generation is already available. BYOA
-reauthentication remains a separate provider action.
+reauthentication remains a separate provider action. An active generation that
+receives canonical `428 VERIFY_REQUIRED` is blocked in the shared coordinator,
+so later requests join the same verification flow instead of hitting the
+gateway repeatedly. Every retry is a newly signed request with a fresh
+timestamp and nonce; `retryable: true` therefore also asserts that any ticket
+attached to the operation is safe/idempotent for that retry.
 
 Do not use legacy spellings such as `display_name`, `types`,
 `permissions.network.domains`, or an object for `permissions.network`.

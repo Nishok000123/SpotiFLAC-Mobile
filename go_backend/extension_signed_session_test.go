@@ -1103,7 +1103,8 @@ func TestSignedSessionFetchCanonicalVerifyDoesNotClearSession(t *testing.T) {
 	calls := 0
 	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		calls++
-		if strings.Contains(req.URL.Path, "/bootstrap") {
+		switch {
+		case strings.Contains(req.URL.Path, "/bootstrap"):
 			payload, _ := json.Marshal(signedSessionExchangeResponse{
 				AuthURL: "https://auth.example.com/verify",
 			})
@@ -1111,6 +1112,25 @@ func TestSignedSessionFetchCanonicalVerifyDoesNotClearSession(t *testing.T) {
 				StatusCode: http.StatusOK,
 				Header:     make(http.Header),
 				Body:       io.NopCloser(strings.NewReader(string(payload))),
+				Request:    req,
+			}, nil
+		case strings.Contains(req.URL.Path, "/session/exchange"):
+			payload, _ := json.Marshal(signedSessionExchangeResponse{
+				SessionID:     "sess-after-verify",
+				SessionSecret: "secret-after-verify",
+				ExpiresAt:     time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+			})
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(string(payload))),
+				Request:    req,
+			}, nil
+		case req.Header.Get("X-Sig-Session") == "sess-after-verify":
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(`{"ok":true}`)),
 				Request:    req,
 			}, nil
 		}
@@ -1145,6 +1165,36 @@ func TestSignedSessionFetchCanonicalVerifyDoesNotClearSession(t *testing.T) {
 	}
 	if reloaded.SessionID != "sess-verified" || reloaded.SessionSecret != "secret-sess-verified" {
 		t.Fatalf("VERIFY_REQUIRED cleared the valid gateway session: %+v", reloaded)
+	}
+
+	blockedResult := runtime.signedSessionFetch(call).Export().(map[string]any)
+	if blockedResult["needsVerification"] != true {
+		t.Fatalf("blocked generation did not join verification: %+v", blockedResult)
+	}
+	if calls != 2 {
+		t.Fatalf("blocked generation reached the gateway again: calls=%d", calls)
+	}
+	verificationRequired, err := runtime.preflightSignedSession()
+	if err != nil || !verificationRequired {
+		t.Fatalf("preflight did not preserve the blocked verification state: required=%v err=%v", verificationRequired, err)
+	}
+	if calls != 2 {
+		t.Fatalf("blocked preflight reached the gateway again: calls=%d", calls)
+	}
+	status := runtime.signedSessionStatus(goja.FunctionCall{}).Export().(map[string]any)
+	if status["authenticated"] != false || status["verification_required"] != true {
+		t.Fatalf("blocked generation status is incorrect: %+v", status)
+	}
+
+	if err := runtime.exchangeSignedSessionGrant("grant-after-verify"); err != nil {
+		t.Fatalf("exchange grant: %v", err)
+	}
+	afterVerification := runtime.signedSessionFetch(call).Export().(map[string]any)
+	if afterVerification["ok"] != true {
+		t.Fatalf("new verified generation remained blocked: %+v", afterVerification)
+	}
+	if calls != 4 {
+		t.Fatalf("network calls = %d, want 428, bootstrap, exchange, success", calls)
 	}
 }
 
@@ -1319,16 +1369,32 @@ func TestSignedSessionFetchProviderContractsNeverClearSession(t *testing.T) {
 
 	t.Run("temporary provider failure retries with Retry-After", func(t *testing.T) {
 		previousWait := signedSessionProviderWait
+		previousNow := signedSessionRequestNow
 		var waits []time.Duration
 		signedSessionProviderWait = func(_ context.Context, delay time.Duration) error {
 			waits = append(waits, delay)
 			return nil
 		}
-		t.Cleanup(func() { signedSessionProviderWait = previousWait })
+		nextRequestTime := time.Date(2026, time.July, 30, 12, 0, 0, 0, time.UTC)
+		signedSessionRequestNow = func() time.Time {
+			current := nextRequestTime
+			nextRequestTime = nextRequestTime.Add(time.Second)
+			return current
+		}
+		t.Cleanup(func() {
+			signedSessionProviderWait = previousWait
+			signedSessionRequestNow = previousNow
+		})
 
 		calls := 0
+		nonces := make(map[string]struct{})
+		timestamps := make(map[string]struct{})
+		signatures := make(map[string]struct{})
 		transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			calls++
+			nonces[req.Header.Get("X-Sig-Nonce")] = struct{}{}
+			timestamps[req.Header.Get("X-Sig-Timestamp")] = struct{}{}
+			signatures[req.Header.Get("X-Sig-Signature")] = struct{}{}
 			if calls <= signedSessionMaxProviderRetries {
 				return &http.Response{
 					StatusCode: http.StatusServiceUnavailable,
@@ -1366,6 +1432,18 @@ func TestSignedSessionFetchProviderContractsNeverClearSession(t *testing.T) {
 			if delay != 10*time.Second {
 				t.Fatalf("Retry-After header was not authoritative: waits=%v", waits)
 			}
+		}
+		wantSignedAttempts := signedSessionMaxProviderRetries + 1
+		if len(nonces) != wantSignedAttempts ||
+			len(timestamps) != wantSignedAttempts ||
+			len(signatures) != wantSignedAttempts {
+			t.Fatalf(
+				"provider retries reused signed request headers: nonces=%d timestamps=%d signatures=%d want=%d",
+				len(nonces),
+				len(timestamps),
+				len(signatures),
+				wantSignedAttempts,
+			)
 		}
 		reloaded, err := runtime.loadSignedSession(resolved)
 		if err != nil {
