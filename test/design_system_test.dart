@@ -10,6 +10,7 @@ import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/app_search_field.dart';
 import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 import 'package:spotiflac_android/widgets/collection_scaffold.dart';
+import 'package:spotiflac_android/widgets/selection_bottom_bar.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/track_card.dart';
 
@@ -475,6 +476,73 @@ void main() {
             'Selection bars must mount through SelectionOverlayController so '
             'they animate identically and clear the shell navigation bar.',
       );
+    });
+
+    testWidgets('shell host keeps modal routes above the selection bar', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(430, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final controller = SelectionOverlayController();
+      addTearDown(controller.dispose);
+      BuildContext? pageContext;
+      var selectionTaps = 0;
+      var sheetTaps = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SelectionOverlayHost(
+            child: Builder(
+              builder: (context) {
+                pageContext = context;
+                return const Scaffold(body: SizedBox.expand());
+              },
+            ),
+          ),
+        ),
+      );
+
+      controller.show(
+        pageContext!,
+        (_) => GestureDetector(
+          key: const ValueKey('selection-hit-target'),
+          behavior: HitTestBehavior.opaque,
+          onTap: () => selectionTaps++,
+          child: const SizedBox(height: 200),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final sheetClosed = showModalBottomSheet<void>(
+        context: pageContext!,
+        useRootNavigator: true,
+        enableDrag: false,
+        builder: (_) => GestureDetector(
+          key: const ValueKey('sheet-hit-target'),
+          behavior: HitTestBehavior.opaque,
+          onTap: () => sheetTaps++,
+          child: const SizedBox(height: 300),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('sheet-hit-target')), findsOneWidget);
+      expect(find.byKey(const ValueKey('selection-hit-target')), findsNothing);
+      expect(selectionTaps, 0);
+      expect(sheetTaps, 0);
+
+      Navigator.of(pageContext!, rootNavigator: true).pop();
+      await tester.pumpAndSettle();
+      await sheetClosed;
+
+      expect(
+        find.byKey(const ValueKey('selection-hit-target')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('selection-hit-target')));
+      await tester.pump();
+      expect(selectionTaps, 1);
     });
   });
 

@@ -3,24 +3,110 @@ import 'package:spotiflac_android/theme/app_tokens.dart';
 import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 
-/// Mounts a selection bar in the **root** overlay.
-///
-/// The bar has to float above the shell's navigation bar, which lives outside
-/// the per-tab navigators, so an in-tree `Positioned` inside the screen is not
-/// enough. Five screens each solved this differently (two hand-rolled
-/// `OverlayEntry` blocks, two `AnimatedPositioned` stacks and one bespoke
-/// `Positioned` container); they now all go through this controller, which also
-/// guarantees the same entrance animation everywhere.
-class SelectionOverlayController {
-  OverlayEntry? _entry;
+/// Hosts selection bars above the shell navigation while keeping modal routes
+/// above the bar. A raw entry in the root [Overlay] stays above routes pushed
+/// later, which made download pickers appear behind the selection toolbar.
+class SelectionOverlayHost extends StatefulWidget {
+  const SelectionOverlayHost({super.key, required this.child});
+
+  final Widget child;
+
+  static _SelectionOverlayHostState? _maybeOf(BuildContext context) =>
+      context.findAncestorStateOfType<_SelectionOverlayHostState>();
+
+  @override
+  State<SelectionOverlayHost> createState() => _SelectionOverlayHostState();
+}
+
+class _SelectionOverlayHostState extends State<SelectionOverlayHost> {
+  SelectionOverlayController? _owner;
   WidgetBuilder? _builder;
 
-  bool get isVisible => _entry != null;
+  bool owns(SelectionOverlayController owner) =>
+      _owner == owner && _builder != null;
+
+  void show(SelectionOverlayController owner, WidgetBuilder builder) {
+    if (!mounted) return;
+    setState(() {
+      _owner = owner;
+      _builder = builder;
+    });
+  }
+
+  void hide(SelectionOverlayController owner) {
+    if (!mounted || _owner != owner) return;
+    setState(() {
+      _owner = null;
+      _builder = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final owner = _owner;
+    final builder = _builder;
+    // A root modal makes the shell route non-current. Removing the toolbar
+    // while that route is covered both prevents visual overlap and avoids the
+    // hidden toolbar intercepting taps during the modal transition. The stored
+    // builder is kept so the selection returns if the modal is dismissed.
+    final routeIsCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        widget.child,
+        if (routeIsCurrent && owner != null && builder != null)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: KeyedSubtree(
+              key: ObjectKey(owner),
+              child: AnimatedSelectionBottomBar(
+                child: Material(
+                  color: Colors.transparent,
+                  child: Builder(builder: builder),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Mounts a selection bar in [SelectionOverlayHost]. Screens rendered outside
+/// the main shell (including isolated widget tests) retain a root-overlay
+/// fallback.
+class SelectionOverlayController {
+  OverlayEntry? _entry;
+  _SelectionOverlayHostState? _host;
+  WidgetBuilder? _builder;
+
+  bool get isVisible => _entry != null || (_host?.owns(this) ?? false);
 
   /// Shows the bar, or rebuilds it in place when already visible so the
   /// entrance animation does not replay on every selection change.
   void show(BuildContext context, WidgetBuilder builder) {
+    if (!TickerMode.valuesOf(context).enabled) {
+      hide();
+      return;
+    }
+
     _builder = builder;
+    final host = SelectionOverlayHost._maybeOf(context);
+    if (host != null) {
+      _entry?.remove();
+      _entry = null;
+      if (_host != null && _host != host) {
+        _host!.hide(this);
+      }
+      _host = host;
+      host.show(this, builder);
+      return;
+    }
+
+    _host?.hide(this);
+    _host = null;
     if (_entry != null) {
       _entry!.markNeedsBuild();
       return;
@@ -42,6 +128,8 @@ class SelectionOverlayController {
   }
 
   void hide() {
+    _host?.hide(this);
+    _host = null;
     _entry?.remove();
     _entry = null;
     _builder = null;

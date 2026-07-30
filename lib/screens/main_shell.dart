@@ -29,6 +29,7 @@ import 'package:spotiflac_android/widgets/update_dialog.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/mini_player.dart';
+import 'package:spotiflac_android/widgets/selection_bottom_bar.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 
 final _log = AppLogger('MainShell');
@@ -808,107 +809,114 @@ class _MainShellState extends ConsumerState<MainShell>
       ),
     );
 
-    return BackButtonListener(
-      onBackButtonPressed: () async {
-        await _handleBackPress();
-        return true;
-      },
-      child: Scaffold(
-        extendBody: true,
-        // The page view keeps one element across the rail<->bar structure
-        // swap via _pageViewKey; without it a rotation past the 600dp
-        // breakpoint remounts the PageView and snaps back to the first tab.
-        body: useNavigationRail
-            ? Row(
-                children: [
-                  SafeArea(
-                    right: false,
-                    bottom: false,
-                    // The rail needs ~300dp of height for four labeled
-                    // destinations; on short viewports (landscape phone with
-                    // the mini player showing) it must scroll, not overflow.
-                    child: LayoutBuilder(
-                      builder: (context, constraints) => SingleChildScrollView(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight: constraints.maxHeight,
-                          ),
-                          child: IntrinsicHeight(
-                            child: NavigationRail(
-                              selectedIndex: _currentIndex.clamp(0, maxIndex),
-                              onDestinationSelected: _onNavTap,
-                              labelType: NavigationRailLabelType.all,
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainer,
-                              destinations: [
-                                for (final destination in destinations)
-                                  NavigationRailDestination(
-                                    icon: destination.icon,
-                                    selectedIcon: destination.selectedIcon,
-                                    label: Text(destination.label),
+    return SelectionOverlayHost(
+      child: BackButtonListener(
+        onBackButtonPressed: () async {
+          await _handleBackPress();
+          return true;
+        },
+        child: Scaffold(
+          extendBody: true,
+          // The page view keeps one element across the rail<->bar structure
+          // swap via _pageViewKey; without it a rotation past the 600dp
+          // breakpoint remounts the PageView and snaps back to the first tab.
+          body: useNavigationRail
+              ? Row(
+                  children: [
+                    SafeArea(
+                      right: false,
+                      bottom: false,
+                      // The rail needs ~300dp of height for four labeled
+                      // destinations; on short viewports (landscape phone with
+                      // the mini player showing) it must scroll, not overflow.
+                      child: LayoutBuilder(
+                        builder: (context, constraints) =>
+                            SingleChildScrollView(
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minHeight: constraints.maxHeight,
+                                ),
+                                child: IntrinsicHeight(
+                                  child: NavigationRail(
+                                    selectedIndex: _currentIndex.clamp(
+                                      0,
+                                      maxIndex,
+                                    ),
+                                    onDestinationSelected: _onNavTap,
+                                    labelType: NavigationRailLabelType.all,
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceContainer,
+                                    destinations: [
+                                      for (final destination in destinations)
+                                        NavigationRailDestination(
+                                          icon: destination.icon,
+                                          selectedIcon:
+                                              destination.selectedIcon,
+                                          label: Text(destination.label),
+                                        ),
+                                    ],
                                   ),
-                              ],
+                                ),
+                              ),
                             ),
+                      ),
+                    ),
+                    const VerticalDivider(width: 1),
+                    Expanded(child: pageView),
+                  ],
+                )
+              : pageView,
+          bottomNavigationBar: Builder(
+            builder: (context) {
+              final bottomBar = Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const MiniPlayer(),
+                  if (!useNavigationRail)
+                    DecoratedBox(
+                      position: DecorationPosition.foreground,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  const VerticalDivider(width: 1),
-                  Expanded(child: pageView),
-                ],
-              )
-            : pageView,
-        bottomNavigationBar: Builder(
-          builder: (context) {
-            final bottomBar = Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const MiniPlayer(),
-                if (!useNavigationRail)
-                  DecoratedBox(
-                    position: DecorationPosition.foreground,
-                    decoration: BoxDecoration(
-                      border: Border(
-                        top: BorderSide(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.outlineVariant.withValues(alpha: 0.5),
-                        ),
+                      child: NavigationBar(
+                        selectedIndex: _currentIndex.clamp(0, maxIndex),
+                        onDestinationSelected: _onNavTap,
+                        animationDuration: const Duration(milliseconds: 500),
+                        elevation: 0,
+                        height: 64,
+                        backgroundColor: settingsGroupColor(
+                          context,
+                        ).withValues(alpha: 0.72),
+                        destinations: destinations,
                       ),
                     ),
-                    child: NavigationBar(
-                      selectedIndex: _currentIndex.clamp(0, maxIndex),
-                      onDestinationSelected: _onNavTap,
-                      animationDuration: const Duration(milliseconds: 500),
-                      elevation: 0,
-                      height: 64,
-                      backgroundColor: settingsGroupColor(
-                        context,
-                      ).withValues(alpha: 0.72),
-                      destinations: destinations,
-                    ),
-                  ),
-              ],
-            );
-            // The backdrop blur re-filters everything scrolling underneath on
-            // every frame; low-end devices get an opaque base instead unless
-            // the user forces blur on in appearance settings.
-            if (!ref.watch(backdropBlurEnabledProvider)) {
-              return ColoredBox(
-                color: settingsGroupColor(context),
-                child: bottomBar,
+                ],
               );
-            }
-            return ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                blendMode: BlendMode.src,
-                child: bottomBar,
-              ),
-            );
-          },
+              // The backdrop blur re-filters everything scrolling underneath on
+              // every frame; low-end devices get an opaque base instead unless
+              // the user forces blur on in appearance settings.
+              if (!ref.watch(backdropBlurEnabledProvider)) {
+                return ColoredBox(
+                  color: settingsGroupColor(context),
+                  child: bottomBar,
+                );
+              }
+              return ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  blendMode: BlendMode.src,
+                  child: bottomBar,
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
