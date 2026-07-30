@@ -8,7 +8,6 @@ import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
 import 'package:spotiflac_android/services/library_database.dart';
 import 'package:spotiflac_android/services/music_player_service.dart';
-import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/int_utils.dart';
 import 'package:spotiflac_android/utils/lyrics_parser.dart';
@@ -173,6 +172,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   ProviderSubscription<AsyncValue<MediaItem?>>? _mediaItemSub;
   String? _loadedSource;
   String? _loadedResolvedSource;
+  String? _loadedMetadataPath;
   Map<String, dynamic>? _metadata;
   ParsedLyrics _lyrics = ParsedLyrics.empty;
   bool _loadingMeta = false;
@@ -201,7 +201,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     super.dispose();
   }
 
-  void _loadMetadataForItem(MediaItem? item) {
+  void _loadMetadataForItem(
+    MediaItem? item, {
+    bool inspectUnresolvedContentUri = false,
+  }) {
     if (item == null) return;
     final source = item.extras?['source']?.toString() ?? '';
     if (source.isEmpty) return;
@@ -211,6 +214,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         source,
         resolvedSource: resolvedSource,
         fallbackMetadata: playbackAudioMetadataFromMediaItem(item),
+        inspectUnresolvedContentUri: inspectUnresolvedContentUri,
       ),
     );
   }
@@ -219,41 +223,51 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     String source, {
     String? resolvedSource,
     Map<String, dynamic> fallbackMetadata = const {},
+    bool inspectUnresolvedContentUri = false,
   }) async {
     final effectiveResolvedSource = resolvedSource?.trim();
-    if (source == _loadedSource &&
-        effectiveResolvedSource == _loadedResolvedSource) {
+    final path =
+        (effectiveResolvedSource != null && effectiveResolvedSource.isNotEmpty)
+        ? effectiveResolvedSource
+        : source;
+    final unresolvedContentUri =
+        path == source && source.startsWith('content://');
+    final sameItem =
+        source == _loadedSource &&
+        effectiveResolvedSource == _loadedResolvedSource;
+
+    if (sameItem) {
       if (_metadata == null && fallbackMetadata.isNotEmpty) {
         setState(() => _metadata = fallbackMetadata);
       }
-      return;
+      if (_loadingMeta || _loadedMetadataPath == path) return;
+      if (unresolvedContentUri && !inspectUnresolvedContentUri) return;
+      setState(() => _loadingMeta = true);
+    } else {
+      _loadedSource = source;
+      _loadedResolvedSource = effectiveResolvedSource;
+      _loadedMetadataPath = null;
+      setState(() {
+        _loadingMeta = !unresolvedContentUri || inspectUnresolvedContentUri;
+        _metadata = fallbackMetadata.isEmpty ? null : fallbackMetadata;
+        _lyrics = ParsedLyrics.empty;
+      });
     }
-    _loadedSource = source;
-    _loadedResolvedSource = effectiveResolvedSource;
-    setState(() {
-      _loadingMeta = true;
-      _metadata = fallbackMetadata.isEmpty ? null : fallbackMetadata;
-      _lyrics = ParsedLyrics.empty;
-    });
+
+    // Avoid copying a restored SAF file merely because the player shell became
+    // visible. If the user opens Lyrics before playback resolves a local temp
+    // source, inspect the content URI on demand instead.
+    if (unresolvedContentUri && !inspectUnresolvedContentUri) return;
+
     try {
-      final path =
-          (effectiveResolvedSource != null &&
-              effectiveResolvedSource.isNotEmpty)
-          ? effectiveResolvedSource
-          : source;
-      if (path == source && source.startsWith('content://')) {
-        if (mounted && _loadedSource == source) {
-          setState(() => _loadingMeta = false);
-        }
-        return;
-      }
-      final meta = await PlatformBridge.readFileMetadata(path);
+      final meta = await readPlaybackFileMetadataWithRetry(path);
       if (!mounted ||
           _loadedSource != source ||
           _loadedResolvedSource != effectiveResolvedSource) {
         return;
       }
       setState(() {
+        _loadedMetadataPath = path;
         _metadata = mergePlaybackFileMetadata(fallbackMetadata, meta);
         _lyrics = LyricsParser.parse((meta['lyrics'] ?? '').toString());
         _loadingMeta = false;
@@ -377,6 +391,12 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                   onPageChanged: (page) {
                     if (_currentPage != page) {
                       setState(() => _currentPage = page);
+                    }
+                    if (page == 1) {
+                      _loadMetadataForItem(
+                        ref.read(currentMediaItemProvider).value,
+                        inspectUnresolvedContentUri: true,
+                      );
                     }
                   },
                   children: [

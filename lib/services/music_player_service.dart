@@ -176,6 +176,50 @@ Map<String, dynamic> mergePlaybackFileMetadata(
   return merged;
 }
 
+typedef PlaybackMetadataReader =
+    Future<Map<String, dynamic>> Function(String path);
+
+/// Reads playback metadata with a small bounded retry window for transient
+/// cold-start/native bridge failures.
+///
+/// The native bridge reports some read failures as an `error` field instead
+/// of throwing. Treat both forms identically so Now Playing does not cache an
+/// empty Lyrics view until the route is reopened. A successful response with
+/// no lyrics is still final and is never retried.
+Future<Map<String, dynamic>> readPlaybackFileMetadataWithRetry(
+  String path, {
+  PlaybackMetadataReader? reader,
+  List<Duration> retryDelays = const [
+    Duration.zero,
+    Duration(milliseconds: 250),
+    Duration(milliseconds: 750),
+  ],
+}) async {
+  final read = reader ?? PlatformBridge.readFileMetadata;
+  final delays = retryDelays.isEmpty ? const [Duration.zero] : retryDelays;
+  Object? lastError;
+  var lastStack = StackTrace.current;
+
+  for (final delay in delays) {
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
+    try {
+      final metadata = await read(path);
+      final reportedError = metadata['error']?.toString().trim() ?? '';
+      if (reportedError.isEmpty) return metadata;
+      lastError = StateError(reportedError);
+      lastStack = StackTrace.current;
+    } catch (error, stack) {
+      lastError = error;
+      lastStack = stack;
+    }
+  }
+
+  Error.throwWithStackTrace(
+    lastError ?? StateError('Metadata reader returned no result'),
+    lastStack,
+  );
+}
+
 /// Returns a safe source-start position for restored playback. A completed
 /// snapshot starts over instead of immediately completing again on resume.
 Duration normalizedPlaybackResumePosition(

@@ -67,4 +67,38 @@ void main() {
       Duration.zero,
     );
   });
+
+  test('cold-start metadata read retries thrown and reported errors', () async {
+    var calls = 0;
+
+    final metadata = await readPlaybackFileMetadataWithRetry(
+      '/music/track.flac',
+      retryDelays: const [Duration.zero, Duration.zero, Duration.zero],
+      reader: (path) async {
+        calls++;
+        if (calls == 1) throw StateError('backend not ready');
+        if (calls == 2) return {'error': 'file temporarily unavailable'};
+        return {'lyrics': '[00:01.00]Ready'};
+      },
+    );
+
+    expect(calls, 3);
+    expect(metadata['lyrics'], '[00:01.00]Ready');
+  });
+
+  test('successful metadata without lyrics is not retried', () async {
+    var calls = 0;
+
+    final metadata = await readPlaybackFileMetadataWithRetry(
+      '/music/instrumental.flac',
+      retryDelays: const [Duration.zero, Duration.zero, Duration.zero],
+      reader: (path) async {
+        calls++;
+        return {'title': 'Instrumental'};
+      },
+    );
+
+    expect(calls, 1);
+    expect(metadata['title'], 'Instrumental');
+  });
 }
