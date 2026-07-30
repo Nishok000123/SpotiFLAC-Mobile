@@ -250,6 +250,30 @@ lavfi.r128.true_peak=0.907
       expect(cutoff, nyquist);
     });
 
+    test(
+      'reports Nyquist for full-band music with a natural spectral tilt',
+      () {
+        const cdNyquist = 22050.0;
+        final intensity = _blankIntensity(width, height);
+        _paintNaturalSpectralTilt(
+          intensity,
+          width: width,
+          height: height,
+          lowFrequencyIntensity: 140,
+          nyquistIntensity: 26,
+        );
+
+        final cutoff = estimateEffectiveSpectralCutoffHz(
+          intensity: intensity,
+          width: width,
+          height: height,
+          maxFrequencyHz: cdNyquist,
+        );
+
+        expect(cutoff, cdNyquist);
+      },
+    );
+
     test('does not report an isolated line as a broadband cutoff', () {
       final intensity = _blankIntensity(width, height);
       _paintFrequencyBand(
@@ -308,6 +332,27 @@ void _paintFrequencyBand(
     final frequency = (height - y - 0.5) / height * maxFrequencyHz;
     if (frequency < lowHz || frequency > highHz) continue;
     for (var x = startColumn; x < columnEnd; x++) {
+      values[y * width + x] = intensity;
+    }
+  }
+}
+
+void _paintNaturalSpectralTilt(
+  Uint8List values, {
+  required int width,
+  required int height,
+  required int lowFrequencyIntensity,
+  required int nyquistIntensity,
+}) {
+  final span = lowFrequencyIntensity - nyquistIntensity;
+  for (var y = 0; y < height; y++) {
+    final normalizedFrequency = (height - y - 0.5) / height;
+    final intensity =
+        (lowFrequencyIntensity -
+                span * normalizedFrequency * normalizedFrequency)
+            .round()
+            .clamp(0, 255);
+    for (var x = 0; x < width; x++) {
       values[y * width + x] = intensity;
     }
   }

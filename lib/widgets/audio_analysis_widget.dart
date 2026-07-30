@@ -24,6 +24,19 @@ const int audioSpectrogramHeight = 800;
 const int audioSpectralAnalysisWidth = 400;
 const double audioSpectrogramDynamicRangeDb = 120;
 
+String formatAudioAnalysisSpectralCutoff(
+  double? cutoffHz, {
+  required String notDetectedLabel,
+}) {
+  if (cutoffHz == null || !cutoffHz.isFinite || cutoffHz <= 0) {
+    return notDetectedLabel;
+  }
+  if (cutoffHz >= 1000) {
+    return '${(cutoffHz / 1000).toStringAsFixed(1)} kHz';
+  }
+  return '${cutoffHz.round()} Hz';
+}
+
 String _buildShowspectrumOptions({required int width, required String color}) {
   return 'showspectrumpic='
       's=${width}x$audioSpectrogramHeight:'
@@ -385,8 +398,10 @@ double? estimateEffectiveSpectralCutoffHz({
   }
 
   // A genuinely broadband signal with no internal falling edge reaches the
-  // analysis ceiling. Report Nyquist only when both its baseband and top band
-  // are populated; silence or an isolated high-frequency line returns null.
+  // analysis ceiling. Natural music has a pronounced spectral tilt, so the
+  // top band does not need to be almost as loud as the baseband. It must still
+  // sit clearly above the measured low-level floor; silence or an isolated
+  // high-frequency line therefore continues to return null.
   final basebandLevel = _spectralMedian(
     smoothed,
     (height * 0.05).floor(),
@@ -397,7 +412,8 @@ double? estimateEffectiveSpectralCutoffHz({
     (height * 0.90).floor(),
     math.max(1, (height * 0.98).floor()),
   );
-  if (basebandLevel >= 24 && topBandLevel >= basebandLevel - minimumDrop) {
+  final populatedTopFloor = math.max(24.0, lowLevel * 0.60);
+  if (basebandLevel >= 24 && topBandLevel >= populatedTopFloor) {
     return maxFrequencyHz;
   }
   return null;

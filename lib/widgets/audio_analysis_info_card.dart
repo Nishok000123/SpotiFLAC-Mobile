@@ -171,13 +171,16 @@ class _AudioInfoCard extends StatelessWidget {
                   value: _formatClipping(context, data.clippingSamples),
                   cs: cs,
                 ),
-                if (data.spectralCutoffHz != null)
-                  _MetricChip(
-                    icon: Icons.filter_alt_outlined,
-                    label: context.l10n.audioAnalysisSpectralCutoff,
-                    value: _formatFrequency(data.spectralCutoffHz!),
-                    cs: cs,
+                _MetricChip(
+                  icon: Icons.filter_alt_outlined,
+                  label: context.l10n.audioAnalysisSpectralCutoff,
+                  value: formatAudioAnalysisSpectralCutoff(
+                    data.spectralCutoffHz,
+                    notDetectedLabel:
+                        context.l10n.audioAnalysisCutoffNotDetected,
                   ),
+                  cs: cs,
+                ),
                 _MetricChip(
                   icon: Icons.numbers,
                   label: context.l10n.audioAnalysisSamples,
@@ -226,11 +229,6 @@ class _AudioInfoCard extends StatelessWidget {
     if (data.channels == 2) return context.l10n.audioAnalysisStereo;
     if (data.channels == 1) return context.l10n.audioAnalysisMono;
     return data.channels > 0 ? '${data.channels}' : 'N/A';
-  }
-
-  String _formatFrequency(double hz) {
-    if (hz >= 1000) return '${(hz / 1000).toStringAsFixed(1)} kHz';
-    return '${hz.round()} Hz';
   }
 
   String _formatBitrate(int bitsPerSecond) {

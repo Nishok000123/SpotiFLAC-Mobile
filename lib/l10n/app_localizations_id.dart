@@ -3553,6 +3553,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get audioAnalysisSpectralCutoff => 'Spectral Cutoff';
 
   @override
+  String get audioAnalysisCutoffNotDetected => 'Tidak terdeteksi';
+
+  @override
   String get audioAnalysisChannelStats => 'Per-channel Stats';
 
   @override

@@ -3432,6 +3432,7 @@
     "description": "Cache item title for local library cover art images"
   },
   "audioAnalysisSpectralCutoff": "Spectral Cutoff",
+  "audioAnalysisCutoffNotDetected": "Tidak terdeteksi",
   "dialogDelete": "Hapus",
   "@dialogDelete": {
     "description": "Dialog button - delete item"

@@ -3454,6 +3454,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get audioAnalysisSpectralCutoff => '주파수 컷오프';
 
   @override
+  String get audioAnalysisCutoffNotDetected => 'Not detected';
+
+  @override
   String get audioAnalysisChannelStats => '채널별 통계';
 
   @override

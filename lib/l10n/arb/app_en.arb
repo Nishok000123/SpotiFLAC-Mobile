@@ -4577,6 +4577,10 @@
   "@audioAnalysisSpectralCutoff": {
     "description": "Estimated spectral cutoff metric label"
   },
+  "audioAnalysisCutoffNotDetected": "Not detected",
+  "@audioAnalysisCutoffNotDetected": {
+    "description": "Displayed when no reliable broadband spectral cutoff can be detected"
+  },
   "audioAnalysisChannelStats": "Per-channel Stats",
   "@audioAnalysisChannelStats": {
     "description": "Per-channel audio analysis section label"

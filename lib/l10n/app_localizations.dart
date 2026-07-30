@@ -5936,6 +5936,12 @@ abstract class AppLocalizations {
   /// **'Spectral Cutoff'**
   String get audioAnalysisSpectralCutoff;
 
+  /// Displayed when no reliable broadband spectral cutoff can be detected
+  ///
+  /// In en, this message translates to:
+  /// **'Not detected'**
+  String get audioAnalysisCutoffNotDetected;
+
   /// Per-channel audio analysis section label
   ///
   /// In en, this message translates to:

@@ -3598,6 +3598,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get audioAnalysisSpectralCutoff => 'Spektralschnitt';
 
   @override
+  String get audioAnalysisCutoffNotDetected => 'Not detected';
+
+  @override
   String get audioAnalysisChannelStats => 'Pro Kanal Statistik';
 
   @override
