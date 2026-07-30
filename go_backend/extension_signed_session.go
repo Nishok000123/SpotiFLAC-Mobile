@@ -25,10 +25,66 @@ import (
 
 const signedSessionRefreshSkew = time.Hour
 
+const (
+	signedSessionExchangeMaxAttempts = 3
+	signedSessionMaxRetryAfter       = 5 * time.Minute
+)
+
 var (
 	pendingSignedSessionGrants   = make(map[string]string)
 	pendingSignedSessionGrantsMu sync.Mutex
+	signedSessionCoordinators    sync.Map
+	signedSessionRetryWait       = time.Sleep
 )
+
+// signedSessionCoordinator serializes authentication state for every runtime
+// that shares one persisted signed-session file. Parallel downloads use
+// isolated extension runtimes, so a runtime-local mutex cannot prevent two
+// bootstraps or an old 401 response from overwriting a newly exchanged session.
+type signedSessionCoordinator struct {
+	mu sync.Mutex
+
+	authURL             string
+	callbackURL         string
+	challengeCreatedAt  time.Time
+	pendingExtensionIDs map[string]struct{}
+	completedGrantHash  string
+}
+
+func (r *extensionRuntime) signedSessionCoordinator(config SignedSessionConfig) (*signedSessionCoordinator, error) {
+	path, err := r.signedSessionFilePath(config)
+	if err != nil {
+		return nil, err
+	}
+	value, _ := signedSessionCoordinators.LoadOrStore(path, &signedSessionCoordinator{})
+	return value.(*signedSessionCoordinator), nil
+}
+
+func (c *signedSessionCoordinator) clearChallenge() {
+	for extensionID := range c.pendingExtensionIDs {
+		ClearPendingAuthRequest(extensionID)
+	}
+	c.authURL = ""
+	c.callbackURL = ""
+	c.challengeCreatedAt = time.Time{}
+	c.pendingExtensionIDs = nil
+}
+
+func (c *signedSessionCoordinator) rememberChallenge(extensionID, authURL, callbackURL string) {
+	if c.pendingExtensionIDs == nil {
+		c.pendingExtensionIDs = make(map[string]struct{})
+	}
+	c.authURL = authURL
+	c.callbackURL = callbackURL
+	c.challengeCreatedAt = time.Now()
+	c.pendingExtensionIDs[extensionID] = struct{}{}
+}
+
+func (c *signedSessionCoordinator) activeChallenge() bool {
+	return strings.TrimSpace(c.authURL) != "" &&
+		!c.challengeCreatedAt.IsZero() &&
+		time.Since(c.challengeCreatedAt) < pendingAuthRequestTTL
+}
 
 type signedSessionRecord struct {
 	InstallID     string `json:"install_id"`
@@ -222,6 +278,13 @@ func signedSessionRecordIsUsable(record *signedSessionRecord) bool {
 	return true
 }
 
+func sameSignedSession(a, b *signedSessionRecord) bool {
+	return a != nil && b != nil &&
+		a.SessionID != "" &&
+		a.SessionID == b.SessionID &&
+		a.SessionSecret == b.SessionSecret
+}
+
 // preflightSignedSession prepares a signed session before download metadata
 // enrichment starts. A fresh pending challenge is reused, while bootstrap
 // responses that can issue a session silently are accepted without prompting
@@ -236,6 +299,12 @@ func (r *extensionRuntime) preflightSignedSession() (bool, error) {
 	if config.Namespace == "" || config.BaseURL == "" {
 		return false, fmt.Errorf("signedSession is not configured")
 	}
+	coordinator, err := r.signedSessionCoordinator(config)
+	if err != nil {
+		return false, err
+	}
+	coordinator.mu.Lock()
+	defer coordinator.mu.Unlock()
 
 	record, err := r.loadSignedSession(config)
 	if err != nil {
@@ -245,15 +314,7 @@ func (r *extensionRuntime) preflightSignedSession() (bool, error) {
 		return false, nil
 	}
 
-	if pending := GetPendingAuthRequest(r.extensionID); pending != nil {
-		if time.Since(pending.CreatedAt) < pendingAuthRequestTTL &&
-			strings.TrimSpace(pending.AuthURL) != "" {
-			return true, nil
-		}
-		ClearPendingAuthRequest(r.extensionID)
-	}
-
-	if authURL, err := r.startSignedSessionVerification(config, "download-preflight"); err != nil {
+	if authURL, err := r.startSignedSessionVerificationLocked(config, coordinator, "download-preflight"); err != nil {
 		return false, err
 	} else if authURL != "" {
 		return true, nil
@@ -277,6 +338,12 @@ func (r *extensionRuntime) signedSessionStatus(call goja.FunctionCall) goja.Valu
 	if config.Namespace == "" || config.BaseURL == "" {
 		return r.vm.ToValue(map[string]any{"authenticated": false, "error": "signedSession is not configured"})
 	}
+	coordinator, err := r.signedSessionCoordinator(config)
+	if err != nil {
+		return r.vm.ToValue(map[string]any{"authenticated": false, "error": err.Error()})
+	}
+	coordinator.mu.Lock()
+	defer coordinator.mu.Unlock()
 	record, err := r.loadSignedSession(config)
 	if err != nil {
 		return r.vm.ToValue(map[string]any{"authenticated": false, "error": err.Error()})
@@ -294,6 +361,12 @@ func (r *extensionRuntime) signedSessionStatus(call goja.FunctionCall) goja.Valu
 
 func (r *extensionRuntime) signedSessionClear(call goja.FunctionCall) goja.Value {
 	config := signedSessionConfigWithDefaults(r.manifest.SignedSession)
+	coordinator, err := r.signedSessionCoordinator(config)
+	if err != nil {
+		return r.vm.ToValue(map[string]any{"success": false, "error": err.Error()})
+	}
+	coordinator.mu.Lock()
+	defer coordinator.mu.Unlock()
 	record, err := r.loadSignedSession(config)
 	if err != nil {
 		return r.vm.ToValue(map[string]any{"success": false, "error": err.Error()})
@@ -304,6 +377,7 @@ func (r *extensionRuntime) signedSessionClear(call goja.FunctionCall) goja.Value
 	if err := r.saveSignedSession(config, record); err != nil {
 		return r.vm.ToValue(map[string]any{"success": false, "error": err.Error()})
 	}
+	coordinator.clearChallenge()
 	ClearPendingAuthRequest(r.extensionID)
 	return r.vm.ToValue(map[string]any{"success": true})
 }
@@ -313,10 +387,12 @@ func (r *extensionRuntime) signedSessionCompleteGrant(call goja.FunctionCall) go
 	if len(call.Arguments) > 0 {
 		grant = strings.TrimSpace(call.Arguments[0].String())
 	}
+	if grant != "" {
+		setPendingSignedSessionGrant(r.extensionID, grant)
+	}
 	if grant == "" {
 		pendingSignedSessionGrantsMu.Lock()
 		grant = pendingSignedSessionGrants[r.extensionID]
-		delete(pendingSignedSessionGrants, r.extensionID)
 		pendingSignedSessionGrantsMu.Unlock()
 	}
 	if grant == "" {
@@ -325,15 +401,42 @@ func (r *extensionRuntime) signedSessionCompleteGrant(call goja.FunctionCall) go
 	if err := r.exchangeSignedSessionGrant(grant); err != nil {
 		return r.vm.ToValue(map[string]any{"success": false, "error": err.Error()})
 	}
+	pendingSignedSessionGrantsMu.Lock()
+	delete(pendingSignedSessionGrants, r.extensionID)
+	pendingSignedSessionGrantsMu.Unlock()
 	ClearPendingAuthRequest(r.extensionID)
 	return r.vm.ToValue(map[string]any{"success": true})
 }
 
 func (r *extensionRuntime) exchangeSignedSessionGrant(grant string) error {
 	config := signedSessionConfigWithDefaults(r.manifest.SignedSession)
+	coordinator, err := r.signedSessionCoordinator(config)
+	if err != nil {
+		return err
+	}
+	coordinator.mu.Lock()
+	defer coordinator.mu.Unlock()
+	return r.exchangeSignedSessionGrantLocked(config, coordinator, grant)
+}
+
+func (r *extensionRuntime) exchangeSignedSessionGrantLocked(
+	config SignedSessionConfig,
+	coordinator *signedSessionCoordinator,
+	grant string,
+) error {
 	record, err := r.loadSignedSession(config)
 	if err != nil {
 		return err
+	}
+	grantHashBytes := sha256.Sum256([]byte(grant))
+	grantHash := hex.EncodeToString(grantHashBytes[:])
+	// A duplicated callback may arrive after another runtime already exchanged
+	// the same one-time grant. Treat that exact shared result as completed
+	// instead of consuming the grant again.
+	if coordinator.completedGrantHash == grantHash &&
+		signedSessionRecordIsUsable(record) {
+		coordinator.clearChallenge()
+		return nil
 	}
 	endpoint, err := signedSessionURL(config, config.Endpoints.Exchange)
 	if err != nil {
@@ -346,24 +449,51 @@ func (r *extensionRuntime) exchangeSignedSessionGrant(grant string) error {
 		"platform":    config.Platform,
 	}
 	body, _ := json.Marshal(payload)
-	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "SpotiFLAC-Mobile/"+config.AppVersion)
-	resp, err := r.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	respBody, err := readExtensionHTTPResponseBody(resp)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("session exchange failed: HTTP %d", resp.StatusCode)
+	var respBody []byte
+	for attempt := 1; attempt <= signedSessionExchangeMaxAttempts; attempt++ {
+		req, requestErr := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(body))
+		if requestErr != nil {
+			return requestErr
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("User-Agent", "SpotiFLAC-Mobile/"+config.AppVersion)
+		resp, requestErr := r.httpClient.Do(req)
+		if requestErr != nil {
+			return requestErr
+		}
+		respBody, requestErr = readExtensionHTTPResponseBody(resp)
+		resp.Body.Close()
+		if requestErr != nil {
+			return requestErr
+		}
+		if resp.StatusCode == http.StatusTooManyRequests && attempt < signedSessionExchangeMaxAttempts {
+			retryAfter := time.Duration(signedSessionRetryAfterSeconds(resp)) * time.Second
+			if retryAfter <= 0 {
+				retryAfter = time.Second
+			}
+			if retryAfter > signedSessionMaxRetryAfter {
+				retryAfter = signedSessionMaxRetryAfter
+			}
+			LogWarn(
+				"SignedSession",
+				"Grant exchange rate limited for extension %s; retrying in %s (attempt %d/%d)",
+				r.extensionID,
+				retryAfter,
+				attempt+1,
+				signedSessionExchangeMaxAttempts,
+			)
+			signedSessionRetryWait(retryAfter)
+			continue
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			message := fmt.Sprintf("session exchange failed: HTTP %d", resp.StatusCode)
+			if retryAfter := signedSessionRetryAfterSeconds(resp); retryAfter > 0 {
+				message += fmt.Sprintf("; retry-after seconds: %d", retryAfter)
+			}
+			return errors.New(message)
+		}
+		break
 	}
 	var exchanged signedSessionExchangeResponse
 	if err := json.Unmarshal(respBody, &exchanged); err != nil {
@@ -375,7 +505,12 @@ func (r *extensionRuntime) exchangeSignedSessionGrant(grant string) error {
 	record.SessionID = exchanged.SessionID
 	record.SessionSecret = exchanged.SessionSecret
 	record.ExpiresAt = exchanged.ExpiresAt
-	return r.saveSignedSession(config, record)
+	if err := r.saveSignedSession(config, record); err != nil {
+		return err
+	}
+	coordinator.completedGrantHash = grantHash
+	coordinator.clearChallenge()
+	return nil
 }
 
 func (r *extensionRuntime) signedSessionFetch(call goja.FunctionCall) goja.Value {
@@ -405,31 +540,91 @@ func (r *extensionRuntime) signedSessionFetch(call goja.FunctionCall) goja.Value
 	}
 	extraHeaders := parseGojaHeaders(call.Argument(3).Export())
 
+	coordinator, err := r.signedSessionCoordinator(config)
+	if err != nil {
+		return r.vm.ToValue(map[string]any{"ok": false, "error": err.Error()})
+	}
+	coordinator.mu.Lock()
 	record, err := r.ensureSignedSession(config)
 	if err != nil {
-		if authURL, verificationErr := r.startSignedSessionVerification(config, "signed-fetch"); authURL != "" {
+		authURL, verificationErr := r.startSignedSessionVerificationLocked(config, coordinator, "signed-fetch")
+		coordinator.mu.Unlock()
+		if authURL != "" {
 			return r.signedSessionVerificationRequiredValue(authURL)
 		} else if verificationErr != nil {
 			return r.vm.ToValue(map[string]any{"ok": false, "error": verificationErr.Error()})
 		}
 		return r.vm.ToValue(map[string]any{"ok": false, "error": err.Error()})
 	}
+	coordinator.mu.Unlock()
 
-	resp, respBody, respHeaders, err := r.doSignedSessionRequest(config, record, method, requestPath, body, extraHeaders)
-	if err != nil {
-		return r.vm.ToValue(map[string]any{"ok": false, "error": err.Error()})
-	}
-	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusPreconditionRequired {
-		record.SessionID = ""
-		record.SessionSecret = ""
-		record.ExpiresAt = ""
-		_ = r.saveSignedSession(config, record)
-		if authURL, verificationErr := r.startSignedSessionVerification(config, "signed-fetch-reauth"); authURL != "" {
+	// A request that loses a race with a successful grant exchange may return
+	// 401 using the old secret. Reload and retry with the newer shared session;
+	// never let the stale response erase that replacement session.
+	for sessionAttempt := 0; sessionAttempt < 3; sessionAttempt++ {
+		resp, respBody, respHeaders, requestErr := r.doSignedSessionRequest(
+			config,
+			record,
+			method,
+			requestPath,
+			body,
+			extraHeaders,
+		)
+		if requestErr != nil {
+			return r.vm.ToValue(map[string]any{"ok": false, "error": requestErr.Error()})
+		}
+		if resp.StatusCode != http.StatusUnauthorized &&
+			resp.StatusCode != http.StatusPreconditionRequired {
+			return r.signedSessionResponseValue(resp, respBody, respHeaders)
+		}
+
+		coordinator.mu.Lock()
+		latest, loadErr := r.loadSignedSession(config)
+		if loadErr != nil {
+			coordinator.mu.Unlock()
+			return r.vm.ToValue(map[string]any{"ok": false, "error": loadErr.Error()})
+		}
+		if signedSessionRecordIsUsable(latest) &&
+			!sameSignedSession(latest, record) {
+			record = latest
+			coordinator.mu.Unlock()
+			LogDebug(
+				"SignedSession",
+				"Discarding stale 401 for extension %s and retrying with the exchanged session",
+				r.extensionID,
+			)
+			continue
+		}
+		if sameSignedSession(latest, record) {
+			latest.SessionID = ""
+			latest.SessionSecret = ""
+			latest.ExpiresAt = ""
+			if saveErr := r.saveSignedSession(config, latest); saveErr != nil {
+				coordinator.mu.Unlock()
+				return r.vm.ToValue(map[string]any{"ok": false, "error": saveErr.Error()})
+			}
+		}
+		authURL, verificationErr := r.startSignedSessionVerificationLocked(
+			config,
+			coordinator,
+			"signed-fetch-reauth",
+		)
+		coordinator.mu.Unlock()
+		if authURL != "" {
 			return r.signedSessionVerificationRequiredValue(authURL)
 		} else if verificationErr != nil {
 			return r.vm.ToValue(map[string]any{"ok": false, "error": verificationErr.Error()})
 		}
+		return r.signedSessionResponseValue(resp, respBody, respHeaders)
 	}
+	return r.vm.ToValue(map[string]any{"ok": false, "error": "signed-session retry limit reached"})
+}
+
+func (r *extensionRuntime) signedSessionResponseValue(
+	resp *http.Response,
+	respBody []byte,
+	respHeaders map[string]any,
+) goja.Value {
 	return r.vm.ToValue(map[string]any{
 		"statusCode":        resp.StatusCode,
 		"status":            resp.StatusCode,
@@ -508,6 +703,48 @@ func (r *extensionRuntime) refreshSignedSession(config SignedSessionConfig, reco
 }
 
 func (r *extensionRuntime) startSignedSessionVerification(config SignedSessionConfig, reason string) (string, error) {
+	coordinator, err := r.signedSessionCoordinator(config)
+	if err != nil {
+		return "", err
+	}
+	coordinator.mu.Lock()
+	defer coordinator.mu.Unlock()
+	return r.startSignedSessionVerificationLocked(config, coordinator, reason)
+}
+
+func (r *extensionRuntime) startSignedSessionVerificationLocked(
+	config SignedSessionConfig,
+	coordinator *signedSessionCoordinator,
+	reason string,
+) (string, error) {
+	if coordinator.activeChallenge() {
+		pendingAuthRequestsMu.Lock()
+		pendingAuthRequests[r.extensionID] = &PendingAuthRequest{
+			ExtensionID: r.extensionID,
+			AuthURL:     coordinator.authURL,
+			CallbackURL: coordinator.callbackURL,
+			CreatedAt:   coordinator.challengeCreatedAt,
+		}
+		pendingAuthRequestsMu.Unlock()
+		coordinator.pendingExtensionIDs[r.extensionID] = struct{}{}
+		return coordinator.authURL, nil
+	}
+	if coordinator.authURL != "" {
+		coordinator.clearChallenge()
+	}
+	if pending := GetPendingAuthRequest(r.extensionID); pending != nil {
+		if time.Since(pending.CreatedAt) < pendingAuthRequestTTL &&
+			strings.TrimSpace(pending.AuthURL) != "" {
+			coordinator.rememberChallenge(
+				r.extensionID,
+				pending.AuthURL,
+				pending.CallbackURL,
+			)
+			return pending.AuthURL, nil
+		}
+		ClearPendingAuthRequest(r.extensionID)
+	}
+
 	record, err := r.loadSignedSession(config)
 	if err != nil {
 		return "", fmt.Errorf("load signed-session bootstrap state: %w", err)
@@ -594,6 +831,7 @@ func (r *extensionRuntime) startSignedSessionVerification(config SignedSessionCo
 		if err := r.saveSignedSession(config, record); err != nil {
 			return "", fmt.Errorf("save bootstrapped signed session: %w", err)
 		}
+		coordinator.clearChallenge()
 		return "", nil
 	}
 	authURL := boot.AuthURL
@@ -614,6 +852,7 @@ func (r *extensionRuntime) startSignedSessionVerification(config SignedSessionCo
 		CreatedAt:   time.Now(),
 	}
 	pendingAuthRequestsMu.Unlock()
+	coordinator.rememberChallenge(r.extensionID, authURL, config.CallbackURL)
 	return authURL, nil
 }
 

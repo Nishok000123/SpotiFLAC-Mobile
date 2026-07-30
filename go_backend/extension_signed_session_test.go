@@ -10,8 +10,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	goruntime "runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -353,7 +355,9 @@ func TestDownloadWithExtensionsPreflightsBeforeMetadataEnrichment(t *testing.T) 
 		manager.mu.Unlock()
 	})
 
-	requestJSON := `{"service":"preflight-download","item_id":"preflight-item","isrc":"USRC17607839"}`
+	// Metadata may originate from another extension, but the explicitly chosen
+	// download provider owns the signed-session namespace and verification.
+	requestJSON := `{"source":"spotify-metadata","service":"preflight-download","item_id":"preflight-item","isrc":"USRC17607839"}`
 	responseJSON, err := DownloadWithExtensionsJSON(requestJSON)
 	if err != nil {
 		t.Fatalf("DownloadWithExtensionsJSON: %v", err)
@@ -367,6 +371,68 @@ func TestDownloadWithExtensionsPreflightsBeforeMetadataEnrichment(t *testing.T) 
 	}
 	if got := GetItemProgress(itemID); got != "{}" {
 		t.Fatalf("verification response left stale progress: %s", got)
+	}
+}
+
+func TestParallelSignedSessionPreflightSharesOneBootstrap(t *testing.T) {
+	var calls atomic.Int32
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		calls.Add(1)
+		// Keep the first bootstrap in flight long enough for the second runtime
+		// to contend on the shared session coordinator.
+		time.Sleep(20 * time.Millisecond)
+		payload, _ := json.Marshal(signedSessionExchangeResponse{
+			ChallengeURL: "https://auth.example.com/challenge",
+		})
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(string(payload))),
+			Request:    req,
+		}, nil
+	})
+
+	root := t.TempDir()
+	config := &SignedSessionConfig{
+		Namespace: "shared-download-session",
+		BaseURL:   "https://auth.example.com",
+	}
+	newRuntime := func(extensionID string) *extensionRuntime {
+		return &extensionRuntime{
+			extensionID: extensionID,
+			manifest: &ExtensionManifest{
+				Name:          extensionID,
+				SignedSession: config,
+			},
+			dataDir:    filepath.Join(root, extensionID),
+			vm:         goja.New(),
+			httpClient: &http.Client{Transport: transport},
+		}
+	}
+	runtimeA := newRuntime("provider-a")
+	runtimeB := newRuntime("provider-b")
+	t.Cleanup(func() {
+		ClearPendingAuthRequest("provider-a")
+		ClearPendingAuthRequest("provider-b")
+	})
+
+	results := make(chan error, 2)
+	for _, runtime := range []*extensionRuntime{runtimeA, runtimeB} {
+		go func(runtime *extensionRuntime) {
+			verificationRequired, err := runtime.preflightSignedSession()
+			if err == nil && !verificationRequired {
+				err = fmt.Errorf("verification was not requested")
+			}
+			results <- err
+		}(runtime)
+	}
+	for range 2 {
+		if err := <-results; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("parallel preflight bootstrap calls = %d, want 1", got)
 	}
 }
 
@@ -857,9 +923,115 @@ func TestSignedSessionFetchRevokesSessionOn401(t *testing.T) {
 	}
 }
 
+func TestStaleSignedSession401RetriesWithoutClearingExchangedSession(t *testing.T) {
+	oldRequestStarted := make(chan struct{})
+	releaseOldRequest := make(chan struct{})
+	var searchCalls atomic.Int32
+
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch {
+		case strings.HasSuffix(req.URL.Path, "/session/exchange"):
+			payload, _ := json.Marshal(signedSessionExchangeResponse{
+				SessionID:     "sess-new",
+				SessionSecret: "secret-new",
+				ExpiresAt:     time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+			})
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(string(payload))),
+				Request:    req,
+			}, nil
+		case strings.HasSuffix(req.URL.Path, "/tracks/search"):
+			searchCalls.Add(1)
+			if req.Header.Get("X-Sig-Session") == "sess-old" {
+				close(oldRequestStarted)
+				<-releaseOldRequest
+				return &http.Response{
+					StatusCode: http.StatusUnauthorized,
+					Header:     make(http.Header),
+					Body:       io.NopCloser(strings.NewReader(`{}`)),
+					Request:    req,
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(`{"ok":true}`)),
+				Request:    req,
+			}, nil
+		default:
+			t.Fatalf("unexpected request: %s", req.URL.String())
+			return nil, nil
+		}
+	})
+
+	root := t.TempDir()
+	config := &SignedSessionConfig{
+		Namespace: "shared-stale-session",
+		BaseURL:   "https://auth.example.com",
+	}
+	newRuntime := func(extensionID string) *extensionRuntime {
+		return &extensionRuntime{
+			extensionID: extensionID,
+			manifest: &ExtensionManifest{
+				Name:          extensionID,
+				SignedSession: config,
+			},
+			dataDir:    filepath.Join(root, extensionID),
+			vm:         goja.New(),
+			httpClient: &http.Client{Transport: transport},
+		}
+	}
+	runtimeA := newRuntime("download-a")
+	runtimeB := newRuntime("download-b")
+	resolved := signedSessionConfigWithDefaults(config)
+	record, err := runtimeA.loadSignedSession(resolved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.SessionID = "sess-old"
+	record.SessionSecret = "secret-old"
+	record.ExpiresAt = time.Now().Add(time.Hour).UTC().Format(time.RFC3339)
+	if err := runtimeA.saveSignedSession(resolved, record); err != nil {
+		t.Fatal(err)
+	}
+
+	resultCh := make(chan map[string]any, 1)
+	go func() {
+		call := goja.FunctionCall{Arguments: []goja.Value{
+			runtimeA.vm.ToValue("GET"),
+			runtimeA.vm.ToValue("/tracks/search"),
+		}}
+		resultCh <- runtimeA.signedSessionFetch(call).Export().(map[string]any)
+	}()
+	<-oldRequestStarted
+	if err := runtimeB.exchangeSignedSessionGrant("grant-new"); err != nil {
+		t.Fatalf("exchange grant: %v", err)
+	}
+	close(releaseOldRequest)
+
+	result := <-resultCh
+	if result["ok"] != true {
+		t.Fatalf("stale request was not retried with the new session: %+v", result)
+	}
+	if got := searchCalls.Load(); got != 2 {
+		t.Fatalf("signed search calls = %d, want stale request plus one retry", got)
+	}
+	reloaded, err := runtimeA.loadSignedSession(resolved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.SessionID != "sess-new" || reloaded.SessionSecret != "secret-new" {
+		t.Fatalf("stale 401 overwrote exchanged session: %+v", reloaded)
+	}
+}
+
 func TestExchangeSignedSessionGrant(t *testing.T) {
 	t.Run("success stores the exchanged session", func(t *testing.T) {
+		calls := 0
 		transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			calls++
 			if !strings.HasSuffix(req.URL.Path, "/session/exchange") {
 				t.Fatalf("unexpected path: %s", req.URL.Path)
 			}
@@ -872,6 +1044,12 @@ func TestExchangeSignedSessionGrant(t *testing.T) {
 
 		if err := runtime.exchangeSignedSessionGrant("grant-token"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
+		}
+		if err := runtime.exchangeSignedSessionGrant("grant-token"); err != nil {
+			t.Fatalf("duplicate callback was not idempotent: %v", err)
+		}
+		if calls != 1 {
+			t.Fatalf("duplicate grant exchange calls = %d, want 1", calls)
 		}
 
 		config := signedSessionConfigWithDefaults(runtime.manifest.SignedSession)
@@ -893,6 +1071,105 @@ func TestExchangeSignedSessionGrant(t *testing.T) {
 
 		if err := runtime.exchangeSignedSessionGrant("bad-grant"); err == nil {
 			t.Fatal("expected an error for a non-2xx exchange response")
+		}
+	})
+
+	t.Run("429 preserves the grant and retries after the server delay", func(t *testing.T) {
+		pendingSignedSessionGrantsMu.Lock()
+		pendingSignedSessionGrants = make(map[string]string)
+		pendingSignedSessionGrantsMu.Unlock()
+		previousWait := signedSessionRetryWait
+		var waits []time.Duration
+		signedSessionRetryWait = func(delay time.Duration) {
+			waits = append(waits, delay)
+		}
+		t.Cleanup(func() { signedSessionRetryWait = previousWait })
+
+		calls := 0
+		transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			calls++
+			if calls == 1 {
+				return &http.Response{
+					StatusCode: http.StatusTooManyRequests,
+					Header:     http.Header{"Retry-After": []string{"7"}},
+					Body:       io.NopCloser(strings.NewReader(`{}`)),
+					Request:    req,
+				}, nil
+			}
+			payload, _ := json.Marshal(signedSessionExchangeResponse{
+				SessionID:     "sess-after-429",
+				SessionSecret: "secret-after-429",
+				ExpiresAt:     "2030-01-01T00:00:00Z",
+			})
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(string(payload))),
+				Request:    req,
+			}, nil
+		})
+		runtime := newSignedSessionTestRuntime(t, "tidal-rate-limit", transport)
+		runtime.manifest.SignedSession = &SignedSessionConfig{
+			Namespace: "tidal-rate-limit",
+			BaseURL:   "https://auth.example.com",
+		}
+		setPendingSignedSessionGrant(runtime.extensionID, "grant-preserved")
+
+		result := runtime.signedSessionCompleteGrant(goja.FunctionCall{}).Export().(map[string]any)
+		if result["success"] != true {
+			t.Fatalf("grant exchange did not recover from 429: %+v", result)
+		}
+		if calls != 2 {
+			t.Fatalf("exchange calls = %d, want 2", calls)
+		}
+		if len(waits) != 1 || waits[0] != 7*time.Second {
+			t.Fatalf("exchange retry waits = %v, want [7s]", waits)
+		}
+		pendingSignedSessionGrantsMu.Lock()
+		_, stillPending := pendingSignedSessionGrants[runtime.extensionID]
+		pendingSignedSessionGrantsMu.Unlock()
+		if stillPending {
+			t.Fatal("grant was not cleared after successful retry")
+		}
+	})
+
+	t.Run("exhausted 429 retries keep the grant for a later retry", func(t *testing.T) {
+		pendingSignedSessionGrantsMu.Lock()
+		pendingSignedSessionGrants = make(map[string]string)
+		pendingSignedSessionGrantsMu.Unlock()
+		previousWait := signedSessionRetryWait
+		signedSessionRetryWait = func(time.Duration) {}
+		t.Cleanup(func() { signedSessionRetryWait = previousWait })
+
+		calls := 0
+		transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			calls++
+			return &http.Response{
+				StatusCode: http.StatusTooManyRequests,
+				Header:     http.Header{"Retry-After": []string{"3"}},
+				Body:       io.NopCloser(strings.NewReader(`{}`)),
+				Request:    req,
+			}, nil
+		})
+		runtime := newSignedSessionTestRuntime(t, "tidal-rate-limit-exhausted", transport)
+		runtime.manifest.SignedSession = &SignedSessionConfig{
+			Namespace: "tidal-rate-limit-exhausted",
+			BaseURL:   "https://auth.example.com",
+		}
+		setPendingSignedSessionGrant(runtime.extensionID, "grant-retry-later")
+
+		result := runtime.signedSessionCompleteGrant(goja.FunctionCall{}).Export().(map[string]any)
+		if result["success"] != false {
+			t.Fatalf("exhausted rate limit unexpectedly succeeded: %+v", result)
+		}
+		if calls != signedSessionExchangeMaxAttempts {
+			t.Fatalf("exchange calls = %d, want %d", calls, signedSessionExchangeMaxAttempts)
+		}
+		pendingSignedSessionGrantsMu.Lock()
+		pendingGrant := pendingSignedSessionGrants[runtime.extensionID]
+		pendingSignedSessionGrantsMu.Unlock()
+		if pendingGrant != "grant-retry-later" {
+			t.Fatalf("pending grant = %q, want it preserved for retry", pendingGrant)
 		}
 	})
 }

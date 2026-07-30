@@ -622,22 +622,12 @@ func ensureExtensionPendingAuthRequest(extensionID string) (*PendingAuthRequest,
 		return nil, fmt.Errorf("extension '%s' runtime is unavailable", extensionID)
 	}
 
-	config := signedSessionConfigWithDefaults(ext.Manifest.SignedSession)
-	if config.Namespace == "" || config.BaseURL == "" {
-		return nil, nil
-	}
-	record, err := ext.runtime.loadSignedSession(config)
+	verificationRequired, err := ext.runtime.preflightSignedSession()
 	if err != nil {
 		return nil, err
 	}
-	record.SessionID = ""
-	record.SessionSecret = ""
-	record.ExpiresAt = ""
-	if err := ext.runtime.saveSignedSession(config, record); err != nil {
-		return nil, err
-	}
-	if _, err := ext.runtime.startSignedSessionVerification(config, "pending-auth-request"); err != nil {
-		return nil, err
+	if !verificationRequired {
+		return nil, nil
 	}
 	return GetPendingAuthRequest(extensionID), nil
 }
