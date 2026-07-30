@@ -1337,7 +1337,7 @@ func TestSignedSessionFetchProviderContractsNeverClearSession(t *testing.T) {
 				StatusCode: http.StatusBadGateway,
 				Header:     make(http.Header),
 				Body: io.NopCloser(strings.NewReader(
-					`{"error":"Provider authentication failed","code":"PROVIDER_AUTH_FAILED","origin":"provider","retryable":false}`,
+					`{"error":"Provider authentication failed","code":"PROVIDER_AUTH_FAILED","origin":"provider","retryable":false,"retry_mode":"none"}`,
 				)),
 				Request: req,
 			}, nil
@@ -1352,7 +1352,9 @@ func TestSignedSessionFetchProviderContractsNeverClearSession(t *testing.T) {
 			runtime.vm.ToValue("/tickets"),
 		}}
 		result := runtime.signedSessionFetch(call).Export().(map[string]any)
-		if result["code"] != "PROVIDER_AUTH_FAILED" || result["origin"] != "provider" {
+		if result["code"] != "PROVIDER_AUTH_FAILED" ||
+			result["origin"] != "provider" ||
+			result["retryMode"] != "none" {
 			t.Fatalf("provider contract was not exposed to the extension: %+v", result)
 		}
 		if result["needsVerification"] == true || calls != 1 {
@@ -1364,6 +1366,70 @@ func TestSignedSessionFetchProviderContractsNeverClearSession(t *testing.T) {
 		}
 		if reloaded.SessionID != "sess-provider-auth" {
 			t.Fatalf("provider auth failure cleared the gateway session: %+v", reloaded)
+		}
+	})
+
+	t.Run("non-replay retry modes fail closed", func(t *testing.T) {
+		previousWait := signedSessionProviderWait
+		waitCalls := 0
+		signedSessionProviderWait = func(context.Context, time.Duration) error {
+			waitCalls++
+			return nil
+		}
+		t.Cleanup(func() { signedSessionProviderWait = previousWait })
+
+		tests := []struct {
+			name     string
+			modeJSON string
+			wantMode string
+		}{
+			{name: "missing mode"},
+			{name: "none", modeJSON: `,"retry_mode":"none"`, wantMode: "none"},
+			{name: "new ticket", modeJSON: `,"retry_mode":"new_ticket"`, wantMode: "new_ticket"},
+			{name: "poll existing", modeJSON: `,"retry_mode":"poll_existing"`, wantMode: "poll_existing"},
+			{name: "unknown", modeJSON: `,"retry_mode":"future_mode"`, wantMode: "future_mode"},
+		}
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				calls := 0
+				transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+					calls++
+					body := fmt.Sprintf(
+						`{"error":"Provider temporarily unavailable","code":"PROVIDER_UNAVAILABLE","origin":"provider","retryable":true%s,"retry_after_seconds":10}`,
+						tc.modeJSON,
+					)
+					return &http.Response{
+						StatusCode: http.StatusServiceUnavailable,
+						Header:     http.Header{"Retry-After": []string{"10"}},
+						Body:       io.NopCloser(strings.NewReader(body)),
+						Request:    req,
+					}, nil
+				})
+				runtime := newSignedSessionTestRuntime(t, "retry-mode-"+strings.ReplaceAll(tc.name, " ", "-"), transport)
+				config := SignedSessionConfig{Namespace: runtime.extensionID, BaseURL: "https://auth.example.com"}
+				runtime.manifest.SignedSession = &config
+				resolved := saveUsableSignedSession(t, runtime, config, "sess-retry-mode")
+				waitsBefore := waitCalls
+
+				call := goja.FunctionCall{Arguments: []goja.Value{
+					runtime.vm.ToValue("POST"),
+					runtime.vm.ToValue("/tickets"),
+				}}
+				result := runtime.signedSessionFetch(call).Export().(map[string]any)
+				if calls != 1 || waitCalls != waitsBefore {
+					t.Fatalf("mode %q was replayed: calls=%d waits=%d", tc.wantMode, calls, waitCalls-waitsBefore)
+				}
+				if result["retryMode"] != tc.wantMode {
+					t.Fatalf("retryMode = %v, want %q: %+v", result["retryMode"], tc.wantMode, result)
+				}
+				reloaded, err := runtime.loadSignedSession(resolved)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if reloaded.SessionID != "sess-retry-mode" {
+					t.Fatalf("mode %q changed gateway session: %+v", tc.wantMode, reloaded)
+				}
+			})
 		}
 	})
 
@@ -1400,7 +1466,7 @@ func TestSignedSessionFetchProviderContractsNeverClearSession(t *testing.T) {
 					StatusCode: http.StatusServiceUnavailable,
 					Header:     http.Header{"Retry-After": []string{"10"}},
 					Body: io.NopCloser(strings.NewReader(
-						`{"error":"Provider temporarily unavailable","code":"PROVIDER_UNAVAILABLE","origin":"provider","retryable":true,"retry_after_seconds":30}`,
+						`{"error":"Provider temporarily unavailable","code":"PROVIDER_UNAVAILABLE","origin":"provider","retryable":true,"retry_mode":"same_operation","retry_after_seconds":30}`,
 					)),
 					Request: req,
 				}, nil
@@ -1466,7 +1532,7 @@ func TestSignedSessionFetchProviderContractsNeverClearSession(t *testing.T) {
 				StatusCode: http.StatusServiceUnavailable,
 				Header:     http.Header{"Retry-After": []string{"1"}},
 				Body: io.NopCloser(strings.NewReader(
-					`{"error":"Provider temporarily unavailable","code":"PROVIDER_UNAVAILABLE","origin":"provider","retryable":true,"retry_after_seconds":1}`,
+					`{"error":"Provider temporarily unavailable","code":"PROVIDER_UNAVAILABLE","origin":"provider","retryable":true,"retry_mode":"same_operation","retry_after_seconds":1}`,
 				)),
 				Request: req,
 			}, nil

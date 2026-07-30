@@ -251,7 +251,7 @@ func (m *extensionManager) loadExtensionFromFileLocked(filePath string) (*loaded
 }
 
 var supportedRuntimeFeatures = map[string]int{
-	"signedSession":  2,
+	"signedSession":  3,
 	"sessionRefresh": 1,
 	"sessionGrant":   1,
 	"globalAction":   1,

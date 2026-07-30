@@ -143,6 +143,7 @@ type signedSessionErrorContract struct {
 	Origin            string `json:"origin,omitempty"`
 	Action            string `json:"action,omitempty"`
 	Retryable         bool   `json:"retryable,omitempty"`
+	RetryMode         string `json:"retry_mode,omitempty"`
 	RetryAfterSeconds int    `json:"retry_after_seconds,omitempty"`
 }
 
@@ -334,6 +335,7 @@ func parseSignedSessionErrorContract(body []byte) (signedSessionErrorContract, b
 	contract.Code = strings.ToUpper(strings.TrimSpace(contract.Code))
 	contract.Origin = strings.ToLower(strings.TrimSpace(contract.Origin))
 	contract.Action = strings.ToLower(strings.TrimSpace(contract.Action))
+	contract.RetryMode = strings.ToLower(strings.TrimSpace(contract.RetryMode))
 	if contract.RetryAfterSeconds < 0 {
 		contract.RetryAfterSeconds = 0
 	}
@@ -358,11 +360,12 @@ func signedSessionGatewayAction(statusCode int, contract signedSessionErrorContr
 	}
 }
 
-func signedSessionProviderUnavailable(statusCode int, contract signedSessionErrorContract) bool {
+func signedSessionSameOperationRetry(statusCode int, contract signedSessionErrorContract) bool {
 	return statusCode == http.StatusServiceUnavailable &&
 		contract.Origin == "provider" &&
 		contract.Code == "PROVIDER_UNAVAILABLE" &&
-		contract.Retryable
+		contract.Retryable &&
+		contract.RetryMode == "same_operation"
 }
 
 func signedSessionRequestAuthInvalid(statusCode int, contract signedSessionErrorContract) bool {
@@ -710,7 +713,7 @@ func (r *extensionRuntime) signedSessionFetch(call goja.FunctionCall) goja.Value
 		}
 		contract, _ := parseSignedSessionErrorContract(respBody)
 
-		if signedSessionProviderUnavailable(resp.StatusCode, contract) {
+		if signedSessionSameOperationRetry(resp.StatusCode, contract) {
 			if providerRetries >= signedSessionMaxProviderRetries {
 				return r.signedSessionResponseValue(resp, respBody, respHeaders)
 			}
@@ -861,6 +864,7 @@ func (r *extensionRuntime) signedSessionResponseValue(
 		result["origin"] = contract.Origin
 		result["action"] = contract.Action
 		result["retryable"] = contract.Retryable
+		result["retryMode"] = contract.RetryMode
 	}
 	return r.vm.ToValue(result)
 }

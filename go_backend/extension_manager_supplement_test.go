@@ -177,7 +177,7 @@ func TestValidateManifestGates(t *testing.T) {
 	SetAppVersion("4.5.0")
 
 	pass := &ExtensionManifest{
-		RequiredRuntimeFeatures: []string{"signedSession@2", "sessionGrant"},
+		RequiredRuntimeFeatures: []string{"signedSession@3", "sessionGrant"},
 	}
 	if err := validateManifestGates(pass); err != nil {
 		t.Fatalf("supported features should pass: %v", err)

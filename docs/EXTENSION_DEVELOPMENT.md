@@ -112,15 +112,20 @@ Extensions that depend on canonical gateway/provider error ownership should
 declare `requiredRuntimeFeatures: ["signedSession@2"]`. Version 2 only mutates
 gateway session state for the exact `SESSION_INVALID/bootstrap_session` or
 `VERIFY_REQUIRED/verify` contracts, exposes canonical error fields to JS, and
-applies bounded `Retry-After` handling to retryable `PROVIDER_UNAVAILABLE`
-responses. `403 REQUEST_AUTH_INVALID` preserves the session and only retries
-once when a newer session generation is already available. BYOA
+keeps provider-owned failures separate. `403 REQUEST_AUTH_INVALID` preserves
+the session and only retries once when a newer session generation is already
+available. BYOA
 reauthentication remains a separate provider action. An active generation that
 receives canonical `428 VERIFY_REQUIRED` is blocked in the shared coordinator,
 so later requests join the same verification flow instead of hitting the
-gateway repeatedly. Every retry is a newly signed request with a fresh
-timestamp and nonce; `retryable: true` therefore also asserts that any ticket
-attached to the operation is safe/idempotent for that retry.
+gateway repeatedly.
+
+Extensions that depend on provider retry modes should require
+`signedSession@3`. The runtime exposes `retryMode` and only auto-retries
+`PROVIDER_UNAVAILABLE` when `retryable: true` is paired with
+`retry_mode: "same_operation"`. Every such retry is newly signed with a fresh
+timestamp and nonce. `new_ticket`, `poll_existing`, `none`, missing, and unknown
+modes are returned to the extension without automatic replay.
 
 Do not use legacy spellings such as `display_name`, `types`,
 `permissions.network.domains`, or an object for `permissions.network`.
