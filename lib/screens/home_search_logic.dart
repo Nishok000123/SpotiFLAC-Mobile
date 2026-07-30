@@ -183,32 +183,11 @@ class HomeSearchProviderPolicy {
       return null;
     }
 
-    return filters
-        .where(
-          (candidate) =>
-              canonicalFilterId(candidate.id) == canonicalFilter ||
-              (candidate.label != null &&
-                  canonicalFilterId(candidate.label!) == canonicalFilter) ||
-              (candidate.icon != null &&
-                  canonicalFilterId(candidate.icon!) == canonicalFilter),
-        )
-        .firstOrNull
-        ?.id;
+    return extension?.searchBehavior?.filterIdForKind(canonicalFilter);
   }
 
-  static String canonicalFilterId(String value) {
-    final normalized = value.trim().toLowerCase().replaceAll(
-      RegExp(r'[^a-z0-9]+'),
-      '',
-    );
-    return switch (normalized) {
-      'track' || 'tracks' || 'song' || 'songs' || 'music' => 'track',
-      'artist' || 'artists' => 'artist',
-      'album' || 'albums' => 'album',
-      'playlist' || 'playlists' => 'playlist',
-      _ => normalized,
-    };
-  }
+  static String canonicalFilterId(String value) =>
+      canonicalExtensionSearchFilterId(value);
 
   static String? preferredFilter(
     String preferredSearchTab,

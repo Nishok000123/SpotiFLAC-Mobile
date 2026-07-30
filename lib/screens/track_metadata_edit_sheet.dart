@@ -870,16 +870,17 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         context,
         listen: false,
       ).read(extensionProvider);
-      final selectedProviderId =
-          configuredProviderId != null &&
-              extensionState.extensions.any(
-                (extension) =>
-                    extension.id == configuredProviderId &&
-                    extension.enabled &&
-                    extension.hasMetadataProvider,
-              )
-          ? configuredProviderId
-          : null;
+      final selectedProvider = configuredProviderId == null
+          ? null
+          : extensionState.extensions
+                .where(
+                  (extension) =>
+                      extension.id == configuredProviderId &&
+                      extension.enabled &&
+                      extension.hasMetadataProvider,
+                )
+                .firstOrNull;
+      final selectedProviderId = selectedProvider?.id;
       final usesAutomaticProvider =
           selectedProviderId == null || selectedProviderId.isEmpty;
       final shouldFetchLyrics = _autoFillFields.contains('lyrics');
@@ -920,16 +921,31 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
       if (needsTrackLookup && best == null) {
         final query = queryParts.join(' ');
-        final results = usesAutomaticProvider
-            ? await PlatformBridge.searchTracksWithMetadataProviders(
-                query,
-                limit: 5,
-              )
-            : await PlatformBridge.searchTracksWithMetadataProvider(
-                selectedProviderId,
-                query,
-                limit: 5,
-              );
+        final List<Map<String, dynamic>> results;
+        if (usesAutomaticProvider) {
+          results = await PlatformBridge.searchTracksWithMetadataProviders(
+            query,
+            limit: 5,
+          );
+        } else if (selectedProvider!.hasCustomSearch) {
+          final trackFilter = selectedProvider.searchBehavior?.filterIdForKind(
+            'track',
+          );
+          results = await PlatformBridge.customSearchWithExtension(
+            selectedProvider.id,
+            query,
+            options: {
+              'limit': 5,
+              if (trackFilter != null) 'filter': trackFilter,
+            },
+          );
+        } else {
+          results = await PlatformBridge.searchTracksWithMetadataProvider(
+            selectedProvider!.id,
+            query,
+            limit: 5,
+          );
+        }
 
         if (!mounted) return;
 
@@ -1186,7 +1202,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           coverUrl: coverUrl?.isNotEmpty == true ? coverUrl : null,
         );
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
+      _log.e('Metadata auto-fill failed: $e', e, stackTrace);
       if (mounted) {
         _showSheetSnackBar(
           context.l10n.snackbarError(context.friendlyError(e)),

@@ -361,6 +361,20 @@ class SearchFilter {
   }
 }
 
+String canonicalExtensionSearchFilterId(String value) {
+  final normalized = value.trim().toLowerCase().replaceAll(
+    RegExp(r'[^a-z0-9]+'),
+    '',
+  );
+  return switch (normalized) {
+    'track' || 'tracks' || 'song' || 'songs' || 'music' => 'track',
+    'artist' || 'artists' => 'artist',
+    'album' || 'albums' => 'album',
+    'playlist' || 'playlists' => 'playlist',
+    _ => normalized,
+  };
+}
+
 class SearchBehavior {
   final bool enabled;
   final String? placeholder;
@@ -397,6 +411,23 @@ class SearchBehavior {
               .toList() ??
           [],
     );
+  }
+
+  String? filterIdForKind(String kind) {
+    final canonicalKind = canonicalExtensionSearchFilterId(kind);
+    for (final filter in filters) {
+      if (canonicalExtensionSearchFilterId(filter.id) == canonicalKind ||
+          (filter.label != null &&
+              canonicalExtensionSearchFilterId(filter.label!) ==
+                  canonicalKind) ||
+          (filter.icon != null &&
+              canonicalExtensionSearchFilterId(filter.icon!) ==
+                  canonicalKind)) {
+        final id = filter.id.trim();
+        if (id.isNotEmpty) return id;
+      }
+    }
+    return null;
   }
 
   (double, double) getThumbnailSize({double defaultSize = 56}) {

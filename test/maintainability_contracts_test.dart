@@ -173,6 +173,8 @@ void main() {
         ]),
         'songs',
       );
+      expect(extension.searchBehavior?.filterIdForKind('track'), 'songs');
+      expect(extension.searchBehavior?.filterIdForKind('album'), 'records');
       expect(
         HomeSearchProviderPolicy.displayFilterSelection(
           null,
