@@ -431,6 +431,31 @@ void main() {
       expect(card.color, Colors.transparent);
     });
 
+    testWidgets('flat style keeps trailing actions near the card edge', (
+      tester,
+    ) async {
+      const trailingKey = Key('flat-trailing');
+      await tester.pumpWidget(
+        host(
+          const SizedBox(
+            width: 320,
+            child: TrackCard(
+              leading: SizedBox(width: 24),
+              title: 'Song',
+              style: TrackCardStyle.flat,
+              trailing: SizedBox(key: trailingKey, width: 48, height: 48),
+            ),
+          ),
+        ),
+      );
+
+      final cardRect = tester.getRect(find.byType(Card));
+      final trailingRect = tester.getRect(find.byKey(trailingKey));
+      // Card's render box includes its 8dp flat-row margin; content itself is
+      // inset another 6dp from the painted card edge.
+      expect(cardRect.right - trailingRect.right, 14);
+    });
+
     testWidgets('grid variant is a real button with a semantic label', (
       tester,
     ) async {

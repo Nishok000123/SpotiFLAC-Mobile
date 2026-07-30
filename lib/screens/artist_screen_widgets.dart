@@ -433,7 +433,7 @@ extension _ArtistScreenSections on _ArtistScreenState {
             hasLocalPlaybackCandidate: isInHistory || isInLocalLibrary,
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.fromLTRB(16, 8, 10, 8),
             child: Row(
               children: [
                 SizedBox(

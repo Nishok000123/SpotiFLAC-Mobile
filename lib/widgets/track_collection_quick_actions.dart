@@ -59,7 +59,7 @@ class TrackCollectionQuickActions extends ConsumerWidget {
         track,
         hasLocalPlaybackCandidate: hasLocalPlaybackCandidate,
       ),
-      padding: const EdgeInsets.only(left: 12),
+      padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
     );
   }

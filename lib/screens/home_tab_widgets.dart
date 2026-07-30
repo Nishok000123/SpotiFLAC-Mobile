@@ -269,7 +269,7 @@ class _TrackItemWithStatus extends ConsumerWidget {
           splashColor: colorScheme.primary.withValues(alpha: 0.12),
           highlightColor: colorScheme.primary.withValues(alpha: 0.08),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
             child: Row(
               children: [
                 ClipRRect(

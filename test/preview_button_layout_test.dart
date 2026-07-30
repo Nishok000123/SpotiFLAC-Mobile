@@ -6,6 +6,7 @@ import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
 import 'package:spotiflac_android/widgets/preview_button.dart';
+import 'package:spotiflac_android/widgets/track_collection_quick_actions.dart';
 
 void main() {
   const track = Track(
@@ -65,5 +66,22 @@ void main() {
       ),
     );
     expectCenteredHitbox(tester, Icons.play_circle_fill_rounded);
+  });
+
+  testWidgets('overflow menu icon is centered in its adjacent hitbox', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: TrackCollectionQuickActions(track: track)),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expectCenteredHitbox(tester, Icons.more_vert);
   });
 }

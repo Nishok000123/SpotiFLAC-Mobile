@@ -77,6 +77,9 @@ class TrackCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final borderRadius = tokens.borderRadiusCover;
+    final contentPadding = style == TrackCardStyle.flat
+        ? EdgeInsets.fromLTRB(tokens.gapMd, tokens.gapMd, 6, tokens.gapMd)
+        : EdgeInsets.all(tokens.gapMd);
 
     final Color? cardColor;
     if (isSelected) {
@@ -111,7 +114,7 @@ class TrackCard extends StatelessWidget {
           children: [
             if (background != null) Positioned.fill(child: background!),
             Padding(
-              padding: EdgeInsets.all(tokens.gapMd),
+              padding: contentPadding,
               child: Row(
                 children: [
                   if (isSelectionMode) ...[
