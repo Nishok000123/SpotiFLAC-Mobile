@@ -435,18 +435,20 @@ func classifyDownloadErrorType(msg string) string {
 		return "isp_blocked"
 	} else if strings.Contains(lowerMsg, "cancel") {
 		return "cancelled"
-	} else if strings.Contains(lowerMsg, "verify_required") ||
-		strings.Contains(lowerMsg, "verification_required") ||
-		strings.Contains(lowerMsg, "verification required") ||
-		strings.Contains(lowerMsg, "needs verification") ||
+	} else if strings.Contains(lowerMsg, "verification_required") ||
 		strings.Contains(lowerMsg, "session is not authenticated") ||
 		strings.Contains(lowerMsg, "signed session is not authenticated") ||
-		strings.Contains(lowerMsg, "signed session expired") ||
-		strings.Contains(lowerMsg, "unauthorized") ||
-		strings.Contains(lowerMsg, "precondition required") ||
-		messageHasHTTPStatusCode(lowerMsg, "401") ||
-		messageHasHTTPStatusCode(lowerMsg, "428") {
+		strings.Contains(lowerMsg, "signed session expired") {
 		return "verification_required"
+	} else if strings.Contains(lowerMsg, "byoa_provider_reauth_required") ||
+		strings.Contains(lowerMsg, "reauth_provider") {
+		return "provider_reauth_required"
+	} else if strings.Contains(lowerMsg, "request_auth_invalid") {
+		return "request_auth_invalid"
+	} else if strings.Contains(lowerMsg, "provider_auth_failed") {
+		return "provider_auth_failed"
+	} else if strings.Contains(lowerMsg, "provider_unavailable") {
+		return "provider_unavailable"
 	} else if strings.Contains(lowerMsg, "rate limit") ||
 		messageHasHTTPStatusCode(lowerMsg, "429") ||
 		strings.Contains(lowerMsg, "too many requests") {

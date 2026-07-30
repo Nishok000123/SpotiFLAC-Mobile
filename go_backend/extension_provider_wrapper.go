@@ -548,7 +548,7 @@ func (p *extensionProviderWrapper) CheckAvailabilityForItemID(isrc, trackName, a
 		if !availability.Available && p.extension.runtime != nil {
 			if p.extension.runtime.consumeVerificationRequired() != "" {
 				return nil, fmt.Errorf(
-					"VERIFY_REQUIRED: extension '%s' needs signed-session verification",
+					"verification_required: extension '%s' needs signed-session verification",
 					p.extension.ID,
 				)
 			}

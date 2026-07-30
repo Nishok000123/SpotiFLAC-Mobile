@@ -33,13 +33,42 @@ func TestDownloadErrorClassificationPrioritizesRateLimit(t *testing.T) {
 
 func TestDownloadErrorClassificationDetectsVerificationRequired(t *testing.T) {
 	cases := []string{
-		"HTTP 401 for /tickets",
-		"HTTP status 428: precondition required",
-		"Verification required",
+		"verification_required: canonical gateway challenge",
+		"signed session expired",
 	}
 	for _, tc := range cases {
 		if got := classifyDownloadErrorType(tc); got != "verification_required" {
 			t.Fatalf("classifyDownloadErrorType(%q) = %q, want verification_required", tc, got)
+		}
+	}
+}
+
+func TestDownloadErrorClassificationDoesNotInferVerificationFromHTTPStatus(t *testing.T) {
+	cases := []string{
+		"HTTP 401 for /tickets",
+		"HTTP 403 forbidden",
+		"HTTP status 428: precondition required",
+		"Provider returned unauthorized",
+		"VERIFY_REQUIRED without canonical origin and action",
+		"Verification required without a typed contract",
+	}
+	for _, tc := range cases {
+		if got := classifyDownloadErrorType(tc); got == "verification_required" {
+			t.Fatalf("classifyDownloadErrorType(%q) inferred verification from an ambiguous status", tc)
+		}
+	}
+}
+
+func TestDownloadErrorClassificationPreservesProviderContracts(t *testing.T) {
+	tests := map[string]string{
+		"PROVIDER_AUTH_FAILED":                 "provider_auth_failed",
+		"PROVIDER_UNAVAILABLE":                 "provider_unavailable",
+		"REQUEST_AUTH_INVALID":                 "request_auth_invalid",
+		"BYOA_PROVIDER_REAUTH_REQUIRED action": "provider_reauth_required",
+	}
+	for message, want := range tests {
+		if got := classifyDownloadErrorType(message); got != want {
+			t.Fatalf("classifyDownloadErrorType(%q) = %q, want %q", message, got, want)
 		}
 	}
 }

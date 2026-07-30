@@ -108,6 +108,15 @@ The behavior flags currently supported are `skipMetadataEnrichment`,
 extension-specific behavior must be added as a generic manifest capability;
 the host must not branch on a particular provider ID.
 
+Extensions that depend on canonical gateway/provider error ownership should
+declare `requiredRuntimeFeatures: ["signedSession@2"]`. Version 2 only mutates
+gateway session state for the exact `SESSION_INVALID/bootstrap_session` or
+`VERIFY_REQUIRED/verify` contracts, exposes canonical error fields to JS, and
+applies bounded `Retry-After` handling to retryable `PROVIDER_UNAVAILABLE`
+responses. `403 REQUEST_AUTH_INVALID` preserves the session and only retries
+once when a newer session generation is already available. BYOA
+reauthentication remains a separate provider action.
+
 Do not use legacy spellings such as `display_name`, `types`,
 `permissions.network.domains`, or an object for `permissions.network`.
 

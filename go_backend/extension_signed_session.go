@@ -28,6 +28,9 @@ const signedSessionRefreshSkew = time.Hour
 const (
 	signedSessionExchangeMaxAttempts = 3
 	signedSessionMaxRetryAfter       = 5 * time.Minute
+	signedSessionMaxSessionRetries   = 2
+	signedSessionMaxProviderRetries  = 2
+	signedSessionProviderRetryDelay  = time.Second
 )
 
 var (
@@ -35,6 +38,7 @@ var (
 	pendingSignedSessionGrantsMu sync.Mutex
 	signedSessionCoordinators    sync.Map
 	signedSessionRetryWait       = time.Sleep
+	signedSessionProviderWait    = sleepRetry
 )
 
 // signedSessionCoordinator serializes authentication state for every runtime
@@ -104,6 +108,19 @@ type signedSessionExchangeResponse struct {
 	ChallengeID   string `json:"challenge_id,omitempty"`
 	ChallengeURL  string `json:"challenge_url,omitempty"`
 	AuthURL       string `json:"auth_url,omitempty"`
+}
+
+// signedSessionErrorContract is the gateway-owned error envelope. Decisions
+// that mutate authentication state must use these fields together with the
+// HTTP status; a provider response must never be able to masquerade as a
+// gateway session failure merely by returning 401 or 403 upstream.
+type signedSessionErrorContract struct {
+	Error             string `json:"error,omitempty"`
+	Code              string `json:"code,omitempty"`
+	Origin            string `json:"origin,omitempty"`
+	Action            string `json:"action,omitempty"`
+	Retryable         bool   `json:"retryable,omitempty"`
+	RetryAfterSeconds int    `json:"retry_after_seconds,omitempty"`
 }
 
 func signedSessionConfigWithDefaults(config *SignedSessionConfig) SignedSessionConfig {
@@ -283,6 +300,64 @@ func sameSignedSession(a, b *signedSessionRecord) bool {
 		a.SessionID != "" &&
 		a.SessionID == b.SessionID &&
 		a.SessionSecret == b.SessionSecret
+}
+
+func parseSignedSessionErrorContract(body []byte) (signedSessionErrorContract, bool) {
+	var contract signedSessionErrorContract
+	if len(body) == 0 || json.Unmarshal(body, &contract) != nil {
+		return signedSessionErrorContract{}, false
+	}
+	contract.Error = strings.TrimSpace(contract.Error)
+	contract.Code = strings.ToUpper(strings.TrimSpace(contract.Code))
+	contract.Origin = strings.ToLower(strings.TrimSpace(contract.Origin))
+	contract.Action = strings.ToLower(strings.TrimSpace(contract.Action))
+	if contract.RetryAfterSeconds < 0 {
+		contract.RetryAfterSeconds = 0
+	}
+	return contract, contract.Code != "" || contract.Origin != "" || contract.Action != ""
+}
+
+func signedSessionGatewayAction(statusCode int, contract signedSessionErrorContract) string {
+	if contract.Origin != "gateway" {
+		return ""
+	}
+	switch {
+	case statusCode == http.StatusUnauthorized &&
+		contract.Code == "SESSION_INVALID" &&
+		contract.Action == "bootstrap_session":
+		return "bootstrap_session"
+	case statusCode == http.StatusPreconditionRequired &&
+		contract.Code == "VERIFY_REQUIRED" &&
+		contract.Action == "verify":
+		return "verify"
+	default:
+		return ""
+	}
+}
+
+func signedSessionProviderUnavailable(statusCode int, contract signedSessionErrorContract) bool {
+	return statusCode == http.StatusServiceUnavailable &&
+		contract.Origin == "provider" &&
+		contract.Code == "PROVIDER_UNAVAILABLE" &&
+		contract.Retryable
+}
+
+func signedSessionRequestAuthInvalid(statusCode int, contract signedSessionErrorContract) bool {
+	return statusCode == http.StatusForbidden &&
+		contract.Origin == "gateway" &&
+		contract.Code == "REQUEST_AUTH_INVALID" &&
+		contract.Action == ""
+}
+
+func signedSessionProviderRetryDuration(resp *http.Response, contract signedSessionErrorContract) time.Duration {
+	if retryAfter := getRetryAfterDuration(resp); retryAfter > 0 {
+		return retryAfter
+	}
+	if contract.RetryAfterSeconds > 0 {
+		maxSeconds := int(maxRetryAfterDelay / time.Second)
+		return time.Duration(min(contract.RetryAfterSeconds, maxSeconds)) * time.Second
+	}
+	return signedSessionProviderRetryDelay
 }
 
 // preflightSignedSession prepares a signed session before download metadata
@@ -558,10 +633,14 @@ func (r *extensionRuntime) signedSessionFetch(call goja.FunctionCall) goja.Value
 	}
 	coordinator.mu.Unlock()
 
-	// A request that loses a race with a successful grant exchange may return
-	// 401 using the old secret. Reload and retry with the newer shared session;
-	// never let the stale response erase that replacement session.
-	for sessionAttempt := 0; sessionAttempt < 3; sessionAttempt++ {
+	// A request that loses a race with a successful grant exchange may return a
+	// canonical SESSION_INVALID response for the old secret. Reload and retry
+	// with the newer shared session; never let that stale response erase its
+	// replacement. Provider retries have an independent, bounded budget.
+	sessionRetries := 0
+	providerRetries := 0
+	requestAuthRetryUsed := false
+	for {
 		resp, respBody, respHeaders, requestErr := r.doSignedSessionRequest(
 			config,
 			record,
@@ -573,8 +652,59 @@ func (r *extensionRuntime) signedSessionFetch(call goja.FunctionCall) goja.Value
 		if requestErr != nil {
 			return r.vm.ToValue(map[string]any{"ok": false, "error": requestErr.Error()})
 		}
-		if resp.StatusCode != http.StatusUnauthorized &&
-			resp.StatusCode != http.StatusPreconditionRequired {
+		contract, _ := parseSignedSessionErrorContract(respBody)
+
+		if signedSessionProviderUnavailable(resp.StatusCode, contract) {
+			if providerRetries >= signedSessionMaxProviderRetries {
+				return r.signedSessionResponseValue(resp, respBody, respHeaders)
+			}
+			providerRetries++
+			delay := signedSessionProviderRetryDuration(resp, contract)
+			LogWarn(
+				"SignedSession",
+				"Provider temporarily unavailable for extension %s; retrying in %s (attempt %d/%d)",
+				r.extensionID,
+				delay,
+				providerRetries+1,
+				signedSessionMaxProviderRetries+1,
+			)
+			if waitErr := signedSessionProviderWait(resp.Request.Context(), delay); waitErr != nil {
+				return r.vm.ToValue(map[string]any{"ok": false, "error": waitErr.Error()})
+			}
+			continue
+		}
+
+		if signedSessionRequestAuthInvalid(resp.StatusCode, contract) {
+			coordinator.mu.Lock()
+			latest, loadErr := r.loadSignedSession(config)
+			if loadErr != nil {
+				coordinator.mu.Unlock()
+				return r.vm.ToValue(map[string]any{"ok": false, "error": loadErr.Error()})
+			}
+			if !requestAuthRetryUsed &&
+				signedSessionRecordIsUsable(latest) &&
+				!sameSignedSession(latest, record) {
+				requestAuthRetryUsed = true
+				record = latest
+				coordinator.mu.Unlock()
+				LogDebug(
+					"SignedSession",
+					"Retrying stale REQUEST_AUTH_INVALID for extension %s with the current session generation",
+					r.extensionID,
+				)
+				continue
+			}
+			coordinator.mu.Unlock()
+			LogWarn(
+				"SignedSession",
+				"REQUEST_AUTH_INVALID for extension %s on the current session generation; preserving session state",
+				r.extensionID,
+			)
+			return r.signedSessionResponseValue(resp, respBody, respHeaders)
+		}
+
+		gatewayAction := signedSessionGatewayAction(resp.StatusCode, contract)
+		if gatewayAction == "" {
 			return r.signedSessionResponseValue(resp, respBody, respHeaders)
 		}
 
@@ -586,16 +716,24 @@ func (r *extensionRuntime) signedSessionFetch(call goja.FunctionCall) goja.Value
 		}
 		if signedSessionRecordIsUsable(latest) &&
 			!sameSignedSession(latest, record) {
+			if sessionRetries >= signedSessionMaxSessionRetries {
+				coordinator.mu.Unlock()
+				return r.vm.ToValue(map[string]any{"ok": false, "error": "signed-session retry limit reached"})
+			}
+			sessionRetries++
 			record = latest
 			coordinator.mu.Unlock()
 			LogDebug(
 				"SignedSession",
-				"Discarding stale 401 for extension %s and retrying with the exchanged session",
+				"Discarding stale %s response for extension %s and retrying with the exchanged session",
+				contract.Code,
 				r.extensionID,
 			)
 			continue
 		}
-		if sameSignedSession(latest, record) {
+		// VERIFY_REQUIRED is an explicit challenge request, not a revocation.
+		// Only SESSION_INVALID is allowed to clear the current gateway session.
+		if gatewayAction == "bootstrap_session" && sameSignedSession(latest, record) {
 			latest.SessionID = ""
 			latest.SessionSecret = ""
 			latest.ExpiresAt = ""
@@ -607,17 +745,34 @@ func (r *extensionRuntime) signedSessionFetch(call goja.FunctionCall) goja.Value
 		authURL, verificationErr := r.startSignedSessionVerificationLocked(
 			config,
 			coordinator,
-			"signed-fetch-reauth",
+			"signed-fetch-"+gatewayAction,
 		)
-		coordinator.mu.Unlock()
 		if authURL != "" {
+			coordinator.mu.Unlock()
 			return r.signedSessionVerificationRequiredValue(authURL)
 		} else if verificationErr != nil {
+			coordinator.mu.Unlock()
 			return r.vm.ToValue(map[string]any{"ok": false, "error": verificationErr.Error()})
 		}
+
+		// Bootstrap may silently issue a replacement session instead of a
+		// challenge. Retry the original operation with that generation.
+		bootstrapped, loadErr := r.loadSignedSession(config)
+		if loadErr != nil {
+			coordinator.mu.Unlock()
+			return r.vm.ToValue(map[string]any{"ok": false, "error": loadErr.Error()})
+		}
+		if signedSessionRecordIsUsable(bootstrapped) &&
+			!sameSignedSession(bootstrapped, record) &&
+			sessionRetries < signedSessionMaxSessionRetries {
+			sessionRetries++
+			record = bootstrapped
+			coordinator.mu.Unlock()
+			continue
+		}
+		coordinator.mu.Unlock()
 		return r.signedSessionResponseValue(resp, respBody, respHeaders)
 	}
-	return r.vm.ToValue(map[string]any{"ok": false, "error": "signed-session retry limit reached"})
 }
 
 func (r *extensionRuntime) signedSessionResponseValue(
@@ -625,15 +780,28 @@ func (r *extensionRuntime) signedSessionResponseValue(
 	respBody []byte,
 	respHeaders map[string]any,
 ) goja.Value {
-	return r.vm.ToValue(map[string]any{
+	contract, hasContract := parseSignedSessionErrorContract(respBody)
+	retryAfterSeconds := signedSessionRetryAfterSeconds(resp)
+	if retryAfterSeconds <= 0 && contract.RetryAfterSeconds > 0 {
+		retryAfterSeconds = contract.RetryAfterSeconds
+	}
+	result := map[string]any{
 		"statusCode":        resp.StatusCode,
 		"status":            resp.StatusCode,
 		"ok":                resp.StatusCode >= 200 && resp.StatusCode < 300,
 		"url":               resp.Request.URL.String(),
 		"body":              string(respBody),
 		"headers":           respHeaders,
-		"retryAfterSeconds": signedSessionRetryAfterSeconds(resp),
-	})
+		"retryAfterSeconds": retryAfterSeconds,
+	}
+	if hasContract {
+		result["error"] = contract.Error
+		result["code"] = contract.Code
+		result["origin"] = contract.Origin
+		result["action"] = contract.Action
+		result["retryable"] = contract.Retryable
+	}
+	return r.vm.ToValue(result)
 }
 
 func (r *extensionRuntime) signedSessionVerificationRequiredValue(authURL string) goja.Value {
