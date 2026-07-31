@@ -6003,7 +6003,7 @@
   "@extensionVerificationHelpMessageManual": {
     "description": "Dialog message when automatic browser launch for verification fails"
   },
-  "extensionVerificationHelpMessageWaiting": "브라우저가 열리지 않았거나 인증을 완료한 후에도 SpotiFLAC Mobile로 돌아오지 않았다면, 아래 링크를 다시 열거나 직접 복사하세요",
+  "extensionVerificationHelpMessageWaiting": "브라우저가 열리지 않거나 인증을 완료한 후에도 SpotiFLAC Mobile로 돌아가지 않는다면, 아래 링크를 다시 열거나 직접 복사하세요",
   "@extensionVerificationHelpMessageWaiting": {
     "description": "Dialog message when verification may need manual browser help"
   },
