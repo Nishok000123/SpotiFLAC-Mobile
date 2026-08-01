@@ -830,15 +830,15 @@
   "@trackOpenOn": {
     "description": "Track option and sheet title listing streaming platforms where the track can be opened"
   },
-  "trackOpenOnNoLinks": "No platform links found for this track.",
+  "trackOpenOnNoLinks": "Aucun lien vers une plateforme n'a été trouvé pour ce titre.",
   "@trackOpenOnNoLinks": {
     "description": "Shown in the Open on sheet when song.link returns no links"
   },
-  "libraryReviewDuplicates": "Review duplicates",
+  "libraryReviewDuplicates": "Vérifier les doublons",
   "@libraryReviewDuplicates": {
     "description": "Library settings row opening the duplicate review sheet"
   },
-  "libraryReviewDuplicatesSubtitle": "Find tracks stored more than once",
+  "libraryReviewDuplicatesSubtitle": "Rechercher les titres enregistrés plusieurs fois",
   "@libraryReviewDuplicatesSubtitle": {
     "description": "Subtitle for the duplicate review settings row"
   },
@@ -850,7 +850,7 @@
   "@duplicatesEmpty": {
     "description": "Shown when the duplicate review sheet finds nothing"
   },
-  "duplicatesKeepBest": "Keep best",
+  "duplicatesKeepBest": "Garder le meilleur",
   "@duplicatesKeepBest": {
     "description": "Button that deletes all but the highest-quality copy in a duplicate group"
   },
@@ -2095,7 +2095,7 @@
   "@appearanceForceBlur": {
     "description": "Toggle that forces backdrop blur on even when the device profile disabled it"
   },
-  "appearanceForceBlurSubtitle": "Enable the navigation bar blur even on devices where it is off by default. May cost performance.",
+  "appearanceForceBlurSubtitle": "Activer l'effet de flou de la barre de navigation même sur les appareils où cette option est désactivée par défaut. Cela peut nuire aux performances.",
   "@appearanceForceBlurSubtitle": {
     "description": "Subtitle for the force-blur toggle"
   },
@@ -4308,7 +4308,7 @@
       }
     }
   },
-  "editMetadataAutoFillCoverAvailable": "Cover artwork available",
+  "editMetadataAutoFillCoverAvailable": "Illustration de couverture disponible",
   "@editMetadataAutoFillCoverAvailable": {
     "description": "Preview value when the selected metadata source provides cover artwork"
   },
@@ -4316,7 +4316,7 @@
   "@editMetadataAutoFillApply": {
     "description": "Button label for applying the previewed metadata"
   },
-  "editMetadataAutoFillDoneFromSource": "Filled {count} {count, plural, =1{field} other{fields}} from {source}",
+  "editMetadataAutoFillDoneFromSource": "Rempli {count} {count, plural, one {}=1{champ} other{champs}} ont été renseignés à partir de {source}",
   "@editMetadataAutoFillDoneFromSource": {
     "description": "Snackbar confirming fields applied from a selected metadata source",
     "placeholders": {
@@ -4465,15 +4465,15 @@
       }
     }
   },
-  "queueEmptyPlaylistsSubtitle": "Create a playlist to organize your tracks",
+  "queueEmptyPlaylistsSubtitle": "Créez une playlist pour organiser vos morceaux",
   "@queueEmptyPlaylistsSubtitle": {
     "description": "Empty state subtitle for the playlists library view"
   },
-  "libraryDefaultView": "Default view",
+  "libraryDefaultView": "Affichage par défaut",
   "@libraryDefaultView": {
     "description": "Setting title - which library view opens when switching to the Library tab"
   },
-  "libraryDefaultViewLastUsed": "Last used",
+  "libraryDefaultViewLastUsed": "Dernière utilisation",
   "@libraryDefaultViewLastUsed": {
     "description": "Default view option - keep the last used library view"
   },
@@ -4577,7 +4577,7 @@
   "@audioAnalysisSpectralCutoff": {
     "description": "Estimated spectral cutoff metric label"
   },
-  "audioAnalysisCutoffNotDetected": "Not detected",
+  "audioAnalysisCutoffNotDetected": "Non détecté",
   "@audioAnalysisCutoffNotDetected": {
     "description": "Displayed when no reliable broadband spectral cutoff can be detected"
   },
@@ -4651,11 +4651,11 @@
   "@cancelDownloadKeep": {
     "description": "Dialog button - keep the active download (do not cancel)"
   },
-  "queueCancelledTitle": "Download cancelled",
+  "queueCancelledTitle": "Téléchargement annulé",
   "@queueCancelledTitle": {
     "description": "Dialog title when opening a cancelled queue item"
   },
-  "queueCancelledMessage": "This download was cancelled. Retry it or remove it from the queue.",
+  "queueCancelledMessage": "Ce téléchargement a été annulé. Veuillez réessayer ou le supprimer de la file d'attente.",
   "@queueCancelledMessage": {
     "description": "Dialog body when opening a cancelled queue item"
   },
@@ -4924,7 +4924,7 @@
       }
     }
   },
-  "homeImportCsvTooltip": "Import playlist (CSV, M3U)",
+  "homeImportCsvTooltip": "Importer une playlist (CSV, M3U)",
   "@homeImportCsvTooltip": {
     "description": "Tooltip for importing a CSV or M3U playlist file into Home search"
   },
@@ -4992,15 +4992,15 @@
   "@trackCoverReplaceNotice": {
     "description": "Notice shown when a new cover has been selected but not saved yet"
   },
-  "trackCoverResolution": "Cover resolution",
+  "trackCoverResolution": "Résolution de la couverture",
   "@trackCoverResolution": {
     "description": "Label for selecting the embedded cover art resolution"
   },
-  "trackCoverResolutionHint": "Sets the longest edge when saved. Enlarging does not add image detail.",
+  "trackCoverResolutionHint": "Définit la longueur maximale de l'image lors de l'enregistrement. L'agrandissement n'apporte pas davantage de détails à l'image.",
   "@trackCoverResolutionHint": {
     "description": "Explanation below the embedded cover art resolution selector"
   },
-  "trackCoverResizeFailed": "The cover image could not be resized. Please try another size or image.",
+  "trackCoverResizeFailed": "L'image de couverture n'a pas pu être redimensionnée. Veuillez essayer une autre taille ou une autre image.",
   "@trackCoverResizeFailed": {
     "description": "Error shown when resizing cover art before saving metadata fails"
   },
@@ -5012,47 +5012,47 @@
   "@queueFinalizingDownload": {
     "description": "Accessibility label for a queue item that is finalizing"
   },
-  "queueDownloadNext": "Download next",
+  "queueDownloadNext": "Télécharger le suivant",
   "@queueDownloadNext": {
     "description": "Tooltip on a queued download row; moves the item to the front of the queue so the next free slot downloads it"
   },
-  "queueMoveUp": "Move up",
+  "queueMoveUp": "Remonter",
   "@queueMoveUp": {
     "description": "Queue item menu action - move the queued item one position earlier"
   },
-  "queueMoveDown": "Move down",
+  "queueMoveDown": "Descendre",
   "@queueMoveDown": {
     "description": "Queue item menu action - move the queued item one position later"
   },
-  "editMetadataMusicBrainzButton": "Fetch from MusicBrainz",
+  "editMetadataMusicBrainzButton": "Récupérer depuis MusicBrainz",
   "@editMetadataMusicBrainzButton": {
     "description": "Tag editor button that fills genre and album artist from MusicBrainz by ISRC"
   },
-  "editMetadataMusicBrainzFilled": "Updated from MusicBrainz",
+  "editMetadataMusicBrainzFilled": "Mise à jour à partir de MusicBrainz",
   "@editMetadataMusicBrainzFilled": {
     "description": "Snackbar after MusicBrainz suggestions were applied to the tag editor fields"
   },
-  "editMetadataMusicBrainzNothing": "Nothing found on MusicBrainz",
+  "editMetadataMusicBrainzNothing": "Aucun résultat trouvé sur MusicBrainz",
   "@editMetadataMusicBrainzNothing": {
     "description": "Snackbar when the MusicBrainz lookup returns no data"
   },
-  "editMetadataMusicBrainzNeedsIsrc": "Requires an ISRC tag",
+  "editMetadataMusicBrainzNeedsIsrc": "Nécessite une balise ISRC",
   "@editMetadataMusicBrainzNeedsIsrc": {
     "description": "Snackbar when the MusicBrainz lookup is tapped without an ISRC"
   },
-  "nowPlayingRepeatOff": "Repeat off",
+  "nowPlayingRepeatOff": "Répétition désactivée",
   "@nowPlayingRepeatOff": {
     "description": "Repeat toggle tooltip when repeat is disabled"
   },
-  "nowPlayingRepeatAll": "Repeat all",
+  "nowPlayingRepeatAll": "Tout répéter",
   "@nowPlayingRepeatAll": {
     "description": "Repeat toggle tooltip when the whole queue repeats"
   },
-  "nowPlayingRepeatOne": "Repeat one",
+  "nowPlayingRepeatOne": "Répéter une fois",
   "@nowPlayingRepeatOne": {
     "description": "Repeat toggle tooltip when the current track repeats"
   },
-  "queueNetworkFailedOffline": "{count} downloads failed while offline",
+  "queueNetworkFailedOffline": "{count} téléchargements ont échoué en mode hors ligne",
   "@queueNetworkFailedOffline": {
     "description": "Snackbar shown when connectivity returns and network-failed downloads can be retried",
     "placeholders": {
@@ -5336,7 +5336,7 @@
   "@downloadQualityVariants": {
     "description": "Setting to retain multiple quality versions of the same track"
   },
-  "downloadQualityVariantsDescription": "Keep every quality version; add its measured quality to the filename only when the name is already used",
+  "downloadQualityVariantsDescription": "Conserver toutes les versions de qualité ; n'ajouter la note de qualité au nom de fichier que si ce nom est déjà utilisé",
   "@downloadQualityVariantsDescription": {
     "description": "Description for retaining multiple quality versions"
   },
@@ -6239,11 +6239,11 @@
   "@extensionVerificationOpenBrowser": {
     "description": "Button to open the extension verification URL in a browser"
   },
-  "settingsSearchHint": "Search settings",
+  "settingsSearchHint": "Paramètres de recherche",
   "@settingsSearchHint": {
     "description": "Placeholder of the search field on the Settings tab"
   },
-  "settingsSearchNoResults": "No settings match \"{query}\"",
+  "settingsSearchNoResults": "Aucun paramètre ne correspond à « {query} »",
   "@settingsSearchNoResults": {
     "description": "Shown when a Settings search returns nothing",
     "placeholders": {
@@ -6252,23 +6252,23 @@
       }
     }
   },
-  "settingsGroupInterface": "Extensions & appearance",
+  "settingsGroupInterface": "Extensions & Apparence",
   "@settingsGroupInterface": {
     "description": "Settings group covering look and feel"
   },
-  "settingsGroupContent": "Content & metadata",
+  "settingsGroupContent": "Contenu & Métadonnées",
   "@settingsGroupContent": {
     "description": "Settings group covering the library, metadata and lyrics"
   },
-  "settingsGroupDownloads": "Downloads & files",
+  "settingsGroupDownloads": "Téléchargements & Fichiers",
   "@settingsGroupDownloads": {
     "description": "Settings group covering download behaviour and storage"
   },
-  "settingsGroupSystem": "System",
+  "settingsGroupSystem": "Système",
   "@settingsGroupSystem": {
     "description": "Settings group covering app-level data, cache and logs"
   },
-  "settingsGroupHelp": "About & support",
+  "settingsGroupHelp": "À propos & Assistance",
   "@settingsGroupHelp": {
     "description": "Settings group covering the about page and donations"
   }
