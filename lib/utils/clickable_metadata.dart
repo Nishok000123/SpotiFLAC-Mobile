@@ -292,7 +292,7 @@ void _pushArtistScreen(
   final isExtension = extensionId != null;
   final resolvedProviderId = extensionId;
 
-  _pushViaPreferredNavigator(
+  pushViaPreferredNavigator(
     context,
     (context) => isExtension && resolvedProviderId != null
         ? ExtensionArtistScreen(
@@ -320,7 +320,7 @@ void _pushAlbumScreen(
   final isExtension = extensionId != null;
   final resolvedExtensionId = extensionId;
 
-  _pushViaPreferredNavigator(
+  pushViaPreferredNavigator(
     context,
     (context) => isExtension && resolvedExtensionId != null
         ? ExtensionAlbumScreen(
@@ -339,7 +339,10 @@ void _pushAlbumScreen(
   );
 }
 
-void _pushViaPreferredNavigator(BuildContext context, WidgetBuilder builder) {
+/// Pushes detail pages into the active tab navigator when invoked from a root
+/// modal such as Now Playing. The root modal is dismissed first so the album
+/// is immediately visible instead of being hidden behind it.
+void pushViaPreferredNavigator(BuildContext context, WidgetBuilder builder) {
   final currentNavigator = Navigator.of(context);
   final rootNavigator = Navigator.of(context, rootNavigator: true);
   final activeTabNavigator = ShellNavigationService.activeTabNavigator();

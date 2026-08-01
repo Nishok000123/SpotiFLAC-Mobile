@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/models/track.dart';
+import 'package:spotiflac_android/providers/library_collections_provider.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
+import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/widgets/preview_button.dart';
 import 'package:spotiflac_android/widgets/track_collection_quick_actions.dart';
 
@@ -84,4 +87,40 @@ void main() {
 
     expectCenteredHitbox(tester, Icons.more_vert);
   });
+
+  testWidgets('track options expose Go to Album for album tracks', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(_TestSettingsNotifier.new),
+          libraryCollectionsProvider.overrideWith(
+            _TestLibraryCollectionsNotifier.new,
+          ),
+        ],
+        child: const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: TrackCollectionQuickActions(track: track)),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Go to Album'), findsOneWidget);
+    expect(find.byIcon(Icons.album_outlined), findsOneWidget);
+  });
+}
+
+class _TestSettingsNotifier extends SettingsNotifier {
+  @override
+  AppSettings build() => const AppSettings();
+}
+
+class _TestLibraryCollectionsNotifier extends LibraryCollectionsNotifier {
+  @override
+  LibraryCollectionsState build() => LibraryCollectionsState(isLoaded: true);
 }

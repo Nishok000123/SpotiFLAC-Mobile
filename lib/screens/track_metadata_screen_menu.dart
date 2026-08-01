@@ -29,6 +29,12 @@ extension _TrackMetadataMenu on _TrackMetadataScreenState {
               label: l10n.trackAddToQueue,
               onTap: () => _enqueueThis(ref, playNext: false),
             ),
+          if (albumName.trim().isNotEmpty)
+            _MetadataOption(
+              icon: Icons.album_outlined,
+              label: l10n.homeGoToAlbum,
+              onTap: () => _goToStoredAlbum(screenContext),
+            ),
           _MetadataOption(
             icon: Icons.copy_outlined,
             label: l10n.trackCopyFilePath,
@@ -225,5 +231,56 @@ extension _TrackMetadataMenu on _TrackMetadataScreenState {
     }
 
     return placeholder();
+  }
+
+  Future<void> _goToStoredAlbum(BuildContext screenContext) async {
+    final resolvedAlbumArtist = (albumArtist ?? '').trim();
+    final artist = resolvedAlbumArtist.isNotEmpty
+        ? resolvedAlbumArtist
+        : artistName;
+
+    if (!_isLocalItem) {
+      pushViaPreferredNavigator(
+        screenContext,
+        (_) => DownloadedAlbumScreen(
+          albumName: albumName,
+          artistName: artist,
+          coverUrl: _coverUrl,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final rows = await LibraryDatabase.instance.getQueueLocalAlbumTracksByKey(
+        _localLibraryItem!.albumKey,
+      );
+      if (!mounted || !screenContext.mounted) return;
+      final tracks = rows
+          .map(LocalLibraryItem.fromJson)
+          .toList(growable: false);
+      if (tracks.isNotEmpty) {
+        pushViaPreferredNavigator(
+          screenContext,
+          (_) => LocalAlbumScreen(
+            albumName: albumName,
+            artistName: artist,
+            coverPath: _localCoverPath,
+            tracks: tracks,
+          ),
+        );
+        return;
+      }
+    } catch (e) {
+      _log.w('Failed to resolve local album: $e');
+    }
+
+    if (!mounted || !screenContext.mounted) return;
+    await navigateToAlbum(
+      screenContext,
+      albumName: albumName,
+      artistName: artist,
+      coverUrl: _coverUrl,
+    );
   }
 }

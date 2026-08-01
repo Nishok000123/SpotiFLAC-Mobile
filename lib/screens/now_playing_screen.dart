@@ -5,9 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/providers/download_history_provider.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
+import 'package:spotiflac_android/screens/downloaded_album_screen.dart';
+import 'package:spotiflac_android/screens/local_album_screen.dart';
 import 'package:spotiflac_android/services/library_database.dart';
 import 'package:spotiflac_android/services/music_player_service.dart';
+import 'package:spotiflac_android/utils/clickable_metadata.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/int_utils.dart';
 import 'package:spotiflac_android/utils/lyrics_parser.dart';
@@ -729,6 +733,12 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         padding: const EdgeInsets.only(bottom: 16),
         child: SettingsGroup(
           children: [
+            if ((mediaItem.album ?? '').trim().isNotEmpty)
+              SettingsItem(
+                icon: Icons.album_outlined,
+                title: sheetContext.l10n.homeGoToAlbum,
+                onTap: () => Navigator.of(sheetContext).pop('album'),
+              ),
             SettingsItem(
               icon: Icons.info_outline,
               title: sheetContext.l10n.nowPlayingDetails,
@@ -751,6 +761,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     );
     if (!mounted) return;
     switch (action) {
+      case 'album':
+        await _goToCurrentAlbum(mediaItem: mediaItem, source: source);
+        break;
       case 'details':
         _showDetailsSheet(colorScheme);
         break;
@@ -758,6 +771,80 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         await _openExternally(source);
         break;
     }
+  }
+
+  Future<void> _goToCurrentAlbum({
+    required MediaItem mediaItem,
+    required String source,
+  }) async {
+    final albumName = (mediaItem.album ?? '').trim();
+    if (albumName.isEmpty) return;
+
+    // Prefer the stored collection so this action remains useful offline and
+    // opens the exact files the user is currently playing.
+    try {
+      final historyItem = source.isEmpty
+          ? null
+          : await ref
+                .read(downloadHistoryProvider.notifier)
+                .getByFilePathAsync(source);
+      if (!mounted) return;
+      if (historyItem != null) {
+        final albumArtist = (historyItem.albumArtist ?? '').trim();
+        pushViaPreferredNavigator(
+          context,
+          (_) => DownloadedAlbumScreen(
+            albumName: historyItem.albumName,
+            artistName: albumArtist.isNotEmpty
+                ? albumArtist
+                : historyItem.artistName,
+            coverUrl: historyItem.coverUrl,
+          ),
+        );
+        return;
+      }
+    } catch (e) {
+      _log.w('Failed to resolve downloaded album: $e');
+    }
+
+    try {
+      final row = await LibraryDatabase.instance.getById(mediaItem.id);
+      if (!mounted) return;
+      if (row != null) {
+        final item = LocalLibraryItem.fromJson(row);
+        final rows = await LibraryDatabase.instance
+            .getQueueLocalAlbumTracksByKey(item.albumKey);
+        if (!mounted) return;
+        final tracks = rows
+            .map(LocalLibraryItem.fromJson)
+            .toList(growable: false);
+        if (tracks.isNotEmpty) {
+          final albumArtist = (item.albumArtist ?? '').trim();
+          pushViaPreferredNavigator(
+            context,
+            (_) => LocalAlbumScreen(
+              albumName: item.albumName,
+              artistName: albumArtist.isNotEmpty
+                  ? albumArtist
+                  : item.artistName,
+              coverPath: item.coverPath,
+              tracks: tracks,
+            ),
+          );
+          return;
+        }
+      }
+    } catch (e) {
+      _log.w('Failed to resolve local album: $e');
+    }
+
+    if (!mounted) return;
+    await navigateToAlbum(
+      context,
+      albumName: albumName,
+      artistName: mediaItem.artist,
+      coverUrl: mediaItem.artUri?.toString(),
+    );
   }
 
   Future<void> _shuffleLibrary(MusicPlayerController controller) async {
