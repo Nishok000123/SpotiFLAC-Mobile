@@ -103,8 +103,11 @@ class AppStateDatabase {
   }
 
   static Future<void> _createPlaybackSessionTable(Database db) {
+    // Keep this idempotent so an interrupted migration or a database restored
+    // from an intermediate build can resume v1 -> v2 without losing queue
+    // state merely because the table was already created.
     return db.execute('''
-      CREATE TABLE $_playbackSessionTable (
+      CREATE TABLE IF NOT EXISTS $_playbackSessionTable (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         session_json TEXT NOT NULL,
         updated_at TEXT NOT NULL

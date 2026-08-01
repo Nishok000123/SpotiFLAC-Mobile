@@ -139,6 +139,26 @@ void main() {
     });
   });
 
+  group('app state database migrations', () {
+    final source = File(
+      'lib/services/app_state_database.dart',
+    ).readAsStringSync();
+
+    test('v1 to v2 tolerates an existing playback session table', () {
+      expect(
+        source,
+        contains('CREATE TABLE IF NOT EXISTS \$_playbackSessionTable'),
+      );
+      expect(
+        RegExp(
+          r'if \(oldVersion < 2\)\s*\{\s*'
+          r'await _createPlaybackSessionTable\(db\);',
+        ).hasMatch(source),
+        isTrue,
+      );
+    });
+  });
+
   group('native worker contracts', () {
     final finalizerSource = File(
       'android/app/src/main/kotlin/com/zarz/spotiflac/'
