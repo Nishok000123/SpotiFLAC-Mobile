@@ -2,6 +2,10 @@ part of 'track_metadata_screen.dart';
 
 extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
   Widget _buildLyricsCard(BuildContext context, ColorScheme colorScheme) {
+    final hasDisplayLyrics = _lyrics?.trim().isNotEmpty == true;
+    final hasDisplaySource =
+        (hasDisplayLyrics || _isInstrumental) &&
+        _lyricsSource?.trim().isNotEmpty == true;
     return Card(
       elevation: 0,
       color: settingsGroupColor(context),
@@ -27,7 +31,7 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
                   ),
                 ),
                 const Spacer(),
-                if (_lyrics != null)
+                if (hasDisplayLyrics)
                   IconButton(
                     icon: const Icon(Icons.copy, size: 20),
                     onPressed: () => _copyToClipboard(context, _lyrics!),
@@ -35,7 +39,7 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
                   ),
               ],
             ),
-            if (_lyricsSource != null && _lyricsSource!.trim().isNotEmpty)
+            if (hasDisplaySource)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
@@ -108,7 +112,7 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
                   ],
                 ),
               )
-            else if (_lyrics != null)
+            else if (hasDisplayLyrics)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -232,20 +236,26 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
       if (mounted &&
           generation == _metadataLoadGeneration &&
           sourcePath == cleanFilePath) {
-        if (embeddedLyrics.isNotEmpty) {
-          final cleanLyrics = _cleanLrcForDisplay(embeddedLyrics);
+        final instrumental = isInstrumentalLyricsMarker(embeddedLyrics);
+        final cleanLyrics = cleanLyricsForDisplay(embeddedLyrics);
+        if (instrumental || cleanLyrics.isNotEmpty) {
           _setState(() {
-            _lyrics = cleanLyrics;
-            _rawLyrics = embeddedLyrics;
+            _lyrics = instrumental ? null : cleanLyrics;
+            _rawLyrics = instrumental ? null : embeddedLyrics;
             _lyricsSource = embeddedSource.isNotEmpty
                 ? embeddedSource
                 : context.l10n.trackLyricsEmbeddedSource;
-            _lyricsEmbedded = true;
+            _lyricsEmbedded = !instrumental;
+            _isInstrumental = instrumental;
             _lyricsLoading = false;
             _embeddedLyricsChecked = true;
           });
         } else {
           _setState(() {
+            _lyrics = null;
+            _rawLyrics = null;
+            _lyricsSource = null;
+            _lyricsEmbedded = false;
             _lyricsLoading = false;
             _embeddedLyricsChecked = true;
           });
@@ -289,22 +299,29 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
       final source = result['source']?.toString() ?? '';
       final instrumental =
           (result['instrumental'] as bool? ?? false) ||
-          lrcText == '[instrumental:true]';
+          isInstrumentalLyricsMarker(lrcText);
+      final cleanLyrics = cleanLyricsForDisplay(lrcText);
 
       if (mounted) {
         if (instrumental) {
           _setState(() {
+            _lyrics = null;
+            _rawLyrics = null;
             _isInstrumental = true;
             _lyricsSource = source.isNotEmpty ? source : null;
+            _lyricsEmbedded = false;
             _lyricsLoading = false;
           });
-        } else if (lrcText.isEmpty) {
+        } else if (cleanLyrics.isEmpty) {
           _setState(() {
+            _lyrics = null;
+            _rawLyrics = null;
+            _lyricsSource = null;
+            _lyricsEmbedded = false;
             _lyricsError = context.l10n.trackLyricsNotAvailable;
             _lyricsLoading = false;
           });
         } else {
-          final cleanLyrics = _cleanLrcForDisplay(lrcText);
           _setState(() {
             _lyrics = cleanLyrics;
             _rawLyrics = lrcText;
@@ -362,16 +379,18 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
         final embeddedLyrics = embeddedResult['lyrics']?.toString() ?? '';
         final embeddedSource = embeddedResult['source']?.toString() ?? '';
 
-        if (embeddedLyrics.isNotEmpty) {
+        final embeddedInstrumental = isInstrumentalLyricsMarker(embeddedLyrics);
+        final cleanEmbeddedLyrics = cleanLyricsForDisplay(embeddedLyrics);
+        if (embeddedInstrumental || cleanEmbeddedLyrics.isNotEmpty) {
           if (mounted) {
-            final cleanLyrics = _cleanLrcForDisplay(embeddedLyrics);
             _setState(() {
-              _lyrics = cleanLyrics;
-              _rawLyrics = embeddedLyrics;
+              _lyrics = embeddedInstrumental ? null : cleanEmbeddedLyrics;
+              _rawLyrics = embeddedInstrumental ? null : embeddedLyrics;
               _lyricsSource = embeddedSource.isNotEmpty
                   ? embeddedSource
                   : context.l10n.trackLyricsEmbeddedSource;
-              _lyricsEmbedded = true;
+              _lyricsEmbedded = !embeddedInstrumental;
+              _isInstrumental = embeddedInstrumental;
               _lyricsLoading = false;
               _embeddedLyricsChecked = true;
             });
@@ -392,22 +411,29 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
       final source = result['source']?.toString() ?? '';
       final instrumental =
           (result['instrumental'] as bool? ?? false) ||
-          lrcText == '[instrumental:true]';
+          isInstrumentalLyricsMarker(lrcText);
+      final cleanLyrics = cleanLyricsForDisplay(lrcText);
 
       if (mounted) {
         if (instrumental) {
           _setState(() {
+            _lyrics = null;
+            _rawLyrics = null;
             _isInstrumental = true;
             _lyricsSource = source.isNotEmpty ? source : null;
+            _lyricsEmbedded = false;
             _lyricsLoading = false;
           });
-        } else if (lrcText.isEmpty) {
+        } else if (cleanLyrics.isEmpty) {
           _setState(() {
+            _lyrics = null;
+            _rawLyrics = null;
+            _lyricsSource = null;
+            _lyricsEmbedded = false;
             _lyricsError = context.l10n.trackLyricsNotAvailable;
             _lyricsLoading = false;
           });
         } else {
-          final cleanLyrics = _cleanLrcForDisplay(lrcText);
           _setState(() {
             _lyrics = cleanLyrics;
             _rawLyrics = lrcText;
@@ -1207,47 +1233,5 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
     } catch (e) {
       _log.w('Failed to sync download history metadata: $e');
     }
-  }
-
-  String _cleanLrcForDisplay(String lrc) {
-    final lines = lrc.split('\n');
-    final cleanLines = <String>[];
-
-    for (final line in lines) {
-      var cleaned = line.trim();
-
-      if (_TrackMetadataScreenState._lrcMetadataPattern.hasMatch(cleaned) &&
-          !_TrackMetadataScreenState._lrcBackgroundLinePattern.hasMatch(
-            cleaned,
-          )) {
-        continue;
-      }
-
-      // Convert [bg:...] wrapper to a plain secondary vocal line.
-      final bgMatch = _TrackMetadataScreenState._lrcBackgroundLinePattern
-          .firstMatch(cleaned);
-      if (bgMatch != null) {
-        cleaned = bgMatch.group(1)?.trim() ?? '';
-      }
-
-      cleaned = cleaned
-          .replaceAll(_TrackMetadataScreenState._lrcTimestampPattern, '')
-          .trim();
-      cleaned = cleaned.replaceAll(
-        _TrackMetadataScreenState._lrcInlineTimestampPattern,
-        '',
-      );
-      cleaned = cleaned.replaceFirst(
-        _TrackMetadataScreenState._lrcSpeakerPrefixPattern,
-        '',
-      );
-      cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
-
-      if (cleaned.isNotEmpty) {
-        cleanLines.add(cleaned);
-      }
-    }
-
-    return cleanLines.join('\n');
   }
 }

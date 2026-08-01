@@ -138,15 +138,6 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
   Map<String, dynamic>? _editedMetadata;
   String? _resolvedAudioFormat;
   String? _embeddedCoverPreviewPath;
-  static final RegExp _lrcTimestampPattern = RegExp(
-    r'^\[\d{2}:\d{2}\.\d{2,3}\]',
-  );
-  static final RegExp _lrcMetadataPattern = RegExp(r'^\[[a-zA-Z]+:.*\]$');
-  static final RegExp _lrcInlineTimestampPattern = RegExp(
-    r'<\d{2}:\d{2}\.\d{2,3}>',
-  );
-  static final RegExp _lrcSpeakerPrefixPattern = RegExp(r'^(v1|v2):\s*');
-  static final RegExp _lrcBackgroundLinePattern = RegExp(r'^\[bg:(.*)\]$');
   static final RegExp _invalidFileNameChars = RegExp(r'[<>:"/\\|?*\x00-\x1f]');
   static final RegExp _multiUnderscore = RegExp(r'_+');
   static final RegExp _leadingOrTrailingDots = RegExp(r'^\.+|\.+$');

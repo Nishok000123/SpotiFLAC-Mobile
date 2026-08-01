@@ -73,16 +73,25 @@ extension _TrackMetadataFileActions on _TrackMetadataScreenState {
       try {
         final refreshed = await PlatformBridge.readFileMetadata(cleanFilePath);
         final refreshedLyrics = refreshed['lyrics']?.toString().trim() ?? '';
+        final refreshedInstrumental = isInstrumentalLyricsMarker(
+          refreshedLyrics,
+        );
+        final refreshedDisplayLyrics = cleanLyricsForDisplay(refreshedLyrics);
         _setState(() {
           _editedMetadata = refreshed;
           _lyricsError = null;
-          _isInstrumental = false;
+          _isInstrumental = refreshedInstrumental;
           _embeddedLyricsChecked = true;
-          if (refreshedLyrics.isNotEmpty) {
-            _lyrics = _cleanLrcForDisplay(refreshedLyrics);
+          if (refreshedDisplayLyrics.isNotEmpty) {
+            _lyrics = refreshedDisplayLyrics;
             _rawLyrics = refreshedLyrics;
             _lyricsSource = context.l10n.trackLyricsEmbeddedSource;
             _lyricsEmbedded = true;
+          } else if (refreshedInstrumental) {
+            _lyrics = null;
+            _rawLyrics = null;
+            _lyricsSource = context.l10n.trackLyricsEmbeddedSource;
+            _lyricsEmbedded = false;
           } else {
             _lyrics = null;
             _rawLyrics = null;

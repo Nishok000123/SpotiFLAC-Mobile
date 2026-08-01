@@ -48,6 +48,36 @@ func TestLyricsExportWrappersWithoutNetwork(t *testing.T) {
 	}
 }
 
+func TestLyricsExportWrappersRejectMetadataOnlySidecar(t *testing.T) {
+	dir := t.TempDir()
+	audioPath := filepath.Join(dir, "metadata-only.mp3")
+	if err := os.WriteFile(audioPath, []byte("audio"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	metadataOnly := "[ti:Title]\n[ar:Artist]\n[al:Album]\n[by:SpotiFLAC Mobile]"
+	if err := os.WriteFile(filepath.Join(dir, "metadata-only.lrc"), []byte(metadataOnly), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	if rawLyricsHasUsableContent(metadataOnly) {
+		t.Fatal("metadata-only LRC must not be considered usable")
+	}
+	if !rawLyricsHasUsableContent("[00:01.00]Actual lyric") {
+		t.Fatal("timed lyric must be considered usable")
+	}
+	if !rawLyricsHasUsableContent("[instrumental:true]") {
+		t.Fatal("instrumental marker must be considered usable")
+	}
+
+	if lrc, err := GetLyricsLRC("", "", "", audioPath, 0); err != nil || lrc != "" {
+		t.Fatalf("GetLyricsLRC metadata-only sidecar = %q/%v", lrc, err)
+	}
+	if jsonText, err := GetLyricsLRCWithSource("", "", "", audioPath, 0); err != nil ||
+		!strings.Contains(jsonText, `"lyrics":""`) || strings.Contains(jsonText, `"source":"Embedded"`) {
+		t.Fatalf("GetLyricsLRCWithSource metadata-only sidecar = %q/%v", jsonText, err)
+	}
+}
+
 func TestSongLinkExportWrappersWithFakeClient(t *testing.T) {
 	origClient := globalSongLinkClient
 	origRetryConfig := songLinkRetryConfig

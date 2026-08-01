@@ -12,6 +12,53 @@ import (
 
 var lrcLinePattern = regexp.MustCompile(`\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)`)
 
+var (
+	rawLyricsMetadataLinePattern = regexp.MustCompile(`(?i)^\[[a-z][a-z0-9_]*:.*\]$`)
+	rawLyricsBackgroundPattern   = regexp.MustCompile(`(?i)^\[bg:(.*)\]$`)
+	rawLyricsTimestampPattern    = regexp.MustCompile(`^\[\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?\]`)
+	rawLyricsInlineTimePattern   = regexp.MustCompile(`<\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?>`)
+)
+
+func isInstrumentalLyricsMarker(raw string) bool {
+	return strings.EqualFold(strings.TrimSpace(raw), "[instrumental:true]")
+}
+
+// rawLyricsHasUsableContent rejects LRC payloads that contain only metadata
+// headers. Those payloads are common in partially tagged files and must not be
+// exposed as a blank "Embedded" lyrics result.
+func rawLyricsHasUsableContent(raw string) bool {
+	if isInstrumentalLyricsMarker(raw) {
+		return true
+	}
+
+	for _, line := range strings.Split(raw, "\n") {
+		cleaned := strings.TrimSpace(line)
+		if cleaned == "" {
+			continue
+		}
+
+		if match := rawLyricsBackgroundPattern.FindStringSubmatch(cleaned); len(match) == 2 {
+			cleaned = strings.TrimSpace(match[1])
+		} else if rawLyricsMetadataLinePattern.MatchString(cleaned) {
+			continue
+		}
+
+		for rawLyricsTimestampPattern.MatchString(cleaned) {
+			cleaned = strings.TrimSpace(rawLyricsTimestampPattern.ReplaceAllString(cleaned, ""))
+		}
+		cleaned = strings.TrimSpace(rawLyricsInlineTimePattern.ReplaceAllString(cleaned, ""))
+		lower := strings.ToLower(cleaned)
+		if strings.HasPrefix(lower, "v1:") || strings.HasPrefix(lower, "v2:") {
+			cleaned = strings.TrimSpace(cleaned[3:])
+		}
+		if cleaned != "" {
+			return true
+		}
+	}
+
+	return false
+}
+
 func parseSyncedLyrics(syncedLyrics string) []LyricsLine {
 	var lines []LyricsLine
 
