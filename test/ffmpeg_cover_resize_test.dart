@@ -31,4 +31,22 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test('cover dimensions require positive width and height', () {
+    expect(
+      FFmpegService.imageDimensionsFromProperties({
+        'width': '1900',
+        'height': 1500,
+      }),
+      (width: 1900, height: 1500),
+    );
+    expect(
+      FFmpegService.imageDimensionsFromProperties({'width': 0, 'height': 1500}),
+      isNull,
+    );
+    expect(
+      FFmpegService.imageDimensionsFromProperties({'width': 1500}),
+      isNull,
+    );
+  });
 }

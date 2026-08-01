@@ -60,6 +60,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
   String? _currentCoverTempDir;
   bool _loadingCurrentCover = false;
   int? _coverMaxDimension;
+  final Map<String, ({int width, int height})> _coverDimensions = {};
+  final Set<String> _coverDimensionLoads = {};
   String? _selectedMetadataProviderId;
   _AutoFillPreview? _autoFillPreview;
   final GlobalKey<ScaffoldMessengerState> _sheetMessengerKey =
@@ -195,7 +197,12 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       builder: (sheetContext) {
         final cs = Theme.of(sheetContext).colorScheme;
         final options = <({int value, String label})>[
-          (value: 0, label: sheetContext.l10n.trackConvertOriginal),
+          (
+            value: 0,
+            label: _originalCoverResolutionLabel(
+              sheetContext.l10n.trackConvertOriginal,
+            ),
+          ),
           for (final dimension in _coverResizeDimensions)
             (value: dimension, label: '$dimension px'),
         ];
@@ -371,6 +378,29 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
   bool _hasValue(String? value) => value != null && value.trim().isNotEmpty;
 
+  String _originalCoverResolutionLabel(String originalLabel) {
+    final sourcePath = _selectedCoverPath ?? _currentCoverPath;
+    final dimensions = sourcePath == null ? null : _coverDimensions[sourcePath];
+    if (dimensions == null) return originalLabel;
+    return '$originalLabel · ${dimensions.width} × ${dimensions.height} px';
+  }
+
+  Future<void> _loadCoverDimensions(String path) async {
+    if (_coverDimensions.containsKey(path) || !_coverDimensionLoads.add(path)) {
+      return;
+    }
+    final dimensions = await FFmpegService.probeImageDimensions(path);
+    if (!mounted) return;
+    setState(() {
+      _coverDimensionLoads.remove(path);
+      final isActivePath =
+          path == _currentCoverPath || path == _selectedCoverPath;
+      if (isActivePath && dimensions != null) {
+        _coverDimensions[path] = dimensions;
+      }
+    });
+  }
+
   String _resolveImageExtension(String? ext, Uint8List? bytes) {
     final normalized = (ext ?? '').toLowerCase();
     if (normalized == 'png' ||
@@ -406,9 +436,14 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
   Future<void> _cleanupSelectedCoverTemp() async {
     final dirPath = _selectedCoverTempDir;
+    final coverPath = _selectedCoverPath;
     _selectedCoverPath = null;
     _selectedCoverTempDir = null;
     _selectedCoverName = null;
+    if (coverPath != null) {
+      _coverDimensions.remove(coverPath);
+      _coverDimensionLoads.remove(coverPath);
+    }
     if (dirPath == null || dirPath.isEmpty) return;
     try {
       final dir = Directory(dirPath);
@@ -420,8 +455,13 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
   Future<void> _cleanupCurrentCoverTemp() async {
     final dirPath = _currentCoverTempDir;
+    final coverPath = _currentCoverPath;
     _currentCoverPath = null;
     _currentCoverTempDir = null;
+    if (coverPath != null) {
+      _coverDimensions.remove(coverPath);
+      _coverDimensionLoads.remove(coverPath);
+    }
     if (dirPath == null || dirPath.isEmpty) return;
     try {
       final dir = Directory(dirPath);
@@ -469,11 +509,19 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     }
 
     final oldDir = _currentCoverTempDir;
+    final oldCoverPath = _currentCoverPath;
     setState(() {
+      if (oldCoverPath != null && oldCoverPath != newCoverPath) {
+        _coverDimensions.remove(oldCoverPath);
+        _coverDimensionLoads.remove(oldCoverPath);
+      }
       _currentCoverPath = newCoverPath;
       _currentCoverTempDir = newCoverDir;
       _loadingCurrentCover = false;
     });
+    if (newCoverPath != null) {
+      unawaited(_loadCoverDimensions(newCoverPath));
+    }
     if (oldDir != null && oldDir.isNotEmpty && oldDir != newCoverDir) {
       try {
         final dir = Directory(oldDir);
@@ -526,6 +574,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         _selectedCoverTempDir = tempDir.path;
         _selectedCoverName = picked.name;
       });
+      unawaited(_loadCoverDimensions(tempPath));
     } catch (e) {
       if (!mounted) return;
       _showSheetSnackBar(context.l10n.snackbarError(context.friendlyError(e)));
@@ -1344,6 +1393,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
               _selectedCoverTempDir = tempDir.path;
               _selectedCoverName = _EditMetadataSheet._onlineCoverSentinel;
               filledCount++;
+              unawaited(_loadCoverDimensions(coverOutput));
             }
           } else {
             await tempDir.delete(recursive: true);
@@ -2244,7 +2294,9 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           _selectionField(
             label: context.l10n.trackCoverResolution,
             value: _coverMaxDimension == null
-                ? context.l10n.trackConvertOriginal
+                ? _originalCoverResolutionLabel(
+                    context.l10n.trackConvertOriginal,
+                  )
                 : '${_coverMaxDimension!} px',
             enabled: !_saving,
             onTap: _showCoverResolutionPicker,
@@ -2266,6 +2318,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     required String path,
     required String label,
   }) {
+    final dimensions = _coverDimensions[path];
+    final loadingDimensions = _coverDimensionLoads.contains(path);
     return Column(
       children: [
         Container(
@@ -2311,6 +2365,26 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
+        const SizedBox(height: 3),
+        if (dimensions != null)
+          Text(
+            '${dimensions.width} × ${dimensions.height} px',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: cs.primary,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          )
+        else if (loadingDimensions)
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5,
+              color: cs.primary,
+            ),
+          ),
       ],
     );
   }

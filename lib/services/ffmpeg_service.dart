@@ -374,6 +374,38 @@ class FFmpegService {
     }
   }
 
+  @visibleForTesting
+  static ({int width, int height})? imageDimensionsFromProperties(
+    Map<dynamic, dynamic> properties,
+  ) {
+    final width = int.tryParse(properties['width']?.toString() ?? '');
+    final height = int.tryParse(properties['height']?.toString() ?? '');
+    if (width == null || height == null || width <= 0 || height <= 0) {
+      return null;
+    }
+    return (width: width, height: height);
+  }
+
+  /// Reads image dimensions without decoding the full bitmap into Dart memory.
+  static Future<({int width, int height})?> probeImageDimensions(
+    String filePath,
+  ) async {
+    try {
+      final session = await FFprobeKit.getMediaInformation(filePath);
+      final info = session.getMediaInformation();
+      if (info == null) return null;
+      for (final stream in info.getStreams()) {
+        final properties =
+            stream.getAllProperties() ?? const <String, dynamic>{};
+        final dimensions = imageDimensionsFromProperties(properties);
+        if (dimensions != null) return dimensions;
+      }
+    } catch (e) {
+      _log.w('Cover dimension probe failed for $filePath: $e');
+    }
+    return null;
+  }
+
   static Future<String?> probePrimaryAudioCodec(String filePath) async {
     try {
       final session = await FFprobeKit.getMediaInformation(filePath);
