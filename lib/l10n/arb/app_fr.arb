@@ -792,7 +792,7 @@
   "@dialogImportPlaylistTitle": {
     "description": "Dialog title - import CSV playlist"
   },
-  "dialogImportPlaylistMessage": "Found {count} tracks in the playlist file. Add them to download queue?",
+  "dialogImportPlaylistMessage": "{count} titres ont été trouvés dans le fichier de la playlist. Voulez-vous les ajouter à la file d'attente de téléchargement ?",
   "csvImportTracks": "{count} pistes issues d'un fichier CSV",
   "@csvImportTracks": {
     "description": "Label shown in quality picker for CSV import",
@@ -802,11 +802,11 @@
       }
     }
   },
-  "collectionExportM3u": "Export as M3U8",
+  "collectionExportM3u": "Exporter au format M3U8",
   "@collectionExportM3u": {
     "description": "Tooltip on the collection screen action that exports the track list as an M3U8 playlist file"
   },
-  "collectionExportM3uDone": "Exported {exported} of {total} tracks",
+  "collectionExportM3uDone": "{exported} titres exportés sur {total}",
   "@collectionExportM3uDone": {
     "description": "Snackbar after M3U8 export; tracks without a local file are not exported",
     "placeholders": {
@@ -818,15 +818,15 @@
       }
     }
   },
-  "collectionExportM3uNone": "No downloaded files to export",
+  "collectionExportM3uNone": "Aucun fichier téléchargé à exporter",
   "@collectionExportM3uNone": {
     "description": "Snackbar when an M3U8 export finds no local files"
   },
-  "collectionExportM3uFailed": "Export failed",
+  "collectionExportM3uFailed": "L'exportation a échoué",
   "@collectionExportM3uFailed": {
     "description": "Snackbar when writing or sharing the M3U8 export fails"
   },
-  "trackOpenOn": "Open on...",
+  "trackOpenOn": "Ouvrir sur...",
   "@trackOpenOn": {
     "description": "Track option and sheet title listing streaming platforms where the track can be opened"
   },
@@ -842,11 +842,11 @@
   "@libraryReviewDuplicatesSubtitle": {
     "description": "Subtitle for the duplicate review settings row"
   },
-  "duplicatesTitle": "Duplicates",
+  "duplicatesTitle": "Doublons",
   "@duplicatesTitle": {
     "description": "Title of the duplicate review sheet"
   },
-  "duplicatesEmpty": "No duplicate tracks found.",
+  "duplicatesEmpty": "Aucun titre en double n'a été détecté.",
   "@duplicatesEmpty": {
     "description": "Shown when the duplicate review sheet finds nothing"
   },
@@ -854,7 +854,7 @@
   "@duplicatesKeepBest": {
     "description": "Button that deletes all but the highest-quality copy in a duplicate group"
   },
-  "duplicatesKeepBestMessage": "Delete {count} lower-quality copies of \"{trackName}\"?",
+  "duplicatesKeepBestMessage": "Supprimer {count} copies de moindre qualité de « {trackName} » ?",
   "@duplicatesKeepBestMessage": {
     "description": "Confirmation message for the keep-best action",
     "placeholders": {
@@ -866,7 +866,7 @@
       }
     }
   },
-  "duplicatesDeleteCopyMessage": "Delete this copy of \"{trackName}\"?",
+  "duplicatesDeleteCopyMessage": "Souhaitez-vous supprimer cette copie de « {trackName} » ?",
   "@duplicatesDeleteCopyMessage": {
     "description": "Confirmation message for deleting one duplicate copy",
     "placeholders": {
@@ -2091,7 +2091,7 @@
   "@appearanceHeroAnimationsSubtitle": {
     "description": "Subtitle for the Hero animations toggle"
   },
-  "appearanceForceBlur": "Always use blur effects",
+  "appearanceForceBlur": "Utilisez toujours des effets de flou",
   "@appearanceForceBlur": {
     "description": "Toggle that forces backdrop blur on even when the device profile disabled it"
   },
@@ -2759,7 +2759,7 @@
       }
     }
   },
-  "tutorialWelcomeTitle": "Welcome to SpotiFLAC Mobile!",
+  "tutorialWelcomeTitle": "Bienvenue sur SpotiFLAC Mobile !",
   "@tutorialWelcomeTitle": {
     "description": "Tutorial welcome page title"
   },
@@ -2767,7 +2767,7 @@
   "@tutorialWelcomeDesc": {
     "description": "Tutorial welcome page description"
   },
-  "tutorialWelcomeTip1": "Search music or paste a link from any source your installed extensions support",
+  "tutorialWelcomeTip1": "Recherchez de la musique ou collez un lien provenant de n'importe quelle source prise en charge par vos extensions installées",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
@@ -4283,23 +4283,23 @@
   "@editMetadataAutoFill": {
     "description": "Section title for selective online metadata auto-fill in the edit metadata sheet"
   },
-  "editMetadataAutoFillDesc": "Choose a metadata extension, select fields, then review its data before applying",
+  "editMetadataAutoFillDesc": "Choisissez une extension de métadonnées, sélectionnez les champs, puis vérifiez les données avant de l'appliquer",
   "@editMetadataAutoFillDesc": {
     "description": "Description for the auto-fill section"
   },
-  "editMetadataAutoFillSource": "Metadata source",
+  "editMetadataAutoFillSource": "Source des métadonnées",
   "@editMetadataAutoFillSource": {
     "description": "Label for the metadata extension selector in online auto-fill"
   },
-  "editMetadataAutoFillSourceAutomatic": "Automatic (provider priority)",
+  "editMetadataAutoFillSourceAutomatic": "Automatique (priorité au fournisseur)",
   "@editMetadataAutoFillSourceAutomatic": {
     "description": "Automatic source option that follows configured metadata provider priority"
   },
-  "editMetadataAutoFillFind": "Find metadata",
+  "editMetadataAutoFillFind": "Rechercher des métadonnées",
   "@editMetadataAutoFillFind": {
     "description": "Button label for finding an online metadata candidate"
   },
-  "editMetadataAutoFillPreview": "Data from {source}",
+  "editMetadataAutoFillPreview": "Données provenant de {source}",
   "@editMetadataAutoFillPreview": {
     "description": "Title for the online metadata preview",
     "placeholders": {
@@ -4312,7 +4312,7 @@
   "@editMetadataAutoFillCoverAvailable": {
     "description": "Preview value when the selected metadata source provides cover artwork"
   },
-  "editMetadataAutoFillApply": "Apply selected data",
+  "editMetadataAutoFillApply": "Appliquer les données sélectionnées",
   "@editMetadataAutoFillApply": {
     "description": "Button label for applying the previewed metadata"
   },
@@ -5392,7 +5392,7 @@
   "@libraryFilterMetadataIncorrectIsrcFormat": {
     "description": "Filter option - items with an invalid ISRC format"
   },
-  "libraryFilterMetadataMissingIsrc": "Missing ISRC",
+  "libraryFilterMetadataMissingIsrc": "ISRC manquant",
   "@libraryFilterMetadataMissingIsrc": {
     "description": "Filter option - items without any ISRC tag"
   },
