@@ -20,6 +20,14 @@ void main() {
     previewUrl: 'https://example.com/preview.mp3',
     duration: 180,
   );
+  const sparseSearchTrack = Track(
+    id: 'search-track',
+    name: 'Search Track',
+    artistName: 'Artist',
+    albumName: '',
+    duration: 180,
+    source: 'metadata-extension',
+  );
 
   Future<void> pumpButton(WidgetTester tester, {MediaItem? currentItem}) async {
     await tester.pumpWidget(
@@ -113,6 +121,35 @@ void main() {
     expect(find.text('Go to Album'), findsOneWidget);
     expect(find.byIcon(Icons.album_outlined), findsOneWidget);
   });
+
+  testWidgets(
+    'search track options keep Go to Album when album data is sparse',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            settingsProvider.overrideWith(_TestSettingsNotifier.new),
+            libraryCollectionsProvider.overrideWith(
+              _TestLibraryCollectionsNotifier.new,
+            ),
+          ],
+          child: const MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: TrackCollectionQuickActions(track: sparseSearchTrack),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Go to Album'), findsOneWidget);
+      expect(find.byIcon(Icons.album_outlined), findsOneWidget);
+    },
+  );
 }
 
 class _TestSettingsNotifier extends SettingsNotifier {

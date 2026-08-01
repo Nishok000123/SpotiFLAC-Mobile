@@ -194,12 +194,11 @@ class _TrackOptionsSheet extends ConsumerWidget {
                   onTap: () => _downloadQualityVariant(context, ref),
                 ),
 
-              if (track.albumName.trim().isNotEmpty)
-                _OptionTile(
-                  icon: Icons.album_outlined,
-                  title: context.l10n.homeGoToAlbum,
-                  onTap: () => _goToAlbum(context),
-                ),
+              _OptionTile(
+                icon: Icons.album_outlined,
+                title: context.l10n.homeGoToAlbum,
+                onTap: () => _goToAlbum(context),
+              ),
 
               _OptionTile(
                 icon: isLoved ? Icons.favorite : Icons.favorite_border,
@@ -281,16 +280,8 @@ class _TrackOptionsSheet extends ConsumerWidget {
       context,
       rootNavigator: true,
     ).context;
-    final albumArtist = (track.albumArtist ?? '').trim();
     Navigator.pop(context);
-    await navigateToAlbum(
-      navigationContext,
-      albumName: track.albumName,
-      albumId: track.albumId,
-      artistName: albumArtist.isNotEmpty ? albumArtist : track.artistName,
-      coverUrl: track.coverUrl,
-      extensionId: track.source,
-    );
+    await navigateToTrackAlbum(navigationContext, track);
   }
 
   Future<void> _playLocal(BuildContext context, WidgetRef ref) async {
