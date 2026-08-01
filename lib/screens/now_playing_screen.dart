@@ -186,7 +186,13 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     super.initState();
     _mediaItemSub = ref.listenManual<AsyncValue<MediaItem?>>(
       currentMediaItemProvider,
-      (previous, next) => _loadMetadataForItem(next.value),
+      (previous, next) => _loadMetadataForItem(
+        next.value,
+        // When automatic playback advances while Lyrics is already visible,
+        // onPageChanged will not run again. Inspect an unresolved SAF URI now
+        // instead of leaving the new track with an empty Lyrics page.
+        inspectUnresolvedContentUri: _currentPage == 1,
+      ),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
