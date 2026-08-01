@@ -2145,7 +2145,7 @@
   "@downloadedAlbumTapToSelect": {
     "description": "Selection hint"
   },
-  "downloadedAlbumDeleteCount": "{count} {count, plural, =1{트랙} other{트랙}} 삭제",
+  "downloadedAlbumDeleteCount": "{count} 개의 {count, plural, =1{트랙} other{트랙}} 삭제",
   "@downloadedAlbumDeleteCount": {
     "description": "Delete button text with count",
     "placeholders": {
@@ -3510,7 +3510,7 @@
   "@collectionPlaylistRemoveCover": {
     "description": "Bottom sheet action to remove custom cover image from a playlist"
   },
-  "selectionShareCount": "{count} {count, plural, =1{트랙} other{트랙}} 공유",
+  "selectionShareCount": "{count} 개의 {count, plural, =1{트랙} other{트랙}} 공유",
   "@selectionShareCount": {
     "description": "Share button text with count in selection mode",
     "placeholders": {
@@ -3523,7 +3523,7 @@
   "@selectionShareNoFiles": {
     "description": "Snackbar when no selected files exist on disk"
   },
-  "selectionConvertCount": "{count} {count, plural, =1{트랙} other{트랙}} 변환",
+  "selectionConvertCount": "{count} 개의 {count, plural, =1{트랙} other{트랙}} 변환",
   "@selectionConvertCount": {
     "description": "Convert button text with count in selection mode",
     "placeholders": {
@@ -5249,7 +5249,7 @@
       }
     }
   },
-  "selectionDeleteTracksCount": "{count} {count, plural, =1{트랙} other{트랙}} 삭제",
+  "selectionDeleteTracksCount": "{count} 개의 {count, plural, =1{트랙} other{트랙}} 삭제",
   "@selectionDeleteTracksCount": {
     "description": "Button label for deleting selected tracks",
     "placeholders": {
