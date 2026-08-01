@@ -15,6 +15,7 @@ import 'package:spotiflac_android/screens/settings/library_settings_page.dart';
 import 'package:spotiflac_android/screens/settings/log_screen.dart';
 import 'package:spotiflac_android/screens/settings/lyrics_settings_page.dart';
 import 'package:spotiflac_android/screens/settings/metadata_settings_page.dart';
+import 'package:spotiflac_android/screens/settings/settings_search_catalog.dart';
 import 'package:spotiflac_android/theme/app_tokens.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 import 'package:spotiflac_android/utils/nav_bar_inset.dart';
@@ -31,6 +32,7 @@ class _Destination {
     required this.subtitle,
     required this.pageBuilder,
     this.keywords = const [],
+    this.searchEntries = const [],
   });
 
   final IconData icon;
@@ -41,12 +43,18 @@ class _Destination {
   /// Extra search terms for things the title does not spell out (e.g. "SAF"
   /// for the Files page), so a user can find a page by what it does.
   final List<String> keywords;
+  final List<SettingsSearchEntry> searchEntries;
 
-  bool matches(String query) {
-    if (query.isEmpty) return true;
-    final haystack = [title, subtitle, ...keywords].join(' ').toLowerCase();
-    return haystack.contains(query);
+  bool matches(SettingsSearchQuery query) {
+    return query.matches([title, subtitle, ...keywords]);
   }
+}
+
+class _SearchResult {
+  const _SearchResult(this.destination, [this.entry]);
+
+  final _Destination destination;
+  final SettingsSearchEntry? entry;
 }
 
 /// Destinations that stay visually connected inside one settings card.
@@ -65,11 +73,15 @@ class SettingsTab extends ConsumerStatefulWidget {
 
 class _SettingsTabState extends ConsumerState<SettingsTab> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  AppLocalizations? _cachedLocalizations;
+  List<_Group>? _cachedGroups;
   String _query = '';
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -77,7 +89,12 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
   /// without adding section labels that compete with the page title.
   List<_Group> _groups(BuildContext context) {
     final l10n = context.l10n;
-    return [
+    if (identical(_cachedLocalizations, l10n) && _cachedGroups != null) {
+      return _cachedGroups!;
+    }
+
+    final searchCatalog = SettingsSearchCatalog(l10n);
+    final groups = [
       _Group(
         destinations: [
           _Destination(
@@ -96,6 +113,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             title: l10n.settingsExtensions,
             subtitle: l10n.settingsExtensionsSubtitle,
             keywords: const ['plugin', 'provider', 'priority', 'store'],
+            searchEntries: searchCatalog.extensions,
             pageBuilder: () => const ExtensionsPage(),
           ),
           _Destination(
@@ -113,6 +131,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               'layout',
               'grid',
             ],
+            searchEntries: searchCatalog.appearance,
             pageBuilder: () => const AppearanceSettingsPage(),
           ),
         ],
@@ -130,6 +149,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               'playback',
               'duplicate',
             ],
+            searchEntries: searchCatalog.library,
             pageBuilder: () => const LibrarySettingsPage(),
           ),
           _Destination(
@@ -137,6 +157,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             title: l10n.settingsMetadata,
             subtitle: l10n.settingsMetadataSubtitle,
             keywords: const ['tag', 'cover', 'artwork', 'isrc', 'provider'],
+            searchEntries: searchCatalog.metadata,
             pageBuilder: () => const MetadataSettingsPage(),
           ),
           _Destination(
@@ -144,6 +165,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             title: l10n.settingsLyrics,
             subtitle: l10n.settingsLyricsSubtitle,
             keywords: const ['lrc', 'synced', 'provider'],
+            searchEntries: searchCatalog.lyrics,
             pageBuilder: () => const LyricsSettingsPage(),
           ),
         ],
@@ -163,6 +185,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               'service',
               'region',
             ],
+            searchEntries: searchCatalog.download,
             pageBuilder: () => const DownloadSettingsPage(),
           ),
           _Destination(
@@ -177,6 +200,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               'path',
               'permission',
             ],
+            searchEntries: searchCatalog.files,
             pageBuilder: () => const FilesSettingsPage(),
           ),
         ],
@@ -188,6 +212,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             title: l10n.settingsApp,
             subtitle: l10n.settingsAppSubtitle,
             keywords: const ['update', 'channel', 'debug', 'logging'],
+            searchEntries: searchCatalog.app,
             pageBuilder: () => const AppSettingsPage(),
           ),
           _Destination(
@@ -195,6 +220,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             title: l10n.settingsCache,
             subtitle: l10n.settingsCacheSubtitle,
             keywords: const ['clear', 'space', 'image', 'temp'],
+            searchEntries: searchCatalog.cache,
             pageBuilder: () => const CacheManagementPage(),
           ),
           _Destination(
@@ -202,6 +228,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             title: l10n.settingsBackup,
             subtitle: l10n.settingsBackupSubtitle,
             keywords: const ['export', 'import', 'restore', 'json'],
+            searchEntries: searchCatalog.backup,
             pageBuilder: () => const BackupRestorePage(),
           ),
           _Destination(
@@ -209,6 +236,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             title: l10n.logTitle,
             subtitle: l10n.settingsLogsSubtitle,
             keywords: const ['debug', 'error', 'report'],
+            searchEntries: searchCatalog.logs,
             pageBuilder: () => const LogScreen(),
           ),
         ],
@@ -220,16 +248,33 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             title: l10n.settingsAbout,
             subtitle: '${l10n.aboutVersion} ${AppInfo.displayVersion}',
             keywords: const ['version', 'license', 'contributor'],
+            searchEntries: searchCatalog.about,
             pageBuilder: () => const AboutPage(),
           ),
         ],
       ),
     ];
+    _cachedLocalizations = l10n;
+    _cachedGroups = groups;
+    return groups;
   }
 
-  void _navigateTo(BuildContext context, Widget page) {
+  Future<void> _navigateTo(BuildContext context, Widget page) async {
+    _searchFocusNode.unfocus();
+    _searchFocusNode.canRequestFocus = false;
     FocusManager.instance.primaryFocus?.unfocus();
-    Navigator.of(context).push(slidePageRoute<void>(page: page));
+    await Navigator.of(context).push(slidePageRoute<void>(page: page));
+    if (!mounted) return;
+
+    // A route's focus scope remembers its previously focused child. Keep the
+    // search field out of that restoration cycle while the child page is open,
+    // then re-enable it without requesting focus when Settings becomes active.
+    FocusManager.instance.primaryFocus?.unfocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _searchFocusNode.canRequestFocus = true;
+      _searchFocusNode.unfocus();
+    });
   }
 
   Widget _itemFor(_Destination destination, {required bool showDivider}) {
@@ -242,12 +287,30 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     );
   }
 
+  Widget _searchItemFor(_SearchResult result, {required bool showDivider}) {
+    final entry = result.entry;
+    if (entry == null) {
+      return _itemFor(result.destination, showDivider: showDivider);
+    }
+
+    return SettingsItem(
+      key: ValueKey(
+        'settings-search:${result.destination.title}:${entry.title}',
+      ),
+      icon: entry.icon,
+      title: entry.title,
+      subtitle: result.destination.title,
+      showDivider: showDivider,
+      onTap: () => _navigateTo(context, result.destination.pageBuilder()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final bottomInset = context.navBarBottomInset;
     final wideInset = wideListInset(context);
-    final query = _query.trim().toLowerCase();
+    final query = SettingsSearchQuery(_query);
     final groups = _groups(context);
 
     final margin = EdgeInsets.fromLTRB(
@@ -275,9 +338,13 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           ),
       ];
     } else {
-      final matches = [
+      final matches = <_SearchResult>[
         for (final group in groups)
-          ...group.destinations.where((d) => d.matches(query)),
+          for (final destination in group.destinations) ...[
+            if (destination.matches(query)) _SearchResult(destination),
+            for (final entry in destination.searchEntries)
+              if (entry.matches(query)) _SearchResult(destination, entry),
+          ],
       ];
       body = matches.isEmpty
           ? [
@@ -300,7 +367,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                   margin: margin,
                   children: [
                     for (var i = 0; i < matches.length; i++)
-                      _itemFor(
+                      _searchItemFor(
                         matches[i],
                         showDivider: i != matches.length - 1,
                       ),
@@ -323,6 +390,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             ),
             child: AppSearchField(
               controller: _searchController,
+              focusNode: _searchFocusNode,
               hintText: context.l10n.settingsSearchHint,
               clearTooltip: context.l10n.dialogClear,
               onChanged: (value) => setState(() => _query = value),
