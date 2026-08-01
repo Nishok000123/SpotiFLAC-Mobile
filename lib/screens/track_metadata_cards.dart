@@ -61,7 +61,10 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
 
             if (_fileExists) ...[
               const SizedBox(height: 16),
-              AudioAnalysisCard(filePath: _filePath),
+              AudioAnalysisCard(
+                filePath: _filePath,
+                codecHint: _storedAudioFormat,
+              ),
             ],
 
             const SizedBox(height: 24),

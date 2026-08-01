@@ -4,6 +4,24 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:spotiflac_android/widgets/audio_analysis_widget.dart';
 
 void main() {
+  group('audio analysis codec support', () {
+    test('rejects AC-4 aliases unsupported by the bundled decoder', () {
+      expect(isAudioAnalysisCodecSupported('ac4'), isFalse);
+      expect(isAudioAnalysisCodecSupported('AC-4'), isFalse);
+      expect(isAudioAnalysisCodecSupported('Dolby Atmos (AC_4)'), isFalse);
+      expect(unsupportedAudioAnalysisCodecLabel('AC-4'), 'AC-4');
+    });
+
+    test('keeps supported codecs inside MP4 analyzable', () {
+      expect(isAudioAnalysisCodecSupported('aac'), isTrue);
+      expect(isAudioAnalysisCodecSupported('alac'), isTrue);
+      expect(isAudioAnalysisCodecSupported('eac3'), isTrue);
+      expect(isAudioAnalysisCodecSupported('E-AC-3'), isTrue);
+      expect(isAudioAnalysisCodecSupported('flac'), isTrue);
+      expect(isAudioAnalysisCodecSupported(null), isTrue);
+    });
+  });
+
   group('audio level analysis', () {
     test('reads peak and RMS from the final astats overall summary', () {
       const logs = '''

@@ -191,6 +191,7 @@ double? _estimateEffectiveSpectralCutoffInIsolate(
 
 class _MediaInfo {
   final int fileSize;
+  final String codecName;
   final String codec;
   final String container;
   final String decodedSampleFormat;
@@ -204,6 +205,7 @@ class _MediaInfo {
 
   const _MediaInfo({
     required this.fileSize,
+    required this.codecName,
     required this.codec,
     required this.container,
     required this.decodedSampleFormat,

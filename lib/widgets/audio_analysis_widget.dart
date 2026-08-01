@@ -37,6 +37,29 @@ String formatAudioAnalysisSpectralCutoff(
   return '${cutoffHz.round()} Hz';
 }
 
+final RegExp _ac4CodecTokenPattern = RegExp(
+  r'(^|[^a-z0-9])ac[\s_-]?4($|[^a-z0-9])',
+  caseSensitive: false,
+);
+
+/// Returns whether the bundled FFmpeg decoder can analyze this audio codec.
+/// Container formats such as MP4 are intentionally not used here because the
+/// same container may hold supported AAC/ALAC/E-AC-3 or unsupported AC-4.
+bool isAudioAnalysisCodecSupported(String? codecName) {
+  final value = codecName?.trim() ?? '';
+  if (value.isEmpty) return true;
+  return !_ac4CodecTokenPattern.hasMatch(value);
+}
+
+String? unsupportedAudioAnalysisCodecLabel(String? codecName) =>
+    isAudioAnalysisCodecSupported(codecName) ? null : 'AC-4';
+
+class _UnsupportedAudioAnalysisCodecException implements Exception {
+  final String codecLabel;
+
+  const _UnsupportedAudioAnalysisCodecException(this.codecLabel);
+}
+
 String _buildShowspectrumOptions({required int width, required String color}) {
   return 'showspectrumpic='
       's=${width}x$audioSpectrogramHeight:'
@@ -442,8 +465,9 @@ double _spectralPercentile(
 
 class AudioAnalysisCard extends StatefulWidget {
   final String filePath;
+  final String? codecHint;
 
-  const AudioAnalysisCard({super.key, required this.filePath});
+  const AudioAnalysisCard({super.key, required this.filePath, this.codecHint});
 
   @override
   State<AudioAnalysisCard> createState() => _AudioAnalysisCardState();
@@ -458,6 +482,7 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
   int _spectrogramChannel = -1;
   bool _spectrogramChannelLoading = false;
   int _spectrogramRequestId = 0;
+  String? _unsupportedCodec;
 
   static const _supportedExtensions = {
     '.flac',
@@ -487,8 +512,37 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
   @override
   void initState() {
     super.initState();
+    _unsupportedCodec = unsupportedAudioAnalysisCodecLabel(widget.codecHint);
     if (_isSupported) {
-      _tryLoadFromCache();
+      if (_unsupportedCodec == null) {
+        _tryLoadFromCache();
+      } else {
+        _checkingCache = false;
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant AudioAnalysisCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filePath == widget.filePath &&
+        oldWidget.codecHint == widget.codecHint) {
+      return;
+    }
+
+    _spectrogramRequestId++;
+    _spectrogramImage?.dispose();
+    _spectrogramImage = null;
+    _spectrogramChannel = -1;
+    _spectrogramChannelLoading = false;
+    _data = null;
+    _error = null;
+    _analyzing = false;
+    _unsupportedCodec = unsupportedAudioAnalysisCodecLabel(widget.codecHint);
+    _checkingCache = _isSupported && _unsupportedCodec == null;
+
+    if (_checkingCache) {
+      unawaited(_tryLoadFromCache());
     }
   }
 
@@ -500,19 +554,37 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
   }
 
   Future<void> _tryLoadFromCache() async {
+    final expectedPath = widget.filePath;
+    final requestId = _spectrogramRequestId;
+    bool isCurrentRequest() =>
+        mounted &&
+        widget.filePath == expectedPath &&
+        requestId == _spectrogramRequestId;
+
     try {
-      final cached = await _loadFromCache(widget.filePath);
-      if (cached != null && mounted) {
+      final cached = await _loadFromCache(expectedPath);
+      if (cached != null && isCurrentRequest()) {
+        final unsupported = unsupportedAudioAnalysisCodecLabel(cached.codec);
+        if (unsupported != null) {
+          await _clearCache(expectedPath);
+          if (isCurrentRequest()) {
+            setState(() {
+              _unsupportedCodec = unsupported;
+              _checkingCache = false;
+            });
+          }
+          return;
+        }
         setState(() {
           _data = cached;
           _checkingCache = false;
         });
         var image = await _loadSpectrogramFromCache(
-          widget.filePath,
+          expectedPath,
           channel: _spectrogramChannel,
         );
-        image ??= await _generateAndCacheSpectrogram();
-        if (mounted) {
+        image ??= await _generateAndCacheSpectrogram(filePath: expectedPath);
+        if (isCurrentRequest()) {
           setState(() {
             _spectrogramImage?.dispose();
             _spectrogramImage = image;
@@ -523,18 +595,19 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
         return;
       }
     } catch (_) {}
-    if (mounted) {
+    if (isCurrentRequest()) {
       setState(() => _checkingCache = false);
     }
   }
 
-  Future<ui.Image> _generateAndCacheSpectrogram() async {
+  Future<ui.Image> _generateAndCacheSpectrogram({String? filePath}) async {
+    final sourcePath = filePath ?? widget.filePath;
     final artifact = await _generateSpectrogramForFile(
-      widget.filePath,
+      sourcePath,
       channel: _spectrogramChannel,
     );
     await _saveSpectrogramToCache(
-      widget.filePath,
+      sourcePath,
       artifact.image,
       channel: _spectrogramChannel,
     );
@@ -568,6 +641,10 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
       ui.Image? image;
 
       if (cached != null) {
+        final unsupported = unsupportedAudioAnalysisCodecLabel(cached.codec);
+        if (unsupported != null) {
+          throw _UnsupportedAudioAnalysisCodecException(unsupported);
+        }
         data = cached;
         image = await _loadSpectrogramFromCache(
           widget.filePath,
@@ -596,6 +673,14 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
         });
       } else {
         image.dispose();
+      }
+    } on _UnsupportedAudioAnalysisCodecException catch (e) {
+      if (mounted) {
+        setState(() {
+          _unsupportedCodec = e.codecLabel;
+          _error = null;
+          _analyzing = false;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -742,6 +827,10 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
 
     try {
       final info = await _getMediaInfo(workingPath);
+      final unsupported = unsupportedAudioAnalysisCodecLabel(info.codecName);
+      if (unsupported != null) {
+        throw _UnsupportedAudioAnalysisCodecException(unsupported);
+      }
       _GeneratedSpectrogram? spectrogram;
       try {
         spectrogram = await _generateSpectrogram(
@@ -1047,6 +1136,7 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
 
     return _MediaInfo(
       fileSize: fileSize,
+      codecName: codecName,
       codec: _formatCodecLabel(codecName, codecLongName),
       container: _formatContainerLabel(formatName, formatLongName),
       decodedSampleFormat: decodedSampleFormat,
@@ -1242,6 +1332,51 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
     final l10n = context.l10n;
 
     if (_checkingCache) return const SizedBox.shrink();
+
+    if (_unsupportedCodec != null) {
+      return Card(
+        elevation: 0,
+        color: settingsGroupColor(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline, color: cs.primary, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.audioAnalysisTitle,
+                      style: TextStyle(
+                        color: cs.onSurface,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${l10n.snackbarUnsupportedAudioFormat}: '
+                      '$_unsupportedCodec',
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     if (_analyzing) {
       final isRescan = _data != null || _spectrogramImage != null;
