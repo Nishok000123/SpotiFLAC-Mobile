@@ -2346,7 +2346,18 @@ class FFmpegService {
       ),
       processing: processing,
     );
-    arguments.addAll(['-c:a', codec, '-map_metadata', '-1', outputPath, '-y']);
+    arguments.addAll(['-c:a', codec, '-map_metadata', '-1']);
+
+    // Keep a container-native metadata fallback for software that does not
+    // inspect WAV/AIFF ID3 chunks. FFmpeg writes common WAV fields into
+    // LIST/INFO and the fields supported by AIFF into its native text chunks.
+    // The native writer below remains authoritative for the complete field
+    // set (including track/disc totals, lyrics, ReplayGain, and cover art).
+    AudioMetadataMapper.appendMappedMetadataArguments(
+      arguments,
+      AudioMetadataMapper.convertToId3Tags(metadata),
+    );
+    arguments.addAll([outputPath, '-y']);
 
     _log.i(
       'Converting ${inputPath.split(Platform.pathSeparator).last} to '
@@ -2368,9 +2379,11 @@ class FFmpegService {
     if (hasMetadata || hasCover) {
       final ok = await _embedChunkTagsNative(outputPath, metadata, coverPath);
       if (!ok) {
-        _log.w(
-          'Native tag embed failed for $container output (file kept untagged)',
-        );
+        // Metadata/cover preservation is part of the requested conversion.
+        // Publishing an apparently successful but untagged file is data loss.
+        _log.e('Native tag embed failed for $container output');
+        await _cleanupConversionOutput(outputPlan);
+        return null;
       }
     }
 
@@ -2398,7 +2411,12 @@ class FFmpegService {
     if (fields.isEmpty) return true;
     try {
       final res = await PlatformBridge.editFileMetadata(path, fields);
-      return res['error'] == null;
+      final error = res['error'];
+      if (error != null) {
+        _log.w('editFileMetadata for $path failed: $error');
+        return false;
+      }
+      return res['success'] == true;
     } catch (e) {
       _log.w('editFileMetadata for $path failed: $e');
       return false;

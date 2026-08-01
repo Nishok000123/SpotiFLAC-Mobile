@@ -566,6 +566,11 @@ func ExtractCoverToFile(audioPath string, outputPath string) error {
 		coverData, _, err = extractMP3CoverArt(audioPath)
 	} else if strings.HasSuffix(lower, ".opus") || strings.HasSuffix(lower, ".ogg") {
 		coverData, _, err = extractOggCoverArt(audioPath)
+	} else if strings.HasSuffix(lower, ".wav") ||
+		strings.HasSuffix(lower, ".aiff") ||
+		strings.HasSuffix(lower, ".aif") ||
+		strings.HasSuffix(lower, ".aifc") {
+		coverData, _, err = extractWAVAIFFCover(audioPath)
 	} else {
 		return fmt.Errorf("unsupported audio format for cover extraction")
 	}

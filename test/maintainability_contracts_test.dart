@@ -235,11 +235,20 @@ void main() {
   group('audio metadata modules', () {
     test('maps shared tags consistently for native, M4A, and ID3 writers', () {
       final metadata = {
+        'TITLE': 'Track',
+        'ARTIST': 'Artist',
+        'ALBUM': 'Album',
         'ALBUM_ARTIST': 'Album Artist',
         'TRACKNUMBER': '3/12',
         'DISCNUMBER': '1/2',
+        'DATE': '2026-08-01',
+        'GENRE': 'Pop',
         'ISRC': 'TEST12345678',
         'UNSYNCEDLYRICS': 'Lyrics',
+        'ORGANIZATION': 'Label',
+        'COPYRIGHT': 'Copyright',
+        'COMPOSER': 'Composer',
+        'COMMENT': 'Comment',
         'REPLAYGAIN_TRACK_GAIN': '-5.00 dB',
         'BIT_DEPTH': '24',
       };
@@ -248,16 +257,30 @@ void main() {
       final m4a = AudioMetadataMapper.convertToM4aTags(metadata);
       final id3 = AudioMetadataMapper.convertToId3Tags(metadata);
 
+      expect(native['title'], 'Track');
+      expect(native['artist'], 'Artist');
+      expect(native['album'], 'Album');
       expect(native['album_artist'], 'Album Artist');
       expect(native['track_number'], '3');
       expect(native['track_total'], '12');
       expect(native['disc_number'], '1');
       expect(native['disc_total'], '2');
       expect(native['replaygain_track_gain'], '-5.00 dB');
+      expect(native['date'], '2026-08-01');
+      expect(native['genre'], 'Pop');
+      expect(native['label'], 'Label');
+      expect(native['copyright'], 'Copyright');
+      expect(native['composer'], 'Composer');
+      expect(native['comment'], 'Comment');
       expect(m4a['isrc'], 'TEST12345678');
       expect(m4a['lyrics'], 'Lyrics');
       expect(id3['TSRC'], 'TEST12345678');
       expect(id3['REPLAYGAIN_TRACK_GAIN'], '-5.00 dB');
+      expect(id3['title'], 'Track');
+      expect(id3['artist'], 'Artist');
+      expect(id3['album'], 'Album');
+      expect(id3['track'], '3/12');
+      expect(id3['disc'], '1/2');
       expect(native, isNot(contains('bit_depth')));
     });
 

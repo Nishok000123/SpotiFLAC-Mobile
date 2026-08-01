@@ -93,6 +93,11 @@ internal fun MainActivity.extFromFileName(name: String): String {
             name.endsWith(".opus") -> ".opus"
             name.endsWith(".flac") -> ".flac"
             name.endsWith(".ogg") -> ".ogg"
+            name.endsWith(".wave") -> ".wav"
+            name.endsWith(".wav") -> ".wav"
+            name.endsWith(".aiff") -> ".aiff"
+            name.endsWith(".aifc") -> ".aifc"
+            name.endsWith(".aif") -> ".aif"
             else -> ""
         }
     }
@@ -464,4 +469,3 @@ internal fun MainActivity.runPostProcessingSafV2(fileUriStr: String, metadataJso
         respObj.put("file_path", uri.toString())
         return respObj.toString()
     }
-
