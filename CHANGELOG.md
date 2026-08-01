@@ -1,5 +1,52 @@
 # Changelog
 
+## [4.8.5] - 2026-08-01
+
+### Added
+
+- **Searchable Settings**: Search both top-level pages and controls inside them. Opening a nested result now scrolls to the matching control and briefly highlights it.
+- **Album Multi-Select Download**: Select several tracks in an album and choose the provider and quality once for the whole selection.
+- **Player & Queue Controls**: Repeat Off/All/One modes, swipe up from Now Playing to open the queue, move queued tracks up or down, `Download next`, and one-tap retry when connectivity returns.
+- **Playback Session Restore**: Restore the previous queue, track, technical quality, and playback position after the app process is restarted.
+- **Track Navigation**: `Go to Album` is available from track actions, including sparse search results, and `Open on...` exposes supported platform links.
+- **Library Views**: Playlist filtering, a configurable default Library view, a missing-ISRC filter, and clearer horizontally scrollable filter chips.
+- **Quality Labels**: Choose between measured bitrate labels and classic bit-depth/sample-rate labels. High-bitrate tracks receive a distinct badge color, and lossless average bitrate is shown in Track Metadata.
+- **Duplicate Review**: Detect ISRC duplicates beyond FLAC, review matching files, and keep the preferred copy.
+- **M3U Playlists**: Import M3U/M3U8 playlists and export Library collections as M3U8.
+- **Metadata Sources**: Choose a specific extension for online auto-fill, use extension-defined custom search, or manually fetch metadata from MusicBrainz.
+- **Cover Tools**: View the current embedded-cover dimensions, preview the dimensions of a fetched cover, resize embedded artwork, and select the best available online cover candidate.
+- **Android Download Widget**: Monitor the active download queue from the Android home screen.
+- **Appearance Controls**: Adaptive detail-page colors derived from cover art and an optional force-backdrop-blur setting for lower device tiers.
+- **Audio Processing**: Very-high-quality SoXR resampling settings for supported lossless conversions.
+
+### Fixed
+
+- **Provider Matching**: Honor the explicitly selected provider and reject mismatched provider results that could download a cover or unrelated song with the original album metadata.
+- **Verification & Sessions**: Coordinate one verification flow across sequential and parallel album downloads, follow canonical gateway/provider error contracts, block challenged session generations, and prevent stale requests from invalidating a newer session.
+- **Verification Alerts**: Notify the user when downloads pause for verification and recover signed-session bootstrap failures more reliably.
+- **Download Storage**: Recover from an unwritable selected folder, retain published files when bookkeeping fails, and keep cancelled items retryable after app restarts.
+- **Quality Variants**: Complete alternate-quality downloads reliably and append technical quality to filenames only when a real filename collision exists.
+- **Library Stability**: Keep rows and cached history visible during active downloads and refreshes, retain records when deletion fails, and backfill/persist local bitrate metadata without opening every track.
+- **Playback & Lyrics**: Refresh lyrics after automatic track changes and cold starts, reject empty embedded lyric payloads, preserve technical quality between tracks, and restore playback position reliably.
+- **WAV & AIFF Metadata**: Preserve supported tags and artwork through conversion and metadata editing.
+- **Audio Analysis**: Wait for complete FFmpeg metrics, isolate analysis from active downloads, detect effective/full-band spectral cutoff more accurately, and avoid unsupported AC-4 spectrogram analysis.
+- **Startup Compatibility**: Stop forcing the highest Android display mode during every cold start, avoiding OEM-specific crashes and unnecessary GPU load.
+- **User-Facing Errors**: Replace raw `PlatformException` and backend details with concise, sanitized messages.
+- **Metadata UI**: Keep Track Metadata headers readable in light themes and make the online source picker, preview, apply, and feedback flow consistent with the rest of the app.
+- **Selection & Sheets**: Keep selection bars and modal sheets above the app navbar and make download-picker drag dismissal feel natural.
+- **Database Upgrade**: Make playback-session migration safe when an older installation already contains the destination table.
+
+### Improved
+
+- **Now Playing**: Smoother track transitions, consistent custom action sheets, better synced-lyrics positioning, and aligned play/preview controls and hitboxes.
+- **Responsive UI**: More consistent search fields, settings groups, page headers, modal sheets, empty/error states, and collection selection behavior, with improved tablet widths and short-screen setup/tutorial layouts.
+- **Download Performance**: Faster duplicate checks for large playlists, fewer native-widget updates, reduced progress/session write churn, and safer HTTP Range recovery.
+- **Library Performance**: Batched history/index updates, fewer rebuilds during scans, lazy duplicate loading, cached MusicBrainz lookups, and quality probes that avoid unnecessary SAF copies.
+- **Extension Security**: Verify decentralized package integrity, isolate bad registry checksums, anchor URL handlers to their declared hosts, and enforce `minAppVersion` and required runtime features.
+- **Dependencies**: Updated Flutter, Go, FFmpeg, Android notification, and supporting native dependencies.
+
+---
+
 ## [4.8.0] - 2026-07-24
 
 ### Added

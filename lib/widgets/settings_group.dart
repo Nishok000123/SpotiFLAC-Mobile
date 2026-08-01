@@ -146,7 +146,7 @@ class _SettingsSearchTargetState extends State<SettingsSearchTarget> {
     );
     if (!mounted) return;
 
-    _highlightTimer = Timer(const Duration(milliseconds: 1800), () {
+    _highlightTimer = Timer(const Duration(milliseconds: 1400), () {
       if (mounted) setState(() => _highlighted = false);
     });
   }
@@ -168,29 +168,11 @@ class _SettingsSearchTargetState extends State<SettingsSearchTarget> {
       selected: _highlighted,
       child: AnimatedContainer(
         key: ValueKey('settings-highlight:${widget.label}'),
-        duration: const Duration(milliseconds: 320),
+        duration: context.tokens.motionMedium,
         curve: Curves.easeOutCubic,
-        decoration: BoxDecoration(
-          color: _highlighted
-              ? colorScheme.primaryContainer.withValues(alpha: 0.72)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(context.tokens.radiusCover),
-          border: _highlighted
-              ? Border.all(
-                  color: colorScheme.primary.withValues(alpha: 0.72),
-                  width: 1.5,
-                )
-              : null,
-          boxShadow: _highlighted
-              ? [
-                  BoxShadow(
-                    color: colorScheme.primary.withValues(alpha: 0.28),
-                    blurRadius: 18,
-                    spreadRadius: 2,
-                  ),
-                ]
-              : const [],
-        ),
+        color: _highlighted
+            ? colorScheme.primaryContainer.withValues(alpha: 0.3)
+            : Colors.transparent,
         child: widget.child,
       ),
     );

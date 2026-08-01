@@ -69,7 +69,7 @@ void main() {
     },
   );
 
-  testWidgets('search target scrolls into view and briefly glows', (
+  testWidgets('search target scrolls into view with standard selected color', (
     tester,
   ) async {
     final scrollController = ScrollController();
@@ -105,10 +105,15 @@ void main() {
     );
     final highlighted = tester.widget<AnimatedContainer>(highlightFinder);
     final highlightedDecoration = highlighted.decoration! as BoxDecoration;
-    expect(highlightedDecoration.color, isNot(Colors.transparent));
-    expect(highlightedDecoration.boxShadow, isNotEmpty);
+    final colorScheme = Theme.of(tester.element(highlightFinder)).colorScheme;
+    expect(
+      highlightedDecoration.color,
+      colorScheme.primaryContainer.withValues(alpha: 0.3),
+    );
+    expect(highlightedDecoration.border, isNull);
+    expect(highlightedDecoration.boxShadow, isNull);
 
-    await tester.pump(const Duration(milliseconds: 2300));
+    await tester.pump(const Duration(milliseconds: 1900));
     await tester.pump(const Duration(milliseconds: 400));
     final faded = tester.widget<AnimatedContainer>(highlightFinder);
     final fadedDecoration = faded.decoration! as BoxDecoration;
