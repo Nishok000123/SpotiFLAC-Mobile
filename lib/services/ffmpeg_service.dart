@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:ffmpeg_kit_flutter_new_full/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new_full/ffmpeg_kit_config.dart';
 import 'package:ffmpeg_kit_flutter_new_full/ffmpeg_session.dart';
@@ -293,6 +293,84 @@ class FFmpegService {
     } catch (e) {
       _log.e('FFmpeg executeWithArguments error: $e');
       return FFmpegResult(success: false, returnCode: -1, output: e.toString());
+    }
+  }
+
+  @visibleForTesting
+  static List<String> buildCoverResizeArguments({
+    required String inputPath,
+    required String outputPath,
+    required int maxDimension,
+  }) {
+    if (maxDimension < 64 || maxDimension > 8192) {
+      throw ArgumentError.value(
+        maxDimension,
+        'maxDimension',
+        'Must be between 64 and 8192 pixels',
+      );
+    }
+    return [
+      '-y',
+      '-i',
+      inputPath,
+      '-map_metadata',
+      '-1',
+      '-an',
+      '-sn',
+      '-vf',
+      'scale=$maxDimension:$maxDimension:'
+          'force_original_aspect_ratio=decrease:flags=lanczos',
+      '-frames:v',
+      '1',
+      '-update',
+      '1',
+      '-q:v',
+      '2',
+      outputPath,
+    ];
+  }
+
+  /// Resizes cover art so its longest edge is [maxDimension].
+  ///
+  /// FFmpeg is allowed to upscale smaller sources because this is an explicit
+  /// user choice. Aspect ratio is preserved and the result is written as the
+  /// format implied by [outputPath].
+  static Future<bool> resizeCoverArt({
+    required String inputPath,
+    required String outputPath,
+    required int maxDimension,
+  }) async {
+    try {
+      final source = File(inputPath);
+      if (!await source.exists()) return false;
+
+      final result = await _executeWithArguments(
+        buildCoverResizeArguments(
+          inputPath: inputPath,
+          outputPath: outputPath,
+          maxDimension: maxDimension,
+        ),
+      );
+      final output = File(outputPath);
+      final hasOutput = await output.exists() && await output.length() > 0;
+      if (!result.success || !hasOutput) {
+        _log.w(
+          'Cover resize failed (${result.returnCode}): '
+          '${_previewCommandForLog(result.output)}',
+        );
+        try {
+          if (await output.exists()) await output.delete();
+        } catch (_) {}
+        return false;
+      }
+      return true;
+    } catch (e) {
+      _log.w('Cover resize failed: $e');
+      try {
+        final output = File(outputPath);
+        if (await output.exists()) await output.delete();
+      } catch (_) {}
+      return false;
     }
   }
 

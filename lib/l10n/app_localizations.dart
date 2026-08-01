@@ -6372,6 +6372,24 @@ abstract class AppLocalizations {
   /// **'The selected cover will replace the current embedded cover when you tap Save.'**
   String get trackCoverReplaceNotice;
 
+  /// Label for selecting the embedded cover art resolution
+  ///
+  /// In en, this message translates to:
+  /// **'Cover resolution'**
+  String get trackCoverResolution;
+
+  /// Explanation below the embedded cover art resolution selector
+  ///
+  /// In en, this message translates to:
+  /// **'Sets the longest edge when saved. Enlarging does not add image detail.'**
+  String get trackCoverResolutionHint;
+
+  /// Error shown when resizing cover art before saving metadata fails
+  ///
+  /// In en, this message translates to:
+  /// **'The cover image could not be resized. Please try another size or image.'**
+  String get trackCoverResizeFailed;
+
   /// Generic action - stop
   ///
   /// In en, this message translates to:

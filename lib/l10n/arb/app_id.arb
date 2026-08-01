@@ -1656,6 +1656,9 @@
     "description": "App bar title for the backup and restore page"
   },
   "trackCoverReplaceNotice": "The selected cover will replace the current embedded cover when you tap Save.",
+  "trackCoverResolution": "Resolusi cover",
+  "trackCoverResolutionHint": "Mengatur sisi terpanjang saat disimpan. Memperbesar gambar tidak menambah detail.",
+  "trackCoverResizeFailed": "Ukuran cover tidak dapat diubah. Coba ukuran atau gambar lain.",
   "cacheSectionMaintenance": "Maintenance",
   "@cacheSectionMaintenance": {
     "description": "Section header for cleanup actions"

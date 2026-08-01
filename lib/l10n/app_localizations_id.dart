@@ -3847,6 +3847,17 @@ class AppLocalizationsId extends AppLocalizations {
       'The selected cover will replace the current embedded cover when you tap Save.';
 
   @override
+  String get trackCoverResolution => 'Resolusi cover';
+
+  @override
+  String get trackCoverResolutionHint =>
+      'Mengatur sisi terpanjang saat disimpan. Memperbesar gambar tidak menambah detail.';
+
+  @override
+  String get trackCoverResizeFailed =>
+      'Ukuran cover tidak dapat diubah. Coba ukuran atau gambar lain.';
+
+  @override
   String get actionStop => 'Stop';
 
   @override

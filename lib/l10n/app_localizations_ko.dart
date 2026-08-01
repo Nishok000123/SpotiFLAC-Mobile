@@ -3740,6 +3740,17 @@ class AppLocalizationsKo extends AppLocalizations {
   String get trackCoverReplaceNotice => '저장을 탭하면 선택한 표지가 현재 내장된 표지를 대체합니다';
 
   @override
+  String get trackCoverResolution => 'Cover resolution';
+
+  @override
+  String get trackCoverResolutionHint =>
+      'Sets the longest edge when saved. Enlarging does not add image detail.';
+
+  @override
+  String get trackCoverResizeFailed =>
+      'The cover image could not be resized. Please try another size or image.';
+
+  @override
   String get actionStop => '중지';
 
   @override

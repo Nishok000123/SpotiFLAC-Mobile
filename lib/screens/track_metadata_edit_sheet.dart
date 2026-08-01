@@ -42,6 +42,7 @@ class _EditMetadataSheet extends StatefulWidget {
 }
 
 class _EditMetadataSheetState extends State<_EditMetadataSheet> {
+  static const _coverResizeDimensions = <int>[500, 1000, 1500, 2000, 3000];
   static final RegExp _metadataCollapsePattern = RegExp(r'[^a-z0-9]+');
   static final RegExp _metadataWhitespacePattern = RegExp(r'\s+');
   static final RegExp _spotifyTrackIdPattern = RegExp(r'^[A-Za-z0-9]{22}$');
@@ -58,6 +59,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
   String? _currentCoverPath;
   String? _currentCoverTempDir;
   bool _loadingCurrentCover = false;
+  int? _coverMaxDimension;
   String? _selectedMetadataProviderId;
   _AutoFillPreview? _autoFillPreview;
   final GlobalKey<ScaffoldMessengerState> _sheetMessengerKey =
@@ -178,6 +180,101 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     setState(() {
       _selectedMetadataProviderId = selectedId.isEmpty ? null : selectedId;
       _invalidateAutoFillPreview();
+    });
+  }
+
+  Future<void> _showCoverResolutionPicker() async {
+    FocusScope.of(context).unfocus();
+    final currentValue = _coverMaxDimension ?? 0;
+    final selectedValue = await showModalBottomSheet<int>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+      builder: (sheetContext) {
+        final cs = Theme.of(sheetContext).colorScheme;
+        final options = <({int value, String label})>[
+          (value: 0, label: sheetContext.l10n.trackConvertOriginal),
+          for (final dimension in _coverResizeDimensions)
+            (value: dimension, label: '$dimension px'),
+        ];
+        return SafeArea(
+          top: false,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.72,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                  child: Text(
+                    sheetContext.l10n.trackCoverResolution,
+                    style: Theme.of(sheetContext).textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: SettingsGroup(
+                      children: [
+                        for (var index = 0; index < options.length; index++)
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 4,
+                                ),
+                                leading: Icon(
+                                  options[index].value == 0
+                                      ? Icons.photo_size_select_actual_outlined
+                                      : Icons.photo_size_select_large_outlined,
+                                  color: options[index].value == currentValue
+                                      ? cs.primary
+                                      : cs.onSurfaceVariant,
+                                ),
+                                title: Text(options[index].label),
+                                selected: options[index].value == currentValue,
+                                selectedColor: cs.primary,
+                                trailing: options[index].value == currentValue
+                                    ? const Icon(Icons.check_rounded)
+                                    : null,
+                                onTap: () => Navigator.pop(
+                                  sheetContext,
+                                  options[index].value,
+                                ),
+                              ),
+                              if (index != options.length - 1)
+                                Divider(
+                                  height: 1,
+                                  indent: 60,
+                                  endIndent: 20,
+                                  color: cs.outlineVariant.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || selectedValue == null) return;
+    setState(() {
+      _coverMaxDimension = selectedValue == 0 ? null : selectedValue;
     });
   }
 
@@ -934,14 +1031,11 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           results = await PlatformBridge.customSearchWithExtension(
             selectedProvider.id,
             query,
-            options: {
-              'limit': 5,
-              if (trackFilter != null) 'filter': trackFilter,
-            },
+            options: {'limit': 5, 'filter': ?trackFilter},
           );
         } else {
           results = await PlatformBridge.searchTracksWithMetadataProvider(
-            selectedProvider!.id,
+            selectedProvider.id,
             query,
             limit: 5,
           );
@@ -1334,29 +1428,55 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
-
-    final metadata = <String, String>{
-      'title': _titleCtrl.text,
-      'artist': _artistCtrl.text,
-      'album': _albumCtrl.text,
-      'album_artist': _albumArtistCtrl.text,
-      'date': _dateCtrl.text,
-      'track_number': _trackNumCtrl.text,
-      'track_total': _trackTotalCtrl.text,
-      'disc_number': _discNumCtrl.text,
-      'disc_total': _discTotalCtrl.text,
-      'genre': _genreCtrl.text,
-      'isrc': _isrcCtrl.text,
-      'lyrics': _lyricsCtrl.text,
-      'label': _labelCtrl.text,
-      'copyright': _copyrightCtrl.text,
-      'composer': _composerCtrl.text,
-      'comment': _commentCtrl.text,
-      'cover_path': _selectedCoverPath ?? '',
-      'artist_tag_mode': widget.artistTagMode,
-    };
-
+    final noCoverMessage = context.l10n.trackCoverNoEmbeddedArt;
+    final resizeFailedMessage = context.l10n.trackCoverResizeFailed;
+    Directory? resizedCoverTempDir;
     try {
+      String? coverPathForSave = _selectedCoverPath;
+      final requestedCoverDimension = _coverMaxDimension;
+      if (requestedCoverDimension != null) {
+        final sourceCoverPath = _selectedCoverPath ?? _currentCoverPath;
+        if (!_hasValue(sourceCoverPath)) {
+          throw StateError(noCoverMessage);
+        }
+        resizedCoverTempDir = await Directory.systemTemp.createTemp(
+          'edit_resized_cover_',
+        );
+        final resizedCoverPath =
+            '${resizedCoverTempDir.path}${Platform.pathSeparator}'
+            'cover_${requestedCoverDimension}px.jpg';
+        final resized = await FFmpegService.resizeCoverArt(
+          inputPath: sourceCoverPath!,
+          outputPath: resizedCoverPath,
+          maxDimension: requestedCoverDimension,
+        );
+        if (!resized) {
+          throw StateError(resizeFailedMessage);
+        }
+        coverPathForSave = resizedCoverPath;
+      }
+
+      final metadata = <String, String>{
+        'title': _titleCtrl.text,
+        'artist': _artistCtrl.text,
+        'album': _albumCtrl.text,
+        'album_artist': _albumArtistCtrl.text,
+        'date': _dateCtrl.text,
+        'track_number': _trackNumCtrl.text,
+        'track_total': _trackTotalCtrl.text,
+        'disc_number': _discNumCtrl.text,
+        'disc_total': _discTotalCtrl.text,
+        'genre': _genreCtrl.text,
+        'isrc': _isrcCtrl.text,
+        'lyrics': _lyricsCtrl.text,
+        'label': _labelCtrl.text,
+        'copyright': _copyrightCtrl.text,
+        'composer': _composerCtrl.text,
+        'comment': _commentCtrl.text,
+        'cover_path': coverPathForSave ?? '',
+        'artist_tag_mode': widget.artistTagMode,
+      };
+
       final result = await PlatformBridge.editFileMetadata(
         widget.filePath,
         metadata,
@@ -1371,7 +1491,6 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
             ),
           );
         }
-        setState(() => _saving = false);
         return;
       }
 
@@ -1447,7 +1566,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           // Lyrics/ReplayGain preservation is best-effort.
         }
 
-        String? existingCoverPath = _selectedCoverPath ?? _currentCoverPath;
+        String? existingCoverPath = coverPathForSave ?? _currentCoverPath;
         String? extractedCoverPath;
         if (existingCoverPath == null || existingCoverPath.isEmpty) {
           // Preserve current embedded cover when user does not pick a new one.
@@ -1513,15 +1632,15 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           if (mounted) {
             _showSheetSnackBar(context.l10n.metadataSaveFailedFfmpeg);
           }
-          setState(() => _saving = false);
           return;
         }
 
         if (tempPath != null && safUri != null) {
           final ok = await PlatformBridge.writeTempToSaf(ffmpegResult, safUri);
-          if (!ok && mounted) {
-            _showSheetSnackBar(context.l10n.metadataSaveFailedStorage);
-            setState(() => _saving = false);
+          if (!ok) {
+            if (mounted) {
+              _showSheetSnackBar(context.l10n.metadataSaveFailedStorage);
+            }
             return;
           }
         }
@@ -1537,6 +1656,13 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         );
       }
     } finally {
+      if (resizedCoverTempDir != null) {
+        try {
+          if (await resizedCoverTempDir.exists()) {
+            await resizedCoverTempDir.delete(recursive: true);
+          }
+        } catch (_) {}
+      }
       if (mounted) setState(() => _saving = false);
     }
   }
@@ -2114,6 +2240,21 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
               ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
+          const SizedBox(height: 12),
+          _selectionField(
+            label: context.l10n.trackCoverResolution,
+            value: _coverMaxDimension == null
+                ? context.l10n.trackConvertOriginal
+                : '${_coverMaxDimension!} px',
+            enabled: !_saving,
+            onTap: _showCoverResolutionPicker,
+          ),
+          Text(
+            context.l10n.trackCoverResolutionHint,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
         ],
         const SizedBox(height: 8),
       ],
