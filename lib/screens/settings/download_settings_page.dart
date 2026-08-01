@@ -1114,7 +1114,7 @@ class _MetadataSourceSelector extends ConsumerWidget {
       subtitle = context.l10n.optionsPrimaryProviderSubtitle;
     }
 
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1160,6 +1160,10 @@ class _MetadataSourceSelector extends ConsumerWidget {
         ],
       ),
     );
+    return SettingsSearchTarget(
+      label: context.l10n.optionsPrimaryProvider,
+      child: content,
+    );
   }
 }
 
@@ -1181,7 +1185,7 @@ class _DefaultSearchTabSelector extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
     final current = settings.defaultSearchTab;
 
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1227,6 +1231,10 @@ class _DefaultSearchTabSelector extends ConsumerWidget {
           ),
         ],
       ),
+    );
+    return SettingsSearchTarget(
+      label: context.l10n.optionsDefaultSearchTab,
+      child: content,
     );
   }
 }

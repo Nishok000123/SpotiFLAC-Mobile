@@ -183,16 +183,19 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
               ),
 
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: FilledButton.icon(
-                  onPressed: _installExtension,
-                  icon: const Icon(Icons.add),
-                  label: Text(context.l10n.extensionsInstallButton),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+              child: SettingsSearchTarget(
+                label: context.l10n.extensionsInstallButton,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: FilledButton.icon(
+                    onPressed: _installExtension,
+                    icon: const Icon(Icons.add),
+                    label: Text(context.l10n.extensionsInstallButton),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                   ),
                 ),
@@ -383,7 +386,7 @@ class _DownloadPriorityItem extends ConsumerWidget {
       (e) => e.enabled && e.hasDownloadProvider,
     );
 
-    return InkWell(
+    final content = InkWell(
       onTap: hasDownloadExtensions
           ? () => Navigator.push(
               context,
@@ -435,6 +438,10 @@ class _DownloadPriorityItem extends ConsumerWidget {
         ),
       ),
     );
+    return SettingsSearchTarget(
+      label: context.l10n.extensionsDownloadPriority,
+      child: content,
+    );
   }
 }
 
@@ -450,7 +457,7 @@ class _MetadataPriorityItem extends ConsumerWidget {
       (e) => e.enabled && e.hasMetadataProvider,
     );
 
-    return InkWell(
+    final content = InkWell(
       onTap: hasMetadataExtensions
           ? () => Navigator.push(
               context,
@@ -502,6 +509,10 @@ class _MetadataPriorityItem extends ConsumerWidget {
         ),
       ),
     );
+    return SettingsSearchTarget(
+      label: context.l10n.extensionsMetadataPriority,
+      child: content,
+    );
   }
 }
 
@@ -517,7 +528,7 @@ class _DownloadFallbackItem extends ConsumerWidget {
       (e) => e.enabled && e.hasDownloadProvider,
     );
 
-    return InkWell(
+    final content = InkWell(
       onTap: hasDownloadExtensions
           ? () => Navigator.push(
               context,
@@ -569,6 +580,10 @@ class _DownloadFallbackItem extends ConsumerWidget {
         ),
       ),
     );
+    return SettingsSearchTarget(
+      label: context.l10n.extensionsFallbackTitle,
+      child: content,
+    );
   }
 }
 
@@ -599,7 +614,7 @@ class _SearchProviderSelector extends ConsumerWidget {
       currentProviderName = ext?.displayName ?? resolvedProviderId;
     }
 
-    return Column(
+    final content = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         InkWell(
@@ -655,6 +670,10 @@ class _SearchProviderSelector extends ConsumerWidget {
           ),
         ),
       ],
+    );
+    return SettingsSearchTarget(
+      label: context.l10n.extensionsSearchProvider,
+      child: content,
     );
   }
 
@@ -750,7 +769,7 @@ class _HomeFeedProviderSelector extends ConsumerWidget {
       currentProviderName = ext?.displayName ?? settings.homeFeedProvider!;
     }
 
-    return Column(
+    final content = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         InkWell(
@@ -795,6 +814,10 @@ class _HomeFeedProviderSelector extends ConsumerWidget {
           ),
         ),
       ],
+    );
+    return SettingsSearchTarget(
+      label: context.l10n.extensionsHomeFeedProvider,
+      child: content,
     );
   }
 

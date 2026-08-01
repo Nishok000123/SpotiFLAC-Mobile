@@ -6,6 +6,7 @@ import 'package:spotiflac_android/l10n/app_localizations.dart';
 import 'package:spotiflac_android/screens/settings/about_page.dart';
 import 'package:spotiflac_android/screens/settings/settings_tab.dart';
 import 'package:spotiflac_android/theme/app_theme.dart';
+import 'package:spotiflac_android/widgets/settings_group.dart';
 
 void main() {
   setUp(() {
@@ -67,4 +68,50 @@ void main() {
       expect(find.text('Version'), findsOneWidget);
     },
   );
+
+  testWidgets('search target scrolls into view and briefly glows', (
+    tester,
+  ) async {
+    final scrollController = ScrollController();
+    addTearDown(scrollController.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: SettingsSearchHighlightScope(
+          targetLabel: 'Target setting',
+          child: Scaffold(
+            body: CustomScrollView(
+              controller: scrollController,
+              slivers: const [
+                SliverToBoxAdapter(child: SizedBox(height: 1200)),
+                SliverToBoxAdapter(
+                  child: SettingsItem(title: 'Target setting'),
+                ),
+                SliverToBoxAdapter(child: SizedBox(height: 600)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(scrollController.offset, greaterThan(0));
+    final highlightFinder = find.byKey(
+      const ValueKey('settings-highlight:Target setting'),
+    );
+    final highlighted = tester.widget<AnimatedContainer>(highlightFinder);
+    final highlightedDecoration = highlighted.decoration! as BoxDecoration;
+    expect(highlightedDecoration.color, isNot(Colors.transparent));
+    expect(highlightedDecoration.boxShadow, isNotEmpty);
+
+    await tester.pump(const Duration(milliseconds: 2300));
+    await tester.pump(const Duration(milliseconds: 400));
+    final faded = tester.widget<AnimatedContainer>(highlightFinder);
+    final fadedDecoration = faded.decoration! as BoxDecoration;
+    expect(fadedDecoration.color, Colors.transparent);
+  });
 }

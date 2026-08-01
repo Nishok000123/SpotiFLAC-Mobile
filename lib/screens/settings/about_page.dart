@@ -641,7 +641,7 @@ class _AboutSettingsItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Column(
+    final content = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         InkWell(
@@ -697,5 +697,6 @@ class _AboutSettingsItem extends StatelessWidget {
           ),
       ],
     );
+    return SettingsSearchTarget(label: title, child: content);
   }
 }

@@ -499,7 +499,7 @@ class _HistoryViewSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -536,6 +536,10 @@ class _HistoryViewSelector extends StatelessWidget {
           ),
         ],
       ),
+    );
+    return SettingsSearchTarget(
+      label: context.l10n.appearanceHistoryView,
+      child: content,
     );
   }
 }
@@ -583,12 +587,16 @@ class _LanguageSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return ListTile(
+    final content = ListTile(
       leading: Icon(Icons.language, color: colorScheme.onSurfaceVariant),
       title: Text(context.l10n.appearanceLanguage),
       subtitle: Text(_getLanguageName(currentLocale)),
       trailing: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
       onTap: () => _showLanguagePicker(context),
+    );
+    return SettingsSearchTarget(
+      label: context.l10n.appearanceLanguage,
+      child: content,
     );
   }
 

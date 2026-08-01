@@ -11,12 +11,17 @@ class SettingsSearchEntry {
     required this.title,
     this.subtitle,
     this.keywords = const [],
-  });
+    String? targetLabel,
+  }) : targetLabel = targetLabel ?? title;
 
   final IconData icon;
   final String title;
   final String? subtitle;
   final List<String> keywords;
+
+  /// Label of the actual destination widget. Usually the result title, but a
+  /// hidden or toolbar-only action may point at its nearest visible section.
+  final String targetLabel;
 
   bool matches(SettingsSearchQuery query) =>
       query.matches([title, ?subtitle, ...keywords]);
@@ -542,6 +547,7 @@ class SettingsSearchCatalog {
         SettingsSearchEntry(
           icon: Icons.delete_sweep_outlined,
           title: l10n.cacheClearAll,
+          targetLabel: l10n.cacheSectionMaintenance,
           keywords: const ['delete all cache'],
         ),
       ],
@@ -570,26 +576,31 @@ class SettingsSearchCatalog {
           icon: Icons.filter_list,
           title: l10n.logFilterLevel,
           subtitle: l10n.logFilterBySeverity,
+          targetLabel: l10n.logFilterSection,
           keywords: const ['severity', 'error warning debug'],
         ),
         SettingsSearchEntry(
           icon: Icons.search,
           title: l10n.logSearchHint,
+          targetLabel: l10n.logFilterSection,
           keywords: const ['find logs'],
         ),
         SettingsSearchEntry(
           icon: Icons.copy,
           title: l10n.logCopyLogs,
+          targetLabel: l10n.logFilterSection,
           keywords: const ['clipboard'],
         ),
         SettingsSearchEntry(
           icon: Icons.share,
           title: l10n.logShareLogs,
+          targetLabel: l10n.logFilterSection,
           keywords: const ['export logs'],
         ),
         SettingsSearchEntry(
           icon: Icons.delete_outline,
           title: l10n.logClearLogs,
+          targetLabel: l10n.logFilterSection,
           keywords: const ['delete logs'],
         ),
       ],

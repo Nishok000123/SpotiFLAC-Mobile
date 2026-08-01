@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:spotiflac_android/theme/app_tokens.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
@@ -17,6 +19,182 @@ Color settingsGroupColor(BuildContext context) {
           Colors.black.withValues(alpha: 0.04),
           colorScheme.surface,
         );
+}
+
+/// Carries a Settings search result into its destination page.
+///
+/// Descendant [SettingsSearchTarget] widgets compete to claim the matching
+/// label. The first match scrolls into view and briefly highlights itself.
+class SettingsSearchHighlightScope extends StatefulWidget {
+  const SettingsSearchHighlightScope({
+    super.key,
+    required this.targetLabel,
+    required this.child,
+  });
+
+  final String targetLabel;
+  final Widget child;
+
+  @override
+  State<SettingsSearchHighlightScope> createState() =>
+      _SettingsSearchHighlightScopeState();
+}
+
+class _SettingsSearchHighlightScopeState
+    extends State<SettingsSearchHighlightScope> {
+  late _SettingsSearchHighlightController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = _SettingsSearchHighlightController(widget.targetLabel);
+  }
+
+  @override
+  void didUpdateWidget(SettingsSearchHighlightScope oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.targetLabel != widget.targetLabel) {
+      _controller = _SettingsSearchHighlightController(widget.targetLabel);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsSearchHighlightInherited(
+      controller: _controller,
+      child: widget.child,
+    );
+  }
+}
+
+class _SettingsSearchHighlightController {
+  _SettingsSearchHighlightController(this.targetLabel);
+
+  final String targetLabel;
+  bool _claimed = false;
+
+  bool matches(String label) => label == targetLabel;
+
+  bool claim(String label) {
+    if (_claimed || !matches(label)) return false;
+    _claimed = true;
+    return true;
+  }
+}
+
+class _SettingsSearchHighlightInherited extends InheritedWidget {
+  const _SettingsSearchHighlightInherited({
+    required this.controller,
+    required super.child,
+  });
+
+  final _SettingsSearchHighlightController controller;
+
+  static _SettingsSearchHighlightInherited? maybeOf(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<
+          _SettingsSearchHighlightInherited
+        >();
+  }
+
+  @override
+  bool updateShouldNotify(_SettingsSearchHighlightInherited oldWidget) {
+    return controller != oldWidget.controller;
+  }
+}
+
+/// Marks one settings control as a possible deep-link target from search.
+class SettingsSearchTarget extends StatefulWidget {
+  const SettingsSearchTarget({
+    super.key,
+    required this.label,
+    required this.child,
+  });
+
+  final String label;
+  final Widget child;
+
+  @override
+  State<SettingsSearchTarget> createState() => _SettingsSearchTargetState();
+}
+
+class _SettingsSearchTargetState extends State<SettingsSearchTarget> {
+  Timer? _highlightTimer;
+  bool _handled = false;
+  bool _highlighted = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_handled) return;
+
+    final scope = _SettingsSearchHighlightInherited.maybeOf(context);
+    if (scope?.controller.claim(widget.label) != true) return;
+    _handled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
+  }
+
+  Future<void> _reveal() async {
+    if (!mounted) return;
+    setState(() => _highlighted = true);
+
+    await Scrollable.ensureVisible(
+      context,
+      alignment: 0.32,
+      duration: const Duration(milliseconds: 480),
+      curve: Curves.easeOutCubic,
+    );
+    if (!mounted) return;
+
+    _highlightTimer = Timer(const Duration(milliseconds: 1800), () {
+      if (mounted) setState(() => _highlighted = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _highlightTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Normal settings rendering stays allocation-light: only the one claimed
+    // search target creates an animated decoration and semantics node.
+    if (!_handled) return widget.child;
+
+    final colorScheme = Theme.of(context).colorScheme;
+    return Semantics(
+      selected: _highlighted,
+      child: AnimatedContainer(
+        key: ValueKey('settings-highlight:${widget.label}'),
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: _highlighted
+              ? colorScheme.primaryContainer.withValues(alpha: 0.72)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(context.tokens.radiusCover),
+          border: _highlighted
+              ? Border.all(
+                  color: colorScheme.primary.withValues(alpha: 0.72),
+                  width: 1.5,
+                )
+              : null,
+          boxShadow: _highlighted
+              ? [
+                  BoxShadow(
+                    color: colorScheme.primary.withValues(alpha: 0.28),
+                    blurRadius: 18,
+                    spreadRadius: 2,
+                  ),
+                ]
+              : const [],
+        ),
+        child: widget.child,
+      ),
+    );
+  }
 }
 
 class SettingsGroup extends StatelessWidget {
@@ -95,7 +273,7 @@ class SettingsItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Column(
+    final content = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         InkWell(
@@ -164,6 +342,7 @@ class SettingsItem extends StatelessWidget {
           ),
       ],
     );
+    return SettingsSearchTarget(label: title, child: content);
   }
 }
 
@@ -194,7 +373,7 @@ class SettingsSwitchItem extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final isDisabled = !enabled || onChanged == null;
 
-    return Column(
+    final content = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Opacity(
@@ -276,6 +455,7 @@ class SettingsSwitchItem extends StatelessWidget {
           ),
       ],
     );
+    return SettingsSearchTarget(label: title, child: content);
   }
 }
 
@@ -286,7 +466,7 @@ class SettingsSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.fromLTRB(32, 24, 32, 8),
       child: Text(
         title,
@@ -296,6 +476,7 @@ class SettingsSectionHeader extends StatelessWidget {
         ),
       ),
     );
+    return SettingsSearchTarget(label: title, child: content);
   }
 }
 

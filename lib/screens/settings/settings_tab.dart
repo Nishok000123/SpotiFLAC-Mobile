@@ -259,11 +259,18 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     return groups;
   }
 
-  Future<void> _navigateTo(BuildContext context, Widget page) async {
+  Future<void> _navigateTo(
+    BuildContext context,
+    Widget page, {
+    String? targetLabel,
+  }) async {
     _searchFocusNode.unfocus();
     _searchFocusNode.canRequestFocus = false;
     FocusManager.instance.primaryFocus?.unfocus();
-    await Navigator.of(context).push(slidePageRoute<void>(page: page));
+    final destination = targetLabel == null
+        ? page
+        : SettingsSearchHighlightScope(targetLabel: targetLabel, child: page);
+    await Navigator.of(context).push(slidePageRoute<void>(page: destination));
     if (!mounted) return;
 
     // A route's focus scope remembers its previously focused child. Keep the
@@ -301,7 +308,11 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
       title: entry.title,
       subtitle: result.destination.title,
       showDivider: showDivider,
-      onTap: () => _navigateTo(context, result.destination.pageBuilder()),
+      onTap: () => _navigateTo(
+        context,
+        result.destination.pageBuilder(),
+        targetLabel: entry.targetLabel,
+      ),
     );
   }
 

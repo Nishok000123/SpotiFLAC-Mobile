@@ -267,7 +267,7 @@ class _UpdateChannelSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,6 +342,10 @@ class _UpdateChannelSelector extends StatelessWidget {
         ],
       ),
     );
+    return SettingsSearchTarget(
+      label: context.l10n.optionsUpdateChannel,
+      child: content,
+    );
   }
 }
 
@@ -363,7 +367,7 @@ class _VerificationBrowserModeSelector extends StatelessWidget {
         ? 'external_first'
         : 'in_app_first';
 
-    return Column(
+    final content = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
@@ -433,6 +437,10 @@ class _VerificationBrowserModeSelector extends StatelessWidget {
           color: colorScheme.outlineVariant.withValues(alpha: 0.3),
         ),
       ],
+    );
+    return SettingsSearchTarget(
+      label: context.l10n.extensionVerificationBrowserTitle,
+      child: content,
     );
   }
 }
