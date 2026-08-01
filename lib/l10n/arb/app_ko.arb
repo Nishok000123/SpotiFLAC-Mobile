@@ -792,7 +792,7 @@
   "@dialogImportPlaylistTitle": {
     "description": "Dialog title - import CSV playlist"
   },
-  "dialogImportPlaylistMessage": "Found {count} tracks in the playlist file. Add them to download queue?",
+  "dialogImportPlaylistMessage": "{count}개의 트랙이 재생목록 파일에서 발견되었습니다. 다운로드 대기열에 추가하시겠습니까?",
   "csvImportTracks": "CSV 파일의 트랙: {count}",
   "@csvImportTracks": {
     "description": "Label shown in quality picker for CSV import",
@@ -802,11 +802,11 @@
       }
     }
   },
-  "collectionExportM3u": "Export as M3U8",
+  "collectionExportM3u": "M3U8로 추출",
   "@collectionExportM3u": {
     "description": "Tooltip on the collection screen action that exports the track list as an M3U8 playlist file"
   },
-  "collectionExportM3uDone": "Exported {exported} of {total} tracks",
+  "collectionExportM3uDone": "{total}개의 트랙 중 {exported}개 추출됨",
   "@collectionExportM3uDone": {
     "description": "Snackbar after M3U8 export; tracks without a local file are not exported",
     "placeholders": {
@@ -818,43 +818,43 @@
       }
     }
   },
-  "collectionExportM3uNone": "No downloaded files to export",
+  "collectionExportM3uNone": "추출할 다운로드된 파일 엊ㅅ음",
   "@collectionExportM3uNone": {
     "description": "Snackbar when an M3U8 export finds no local files"
   },
-  "collectionExportM3uFailed": "Export failed",
+  "collectionExportM3uFailed": "추출 실패",
   "@collectionExportM3uFailed": {
     "description": "Snackbar when writing or sharing the M3U8 export fails"
   },
-  "trackOpenOn": "Open on...",
+  "trackOpenOn": "다른 곳에서 열기...",
   "@trackOpenOn": {
     "description": "Track option and sheet title listing streaming platforms where the track can be opened"
   },
-  "trackOpenOnNoLinks": "No platform links found for this track.",
+  "trackOpenOnNoLinks": "이 트랙의 플랫폼 링크를 찾을 수 없음.",
   "@trackOpenOnNoLinks": {
     "description": "Shown in the Open on sheet when song.link returns no links"
   },
-  "libraryReviewDuplicates": "Review duplicates",
+  "libraryReviewDuplicates": "중복된 트랙 보기",
   "@libraryReviewDuplicates": {
     "description": "Library settings row opening the duplicate review sheet"
   },
-  "libraryReviewDuplicatesSubtitle": "Find tracks stored more than once",
+  "libraryReviewDuplicatesSubtitle": "중복 저장된 트랙 찾기",
   "@libraryReviewDuplicatesSubtitle": {
     "description": "Subtitle for the duplicate review settings row"
   },
-  "duplicatesTitle": "Duplicates",
+  "duplicatesTitle": "중복",
   "@duplicatesTitle": {
     "description": "Title of the duplicate review sheet"
   },
-  "duplicatesEmpty": "No duplicate tracks found.",
+  "duplicatesEmpty": "중복된 트랙이 없습니다.",
   "@duplicatesEmpty": {
     "description": "Shown when the duplicate review sheet finds nothing"
   },
-  "duplicatesKeepBest": "Keep best",
+  "duplicatesKeepBest": "최고 음질 선택",
   "@duplicatesKeepBest": {
     "description": "Button that deletes all but the highest-quality copy in a duplicate group"
   },
-  "duplicatesKeepBestMessage": "Delete {count} lower-quality copies of \"{trackName}\"?",
+  "duplicatesKeepBestMessage": "\"{trackName}\"의 {count}개의 저음질 복사본을 삭제하시겠습니까?",
   "@duplicatesKeepBestMessage": {
     "description": "Confirmation message for the keep-best action",
     "placeholders": {
@@ -866,7 +866,7 @@
       }
     }
   },
-  "duplicatesDeleteCopyMessage": "Delete this copy of \"{trackName}\"?",
+  "duplicatesDeleteCopyMessage": "\"{trackName}\"의 복사본을 삭제하시겠습니까?",
   "@duplicatesDeleteCopyMessage": {
     "description": "Confirmation message for deleting one duplicate copy",
     "placeholders": {
@@ -2091,11 +2091,11 @@
   "@appearanceHeroAnimationsSubtitle": {
     "description": "Subtitle for the Hero animations toggle"
   },
-  "appearanceForceBlur": "Always use blur effects",
+  "appearanceForceBlur": "항상 블러 효과 사용",
   "@appearanceForceBlur": {
     "description": "Toggle that forces backdrop blur on even when the device profile disabled it"
   },
-  "appearanceForceBlurSubtitle": "Enable the navigation bar blur even on devices where it is off by default. May cost performance.",
+  "appearanceForceBlurSubtitle": "기본적으로 비활성화된 기기에서도 하단 바의 블러 효과를 활성화합니다.\n성능에 영향을 줄 수도 있습니다.",
   "@appearanceForceBlurSubtitle": {
     "description": "Subtitle for the force-blur toggle"
   },
@@ -2759,7 +2759,7 @@
       }
     }
   },
-  "tutorialWelcomeTitle": "Welcome to SpotiFLAC Mobile!",
+  "tutorialWelcomeTitle": "SpotiFLAC Mobile에 어서오세요!",
   "@tutorialWelcomeTitle": {
     "description": "Tutorial welcome page title"
   },
@@ -2767,7 +2767,7 @@
   "@tutorialWelcomeDesc": {
     "description": "Tutorial welcome page description"
   },
-  "tutorialWelcomeTip1": "Search music or paste a link from any source your installed extensions support",
+  "tutorialWelcomeTip1": "음악을 검색하거나, 설치된 확장 기능이 지원하는 출처의 링크를 붙여넣기",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
@@ -4283,23 +4283,23 @@
   "@editMetadataAutoFill": {
     "description": "Section title for selective online metadata auto-fill in the edit metadata sheet"
   },
-  "editMetadataAutoFillDesc": "Choose a metadata extension, select fields, then review its data before applying",
+  "editMetadataAutoFillDesc": "메타데이터 확장 기능을 선택하고, 필드를 지정한 다음, 적용하기 전에 해당 데이터를 확인",
   "@editMetadataAutoFillDesc": {
     "description": "Description for the auto-fill section"
   },
-  "editMetadataAutoFillSource": "Metadata source",
+  "editMetadataAutoFillSource": "메타데이터 출처",
   "@editMetadataAutoFillSource": {
     "description": "Label for the metadata extension selector in online auto-fill"
   },
-  "editMetadataAutoFillSourceAutomatic": "Automatic (provider priority)",
+  "editMetadataAutoFillSourceAutomatic": "자동 (제공자 우선순위)",
   "@editMetadataAutoFillSourceAutomatic": {
     "description": "Automatic source option that follows configured metadata provider priority"
   },
-  "editMetadataAutoFillFind": "Find metadata",
+  "editMetadataAutoFillFind": "메타데이터 찾기",
   "@editMetadataAutoFillFind": {
     "description": "Button label for finding an online metadata candidate"
   },
-  "editMetadataAutoFillPreview": "Data from {source}",
+  "editMetadataAutoFillPreview": "{source}의 데이터",
   "@editMetadataAutoFillPreview": {
     "description": "Title for the online metadata preview",
     "placeholders": {
@@ -4308,11 +4308,11 @@
       }
     }
   },
-  "editMetadataAutoFillCoverAvailable": "Cover artwork available",
+  "editMetadataAutoFillCoverAvailable": "커버 아트워크 이용 가능",
   "@editMetadataAutoFillCoverAvailable": {
     "description": "Preview value when the selected metadata source provides cover artwork"
   },
-  "editMetadataAutoFillApply": "Apply selected data",
+  "editMetadataAutoFillApply": "선택된 데이터 적용하기",
   "@editMetadataAutoFillApply": {
     "description": "Button label for applying the previewed metadata"
   },
@@ -4473,7 +4473,7 @@
   "@libraryDefaultView": {
     "description": "Setting title - which library view opens when switching to the Library tab"
   },
-  "libraryDefaultViewLastUsed": "Last used",
+  "libraryDefaultViewLastUsed": "마지막으로 사용됨",
   "@libraryDefaultViewLastUsed": {
     "description": "Default view option - keep the last used library view"
   },
@@ -4577,7 +4577,7 @@
   "@audioAnalysisSpectralCutoff": {
     "description": "Estimated spectral cutoff metric label"
   },
-  "audioAnalysisCutoffNotDetected": "Not detected",
+  "audioAnalysisCutoffNotDetected": "감지되지 않음",
   "@audioAnalysisCutoffNotDetected": {
     "description": "Displayed when no reliable broadband spectral cutoff can be detected"
   },
@@ -4651,11 +4651,11 @@
   "@cancelDownloadKeep": {
     "description": "Dialog button - keep the active download (do not cancel)"
   },
-  "queueCancelledTitle": "Download cancelled",
+  "queueCancelledTitle": "다운로드 취소됨",
   "@queueCancelledTitle": {
     "description": "Dialog title when opening a cancelled queue item"
   },
-  "queueCancelledMessage": "This download was cancelled. Retry it or remove it from the queue.",
+  "queueCancelledMessage": "이 다운로드는 취소되었습니다. 다시 시도하거나, 대기열에서 삭제하세요.",
   "@queueCancelledMessage": {
     "description": "Dialog body when opening a cancelled queue item"
   },
@@ -4924,7 +4924,7 @@
       }
     }
   },
-  "homeImportCsvTooltip": "Import playlist (CSV, M3U)",
+  "homeImportCsvTooltip": "재생목록 가져오기 (CSV, M3U)",
   "@homeImportCsvTooltip": {
     "description": "Tooltip for importing a CSV or M3U playlist file into Home search"
   },
@@ -4992,7 +4992,7 @@
   "@trackCoverReplaceNotice": {
     "description": "Notice shown when a new cover has been selected but not saved yet"
   },
-  "trackCoverResolution": "Cover resolution",
+  "trackCoverResolution": "커버 해상도",
   "@trackCoverResolution": {
     "description": "Label for selecting the embedded cover art resolution"
   },
@@ -5012,47 +5012,47 @@
   "@queueFinalizingDownload": {
     "description": "Accessibility label for a queue item that is finalizing"
   },
-  "queueDownloadNext": "Download next",
+  "queueDownloadNext": "다음으로 다운로드",
   "@queueDownloadNext": {
     "description": "Tooltip on a queued download row; moves the item to the front of the queue so the next free slot downloads it"
   },
-  "queueMoveUp": "Move up",
+  "queueMoveUp": "위로 이동",
   "@queueMoveUp": {
     "description": "Queue item menu action - move the queued item one position earlier"
   },
-  "queueMoveDown": "Move down",
+  "queueMoveDown": "아래로 이동",
   "@queueMoveDown": {
     "description": "Queue item menu action - move the queued item one position later"
   },
-  "editMetadataMusicBrainzButton": "Fetch from MusicBrainz",
+  "editMetadataMusicBrainzButton": "MusicBrainz에서 가져옴",
   "@editMetadataMusicBrainzButton": {
     "description": "Tag editor button that fills genre and album artist from MusicBrainz by ISRC"
   },
-  "editMetadataMusicBrainzFilled": "Updated from MusicBrainz",
+  "editMetadataMusicBrainzFilled": "MusicBrainz에서 업데이트됨",
   "@editMetadataMusicBrainzFilled": {
     "description": "Snackbar after MusicBrainz suggestions were applied to the tag editor fields"
   },
-  "editMetadataMusicBrainzNothing": "Nothing found on MusicBrainz",
+  "editMetadataMusicBrainzNothing": "MusicBrainZ에서 발견되지 않음",
   "@editMetadataMusicBrainzNothing": {
     "description": "Snackbar when the MusicBrainz lookup returns no data"
   },
-  "editMetadataMusicBrainzNeedsIsrc": "Requires an ISRC tag",
+  "editMetadataMusicBrainzNeedsIsrc": "ISRC 태그 필요",
   "@editMetadataMusicBrainzNeedsIsrc": {
     "description": "Snackbar when the MusicBrainz lookup is tapped without an ISRC"
   },
-  "nowPlayingRepeatOff": "Repeat off",
+  "nowPlayingRepeatOff": "반복 끄기",
   "@nowPlayingRepeatOff": {
     "description": "Repeat toggle tooltip when repeat is disabled"
   },
-  "nowPlayingRepeatAll": "Repeat all",
+  "nowPlayingRepeatAll": "전체 반복",
   "@nowPlayingRepeatAll": {
     "description": "Repeat toggle tooltip when the whole queue repeats"
   },
-  "nowPlayingRepeatOne": "Repeat one",
+  "nowPlayingRepeatOne": "한 곡 반복",
   "@nowPlayingRepeatOne": {
     "description": "Repeat toggle tooltip when the current track repeats"
   },
-  "queueNetworkFailedOffline": "{count} downloads failed while offline",
+  "queueNetworkFailedOffline": "오프라인 중에 {count}개의 다운로드 실패",
   "@queueNetworkFailedOffline": {
     "description": "Snackbar shown when connectivity returns and network-failed downloads can be retried",
     "placeholders": {
@@ -5392,7 +5392,7 @@
   "@libraryFilterMetadataIncorrectIsrcFormat": {
     "description": "Filter option - items with an invalid ISRC format"
   },
-  "libraryFilterMetadataMissingIsrc": "Missing ISRC",
+  "libraryFilterMetadataMissingIsrc": "ISRC 없음",
   "@libraryFilterMetadataMissingIsrc": {
     "description": "Filter option - items without any ISRC tag"
   },
@@ -6239,11 +6239,11 @@
   "@extensionVerificationOpenBrowser": {
     "description": "Button to open the extension verification URL in a browser"
   },
-  "settingsSearchHint": "Search settings",
+  "settingsSearchHint": "설정 찾기",
   "@settingsSearchHint": {
     "description": "Placeholder of the search field on the Settings tab"
   },
-  "settingsSearchNoResults": "No settings match \"{query}\"",
+  "settingsSearchNoResults": "\"{query}\"과 일치하는 설정 없음",
   "@settingsSearchNoResults": {
     "description": "Shown when a Settings search returns nothing",
     "placeholders": {
@@ -6252,19 +6252,19 @@
       }
     }
   },
-  "settingsGroupInterface": "Extensions & appearance",
+  "settingsGroupInterface": "확장 프로그램 & 모습",
   "@settingsGroupInterface": {
     "description": "Settings group covering look and feel"
   },
-  "settingsGroupContent": "Content & metadata",
+  "settingsGroupContent": "콘텐츠 & 메타데이터",
   "@settingsGroupContent": {
     "description": "Settings group covering the library, metadata and lyrics"
   },
-  "settingsGroupDownloads": "Downloads & files",
+  "settingsGroupDownloads": "다운로드 & 파일",
   "@settingsGroupDownloads": {
     "description": "Settings group covering download behaviour and storage"
   },
-  "settingsGroupSystem": "System",
+  "settingsGroupSystem": "시스템",
   "@settingsGroupSystem": {
     "description": "Settings group covering app-level data, cache and logs"
   },
