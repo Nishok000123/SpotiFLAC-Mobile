@@ -1,5 +1,11 @@
 part of 'track_metadata_screen.dart';
 
+const _trackMetadataHeroScheme = ColorScheme.dark(
+  surface: Colors.black,
+  onSurface: Colors.white,
+  onSurfaceVariant: Colors.white70,
+);
+
 extension _TrackMetadataCards on _TrackMetadataScreenState {
   Widget _buildAnimatedTrackContent(
     BuildContext context,
@@ -222,28 +228,31 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 12),
-                HeaderMetaRow(
-                  items: [
-                    if (_displayAudioQuality != null &&
-                        _displayAudioQuality!.isNotEmpty)
-                      HeaderMetaItem(_displayAudioQuality!),
-                    if (duration != null)
-                      HeaderMetaItem(formatClock(duration!)),
-                    if (_service != 'local')
-                      HeaderMetaItem(
-                        _service[0].toUpperCase() + _service.substring(1),
-                      )
-                    else
-                      HeaderMetaItem(
-                        context.l10n.librarySourceLocal,
-                        icon: Icons.folder,
-                      ),
-                    if (_hasCheckedFile && !_fileExists)
-                      HeaderMetaItem(
-                        context.l10n.trackFileNotFound,
-                        icon: Icons.warning_rounded,
-                      ),
-                  ],
+                HeaderPalette(
+                  scheme: _trackMetadataHeroScheme,
+                  child: HeaderMetaRow(
+                    items: [
+                      if (_displayAudioQuality != null &&
+                          _displayAudioQuality!.isNotEmpty)
+                        HeaderMetaItem(_displayAudioQuality!),
+                      if (duration != null)
+                        HeaderMetaItem(formatClock(duration!)),
+                      if (_service != 'local')
+                        HeaderMetaItem(
+                          _service[0].toUpperCase() + _service.substring(1),
+                        )
+                      else
+                        HeaderMetaItem(
+                          context.l10n.librarySourceLocal,
+                          icon: Icons.folder,
+                        ),
+                      if (_hasCheckedFile && !_fileExists)
+                        HeaderMetaItem(
+                          context.l10n.trackFileNotFound,
+                          icon: Icons.warning_rounded,
+                        ),
+                    ],
+                  ),
                 ),
               ],
             ),
