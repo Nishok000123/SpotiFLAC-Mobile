@@ -33,7 +33,7 @@
   "@homeEmptyTitle": {
     "description": "Title shown on home when no providers are available yet"
   },
-  "homeEmptySubtitle": "계속하려면 확장 프로그램을 설치하세요",
+  "homeEmptySubtitle": "계속하려면 확장 기능을 설치하세요",
   "@homeEmptySubtitle": {
     "description": "Subtitle shown on home when no providers are available yet"
   },
@@ -73,7 +73,7 @@
   "@settingsAppearance": {
     "description": "Settings section - visual customization"
   },
-  "settingsExtensions": "확장 프로그램",
+  "settingsExtensions": "확장 기능",
   "@settingsExtensions": {
     "description": "Settings section - extension management"
   },
@@ -149,7 +149,7 @@
   "@optionsPrimaryProviderSubtitle": {
     "description": "Subtitle for primary provider"
   },
-  "optionsUsingExtension": "확장 프로그램 사용: {extensionName}",
+  "optionsUsingExtension": "확장 기능 사용: {extensionName}",
   "@optionsUsingExtension": {
     "description": "Shows active extension name",
     "placeholders": {
@@ -280,7 +280,7 @@
   "@optionsArtistTagModeSplitVorbisSubtitle": {
     "description": "Subtitle for split Vorbis artist tag mode"
   },
-  "optionsExtensionStore": "확장 프로그램 레포",
+  "optionsExtensionStore": "확장 기능 레포",
   "@optionsExtensionStore": {
     "description": "Show/hide repo tab"
   },
@@ -332,7 +332,7 @@
   "@optionsDetailedLoggingOff": {
     "description": "Status when logging disabled"
   },
-  "extensionsTitle": "확장 프로그램",
+  "extensionsTitle": "확장 기능",
   "@extensionsTitle": {
     "description": "Extensions page title"
   },
@@ -353,11 +353,11 @@
   "@extensionsUninstall": {
     "description": "Uninstall extension button"
   },
-  "storeTitle": "확장 프로그램 레포",
+  "storeTitle": "확장 기능 레포",
   "@storeTitle": {
     "description": "Repo screen title"
   },
-  "storeSearch": "확장 프로그램 검색...",
+  "storeSearch": "확장 기능 검색...",
   "@storeSearch": {
     "description": "Repo search placeholder"
   },
@@ -473,7 +473,7 @@
   "@aboutSjdonadoDesc": {
     "description": "Credit description for sjdonado"
   },
-  "aboutAppDescription": "음악 메타데이터를 검색하고, 확장 프로그램을 관리하고, 라이브러리를 정리하세요",
+  "aboutAppDescription": "음악 메타데이터를 검색하고, 확장 기능을 관리하고, 라이브러리를 정리하세요",
   "@aboutAppDescription": {
     "description": "App description in header card"
   },
@@ -746,15 +746,15 @@
   "@dialogClearAll": {
     "description": "Dialog title - clear all items"
   },
-  "dialogRemoveExtension": "확장 프로그램 제거",
+  "dialogRemoveExtension": "확장 기능 제거",
   "@dialogRemoveExtension": {
     "description": "Dialog title - uninstall extension"
   },
-  "dialogRemoveExtensionMessage": "이 확장 프로그램을 제거하시겠습니까? 이 작업은 되돌릴 수 없습니다",
+  "dialogRemoveExtensionMessage": "이 확장 기능을 제거하시겠습니까? 이 작업은 되돌릴 수 없습니다",
   "@dialogRemoveExtensionMessage": {
     "description": "Dialog message - uninstall confirmation"
   },
-  "dialogUninstallExtension": "확장 프로그램을 제거하시겠습니까?",
+  "dialogUninstallExtension": "확장 기능을 제거하시겠습니까?",
   "@dialogUninstallExtension": {
     "description": "Dialog title - uninstall extension"
   },
@@ -989,11 +989,11 @@
       }
     }
   },
-  "snackbarFailedToInstall": "확장 프로그램 설치 실패",
+  "snackbarFailedToInstall": "확장 기능 설치 실패",
   "@snackbarFailedToInstall": {
     "description": "Snackbar - extension install error"
   },
-  "snackbarFailedToUpdate": "확장 프로그램 업데이트 실패",
+  "snackbarFailedToUpdate": "확장 기능 업데이트 실패",
   "@snackbarFailedToUpdate": {
     "description": "Snackbar - extension update error"
   },
@@ -1017,7 +1017,7 @@
   "@errorUrlNotRecognized": {
     "description": "Error title - URL not handled by any extension or service"
   },
-  "errorUrlNotRecognizedMessage": "이 링크는 지원되지 않습니다. URL이 올바른지, 호환되는 확장 프로그램이 설치되어 있는지 확인하세요",
+  "errorUrlNotRecognizedMessage": "이 링크는 지원되지 않습니다. URL이 올바른지, 호환되는 확장 기능이 설치되어 있는지 확인하세요",
   "@errorUrlNotRecognizedMessage": {
     "description": "Error message - URL not recognized explanation"
   },
@@ -1276,15 +1276,15 @@
   "@providerPriorityInfo": {
     "description": "Info tip about fallback behavior"
   },
-  "providerPriorityFallbackExtensionsDescription": "자동 대체 중에 사용할 수 있는 설치된 다운로드 확장 프로그램을 선택하세요",
+  "providerPriorityFallbackExtensionsDescription": "자동 대체 중에 사용할 수 있는 설치된 다운로드 확장 기능을 선택하세요",
   "@providerPriorityFallbackExtensionsDescription": {
     "description": "Section description for extension fallback selection"
   },
-  "providerPriorityFallbackExtensionsHint": "다운로드 공급자 기능이 활성화된 확장 프로그램만 여기에 나열됩니다",
+  "providerPriorityFallbackExtensionsHint": "다운로드 제공자 기능이 활성화된 확장 기능만 여기에 나열됩니다",
   "@providerPriorityFallbackExtensionsHint": {
     "description": "Hint below the extension fallback selection list"
   },
-  "providerExtension": "확장 프로그램",
+  "providerExtension": "확장 기능",
   "@providerExtension": {
     "description": "Label for extension-provided providers"
   },
@@ -1716,11 +1716,11 @@
   "@storeClearFilters": {
     "description": "Button to clear all filters"
   },
-  "storeAddRepoTitle": "확장 프로그램 레포지토리 추가",
+  "storeAddRepoTitle": "확장 기능 레포지토리 추가",
   "@storeAddRepoTitle": {
     "description": "Store setup screen - heading when no repo is configured"
   },
-  "storeAddRepoDescription": "확장 프로그램을 찾아보고 설치하려면 registry.json 파일이 포함된 GitHub 레포지토리 URL을 입력하세요",
+  "storeAddRepoDescription": "확장 기능을 찾아보고 설치하려면 registry.json 파일이 포함된 GitHub 레포지토리 URL을 입력하세요",
   "@storeAddRepoDescription": {
     "description": "Store setup screen - explanatory text"
   },
@@ -1740,7 +1740,7 @@
   "@storeChangeRepoTooltip": {
     "description": "Tooltip for the change-repository icon button in the app bar"
   },
-  "storeRepoDialogTitle": "확장 프로그램 레포지토리",
+  "storeRepoDialogTitle": "확장 기능 레포지토리",
   "@storeRepoDialogTitle": {
     "description": "Title of the change/remove repository dialog"
   },
@@ -1756,11 +1756,11 @@
   "@storeLoadError": {
     "description": "Error heading when the store cannot be loaded"
   },
-  "storeEmptyNoExtensions": "사용 가능한 확장 프로그램이 없음",
+  "storeEmptyNoExtensions": "사용 가능한 확장 기능이 없음",
   "@storeEmptyNoExtensions": {
     "description": "Message when store has no extensions"
   },
-  "storeEmptyNoResults": "확장 프로그램을 찾을 수 없음",
+  "storeEmptyNoResults": "확장 기능을 찾을 수 없음",
   "@storeEmptyNoResults": {
     "description": "Message when search/filter returns no results"
   },
@@ -1808,7 +1808,7 @@
   "@extensionSettings": {
     "description": "Section header - extension settings"
   },
-  "extensionRemoveButton": "확장 프로그램 제거",
+  "extensionRemoveButton": "확장 기능 제거",
   "@extensionRemoveButton": {
     "description": "Button to uninstall extension"
   },
@@ -1859,11 +1859,11 @@
   "@extensionsProviderPrioritySection": {
     "description": "Section header - provider priority"
   },
-  "extensionsInstalledSection": "설치된 확장 프로그램",
+  "extensionsInstalledSection": "설치된 확장 기능",
   "@extensionsInstalledSection": {
     "description": "Section header - installed extensions"
   },
-  "extensionsNoExtensions": "설치된 확장 프로그램이 없음",
+  "extensionsNoExtensions": "설치된 확장 기능이 없음",
   "@extensionsNoExtensions": {
     "description": "Empty state - no extensions"
   },
@@ -1871,19 +1871,19 @@
   "@extensionsNoExtensionsSubtitle": {
     "description": "Empty state subtitle"
   },
-  "extensionsInstallButton": "확장 프로그램 설치",
+  "extensionsInstallButton": "확장 기능 설치",
   "@extensionsInstallButton": {
     "description": "Button to install extension from file"
   },
-  "extensionsInfoTip": "확장 프로그램은 새 메타데이터와 다운로드 제공자를 추가할 수 있습니다. 신뢰할 수 있는 출처의 확장 프로그램만 설치하세요",
+  "extensionsInfoTip": "확장 기능은 새 메타데이터와 다운로드 제공자를 추가할 수 있습니다. 신뢰할 수 있는 출처의 확장 기능만 설치하세요",
   "@extensionsInfoTip": {
     "description": "Security warning about extensions"
   },
-  "extensionsInstalledSuccess": "확장 프로그램 설치 성공",
+  "extensionsInstalledSuccess": "확장 기능 설치 성공",
   "@extensionsInstalledSuccess": {
     "description": "Success message after install"
   },
-  "extensionsInstalledCount": "{count} 개의 확장 프로그램 설치 성공",
+  "extensionsInstalledCount": "{count} 개의 확장 기능 설치 성공",
   "@extensionsInstalledCount": {
     "description": "Success message after installing multiple extensions",
     "placeholders": {
@@ -1893,7 +1893,7 @@
       }
     }
   },
-  "extensionsInstallPartialSuccess": "{attempted} 개의 확장 프로그램 중 {installed} 개가 설치됨",
+  "extensionsInstallPartialSuccess": "{attempted} 개의 확장 기능 중 {installed} 개가 설치됨",
   "@extensionsInstallPartialSuccess": {
     "description": "Message when installing multiple extensions partially succeeds",
     "placeholders": {
@@ -1915,15 +1915,15 @@
   "@extensionsDownloadPrioritySubtitle": {
     "description": "Subtitle for download priority"
   },
-  "extensionsFallbackTitle": "대체 확장 프로그램",
+  "extensionsFallbackTitle": "대체 확장 기능",
   "@extensionsFallbackTitle": {
     "description": "Setting and page title for choosing which download extensions can be used during fallback"
   },
-  "extensionsFallbackSubtitle": "설치된 다운로드 확장 프로그램 중 대체 프로그램으로 사용할 항목을 선택하세요",
+  "extensionsFallbackSubtitle": "설치된 다운로드 확장 기능 중 대체로 사용할 항목을 선택하세요",
   "@extensionsFallbackSubtitle": {
     "description": "Subtitle for download fallback extensions menu"
   },
-  "extensionsNoDownloadProvider": "다운로드 제공자가 있는 확장 프로그램가 없음",
+  "extensionsNoDownloadProvider": "다운로드 제공자가 있는 확장 기능이 없음",
   "@extensionsNoDownloadProvider": {
     "description": "Empty state - no download providers"
   },
@@ -1935,7 +1935,7 @@
   "@extensionsMetadataPrioritySubtitle": {
     "description": "Subtitle for metadata priority"
   },
-  "extensionsNoMetadataProvider": "메타데이터 제공자가 있는 확장 프로그램이 없음",
+  "extensionsNoMetadataProvider": "메타데이터 제공자가 있는 확장 기능이 없음",
   "@extensionsNoMetadataProvider": {
     "description": "Empty state - no metadata providers"
   },
@@ -1943,7 +1943,7 @@
   "@extensionsSearchProvider": {
     "description": "Setting - search provider selection"
   },
-  "extensionsNoCustomSearch": "사용자 정의 검색이 있는 확장 프로그램이 없음",
+  "extensionsNoCustomSearch": "사용자 정의 검색이 있는 확장 기능이 없음",
   "@extensionsNoCustomSearch": {
     "description": "Empty state - no search providers"
   },
@@ -1955,7 +1955,7 @@
   "@extensionsCustomSearch": {
     "description": "Label for custom search provider"
   },
-  "extensionsErrorLoading": "확장 프로그램 불러오기 오류",
+  "extensionsErrorLoading": "확장 기능 불러오기 오류",
   "@extensionsErrorLoading": {
     "description": "Error message when extension fails to load"
   },
@@ -2767,11 +2767,11 @@
   "@tutorialWelcomeDesc": {
     "description": "Tutorial welcome page description"
   },
-  "tutorialWelcomeTip1": "음악을 검색하거나, 설치된 확장 프로그램이 지원하는 출처의 링크를 붙여넣으세요",
+  "tutorialWelcomeTip1": "음악을 검색하거나, 설치된 확장 기능이 지원하는 출처의 링크를 붙여넣으세요",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
-  "tutorialWelcomeTip2": "설치된 다운로드 확장 프로그램으로 FLAC 고음질 오디오를 다운로드할 수 있습니다",
+  "tutorialWelcomeTip2": "설치된 다운로드 확장 기능으로 FLAC 고음질 오디오를 다운로드할 수 있습니다",
   "@tutorialWelcomeTip2": {
     "description": "Tutorial welcome tip 2"
   },
@@ -2815,15 +2815,15 @@
   "@tutorialLibraryTip3": {
     "description": "Tutorial library tip 3"
   },
-  "tutorialExtensionsTitle": "확장 프로그램",
+  "tutorialExtensionsTitle": "확장 기능",
   "@tutorialExtensionsTitle": {
     "description": "Tutorial extensions page title"
   },
-  "tutorialExtensionsDesc": "커뮤니티 확장 프로그램을 사용하여 앱의 기능을 확장하세요",
+  "tutorialExtensionsDesc": "커뮤니티 확장 기능을 사용하여 앱의 기능을 확장하세요",
   "@tutorialExtensionsDesc": {
     "description": "Tutorial extensions page description"
   },
-  "tutorialExtensionsTip1": "레포 탭을 탐색하여 유용한 확장 프로그램을 찾을 수 있습니다",
+  "tutorialExtensionsTip1": "레포 탭을 탐색하여 유용한 확장 기능을 찾을 수 있습니다",
   "@tutorialExtensionsTip1": {
     "description": "Tutorial extensions tip 1"
   },
@@ -3700,7 +3700,7 @@
   "@lyricsProvidersDescription": {
     "description": "Description on the lyrics provider priority page"
   },
-  "lyricsProvidersInfoText": "확장 프로그램 가사 제공자는 내부 가사 제공자보다 먼저 실행됩니다. 하나 이상의 제공자가 활성화되어 있어야 합니다",
+  "lyricsProvidersInfoText": "확장 기능의 가사 제공자는 내부 가사 제공자보다 먼저 실행됩니다. 하나 이상의 제공자가 활성화되어 있어야 합니다",
   "@lyricsProvidersInfoText": {
     "description": "Info tip on lyrics provider priority page"
   },
@@ -3730,7 +3730,7 @@
   "@lyricsProvidersSaved": {
     "description": "Snackbar after saving lyrics provider priority"
   },
-  "lyricsProvidersDiscardContent": "저장되지 않은 변경 사항이 손실됩니다",
+  "lyricsProvidersDiscardContent": "저장되지 않은 변경 사항은 손실됩니다",
   "@lyricsProvidersDiscardContent": {
     "description": "Body text of the discard-changes dialog on lyrics provider page"
   },
@@ -3758,7 +3758,7 @@
   "@lyricsProviderLyricsPlusDesc": {
     "description": "Description for LyricsPlus provider"
   },
-  "lyricsProviderExtensionDesc": "확장 프로그램 제공자",
+  "lyricsProviderExtensionDesc": "확장 기능 제공자",
   "@lyricsProviderExtensionDesc": {
     "description": "Generic description for extension-based lyrics providers"
   },
@@ -3911,7 +3911,7 @@
       }
     }
   },
-  "backupContentsExtensions": "{count, plural, =1{1 개의 확장 프로그램} other{{count} 개의 확장 프로그램}}",
+  "backupContentsExtensions": "{count, plural, =1{1 개의 확장 기능} other{{count} 개의 확장 기능}}",
   "@backupContentsExtensions": {
     "description": "Backup contents row for installed extensions count",
     "placeholders": {
@@ -3920,15 +3920,15 @@
       }
     }
   },
-  "backupIncludeSecrets": "확장 프로그램 자격 증명 포함",
+  "backupIncludeSecrets": "확장 기능 자격 증명 포함",
   "@backupIncludeSecrets": {
     "description": "Toggle to include secret extension settings (tokens, API keys) in the backup"
   },
-  "backupIncludeSecretsDescription": "확장 프로그램의 토큰과 API 키가 백업 파일에 함께 저장됩니다. 백업 파일은 안전하게 보관하세요. 비활성화하면 복원 후 다시 입력해야 합니다",
+  "backupIncludeSecretsDescription": "확장 기능의 토큰과 API 키가 백업 파일에 함께 저장됩니다. 백업 파일은 안전하게 보관하세요. 비활성화하면 복원 후 다시 입력해야 합니다",
   "@backupIncludeSecretsDescription": {
     "description": "Explanation for the include-credentials toggle"
   },
-  "backupExtensionsRestoreFailed": "{count} 개의 {count, plural, =1{확장 프로그램} other{확장 프로그램}}을 다시 설치할 수 없습니다. 레포에서 수동으로 설치하세요",
+  "backupExtensionsRestoreFailed": "{count} 개의 {count, plural, =1{확장 기능} other{확장 기능}}을 다시 설치할 수 없습니다. 레포에서 수동으로 설치하세요",
   "@backupExtensionsRestoreFailed": {
     "description": "Snackbar/hint when some extensions failed to reinstall during restore",
     "placeholders": {
@@ -4283,7 +4283,7 @@
   "@editMetadataAutoFill": {
     "description": "Section title for selective online metadata auto-fill in the edit metadata sheet"
   },
-  "editMetadataAutoFillDesc": "메타데이터 확장 프로그램을 선택하고, 필드를 지정한 다음, 적용하기 전에 해당 데이터를 확인",
+  "editMetadataAutoFillDesc": "메타데이터 확장 기능을 선택하고, 필드를 지정한 다음, 적용하기 전에 해당 데이터를 확인",
   "@editMetadataAutoFillDesc": {
     "description": "Description for the auto-fill section"
   },
@@ -4601,7 +4601,7 @@
   "@extensionsHomeFeedProvider": {
     "description": "Extensions page - label for home feed provider selector"
   },
-  "extensionsHomeFeedDescription": "메인 화면에 홈 피드를 제공하는 확장 프로그램을 선택하세요",
+  "extensionsHomeFeedDescription": "메인 화면에 홈 피드를 제공하는 확장 기능을 선택하세요",
   "@extensionsHomeFeedDescription": {
     "description": "Extensions page - description for home feed provider picker"
   },
@@ -4630,7 +4630,7 @@
       }
     }
   },
-  "extensionsNoHomeFeedExtensions": "홈 피드가 있는 확장 프로그램가 없음",
+  "extensionsNoHomeFeedExtensions": "홈 피드가 있는 확장 기능이 없음",
   "@extensionsNoHomeFeedExtensions": {
     "description": "Extensions page - shown when no installed extension has home feed"
   },
@@ -5292,7 +5292,7 @@
   "@settingsApp": {
     "description": "Settings menu item - app settings"
   },
-  "settingsAppSubtitle": "업데이트, 데이터, 확장프로그램 레포, 디버그",
+  "settingsAppSubtitle": "업데이트, 데이터, 확장 기능 레포, 디버그",
   "@settingsAppSubtitle": {
     "description": "Subtitle for app settings"
   },
@@ -5344,11 +5344,11 @@
   "@trackOptionDownloadQualityVariant": {
     "description": "Track menu action to download another quality version"
   },
-  "downloadFallbackExtensions": "대체 확장 프로그램",
+  "downloadFallbackExtensions": "대체 확장 기능",
   "@downloadFallbackExtensions": {
     "description": "Settings item for configuring fallback extension providers"
   },
-  "downloadFallbackExtensionsSubtitle": "대체 확장 프로그램으로 사용할 확장 프로그램을 선택하세요",
+  "downloadFallbackExtensionsSubtitle": "대체 확장 기능으로 사용할 확장 기능을 선택하세요",
   "@downloadFallbackExtensionsSubtitle": {
     "description": "Subtitle for fallback extensions item"
   },
@@ -5516,7 +5516,7 @@
       }
     }
   },
-  "storeExtensionsCount": "{count} 개의 {count, plural, =1{확장 프로그램} other{확장 프로그램}}",
+  "storeExtensionsCount": "{count} 개의 {count, plural, =1{확장 기능} other{확장 기능}}",
   "@storeExtensionsCount": {
     "description": "Store extension result count",
     "placeholders": {
@@ -5581,7 +5581,7 @@
   "@downloadNativeWorker": {
     "description": "Setting title for Android native download worker"
   },
-  "downloadNativeWorkerSubtitle": "확장 프로그램 다운로드를 위한 Android 백그라운드 서비스",
+  "downloadNativeWorkerSubtitle": "확장 기능 다운로드를 위한 Android 백그라운드 서비스",
   "@downloadNativeWorkerSubtitle": {
     "description": "Setting subtitle for Android native download worker"
   },
@@ -5623,11 +5623,11 @@
   "@extensionCustomUrlHandling": {
     "description": "Extension detail section title for custom URL handling"
   },
-  "extensionCustomUrlHandlingSubtitle": "이 확장 프로그램은 다음 사이트의 링크를 처리할 수 있습니다",
+  "extensionCustomUrlHandlingSubtitle": "이 확장 기능은 다음 사이트의 링크를 처리할 수 있습니다",
   "@extensionCustomUrlHandlingSubtitle": {
     "description": "Extension detail subtitle for custom URL handling"
   },
-  "extensionCustomUrlHandlingShareHint": "이 사이트의 링크를 SpotiFLAC Mobile로 공유하면 이 확장 프로그램이 처리합니다",
+  "extensionCustomUrlHandlingShareHint": "이 사이트의 링크를 SpotiFLAC Mobile로 공유하면 이 확장 기능이 처리합니다",
   "@extensionCustomUrlHandlingShareHint": {
     "description": "Extension detail hint explaining share-to-app URL handling"
   },
@@ -6084,7 +6084,7 @@
   "@trackAddToQueue": {
     "description": "Menu action to add a track to the playback queue"
   },
-  "snackbarExtensionInstalledEnable": "''{extensionName}''이 설치됨. '설정 > 확장 프로그램'에서 활성화하세요",
+  "snackbarExtensionInstalledEnable": "''{extensionName}''이 설치됨. '설정 > 확장 기능'에서 활성화하세요",
   "@snackbarExtensionInstalledEnable": {
     "description": "Snackbar after installing an extension from the repo tab",
     "placeholders": {
@@ -6252,7 +6252,7 @@
       }
     }
   },
-  "settingsGroupInterface": "확장 프로그램 & 디자인",
+  "settingsGroupInterface": "확장 기능 & 디자인",
   "@settingsGroupInterface": {
     "description": "Settings group covering look and feel"
   },
