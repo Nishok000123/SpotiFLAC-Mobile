@@ -802,11 +802,11 @@
       }
     }
   },
-  "collectionExportM3u": "M3U8로 추출",
+  "collectionExportM3u": "M3U8로 내보내기",
   "@collectionExportM3u": {
     "description": "Tooltip on the collection screen action that exports the track list as an M3U8 playlist file"
   },
-  "collectionExportM3uDone": "{total} 개의 트랙 중 {exported} 개 추출됨",
+  "collectionExportM3uDone": "{total} 개의 트랙 중 {exported} 개 내보내기 완료",
   "@collectionExportM3uDone": {
     "description": "Snackbar after M3U8 export; tracks without a local file are not exported",
     "placeholders": {
@@ -818,15 +818,15 @@
       }
     }
   },
-  "collectionExportM3uNone": "추출할 다운로드된 파일이 없음",
+  "collectionExportM3uNone": "내보낼 다운로드된 파일이 없음",
   "@collectionExportM3uNone": {
     "description": "Snackbar when an M3U8 export finds no local files"
   },
-  "collectionExportM3uFailed": "추출 실패",
+  "collectionExportM3uFailed": "내보내기 실패",
   "@collectionExportM3uFailed": {
     "description": "Snackbar when writing or sharing the M3U8 export fails"
   },
-  "trackOpenOn": "다른 곳에서 열기...",
+  "trackOpenOn": "다른 음원 플랫폼에서 열기",
   "@trackOpenOn": {
     "description": "Track option and sheet title listing streaming platforms where the track can be opened"
   },
@@ -1712,7 +1712,7 @@
   "@storeFilterIntegration": {
     "description": "Repo filter - integrations"
   },
-  "storeClearFilters": "필터 지우기",
+  "storeClearFilters": "필터 초기화",
   "@storeClearFilters": {
     "description": "Button to clear all filters"
   },
@@ -5906,7 +5906,7 @@
   "@nowPlayingShuffleLibrary": {
     "description": "Button label to shuffle and play the entire local library"
   },
-  "nowPlayingQueueEmpty": "현재 다운로드 목록이 비어 있음",
+  "nowPlayingQueueEmpty": "현재 재생목록이 비어 있음",
   "@nowPlayingQueueEmpty": {
     "description": "Empty state when the playback queue has no items"
   },
@@ -5995,7 +5995,7 @@
   "@snackbarPlayingNext": {
     "description": "Snackbar when a track is inserted as the next queue item"
   },
-  "snackbarAddedToQueueGeneric": "현재 다운로드 목록에 추가됨",
+  "snackbarAddedToQueueGeneric": "현재 재생목록에 추가됨",
   "@snackbarAddedToQueueGeneric": {
     "description": "Snackbar when a track is added to the playback queue without naming it"
   },
@@ -6080,7 +6080,7 @@
   "@trackPlayNext": {
     "description": "Menu action to play a track as the next queue item"
   },
-  "trackAddToQueue": "다운로드 목록에 추가",
+  "trackAddToQueue": "현재 재생목록에 추가",
   "@trackAddToQueue": {
     "description": "Menu action to add a track to the playback queue"
   },
