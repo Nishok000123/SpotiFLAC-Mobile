@@ -473,7 +473,7 @@
   "@aboutSjdonadoDesc": {
     "description": "Credit description for sjdonado"
   },
-  "aboutAppDescription": "음악 메타데이터를 검색하고\\n확장 프로그램을 관리하고\\n라이브러리를 정리하세요",
+  "aboutAppDescription": "음악 메타데이터를 검색하고, 확장 프로그램을 관리하고, 라이브러리를 정리하세요",
   "@aboutAppDescription": {
     "description": "App description in header card"
   },
@@ -670,7 +670,7 @@
   "@setupLanguageTitle": {
     "description": "Title for the language selection step in setup"
   },
-  "setupLanguageDescription": "앱에서 사용할 언어를 선택하세요\\n나중에 설정에서 변경할 수 있습니다",
+  "setupLanguageDescription": "앱에서 사용할 언어를 선택하세요. 나중에 설정에서 변경할 수 있습니다",
   "@setupLanguageDescription": {
     "description": "Description for the language selection step in setup"
   },
@@ -792,7 +792,7 @@
   "@dialogImportPlaylistTitle": {
     "description": "Dialog title - import CSV playlist"
   },
-  "dialogImportPlaylistMessage": "{count}개의 트랙이 재생목록 파일에서 발견되었습니다. 다운로드 대기열에 추가하시겠습니까?",
+  "dialogImportPlaylistMessage": "{count} 개의 트랙이 재생목록 파일에서 발견되었습니다. 다운로드 목록에 추가하시겠습니까?",
   "csvImportTracks": "CSV 파일의 트랙: {count}",
   "@csvImportTracks": {
     "description": "Label shown in quality picker for CSV import",
@@ -802,11 +802,11 @@
       }
     }
   },
-  "collectionExportM3u": "M3U8로 추출",
+  "collectionExportM3u": "M3U8로 내보내기",
   "@collectionExportM3u": {
     "description": "Tooltip on the collection screen action that exports the track list as an M3U8 playlist file"
   },
-  "collectionExportM3uDone": "{total}개의 트랙 중 {exported}개 추출됨",
+  "collectionExportM3uDone": "{total} 개의 트랙 중 {exported} 개 내보내짐",
   "@collectionExportM3uDone": {
     "description": "Snackbar after M3U8 export; tracks without a local file are not exported",
     "placeholders": {
@@ -818,11 +818,11 @@
       }
     }
   },
-  "collectionExportM3uNone": "추출할 다운로드된 파일 엊ㅅ음",
+  "collectionExportM3uNone": "내보낼 다운로드된 파일 없음",
   "@collectionExportM3uNone": {
     "description": "Snackbar when an M3U8 export finds no local files"
   },
-  "collectionExportM3uFailed": "추출 실패",
+  "collectionExportM3uFailed": "내보내기 실패",
   "@collectionExportM3uFailed": {
     "description": "Snackbar when writing or sharing the M3U8 export fails"
   },
@@ -830,7 +830,7 @@
   "@trackOpenOn": {
     "description": "Track option and sheet title listing streaming platforms where the track can be opened"
   },
-  "trackOpenOnNoLinks": "이 트랙의 플랫폼 링크를 찾을 수 없음.",
+  "trackOpenOnNoLinks": "이 트랙의 플랫폼 링크를 찾을 수 없습니다",
   "@trackOpenOnNoLinks": {
     "description": "Shown in the Open on sheet when song.link returns no links"
   },
@@ -854,7 +854,7 @@
   "@duplicatesKeepBest": {
     "description": "Button that deletes all but the highest-quality copy in a duplicate group"
   },
-  "duplicatesKeepBestMessage": "\"{trackName}\"의 {count}개의 저음질 복사본을 삭제하시겠습니까?",
+  "duplicatesKeepBestMessage": "\"{trackName}\"의 {count} 개의 저음질 복사본을 삭제하시겠습니까?",
   "@duplicatesKeepBestMessage": {
     "description": "Confirmation message for the keep-best action",
     "placeholders": {
@@ -2767,7 +2767,7 @@
   "@tutorialWelcomeDesc": {
     "description": "Tutorial welcome page description"
   },
-  "tutorialWelcomeTip1": "음악을 검색하거나, 설치된 확장 기능이 지원하는 출처의 링크를 붙여넣기",
+  "tutorialWelcomeTip1": "설치된 확장 프로그램에서 지원되는 음악을 검색하거나, 지원되는 출처의 음악 링크를 붙여넣으세요",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
@@ -2791,7 +2791,7 @@
   "@tutorialDownloadTitle": {
     "description": "Tutorial download page title"
   },
-  "tutorialDownloadDesc": "음악 다운로드는 간단하고 빠릅니다\\n작동 방식은 다음과 같습니다",
+  "tutorialDownloadDesc": "음악 다운로드는 간단하고 빠릅니다. 작동 방식은 다음과 같습니다",
   "@tutorialDownloadDesc": {
     "description": "Tutorial download page description"
   },
@@ -4316,7 +4316,7 @@
   "@editMetadataAutoFillApply": {
     "description": "Button label for applying the previewed metadata"
   },
-  "editMetadataAutoFillDoneFromSource": "Filled {count} {count, plural, =1{field} other{fields}} from {source}",
+  "editMetadataAutoFillDoneFromSource": "{source}에서 {count} 개의 {count, plural, =1{필드} other{필드}}이 채워졌습니다",
   "@editMetadataAutoFillDoneFromSource": {
     "description": "Snackbar confirming fields applied from a selected metadata source",
     "placeholders": {
@@ -4456,7 +4456,7 @@
   "@queueEmptySinglesSubtitle": {
     "description": "Empty state subtitle for single track downloads"
   },
-  "queuePlaylistCount": "{count, plural, =1{1 playlist} other{{count} playlists}}",
+  "queuePlaylistCount": "{count, plural, =1{1 개의 재생목록} other{{count} 재생목록}}",
   "@queuePlaylistCount": {
     "description": "Playlist count label with plural support",
     "placeholders": {
@@ -4469,7 +4469,7 @@
   "@queueEmptyPlaylistsSubtitle": {
     "description": "Empty state subtitle for the playlists library view"
   },
-  "libraryDefaultView": "Default view",
+  "libraryDefaultView": "기본 보기",
   "@libraryDefaultView": {
     "description": "Setting title - which library view opens when switching to the Library tab"
   },
