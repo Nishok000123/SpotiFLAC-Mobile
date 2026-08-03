@@ -2059,11 +2059,11 @@
   "@downloadUsePrimaryArtistOnly": {
     "description": "Setting - strip featured artists from folder name"
   },
-  "downloadUsePrimaryArtistOnlyEnabled": "폴더 이름에서 피처링 아티스트가 제거됩니다 (예: Justin Bieber, Quavo → Justin Bieber)",
+  "downloadUsePrimaryArtistOnlyEnabled": "폴더 이름에서 피처링 아티스트를 제거합니다 (예: Justin Bieber, Quavo → Justin Bieber)",
   "@downloadUsePrimaryArtistOnlyEnabled": {
     "description": "Subtitle when primary artist only is enabled"
   },
-  "downloadUsePrimaryArtistOnlyDisabled": "폴더 이름에 전체 아티스트 문자열이 사용됩니다",
+  "downloadUsePrimaryArtistOnlyDisabled": "폴더 이름에 전체 아티스트 문자열을 사용합니다",
   "@downloadUsePrimaryArtistOnlyDisabled": {
     "description": "Subtitle when primary artist only is disabled"
   },
@@ -3684,7 +3684,7 @@
       }
     }
   },
-  "downloadUseAlbumArtistForFoldersAlbumSubtitle": "앨범 아티스트 태그로 이름이 지정된 폴더",
+  "downloadUseAlbumArtistForFoldersAlbumSubtitle": "앨범 아티스트 태그를 기준으로 폴더 이름을 지정합니다",
   "@downloadUseAlbumArtistForFoldersAlbumSubtitle": {
     "description": "Subtitle when album artist is used for folder names"
   },
@@ -4085,7 +4085,7 @@
   "@downloadCreatePlaylistSourceFolder": {
     "description": "Setting to create a subfolder per playlist source"
   },
-  "downloadCreatePlaylistSourceFolderEnabled": "각 재생 목록에 대한 하위 폴더를 만듭니다",
+  "downloadCreatePlaylistSourceFolderEnabled": "각 재생목록에 대한 하위 폴더를 만듭니다",
   "@downloadCreatePlaylistSourceFolderEnabled": {
     "description": "Subtitle when playlist folder is enabled"
   },
@@ -4193,11 +4193,11 @@
   "@downloadFilterContributing": {
     "description": "Setting to strip contributing artists from Album Artist folder name"
   },
-  "downloadFilterContributingEnabled": "앨범 아티스트 폴더 이름에서 제거된 참여 아티스트",
+  "downloadFilterContributingEnabled": "앨범 아티스트 폴더명에서 참여 아티스트를 제외합니다",
   "@downloadFilterContributingEnabled": {
     "description": "Subtitle when contributing artist filter is on"
   },
-  "downloadFilterContributingDisabled": "전체 앨범 아티스트 문자열 사용",
+  "downloadFilterContributingDisabled": "전체 앨범 아티스트 문자열을 사용합니다",
   "@downloadFilterContributingDisabled": {
     "description": "Subtitle when contributing artist filter is off"
   },
