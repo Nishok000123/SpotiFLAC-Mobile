@@ -598,13 +598,14 @@ class _HomeTabState extends ConsumerState<HomeTab>
     }
 
     if (trackState.playlistName != null && trackState.tracks.isNotEmpty) {
+      final playlistProviderId = trackState.searchExtensionId ?? 'spotify';
       ref
           .read(recentAccessProvider.notifier)
           .recordPlaylistAccess(
-            id: trackState.playlistName!,
+            id: trackState.playlistId ?? trackState.playlistName!,
             name: trackState.playlistName!,
             imageUrl: trackState.coverUrl,
-            providerId: trackState.searchExtensionId ?? 'spotify',
+            providerId: playlistProviderId,
           );
 
       Navigator.push(
@@ -614,6 +615,8 @@ class _HomeTabState extends ConsumerState<HomeTab>
             playlistName: trackState.playlistName!,
             coverUrl: trackState.coverUrl,
             tracks: trackState.tracks,
+            playlistId: trackState.playlistId,
+            metadataProviderId: playlistProviderId,
             recommendedService:
                 trackState.searchExtensionId ?? trackState.searchSource,
           ),
