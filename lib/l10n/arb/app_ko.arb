@@ -1159,7 +1159,7 @@
   "@filenameShowAdvancedTagsDescription": {
     "description": "Description for advanced filename tag toggle"
   },
-  "folderOrganizationNone": "정리하지 않음",
+  "folderOrganizationNone": "분류하지 않음",
   "@folderOrganizationNone": {
     "description": "Folder option - flat structure"
   },
@@ -1183,7 +1183,7 @@
   "@folderOrganizationByArtistAlbum": {
     "description": "Folder option - nested folders"
   },
-  "folderOrganizationDescription": "다운로드된 파일을 폴더로 정리",
+  "folderOrganizationDescription": "다운로드된 파일을 폴더로 분류",
   "@folderOrganizationDescription": {
     "description": "Folder organization sheet description"
   },
