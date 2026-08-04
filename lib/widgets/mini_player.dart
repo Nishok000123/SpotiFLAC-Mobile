@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
 import 'package:spotiflac_android/screens/now_playing_screen.dart';
 import 'package:spotiflac_android/widgets/player_artwork.dart';
@@ -113,6 +114,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                         ),
                       ),
                       IconButton(
+                        tooltip: isPlaying
+                            ? context.l10n.actionPause
+                            : context.l10n.tooltipPlay,
                         icon: isLoading
                             ? const SizedBox.square(
                                 dimension: 20,
@@ -126,6 +130,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                             : () => controller.togglePlayPause(isPlaying),
                       ),
                       IconButton(
+                        tooltip: context.l10n.nowPlayingNextTrack,
                         icon: const Icon(Icons.skip_next),
                         onPressed: controller.next,
                       ),

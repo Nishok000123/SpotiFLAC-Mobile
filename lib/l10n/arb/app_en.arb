@@ -5861,6 +5861,14 @@
   "@nowPlayingUpNext": {
     "description": "Title for the playback queue sheet"
   },
+  "nowPlayingPreviousTrack": "Previous track",
+  "@nowPlayingPreviousTrack": {
+    "description": "Tooltip for the previous-track playback control"
+  },
+  "nowPlayingNextTrack": "Next track",
+  "@nowPlayingNextTrack": {
+    "description": "Tooltip for the next-track playback control"
+  },
   "nowPlayingDetails": "Details",
   "@nowPlayingDetails": {
     "description": "Menu item and section title for track metadata details"

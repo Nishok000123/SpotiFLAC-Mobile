@@ -4534,6 +4534,12 @@ class AppLocalizationsId extends AppLocalizations {
   String get nowPlayingUpNext => 'Up next';
 
   @override
+  String get nowPlayingPreviousTrack => 'Lagu sebelumnya';
+
+  @override
+  String get nowPlayingNextTrack => 'Lagu berikutnya';
+
+  @override
   String get nowPlayingDetails => 'Details';
 
   @override

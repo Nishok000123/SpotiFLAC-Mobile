@@ -72,6 +72,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  analyzer: ^12.1.0
   flutter_lints: ^6.0.0
   build_runner: ^2.15.1
   riverpod_lint: ^3.1.4

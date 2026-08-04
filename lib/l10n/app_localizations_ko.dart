@@ -4410,6 +4410,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get nowPlayingUpNext => '다음 곡';
 
   @override
+  String get nowPlayingPreviousTrack => '이전 곡';
+
+  @override
+  String get nowPlayingNextTrack => '다음 곡';
+
+  @override
   String get nowPlayingDetails => '트랙 세부 정보';
 
   @override

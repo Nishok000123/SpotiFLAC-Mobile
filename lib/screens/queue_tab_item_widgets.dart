@@ -1063,21 +1063,17 @@ extension _QueueTabItemWidgets on _QueueTabState {
               valueListenable: fileExistsListenable,
               builder: (context, fileExists, child) {
                 if (fileExists) {
-                  return Semantics(
-                    button: true,
-                    label: context.l10n.a11yPlayTrackByArtist(
+                  return IconButton.filled(
+                    tooltip: context.l10n.a11yPlayTrackByArtist(
                       item.trackName,
                       item.artistName,
                     ),
-                    child: IconButton.filled(
-                      onPressed: () => _playLibraryItem(item, libraryItems),
-                      visualDensity: VisualDensity.compact,
-                      iconSize: 18,
-                      icon: const Icon(Icons.play_arrow),
-                      style: IconButton.styleFrom(
-                        minimumSize: const Size.square(36),
-                        padding: EdgeInsets.zero,
-                      ),
+                    onPressed: () => _playLibraryItem(item, libraryItems),
+                    iconSize: 18,
+                    icon: const Icon(Icons.play_arrow),
+                    style: IconButton.styleFrom(
+                      minimumSize: Size.square(context.tokens.minTouchTarget),
+                      padding: EdgeInsets.zero,
                     ),
                   );
                 }

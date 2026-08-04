@@ -4567,6 +4567,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get nowPlayingUpNext => 'Up next';
 
   @override
+  String get nowPlayingPreviousTrack => 'Предыдущий трек';
+
+  @override
+  String get nowPlayingNextTrack => 'Следующий трек';
+
+  @override
   String get nowPlayingDetails => 'Details';
 
   @override

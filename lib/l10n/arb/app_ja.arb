@@ -4395,6 +4395,8 @@
   "@nowPlayingUpNext": {
     "description": "Title for the playback queue sheet"
   },
+  "nowPlayingPreviousTrack": "前の曲",
+  "nowPlayingNextTrack": "次の曲",
   "logAutoScrollOff": "Auto-scroll OFF",
   "trackConvertFailed": "変換に失敗しました",
   "@trackConvertFailed": {

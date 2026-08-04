@@ -4566,6 +4566,12 @@ class AppLocalizationsTr extends AppLocalizations {
   String get nowPlayingUpNext => 'Up next';
 
   @override
+  String get nowPlayingPreviousTrack => 'Önceki parça';
+
+  @override
+  String get nowPlayingNextTrack => 'Sonraki parça';
+
+  @override
   String get nowPlayingDetails => 'Details';
 
   @override

@@ -5502,6 +5502,8 @@
   "@nowPlayingUpNext": {
     "description": "Title for the playback queue sheet"
   },
+  "nowPlayingPreviousTrack": "Pista anterior",
+  "nowPlayingNextTrack": "Pista siguiente",
   "nowPlayingDetails": "Details",
   "@nowPlayingDetails": {
     "description": "Menu item and section title for track metadata details"

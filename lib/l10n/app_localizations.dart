@@ -7434,6 +7434,18 @@ abstract class AppLocalizations {
   /// **'Up next'**
   String get nowPlayingUpNext;
 
+  /// Tooltip for the previous-track playback control
+  ///
+  /// In en, this message translates to:
+  /// **'Previous track'**
+  String get nowPlayingPreviousTrack;
+
+  /// Tooltip for the next-track playback control
+  ///
+  /// In en, this message translates to:
+  /// **'Next track'**
+  String get nowPlayingNextTrack;
+
   /// Menu item and section title for track metadata details
   ///
   /// In en, this message translates to:

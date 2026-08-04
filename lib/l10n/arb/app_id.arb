@@ -4440,6 +4440,14 @@
   "@nowPlayingUpNext": {
     "description": "Title for the playback queue sheet"
   },
+  "nowPlayingPreviousTrack": "Lagu sebelumnya",
+  "@nowPlayingPreviousTrack": {
+    "description": "Tooltip for the previous-track playback control"
+  },
+  "nowPlayingNextTrack": "Lagu berikutnya",
+  "@nowPlayingNextTrack": {
+    "description": "Tooltip for the next-track playback control"
+  },
   "logAutoScrollOff": "Auto-scroll OFF",
   "trackConvertFailed": "Conversion failed",
   "@trackConvertFailed": {

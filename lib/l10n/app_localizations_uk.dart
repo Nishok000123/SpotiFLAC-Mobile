@@ -4584,6 +4584,12 @@ class AppLocalizationsUk extends AppLocalizations {
   String get nowPlayingUpNext => 'Up next';
 
   @override
+  String get nowPlayingPreviousTrack => 'Попередній трек';
+
+  @override
+  String get nowPlayingNextTrack => 'Наступний трек';
+
+  @override
   String get nowPlayingDetails => 'Details';
 
   @override

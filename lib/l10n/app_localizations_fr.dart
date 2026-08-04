@@ -4650,6 +4650,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get nowPlayingUpNext => 'À suivre';
 
   @override
+  String get nowPlayingPreviousTrack => 'Piste précédente';
+
+  @override
+  String get nowPlayingNextTrack => 'Piste suivante';
+
+  @override
   String get nowPlayingDetails => 'Détails';
 
   @override

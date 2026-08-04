@@ -4581,6 +4581,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get nowPlayingUpNext => 'Up next';
 
   @override
+  String get nowPlayingPreviousTrack => 'Vorheriger Titel';
+
+  @override
+  String get nowPlayingNextTrack => 'Nächster Titel';
+
+  @override
   String get nowPlayingDetails => 'Details';
 
   @override

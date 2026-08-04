@@ -4286,5 +4286,7 @@
   "settingsGroupContent": "Conteúdo e metadados",
   "settingsGroupDownloads": "Downloads e arquivos",
   "settingsGroupSystem": "Sistema",
-  "settingsGroupHelp": "Sobre e suporte"
+  "settingsGroupHelp": "Sobre e suporte",
+  "nowPlayingPreviousTrack": "Faixa anterior",
+  "nowPlayingNextTrack": "Próxima faixa"
 }

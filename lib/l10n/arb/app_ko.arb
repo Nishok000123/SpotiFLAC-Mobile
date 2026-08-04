@@ -5641,6 +5641,8 @@
   "@nowPlayingUpNext": {
     "description": "Title for the playback queue sheet"
   },
+  "nowPlayingPreviousTrack": "이전 곡",
+  "nowPlayingNextTrack": "다음 곡",
   "nowPlayingDetails": "트랙 세부 정보",
   "@nowPlayingDetails": {
     "description": "Menu item and section title for track metadata details"

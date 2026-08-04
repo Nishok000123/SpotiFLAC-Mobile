@@ -639,6 +639,7 @@ class _LibraryTracksFolderScreenState
             },
           ),
           IconButton(
+            tooltip: context.l10n.collectionPlaylistChangeCover,
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(

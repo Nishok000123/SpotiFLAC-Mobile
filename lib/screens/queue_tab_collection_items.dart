@@ -627,16 +627,26 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
               child: Row(
                 children: [
                   if (_isPlaylistSelectionMode)
-                    GestureDetector(
-                      onTap: () => _togglePlaylistSelection(playlist.id),
-                      behavior: HitTestBehavior.opaque,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: AnimatedSelectionCheckbox(
-                          visible: true,
-                          selected: isSelected,
-                          colorScheme: colorScheme,
-                          size: 24,
+                    Semantics(
+                      button: true,
+                      checked: isSelected,
+                      label: playlist.name,
+                      child: GestureDetector(
+                        onTap: () => _togglePlaylistSelection(playlist.id),
+                        behavior: HitTestBehavior.opaque,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints.tightFor(
+                            width: context.tokens.minTouchTarget,
+                            height: context.tokens.minTouchTarget,
+                          ),
+                          child: Center(
+                            child: AnimatedSelectionCheckbox(
+                              visible: true,
+                              selected: isSelected,
+                              colorScheme: colorScheme,
+                              size: 24,
+                            ),
+                          ),
                         ),
                       ),
                     ),

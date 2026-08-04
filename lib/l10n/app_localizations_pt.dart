@@ -4530,6 +4530,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get nowPlayingUpNext => 'Up next';
 
   @override
+  String get nowPlayingPreviousTrack => 'Faixa anterior';
+
+  @override
+  String get nowPlayingNextTrack => 'Próxima faixa';
+
+  @override
   String get nowPlayingDetails => 'Details';
 
   @override
@@ -9219,6 +9225,12 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
 
   @override
   String get nowPlayingUpNext => 'Up next';
+
+  @override
+  String get nowPlayingPreviousTrack => 'Faixa anterior';
+
+  @override
+  String get nowPlayingNextTrack => 'Próxima faixa';
 
   @override
   String get nowPlayingDetails => 'Details';

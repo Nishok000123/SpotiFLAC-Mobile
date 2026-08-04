@@ -337,6 +337,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       return Scaffold(
         appBar: AppBar(
           leading: IconButton(
+            tooltip: context.l10n.nowPlayingMinimize,
             icon: const Icon(Icons.keyboard_arrow_down),
             onPressed: () => Navigator.of(context).maybePop(),
           ),
@@ -1217,6 +1218,7 @@ class _PlaybackControls extends ConsumerWidget {
             const SizedBox(width: 8),
             IconButton(
               iconSize: 44,
+              tooltip: context.l10n.nowPlayingPreviousTrack,
               icon: const Icon(Icons.skip_previous),
               onPressed: controller.previous,
             ),
@@ -1230,6 +1232,9 @@ class _PlaybackControls extends ConsumerWidget {
                 iconSize: 44,
                 padding: const EdgeInsets.all(12),
                 color: colorScheme.onPrimary,
+                tooltip: isPlaying
+                    ? context.l10n.actionPause
+                    : context.l10n.tooltipPlay,
                 icon: isLoading
                     ? const SizedBox.square(
                         dimension: 32,
@@ -1244,6 +1249,7 @@ class _PlaybackControls extends ConsumerWidget {
             const SizedBox(width: 20),
             IconButton(
               iconSize: 44,
+              tooltip: context.l10n.nowPlayingNextTrack,
               icon: const Icon(Icons.skip_next),
               onPressed: controller.next,
             ),

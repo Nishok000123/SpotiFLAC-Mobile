@@ -4395,6 +4395,8 @@
   "@nowPlayingUpNext": {
     "description": "Title for the playback queue sheet"
   },
+  "nowPlayingPreviousTrack": "Попередній трек",
+  "nowPlayingNextTrack": "Наступний трек",
   "logAutoScrollOff": "Auto-scroll OFF",
   "trackConvertFailed": "Конвертація не вдалася",
   "@trackConvertFailed": {

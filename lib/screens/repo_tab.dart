@@ -728,7 +728,7 @@ class _ExtensionItem extends StatelessWidget {
                 onPressed: onUpdate,
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  minimumSize: const Size(0, 40),
+                  minimumSize: Size(0, context.tokens.minTouchTarget),
                 ),
                 child: Text(context.l10n.storeUpdate),
               )
@@ -737,7 +737,7 @@ class _ExtensionItem extends StatelessWidget {
                 onPressed: null,
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  minimumSize: const Size(0, 40),
+                  minimumSize: Size(0, context.tokens.minTouchTarget),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -755,7 +755,7 @@ class _ExtensionItem extends StatelessWidget {
                 onPressed: onInstall,
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  minimumSize: const Size(0, 40),
+                  minimumSize: Size(0, context.tokens.minTouchTarget),
                 ),
                 child: Text(context.l10n.storeInstall),
               ),

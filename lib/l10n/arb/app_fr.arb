@@ -4395,6 +4395,8 @@
   "@nowPlayingUpNext": {
     "description": "Title for the playback queue sheet"
   },
+  "nowPlayingPreviousTrack": "Piste précédente",
+  "nowPlayingNextTrack": "Piste suivante",
   "logAutoScrollOff": "Défilement automatique désactivé",
   "trackConvertFailed": "Échec de la conversion",
   "@trackConvertFailed": {

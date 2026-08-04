@@ -1,5 +1,10 @@
 import 'dart:io';
 
+import 'package:analyzer/dart/analysis/features.dart';
+import 'package:analyzer/dart/analysis/utilities.dart';
+import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/source/line_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spotiflac_android/l10n/app_localizations.dart';
@@ -10,6 +15,7 @@ import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/app_search_field.dart';
 import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 import 'package:spotiflac_android/widgets/collection_scaffold.dart';
+import 'package:spotiflac_android/widgets/selection_action_button.dart';
 import 'package:spotiflac_android/widgets/selection_bottom_bar.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/track_card.dart';
@@ -26,6 +32,34 @@ List<File> _libSources() {
 }
 
 String _basename(File file) => file.uri.pathSegments.last;
+
+class _IconButtonTooltipVisitor extends RecursiveAstVisitor<void> {
+  _IconButtonTooltipVisitor({
+    required this.file,
+    required this.lineInfo,
+    required this.offenders,
+  });
+
+  final File file;
+  final LineInfo lineInfo;
+  final List<String> offenders;
+
+  @override
+  void visitInstanceCreationExpression(InstanceCreationExpression node) {
+    if (node.constructorName.type.name.lexeme == 'IconButton') {
+      final hasTooltip = node.argumentList.arguments.any(
+        (argument) =>
+            argument is NamedExpression &&
+            argument.name.label.name == 'tooltip',
+      );
+      if (!hasTooltip) {
+        final line = lineInfo.getLocation(node.offset).lineNumber;
+        offenders.add('${file.path}:$line');
+      }
+    }
+    super.visitInstanceCreationExpression(node);
+  }
+}
 
 Widget _hostSliver(Widget sliver) {
   return MaterialApp(
@@ -81,6 +115,72 @@ void main() {
 
     test('minimum touch target matches the Material floor', () {
       expect(AppTokens.standard.minTouchTarget, 48);
+    });
+  });
+
+  group('accessibility contracts', () {
+    test('every IconButton has a tooltip-backed accessible name', () {
+      final offenders = <String>[];
+      for (final file in _libSources()) {
+        final result = parseFile(
+          path: file.absolute.path,
+          featureSet: FeatureSet.latestLanguageVersion(),
+        );
+        result.unit.accept(
+          _IconButtonTooltipVisitor(
+            file: file,
+            lineInfo: result.lineInfo,
+            offenders: offenders,
+          ),
+        );
+      }
+
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'Icon-only controls must expose a tooltip so TalkBack, VoiceOver, '
+            'keyboard users, and pointer users receive the same action name.',
+      );
+    });
+
+    testWidgets('selection actions expose their label and disabled state', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.light(),
+            home: Scaffold(
+              body: Center(
+                child: SelectionActionButton(
+                  icon: Icons.delete,
+                  label: 'Delete selected tracks',
+                  onPressed: null,
+                  colorScheme: AppTheme.light().colorScheme,
+                ),
+              ),
+            ),
+          ),
+        );
+
+        expect(
+          tester.getSemantics(find.byType(SelectionActionButton)),
+          matchesSemantics(
+            label: 'Delete selected tracks',
+            isButton: true,
+            hasEnabledState: true,
+            isEnabled: false,
+          ),
+        );
+        expect(
+          tester.getSize(find.byType(SelectionActionButton)).height,
+          greaterThanOrEqualTo(AppTokens.standard.minTouchTarget),
+        );
+      } finally {
+        semantics.dispose();
+      }
     });
   });
 
