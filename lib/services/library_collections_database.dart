@@ -60,22 +60,23 @@ class PlaylistPickerSummaryRow {
 class LibraryCollectionsDatabase {
   static final LibraryCollectionsDatabase instance =
       LibraryCollectionsDatabase._init();
-  static Database? _database;
+  static final sqlite.SingleFlightInitializer<Database> _database =
+      sqlite.SingleFlightInitializer<Database>();
 
   final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
 
   LibraryCollectionsDatabase._init();
 
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await sqlite.openAppDatabase(
-      _dbFileName,
-      version: _dbVersion,
-      foreignKeys: true,
-      onCreate: _createDb,
-      onUpgrade: _upgradeDb,
+  Future<Database> get database {
+    return _database.getOrCreate(
+      () => sqlite.openAppDatabase(
+        _dbFileName,
+        version: _dbVersion,
+        foreignKeys: true,
+        onCreate: _createDb,
+        onUpgrade: _upgradeDb,
+      ),
     );
-    return _database!;
   }
 
   Future<void> _createDb(Database db, int version) async {

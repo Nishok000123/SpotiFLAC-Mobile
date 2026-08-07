@@ -6,6 +6,39 @@ import 'package:sqflite/sqflite.dart';
 
 final _log = AppLogger('AppSqlite');
 
+/// Caches an asynchronously-created value while also coalescing concurrent
+/// callers onto the same in-flight initialization.
+class SingleFlightInitializer<T extends Object> {
+  T? _value;
+  Future<T>? _initializing;
+
+  Future<T> getOrCreate(Future<T> Function() create) {
+    final value = _value;
+    if (value != null) return Future<T>.value(value);
+
+    final initializing = _initializing;
+    if (initializing != null) return initializing;
+
+    late final Future<T> future;
+    future = Future<T>.sync(create)
+        .then((value) {
+          _value = value;
+          return value;
+        })
+        .whenComplete(() {
+          if (identical(_initializing, future)) {
+            _initializing = null;
+          }
+        });
+    _initializing = future;
+    return future;
+  }
+
+  void reset() {
+    _value = null;
+  }
+}
+
 /// Opens a database file in the app documents directory with the shared
 /// WAL + synchronous=NORMAL configuration.
 Future<Database> openAppDatabase(
@@ -15,6 +48,7 @@ Future<Database> openAppDatabase(
   required Future<void> Function(Database db, int oldVersion, int newVersion)
   onUpgrade,
   bool foreignKeys = false,
+  bool incrementalAutoVacuum = true,
 }) async {
   final dbPath = await getApplicationDocumentsDirectory();
   final path = join(dbPath.path, fileName);
@@ -25,13 +59,28 @@ Future<Database> openAppDatabase(
     path,
     version: version,
     onConfigure: (db) async {
+      // Set this before any other PRAGMA so transient writer contention waits
+      // instead of immediately surfacing SQLITE_BUSY during startup.
+      await db.rawQuery('PRAGMA busy_timeout = 5000');
       if (foreignKeys) {
         await db.execute('PRAGMA foreign_keys = ON');
       }
-      // Without auto_vacuum the file never shrinks after deletes — its size
-      // is a permanent high-water mark. Only takes effect on newly created
-      // databases; existing files keep their mode until a manual VACUUM.
-      await db.execute('PRAGMA auto_vacuum = INCREMENTAL');
+      if (incrementalAutoVacuum) {
+        final tables = await db.rawQuery('''
+          SELECT 1
+          FROM sqlite_master
+          WHERE type = 'table'
+            AND name NOT LIKE 'sqlite_%'
+            AND name != 'android_metadata'
+          LIMIT 1
+        ''');
+        // Changing from NONE must happen outside a transaction and before the
+        // first application table is created. Android may already have added
+        // its internal android_metadata table at this point.
+        if (tables.isEmpty) {
+          await db.execute('PRAGMA auto_vacuum = INCREMENTAL');
+        }
+      }
       await db.rawQuery('PRAGMA journal_mode = WAL');
       await db.execute('PRAGMA synchronous = NORMAL');
     },

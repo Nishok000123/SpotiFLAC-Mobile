@@ -1,9 +1,8 @@
 import 'dart:convert';
 
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:spotiflac_android/services/sqlite_helpers.dart' as sqlite;
 import 'package:spotiflac_android/utils/logger.dart';
 
 final _log = AppLogger('AppStateDb');
@@ -25,31 +24,20 @@ const _recentMigrationKey = 'app_state_migrated_recent_to_sqlite_v1';
 
 class AppStateDatabase {
   static final AppStateDatabase instance = AppStateDatabase._init();
-  static Database? _database;
+  static final sqlite.SingleFlightInitializer<Database> _database =
+      sqlite.SingleFlightInitializer<Database>();
 
   final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
 
   AppStateDatabase._init();
 
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDb();
-    return _database!;
-  }
+  Future<Database> get database => _database.getOrCreate(_initDb);
 
-  Future<Database> _initDb() async {
-    final dbPath = await getApplicationDocumentsDirectory();
-    final path = join(dbPath.path, _dbFileName);
-
-    _log.i('Initializing app state database at: $path');
-
-    return openDatabase(
-      path,
+  Future<Database> _initDb() {
+    return sqlite.openAppDatabase(
+      _dbFileName,
       version: _dbVersion,
-      onConfigure: (db) async {
-        await db.rawQuery('PRAGMA journal_mode = WAL');
-        await db.execute('PRAGMA synchronous = NORMAL');
-      },
+      incrementalAutoVacuum: false,
       onCreate: _createDb,
       onUpgrade: _upgradeDb,
     );

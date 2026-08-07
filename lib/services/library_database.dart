@@ -18,20 +18,21 @@ class LibraryDatabase {
   static final LibraryDatabase instance = LibraryDatabase._init();
   static const int schemaVersion = 9;
   static const int audioMetadataScanVersion = 1;
-  static Database? _database;
+  static final sqlite.SingleFlightInitializer<Database> _database =
+      sqlite.SingleFlightInitializer<Database>();
   bool _historyAttached = false;
 
   LibraryDatabase._init();
 
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await sqlite.openAppDatabase(
-      'local_library.db',
-      version: schemaVersion,
-      onCreate: _createDB,
-      onUpgrade: _upgradeDB,
+  Future<Database> get database {
+    return _database.getOrCreate(
+      () => sqlite.openAppDatabase(
+        'local_library.db',
+        version: schemaVersion,
+        onCreate: _createDB,
+        onUpgrade: _upgradeDB,
+      ),
     );
-    return _database!;
   }
 
   Future<void> _ensureHistoryAttached(Database db) async {
@@ -1013,7 +1014,7 @@ class LibraryDatabase {
   Future<void> close() async {
     final db = await database;
     await db.close();
-    _database = null;
+    _database.reset();
     _historyAttached = false;
   }
 

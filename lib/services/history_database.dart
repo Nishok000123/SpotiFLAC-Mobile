@@ -67,19 +67,20 @@ class HistoryBatchLookupRequest {
 class HistoryDatabase {
   static const int schemaVersion = 10;
   static final HistoryDatabase instance = HistoryDatabase._init();
-  static Database? _database;
+  static final sqlite.SingleFlightInitializer<Database> _database =
+      sqlite.SingleFlightInitializer<Database>();
 
   HistoryDatabase._init();
 
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await sqlite.openAppDatabase(
-      'history.db',
-      version: schemaVersion,
-      onCreate: _createDB,
-      onUpgrade: _upgradeDB,
+  Future<Database> get database {
+    return _database.getOrCreate(
+      () => sqlite.openAppDatabase(
+        'history.db',
+        version: schemaVersion,
+        onCreate: _createDB,
+        onUpgrade: _upgradeDB,
+      ),
     );
-    return _database!;
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -895,7 +896,7 @@ class HistoryDatabase {
   Future<void> close() async {
     final db = await database;
     await db.close();
-    _database = null;
+    _database.reset();
   }
 
   Future<void> updateFilePath(
