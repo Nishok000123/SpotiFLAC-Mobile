@@ -2326,7 +2326,11 @@ class MainActivity: FlutterFragmentActivity() {
                         else -> result.notImplemented()
                     }
                 } catch (e: Exception) {
-                    result.error("ERROR", e.message, null)
+                    result.error(
+                        ForegroundServiceStartPolicy.errorCode(e),
+                        e.message,
+                        null,
+                    )
                 }
             }
         }

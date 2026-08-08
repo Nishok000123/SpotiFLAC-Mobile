@@ -47,14 +47,40 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
       return false;
     }
 
-    final failedOutputDir = context.storageMode == 'saf'
-        ? null
-        : context.outputDir;
+    if (storageWriteRecoveryFor(useSaf: context.storageMode == 'saf') ==
+        StorageWriteRecovery.requestSafAccess) {
+      _log.w(
+        'Native worker lost SAF access; cancelling the run without changing the selected destination',
+      );
+      try {
+        await PlatformBridge.cancelNativeDownloadWorker();
+      } catch (e) {
+        _log.w('Failed to cancel native worker after SAF access loss: $e');
+      }
+      for (final pendingId in contexts.keys) {
+        if (reconciledIds.contains(pendingId)) continue;
+        final pending = _findItemById(pendingId);
+        if (pending == null ||
+            pending.status == DownloadStatus.completed ||
+            pending.status == DownloadStatus.skipped) {
+          continue;
+        }
+        reconciledIds.add(pendingId);
+        updateItemStatus(
+          pendingId,
+          DownloadStatus.failed,
+          error: safPermissionLostErrorMessage,
+          errorType: DownloadErrorType.permission,
+        );
+        _failedInSession++;
+      }
+      return true;
+    }
+
     final fallbackRoot = await _activateAppFolderStorageFallback(
-      failedOutputDir: failedOutputDir,
+      failedOutputDir: context.outputDir,
     );
-    if (context.storageMode != 'saf' &&
-        _pathIsInside(context.outputDir, fallbackRoot)) {
+    if (_pathIsInside(context.outputDir, fallbackRoot)) {
       // This request already used the verified fallback. Do not create an
       // infinite retry loop if the failure has another device-specific cause.
       return false;
@@ -557,6 +583,16 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
       });
     }
 
+    if (!canStartForegroundDownloadForLifecycle(
+      WidgetsBinding.instance.lifecycleState,
+    )) {
+      _log.i(
+        'Native worker preparation finished after the app entered the background; deferring start',
+      );
+      _stopConnectivityMonitoring();
+      return true;
+    }
+
     state = state.copyWith(isProcessing: true, isPaused: false);
     _totalQueuedAtStart = queuedItems.length;
     _completedInSession = 0;
@@ -608,6 +644,14 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
         await Future<void>.delayed(const Duration(seconds: 1));
       }
     } catch (e, stack) {
+      if (isForegroundServiceStartNotAllowed(e)) {
+        _log.w(
+          'Android rejected the native worker start while backgrounded; keeping the queue pending',
+        );
+        await _clearNativeWorkerRunId(runId);
+        state = state.copyWith(isProcessing: false, currentDownload: null);
+        return true;
+      }
       if (e is _NativeWorkerStartupTimeout) {
         _log.w(
           'Android native worker did not publish a matching snapshot; cancelling native worker and falling back to Dart queue',

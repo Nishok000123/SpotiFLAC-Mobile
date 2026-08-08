@@ -62,6 +62,18 @@ const String safPermissionLostErrorMessage =
 const String downloadFolderAccessLostErrorMessage =
     'Download folder access lost. Please re-select your download folder in Settings.';
 
+enum StorageWriteRecovery { requestSafAccess, useAppFolderFallback }
+
+StorageWriteRecovery storageWriteRecoveryFor({required bool useSaf}) {
+  return useSaf
+      ? StorageWriteRecovery.requestSafAccess
+      : StorageWriteRecovery.useAppFolderFallback;
+}
+
+bool canStartForegroundDownloadForLifecycle(AppLifecycleState? lifecycleState) {
+  return lifecycleState == AppLifecycleState.resumed;
+}
+
 /// Keeps a download in its finalizing state until its durable Library record
 /// has been written. If persistence fails, completion is deliberately not
 /// published so the queue can surface the error instead of losing the file
@@ -179,6 +191,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   int _failedInSession = 0;
   int _queueItemSequence = 0;
   bool _isLoaded = false;
+  bool _foregroundResumeScheduled = false;
   final Set<String> _ensuredDirs = {};
   final Map<String, Future<void>> _qualityVariantFileLocks = {};
   Future<String>? _appFolderStorageFallback;
@@ -277,6 +290,26 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       await _flushQueueToStorage();
     }
     await _queuePersistenceWrite;
+  }
+
+  /// Restarts a queue that was deliberately left pending because Android did
+  /// not allow a foreground service to be launched while the app was hidden.
+  void resumePendingDownloadsOnForeground() {
+    if (_foregroundResumeScheduled ||
+        state.isProcessing ||
+        state.isPaused ||
+        !state.items.any((item) => item.status == DownloadStatus.queued)) {
+      return;
+    }
+    _foregroundResumeScheduled = true;
+    Future.microtask(() async {
+      _foregroundResumeScheduled = false;
+      if (!state.isProcessing &&
+          !state.isPaused &&
+          state.items.any((item) => item.status == DownloadStatus.queued)) {
+        await _processQueue();
+      }
+    });
   }
 
   Future<void> _loadQueueFromStorage() async {
@@ -1239,14 +1272,25 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   Future<void> _processQueue() async {
     if (state.isProcessing) return;
 
+    if (Platform.isAndroid &&
+        state.items.any((item) => item.status == DownloadStatus.queued) &&
+        !canStartForegroundDownloadForLifecycle(
+          WidgetsBinding.instance.lifecycleState,
+        )) {
+      _log.i(
+        'Download queue is waiting for the app to return to the foreground',
+      );
+      return;
+    }
+
     var settings = ref.read(settingsProvider);
     updateSettings(settings);
     var isSafMode = _isSafMode(settings);
     var iosDownloadBookmarkActive = false;
 
     // Validate SAF before handing the batch to either queue implementation.
-    // A restored/missing tree URI and an OEM-revoked grant both fall back to a
-    // verified writable app folder instead of failing the whole queue.
+    // Never silently redirect a user-selected SAF destination into private app
+    // storage: keep the selection intact so the UI can request access again.
     if (Platform.isAndroid && settings.storageMode == 'saf') {
       var safAccessible = settings.downloadTreeUri.isNotEmpty;
       if (safAccessible) {
@@ -1261,26 +1305,19 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       }
       if (!safAccessible) {
         _log.w(
-          'SAF grant is missing or no longer writable; using app-folder fallback',
+          'SAF grant is missing or no longer writable; download location must be reselected',
         );
-        try {
-          await _activateAppFolderStorageFallback();
-          settings = ref.read(settingsProvider);
-          isSafMode = false;
-        } catch (e) {
-          _log.e('Could not activate app-folder storage fallback: $e');
-          for (final item in state.items) {
-            if (item.status == DownloadStatus.queued) {
-              updateItemStatus(
-                item.id,
-                DownloadStatus.failed,
-                error: safPermissionLostErrorMessage,
-                errorType: DownloadErrorType.permission,
-              );
-            }
+        for (final item in state.items) {
+          if (item.status == DownloadStatus.queued) {
+            updateItemStatus(
+              item.id,
+              DownloadStatus.failed,
+              error: safPermissionLostErrorMessage,
+              errorType: DownloadErrorType.permission,
+            );
           }
-          return;
         }
+        return;
       }
     }
     if (Platform.isAndroid &&
@@ -1320,6 +1357,19 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       return;
     }
 
+    // Native request construction can perform asynchronous metadata lookups.
+    // The app may have moved to the background while those were running.
+    if (Platform.isAndroid &&
+        !canStartForegroundDownloadForLifecycle(
+          WidgetsBinding.instance.lifecycleState,
+        )) {
+      _log.i(
+        'Download queue moved to the background during preparation; deferring start',
+      );
+      _stopConnectivityMonitoring();
+      return;
+    }
+
     state = state.copyWith(isProcessing: true);
     _log.i('Starting queue processing...');
 
@@ -1343,6 +1393,14 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         );
         _log.d('Foreground service started');
       } catch (e) {
+        if (isForegroundServiceStartNotAllowed(e)) {
+          _log.w(
+            'Android deferred the download service start until the app returns to the foreground',
+          );
+          state = state.copyWith(isProcessing: false, currentDownload: null);
+          _stopConnectivityMonitoring();
+          return;
+        }
         _log.e('Failed to start foreground service: $e');
       }
     }

@@ -11,6 +11,14 @@ import 'package:spotiflac_android/utils/logger.dart';
 
 final _log = AppLogger('PlatformBridge');
 
+const foregroundServiceStartNotAllowedCode =
+    'foreground_service_start_not_allowed';
+
+bool isForegroundServiceStartNotAllowed(Object error) {
+  return error is PlatformException &&
+      error.code == foregroundServiceStartNotAllowedCode;
+}
+
 Object? _decodeJsonInBackground(String json) => jsonDecode(json);
 
 class ExtensionSessionGrantEvent {

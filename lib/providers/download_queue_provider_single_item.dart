@@ -574,6 +574,19 @@ class _DownloadRun {
         _log.i('Download was cancelled before storage fallback, skipping');
         return false;
       }
+      if (storageWriteRecoveryFor(useSaf: effectiveSafMode) ==
+          StorageWriteRecovery.requestSafAccess) {
+        _log.w(
+          'SAF write failed; preserving the selected destination for reauthorization',
+        );
+        result = {
+          ...result,
+          'success': false,
+          'error': safPermissionLostErrorMessage,
+          'error_type': 'permission',
+        };
+        return true;
+      }
       _log.w('Storage write failed, retrying with a writable app folder');
       try {
         await n._activateAppFolderStorageFallback(
@@ -1679,14 +1692,17 @@ class _DownloadRun {
     String errorMsg = e.toString();
     DownloadErrorType errorType = DownloadErrorType.unknown;
 
-    if (isStorageWriteFailure(errorMessage: errorMsg)) {
+    if (isStorageWriteFailure(errorMessage: errorMsg) &&
+        storageWriteRecoveryFor(useSaf: n._isSafMode(settings)) ==
+            StorageWriteRecovery.requestSafAccess) {
+      errorMsg = safPermissionLostErrorMessage;
+      errorType = DownloadErrorType.permission;
+    } else if (isStorageWriteFailure(errorMessage: errorMsg)) {
       try {
         await n._activateAppFolderStorageFallback(
-          failedOutputDir: n._isSafMode(settings)
-              ? null
-              : (effectiveOutputDir.isNotEmpty
-                    ? effectiveOutputDir
-                    : n.state.outputDir),
+          failedOutputDir: effectiveOutputDir.isNotEmpty
+              ? effectiveOutputDir
+              : n.state.outputDir,
         );
         n.updateItemStatus(item.id, DownloadStatus.queued, progress: 0.0);
         _log.w(
@@ -1701,7 +1717,9 @@ class _DownloadRun {
       }
     }
 
-    if (errorMsg.contains('could not find Deezer equivalent') ||
+    if (errorType == DownloadErrorType.permission) {
+      // Keep the explicit SAF reauthorization error selected above.
+    } else if (errorMsg.contains('could not find Deezer equivalent') ||
         errorMsg.contains('track not found on Deezer')) {
       errorMsg = 'Track not found on Deezer (Metadata Unavailable)';
       errorType = DownloadErrorType.notFound;
