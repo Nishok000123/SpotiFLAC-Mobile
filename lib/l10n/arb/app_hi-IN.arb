@@ -1,7 +1,7 @@
 {
   "@@locale": "hi",
   "@@last_modified": "2026-04-28",
-  "appName": "SpotiFLAC Mobile",
+  "appName": "Dd",
   "@appName": {
     "description": "App name - DO NOT TRANSLATE"
   },
@@ -9,7 +9,7 @@
   "@navHome": {
     "description": "Bottom navigation - Home tab"
   },
-  "navLibrary": "Library",
+  "navLibrary": "Dd",
   "@navLibrary": {
     "description": "Bottom navigation - Library tab"
   },
@@ -17,7 +17,7 @@
   "@navSettings": {
     "description": "Bottom navigation - Settings tab"
   },
-  "navStore": "Repo",
+  "navStore": "Dn",
   "@navStore": {
     "description": "Bottom navigation - Extension repo tab"
   },
@@ -65,7 +65,7 @@
   "@settingsTitle": {
     "description": "Settings screen title"
   },
-  "settingsDownload": "Download",
+  "settingsDownload": "Omm",
   "@settingsDownload": {
     "description": "Settings section - download options"
   },
