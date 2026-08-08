@@ -21,7 +21,7 @@
   "@navStore": {
     "description": "Bottom navigation - Extension repo tab"
   },
-  "homeTitle": "Home",
+  "homeTitle": "N",
   "@homeTitle": {
     "description": "Home screen title"
   },
@@ -6159,7 +6159,7 @@
   "@regionCountryKR": {
     "description": "Country name for SongLink region picker"
   },
-  "regionCountryIN": "India",
+  "regionCountryIN": "Omm",
   "@regionCountryIN": {
     "description": "Country name for SongLink region picker"
   },
