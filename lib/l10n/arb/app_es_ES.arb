@@ -792,7 +792,7 @@
   "@dialogImportPlaylistTitle": {
     "description": "Dialog title - import CSV playlist"
   },
-  "dialogImportPlaylistMessage": "Found {count} tracks in the playlist file. Add them to download queue?",
+  "dialogImportPlaylistMessage": "Se han encontrado  {count} pistas en CSV. ¿Desea añadirlas en la cola de descarga?",
   "csvImportTracks": "{count} pistas de CSV",
   "@csvImportTracks": {
     "description": "Label shown in quality picker for CSV import",
@@ -806,7 +806,7 @@
   "@collectionExportM3u": {
     "description": "Tooltip on the collection screen action that exports the track list as an M3U8 playlist file"
   },
-  "collectionExportM3uDone": "Exported {exported} of {total} tracks",
+  "collectionExportM3uDone": "Exportado {exported} de {total} pistas",
   "@collectionExportM3uDone": {
     "description": "Snackbar after M3U8 export; tracks without a local file are not exported",
     "placeholders": {
@@ -818,43 +818,43 @@
       }
     }
   },
-  "collectionExportM3uNone": "No downloaded files to export",
+  "collectionExportM3uNone": "No hay archivos descargados para exportar",
   "@collectionExportM3uNone": {
     "description": "Snackbar when an M3U8 export finds no local files"
   },
-  "collectionExportM3uFailed": "Export failed",
+  "collectionExportM3uFailed": "Exportación fallida",
   "@collectionExportM3uFailed": {
     "description": "Snackbar when writing or sharing the M3U8 export fails"
   },
-  "trackOpenOn": "Open on...",
+  "trackOpenOn": "Abrir en...",
   "@trackOpenOn": {
     "description": "Track option and sheet title listing streaming platforms where the track can be opened"
   },
-  "trackOpenOnNoLinks": "No platform links found for this track.",
+  "trackOpenOnNoLinks": "No se han encontrado enlaces para esta pista.",
   "@trackOpenOnNoLinks": {
     "description": "Shown in the Open on sheet when song.link returns no links"
   },
-  "libraryReviewDuplicates": "Review duplicates",
+  "libraryReviewDuplicates": "Revisar duplicados",
   "@libraryReviewDuplicates": {
     "description": "Library settings row opening the duplicate review sheet"
   },
-  "libraryReviewDuplicatesSubtitle": "Find tracks stored more than once",
+  "libraryReviewDuplicatesSubtitle": "Encontrar pistas almacenadas más de una vez",
   "@libraryReviewDuplicatesSubtitle": {
     "description": "Subtitle for the duplicate review settings row"
   },
-  "duplicatesTitle": "Duplicates",
+  "duplicatesTitle": "Duplicados",
   "@duplicatesTitle": {
     "description": "Title of the duplicate review sheet"
   },
-  "duplicatesEmpty": "No duplicate tracks found.",
+  "duplicatesEmpty": "No se han encontrado pistas duplicadas.",
   "@duplicatesEmpty": {
     "description": "Shown when the duplicate review sheet finds nothing"
   },
-  "duplicatesKeepBest": "Keep best",
+  "duplicatesKeepBest": "Mantener mejor",
   "@duplicatesKeepBest": {
     "description": "Button that deletes all but the highest-quality copy in a duplicate group"
   },
-  "duplicatesKeepBestMessage": "Delete {count} lower-quality copies of \"{trackName}\"?",
+  "duplicatesKeepBestMessage": "¿Eliminar {count} copias de menor calidad del \"{trackName}\"?",
   "@duplicatesKeepBestMessage": {
     "description": "Confirmation message for the keep-best action",
     "placeholders": {
@@ -866,7 +866,7 @@
       }
     }
   },
-  "duplicatesDeleteCopyMessage": "Delete this copy of \"{trackName}\"?",
+  "duplicatesDeleteCopyMessage": "¿Eliminar esta copia de \"{trackName}\"?",
   "@duplicatesDeleteCopyMessage": {
     "description": "Confirmation message for deleting one duplicate copy",
     "placeholders": {
@@ -1231,7 +1231,7 @@
   "@updateRequiredTitle": {
     "description": "Title of the mandatory update dialog shown when the installed version is too old"
   },
-  "updateRequiredNotice": "This version is {count} releases behind and is no longer supported. Update to keep using the app.",
+  "updateRequiredNotice": "Esta versión está {count} lanzamientos detrás de la actual y ya no es soportada. Actualice para seguir usando la app.",
   "@updateRequiredNotice": {
     "description": "Subtitle of the mandatory update dialog; explains why the dialog cannot be dismissed",
     "placeholders": {
@@ -2083,19 +2083,19 @@
   "@appearanceAmoledDarkSubtitle": {
     "description": "Subtitle for AMOLED dark"
   },
-  "appearanceHeroAnimations": "Hero animations",
+  "appearanceHeroAnimations": "Animaciones Hero",
   "@appearanceHeroAnimations": {
     "description": "Toggle for shared-element (Hero) transitions"
   },
-  "appearanceHeroAnimationsSubtitle": "Fly covers between screens, e.g. when opening the player",
+  "appearanceHeroAnimationsSubtitle": "Covers voladores entre pantallas, ejemplo: cuando abre el reproductor",
   "@appearanceHeroAnimationsSubtitle": {
     "description": "Subtitle for the Hero animations toggle"
   },
-  "appearanceForceBlur": "Always use blur effects",
+  "appearanceForceBlur": "Siempre use efecto desenfoque",
   "@appearanceForceBlur": {
     "description": "Toggle that forces backdrop blur on even when the device profile disabled it"
   },
-  "appearanceForceBlurSubtitle": "Enable the navigation bar blur even on devices where it is off by default. May cost performance.",
+  "appearanceForceBlurSubtitle": "Habilite la barra de navegación desenfocada incluso en dispositivos donde está desactivada por defecto. Puede costar rendimiento.",
   "@appearanceForceBlurSubtitle": {
     "description": "Subtitle for the force-blur toggle"
   },
@@ -2131,19 +2131,19 @@
   "@settingsDownloadNetworkSubtitle": {
     "description": "Subtitle explaining network preference"
   },
-  "settingsConcurrentDownloads": "Concurrent downloads",
+  "settingsConcurrentDownloads": "Descargas concurrentes",
   "@settingsConcurrentDownloads": {
     "description": "Setting title - how many tracks download at the same time"
   },
-  "settingsConcurrentDownloadsSubtitle": "Downloading several tracks at once is faster, but some providers may rate-limit parallel requests.",
+  "settingsConcurrentDownloadsSubtitle": "Descargar varios archivos a la vez es rápido, pero con algunos proveedores puede haber un límite en pedidos paralelos.",
   "@settingsConcurrentDownloadsSubtitle": {
     "description": "Subtitle explaining the concurrent downloads picker"
   },
-  "concurrentDownloadsOne": "1 track at a time",
+  "concurrentDownloadsOne": "1 archivo a la vez",
   "@concurrentDownloadsOne": {
     "description": "Concurrent downloads option - sequential"
   },
-  "concurrentDownloadsCount": "Up to {count} tracks at once",
+  "concurrentDownloadsCount": "Hasta {count} archivos a la vez",
   "@concurrentDownloadsCount": {
     "description": "Concurrent downloads option - parallel",
     "placeholders": {
@@ -2759,7 +2759,7 @@
       }
     }
   },
-  "tutorialWelcomeTitle": "Welcome to SpotiFLAC Mobile!",
+  "tutorialWelcomeTitle": "¡Bienvenido a SpotiFLAC Móvil!",
   "@tutorialWelcomeTitle": {
     "description": "Tutorial welcome page title"
   },
@@ -2767,7 +2767,7 @@
   "@tutorialWelcomeDesc": {
     "description": "Tutorial welcome page description"
   },
-  "tutorialWelcomeTip1": "Search music or paste a link from any source your installed extensions support",
+  "tutorialWelcomeTip1": "Busca música o pega un enlace desde cualquier fuente que soporte tus extensiones instaladas",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
@@ -2949,19 +2949,19 @@
   "@cacheLibraryCoverDesc": {
     "description": "Description of what library cover cache contains"
   },
-  "libraryPlaybackNormalization": "Volume normalization",
+  "libraryPlaybackNormalization": "Normalización de volumen",
   "@libraryPlaybackNormalization": {
     "description": "Toggle title for ReplayGain playback normalization in the built-in player"
   },
-  "libraryPlaybackNormalizationSubtitle": "Even out loudness between tracks using their ReplayGain or R128 tags, when present",
+  "libraryPlaybackNormalizationSubtitle": "Equaliza el volumen entre las pistas utilizando sus etiquetas ReplayGain o R128, cuando estén presentes",
   "@libraryPlaybackNormalizationSubtitle": {
     "description": "Subtitle explaining playback volume normalization"
   },
-  "cacheAudioAnalysis": "Audio analysis cache",
+  "cacheAudioAnalysis": "Caché de análisis de audio",
   "@cacheAudioAnalysis": {
     "description": "Cache item title for saved audio analysis results"
   },
-  "cacheAudioAnalysisDesc": "Saved spectrograms and analysis results. Will re-analyze on next open.",
+  "cacheAudioAnalysisDesc": "Espectrogramas y resultados de análisis guardados. Se volverán a analizar la próxima vez que se abra el programa.",
   "@cacheAudioAnalysisDesc": {
     "description": "Description of what audio analysis cache contains"
   },
@@ -3221,11 +3221,11 @@
   "@trackConvertBitrate": {
     "description": "Label for bitrate selection"
   },
-  "trackConvertKeepOriginal": "Keep original file",
+  "trackConvertKeepOriginal": "Mantener archivo original",
   "@trackConvertKeepOriginal": {
     "description": "Toggle to preserve the source file during conversion"
   },
-  "trackConvertKeepOriginalDescription": "Add the converted file as a separate library entry",
+  "trackConvertKeepOriginalDescription": "Agrega el archivo convertido como una entrada independiente en la biblioteca",
   "@trackConvertKeepOriginalDescription": {
     "description": "Description for preserving the source file during conversion"
   },
@@ -3260,7 +3260,7 @@
       }
     }
   },
-  "trackConvertConfirmKeepOriginal": "Convert from {sourceFormat} to {targetFormat}?\n\nThe original file will be kept and the converted file will be added as a separate library entry.",
+  "trackConvertConfirmKeepOriginal": "¿Convertir desde {sourceFormat} a {targetFormat}?\n\nEl archivo original se conservará y el archivo convertido se agregará como una entrada independiente en la biblioteca.\n",
   "@trackConvertConfirmKeepOriginal": {
     "description": "Confirmation message when the source file will be preserved",
     "placeholders": {
@@ -3648,7 +3648,7 @@
       }
     }
   },
-  "selectionBatchConvertConfirmKeepOriginal": "Convert {count} {count, plural, =1{track} other{tracks}} to {format}?\n\nOriginal files will be kept and converted files will be added as separate library entries.",
+  "selectionBatchConvertConfirmKeepOriginal": "¿Convertir {count} {count, plural, =1{track} other{tracks}} a {format}?\n\nLos archivos originales se conservarán y los archivos convertidos se agregarán como entradas separadas en la biblioteca.",
   "@selectionBatchConvertConfirmKeepOriginal": {
     "description": "Batch conversion confirmation when source files will be preserved",
     "placeholders": {
@@ -3920,7 +3920,7 @@
       }
     }
   },
-  "backupIncludeSecrets": "Include extension credentials",
+  "backupIncludeSecrets": "Incluir credenciales de extensión",
   "@backupIncludeSecrets": {
     "description": "Toggle to include secret extension settings (tokens, API keys) in the backup"
   },
@@ -3928,7 +3928,7 @@
   "@backupIncludeSecretsDescription": {
     "description": "Explanation for the include-credentials toggle"
   },
-  "backupExtensionsRestoreFailed": "{count} {count, plural, =1{extension} other{extensions}} could not be reinstalled. Install them manually from the repo.",
+  "backupExtensionsRestoreFailed": "No se pudo reinstalar {count} {count, plural, =1{extension} other {extensions}}. Instálalas manualmente desde el repositorio.",
   "@backupExtensionsRestoreFailed": {
     "description": "Snackbar/hint when some extensions failed to reinstall during restore",
     "placeholders": {
@@ -4041,7 +4041,7 @@
   "@storageModeSafSubtitle": {
     "description": "Subtitle for SAF storage mode"
   },
-  "downloadFolderAccessLostTitle": "Download folder access lost",
+  "downloadFolderAccessLostTitle": "Se perdió el acceso a la carpeta de descargas",
   "@downloadFolderAccessLostTitle": {
     "description": "Title of the warning banner shown in Files settings when the saved SAF folder grant is no longer valid"
   },
