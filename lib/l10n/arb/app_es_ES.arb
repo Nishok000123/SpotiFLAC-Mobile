@@ -802,7 +802,7 @@
       }
     }
   },
-  "collectionExportM3u": "Export as M3U8",
+  "collectionExportM3u": "Exportar como M3U8",
   "@collectionExportM3u": {
     "description": "Tooltip on the collection screen action that exports the track list as an M3U8 playlist file"
   },
