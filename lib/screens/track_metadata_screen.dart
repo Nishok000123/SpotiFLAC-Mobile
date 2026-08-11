@@ -67,10 +67,12 @@ final _log = AppLogger('TrackMetadata');
 class _EmbeddedCoverPreviewCacheEntry {
   final String previewPath;
   final String? sourceValidationToken;
+  final ({int width, int height})? dimensions;
 
   const _EmbeddedCoverPreviewCacheEntry({
     required this.previewPath,
     this.sourceValidationToken,
+    this.dimensions,
   });
 }
 
@@ -144,6 +146,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
   Map<String, dynamic>? _editedMetadata;
   String? _resolvedAudioFormat;
   String? _embeddedCoverPreviewPath;
+  ({int width, int height})? _embeddedCoverDimensions;
   static final RegExp _invalidFileNameChars = RegExp(r'[<>:"/\\|?*\x00-\x1f]');
   static final RegExp _multiUnderscore = RegExp(r'_+');
   static final RegExp _leadingOrTrailingDots = RegExp(r'^\.+|\.+$');
@@ -235,28 +238,26 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
         filePath == cleanFilePath &&
         exists &&
         !_hasPath(_embeddedCoverPreviewPath)) {
-      final cachedPath = await _getCachedEmbeddedCoverPreviewPathIfValid(
+      final cachedCover = await _getCachedEmbeddedCoverPreviewIfValid(
         _coverCacheKey,
         filePath,
       );
       if (mounted &&
           generation == _metadataLoadGeneration &&
           filePath == cleanFilePath &&
-          _hasPath(cachedPath)) {
-        setState(() => _embeddedCoverPreviewPath = cachedPath);
+          cachedCover != null) {
+        setState(() {
+          _embeddedCoverPreviewPath = cachedCover.previewPath;
+          _embeddedCoverDimensions = cachedCover.dimensions;
+        });
       } else if (mounted &&
           generation == _metadataLoadGeneration &&
           filePath == cleanFilePath) {
-        final localCoverExists =
-            _hasPath(_localCoverPath) && await fileExists(_localCoverPath!);
-        if (!mounted ||
-            generation != _metadataLoadGeneration ||
-            filePath != cleanFilePath) {
-          return;
-        }
-        if (!localCoverExists && !_hasPath(_coverUrl)) {
-          unawaited(_refreshEmbeddedCoverPreview());
-        }
+        // The information card reports the artwork embedded in the audio
+        // file, not a potentially resized Library thumbnail or remote cover.
+        // Extraction is cached, so revisiting the same track does not repeat
+        // the work.
+        unawaited(_refreshEmbeddedCoverPreview());
       }
     }
   }
@@ -589,6 +590,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
         _editedMetadata = null;
         _resolvedAudioFormat = null;
         _embeddedCoverPreviewPath = null;
+        _embeddedCoverDimensions = null;
       });
 
       if (scrollController.hasClients) {

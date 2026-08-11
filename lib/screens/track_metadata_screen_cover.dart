@@ -35,6 +35,7 @@ extension _TrackMetadataCover on _TrackMetadataScreenState {
     String cacheKey,
     String sourcePath,
     String previewPath,
+    ({int width, int height})? dimensions,
   ) async {
     final sourceValidationToken = await _readLocalFileValidationToken(
       sourcePath,
@@ -45,6 +46,7 @@ extension _TrackMetadataCover on _TrackMetadataScreenState {
         _EmbeddedCoverPreviewCacheEntry(
           previewPath: previewPath,
           sourceValidationToken: sourceValidationToken,
+          dimensions: dimensions,
         );
     if (existing != null && existing.previewPath != previewPath) {
       await _cleanupTempFileAndParentIfNotCached(existing.previewPath);
@@ -74,7 +76,8 @@ extension _TrackMetadataCover on _TrackMetadataScreenState {
     }
   }
 
-  Future<String?> _getCachedEmbeddedCoverPreviewPathIfValid(
+  Future<_EmbeddedCoverPreviewCacheEntry?>
+  _getCachedEmbeddedCoverPreviewIfValid(
     String cacheKey,
     String sourcePath,
   ) async {
@@ -99,7 +102,7 @@ extension _TrackMetadataCover on _TrackMetadataScreenState {
       }
     }
 
-    return cached.previewPath;
+    return cached;
   }
 
   Future<void> _refreshEmbeddedCoverPreview({bool force = false}) async {
@@ -107,22 +110,27 @@ extension _TrackMetadataCover on _TrackMetadataScreenState {
     final cacheKey = _coverCacheKey;
     final sourcePath = cleanFilePath;
     if (!force) {
-      final cachedPath = await _getCachedEmbeddedCoverPreviewPathIfValid(
+      final cachedCover = await _getCachedEmbeddedCoverPreviewIfValid(
         cacheKey,
         sourcePath,
       );
-      if (_hasPath(cachedPath)) {
+      if (cachedCover != null) {
         if (mounted &&
             generation == _metadataLoadGeneration &&
             sourcePath == cleanFilePath &&
-            _embeddedCoverPreviewPath != cachedPath) {
-          setState(() => _embeddedCoverPreviewPath = cachedPath);
+            (_embeddedCoverPreviewPath != cachedCover.previewPath ||
+                _embeddedCoverDimensions != cachedCover.dimensions)) {
+          setState(() {
+            _embeddedCoverPreviewPath = cachedCover.previewPath;
+            _embeddedCoverDimensions = cachedCover.dimensions;
+          });
         }
         return;
       }
     }
 
     String? newPreviewPath;
+    ({int width, int height})? newDimensions;
     try {
       if (!_fileExists) {
         await _invalidateEmbeddedCoverPreviewCacheForPath(cacheKey);
@@ -130,7 +138,10 @@ extension _TrackMetadataCover on _TrackMetadataScreenState {
         if (mounted &&
             generation == _metadataLoadGeneration &&
             sourcePath == cleanFilePath) {
-          setState(() => _embeddedCoverPreviewPath = null);
+          setState(() {
+            _embeddedCoverPreviewPath = null;
+            _embeddedCoverDimensions = null;
+          });
         }
         return;
       }
@@ -148,7 +159,13 @@ extension _TrackMetadataCover on _TrackMetadataScreenState {
       );
       if (result['error'] == null && await File(outputPath).exists()) {
         newPreviewPath = outputPath;
-        await _cacheEmbeddedCoverPreview(cacheKey, sourcePath, outputPath);
+        newDimensions = await FFmpegService.probeImageDimensions(outputPath);
+        await _cacheEmbeddedCoverPreview(
+          cacheKey,
+          sourcePath,
+          outputPath,
+          newDimensions,
+        );
       } else {
         try {
           await tempDir.delete(recursive: true);
@@ -166,7 +183,10 @@ extension _TrackMetadataCover on _TrackMetadataScreenState {
       return;
     }
 
-    setState(() => _embeddedCoverPreviewPath = newPreviewPath);
+    setState(() {
+      _embeddedCoverPreviewPath = newPreviewPath;
+      _embeddedCoverDimensions = newDimensions;
+    });
     if (oldPreviewPath != null && oldPreviewPath != newPreviewPath) {
       await _cleanupTempFileAndParentIfNotCached(oldPreviewPath);
     }

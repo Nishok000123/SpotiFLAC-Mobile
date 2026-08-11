@@ -440,6 +440,11 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
         _MetadataItem(context.l10n.trackDuration, formatClock(duration!)),
       if (audioQualityStr != null)
         _MetadataItem(context.l10n.trackAudioQuality, audioQualityStr),
+      if (_embeddedCoverDimensions case final dimensions?)
+        _MetadataItem(
+          context.l10n.trackCoverResolution,
+          '${dimensions.width} × ${dimensions.height} px',
+        ),
       if (releaseDate != null && releaseDate!.isNotEmpty)
         _MetadataItem(context.l10n.trackReleaseDate, releaseDate!),
       if (genre != null && genre!.isNotEmpty)
