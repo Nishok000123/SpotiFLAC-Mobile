@@ -1,4 +1,5 @@
 import 'package:spotiflac_android/services/platform_bridge.dart';
+import 'package:spotiflac_android/utils/artist_utils.dart';
 
 class CrossExtensionShareResult {
   final String extensionId;
@@ -41,9 +42,10 @@ class CrossExtensionShareService {
     required String type,
     required String sourceExtensionId,
   }) async {
+    final queryArtist = primaryArtistName(artists);
     final results = await PlatformBridge.findCollectionAcrossExtensions(
       name: name,
-      artists: artists,
+      artists: queryArtist,
       type: type,
       sourceExtensionId: sourceExtensionId,
     );

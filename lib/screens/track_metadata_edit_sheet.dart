@@ -18,6 +18,134 @@ class _AutoFillPreview {
   });
 }
 
+class _MetadataCandidateArtwork extends StatefulWidget {
+  final String? coverUrl;
+
+  const _MetadataCandidateArtwork({required this.coverUrl});
+
+  @override
+  State<_MetadataCandidateArtwork> createState() =>
+      _MetadataCandidateArtworkState();
+}
+
+class _MetadataCandidateArtworkState extends State<_MetadataCandidateArtwork> {
+  String? _tempDir;
+  String? _coverPath;
+  ({int width, int height, int bytes})? _details;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.coverUrl?.isNotEmpty == true) {
+      unawaited(_loadMaxQualityCover());
+    }
+  }
+
+  Future<void> _loadMaxQualityCover() async {
+    final tempDir = await Directory.systemTemp.createTemp(
+      'metadata_candidate_cover_',
+    );
+    final path = '${tempDir.path}${Platform.pathSeparator}cover.jpg';
+    try {
+      final result = await PlatformBridge.downloadCoverToFile(
+        widget.coverUrl!,
+        path,
+        maxQuality: true,
+      );
+      if (result['error'] != null || !await File(path).exists()) {
+        await tempDir.delete(recursive: true);
+        return;
+      }
+      final dimensions = await FFmpegService.probeImageDimensions(path);
+      final bytes = await File(path).length();
+      if (!mounted) {
+        await tempDir.delete(recursive: true);
+        return;
+      }
+      setState(() {
+        _tempDir = tempDir.path;
+        _coverPath = path;
+        if (dimensions != null) {
+          _details = (
+            width: dimensions.width,
+            height: dimensions.height,
+            bytes: bytes,
+          );
+        }
+      });
+    } catch (_) {
+      try {
+        await tempDir.delete(recursive: true);
+      } catch (_) {}
+    }
+  }
+
+  @override
+  void dispose() {
+    final tempDir = _tempDir;
+    if (tempDir != null) {
+      unawaited(() async {
+        try {
+          final directory = Directory(tempDir);
+          if (await directory.exists()) await directory.delete(recursive: true);
+        } catch (_) {}
+      }());
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final coverUrl = widget.coverUrl;
+    final details = _details;
+    final image = _coverPath != null
+        ? Image.file(
+            File(_coverPath!),
+            width: 56,
+            height: 56,
+            fit: BoxFit.cover,
+          )
+        : coverUrl != null
+        ? CachedCoverImage(
+            imageUrl: coverUrl,
+            width: 56,
+            height: 56,
+            fit: BoxFit.cover,
+          )
+        : Container(
+            width: 56,
+            height: 56,
+            color: colorScheme.surfaceContainerHighest,
+            child: const Icon(Icons.music_note),
+          );
+
+    return SizedBox(
+      width: 72,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ClipRRect(borderRadius: BorderRadius.circular(10), child: image),
+          if (details != null) ...[
+            const SizedBox(height: 3),
+            Text(
+              '${details.width}×${details.height} · '
+              '${(details.bytes / 1024).toStringAsFixed(1)} KB',
+              maxLines: 2,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: colorScheme.primary,
+                fontSize: 9,
+                height: 1.1,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _EditMetadataSheet extends StatefulWidget {
   static const _onlineCoverSentinel = '__online_cover__';
   final ColorScheme colorScheme;
@@ -1078,6 +1206,119 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     }
   }
 
+  String? _metadataCandidateCoverUrl(Map<String, dynamic> track) {
+    String? fromValue(Object? value) {
+      if (value is String) {
+        final normalized = value.trim();
+        return normalized.isEmpty ? null : normalized;
+      }
+      if (value is List) {
+        for (final item in value) {
+          final resolved = fromValue(item);
+          if (resolved != null) return resolved;
+        }
+      }
+      if (value is Map) {
+        for (final key in const ['url', 'original', 'large', 'src']) {
+          final resolved = fromValue(value[key]);
+          if (resolved != null) return resolved;
+        }
+      }
+      return null;
+    }
+
+    return fromValue(track['cover_url']) ?? fromValue(track['images']);
+  }
+
+  Future<Map<String, dynamic>?> _showAutoFillCandidatePicker({
+    required List<Map<String, dynamic>> candidates,
+    required String sourceName,
+    required String currentTitle,
+    required String currentArtist,
+  }) {
+    return showAppBottomSheet<Map<String, dynamic>>(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+      title: context.l10n.editMetadataAutoFillSource,
+      subtitle: [
+        currentTitle,
+        currentArtist,
+        sourceName,
+      ].where((value) => value.trim().isNotEmpty).join(' · '),
+      maxHeightFactor: 0.82,
+      builder: (sheetContext) => ListView(
+        padding: const EdgeInsets.only(bottom: 16),
+        children: [
+          SettingsGroup(
+            children: [
+              for (var index = 0; index < candidates.length; index++) ...[
+                Builder(
+                  builder: (context) {
+                    final candidate = candidates[index];
+                    final title =
+                        (candidate['name'] ?? candidate['title'] ?? '')
+                            .toString()
+                            .trim();
+                    final artists =
+                        (candidate['artists'] ?? candidate['artist'] ?? '')
+                            .toString()
+                            .trim();
+                    final album =
+                        (candidate['album_name'] ?? candidate['album'] ?? '')
+                            .toString()
+                            .trim();
+                    final date =
+                        candidate['release_date']?.toString().trim() ?? '';
+                    final isrc = candidate['isrc']?.toString().trim() ?? '';
+                    final coverUrl = _metadataCandidateCoverUrl(candidate);
+                    final subtitle = [
+                      artists,
+                      album,
+                      if (date.isNotEmpty) date,
+                      if (isrc.isNotEmpty) 'ISRC $isrc',
+                    ].where((value) => value.isNotEmpty).join('\n');
+
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      leading: _MetadataCandidateArtwork(coverUrl: coverUrl),
+                      title: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: subtitle.isEmpty
+                          ? null
+                          : Text(
+                              subtitle,
+                              maxLines: 4,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.pop(sheetContext, candidate),
+                    );
+                  },
+                ),
+                if (index != candidates.length - 1)
+                  Divider(
+                    height: 1,
+                    indent: 88,
+                    endIndent: 16,
+                    color: Theme.of(
+                      sheetContext,
+                    ).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _fetchAutoFillPreview() async {
     if (_autoFillFields.isEmpty) {
       _showSheetSnackBar(context.l10n.editMetadataAutoFillNoneSelected);
@@ -1097,6 +1338,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       final title = _titleCtrl.text.trim();
       final artist = _artistCtrl.text.trim();
       final album = _albumCtrl.text.trim();
+      final albumArtist = _albumArtistCtrl.text.trim();
+      final searchArtist = primaryArtistName(artist, albumArtist: albumArtist);
       final currentIsrc = _isrcCtrl.text.trim().toUpperCase();
       final configuredProviderId = _selectedMetadataProviderId?.trim();
       final extensionState = ProviderScope.containerOf(
@@ -1124,7 +1367,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
       final queryParts = <String>[];
       if (title.isNotEmpty) queryParts.add(title);
-      if (artist.isNotEmpty) queryParts.add(artist);
+      if (searchArtist.isNotEmpty) queryParts.add(searchArtist);
       if (queryParts.isEmpty && album.isNotEmpty) queryParts.add(album);
 
       if (needsTrackLookup && queryParts.isEmpty) {
@@ -1135,7 +1378,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       }
 
       final normalizedTitle = _normalizeMetadataText(title);
-      final normalizedArtist = _normalizeMetadataText(artist);
+      final normalizedArtist = _normalizeMetadataText(searchArtist);
       final normalizedAlbum = _normalizeMetadataText(album);
 
       if (needsTrackLookup) {
@@ -1154,32 +1397,44 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           return;
         }
 
-        // Pick best match using current metadata, not only provider order.
-        best = results.first;
-        var bestScore = -1;
-        for (final result in results) {
-          final score = _metadataMatchScore(
-            result,
-            currentTitle: normalizedTitle,
-            currentArtist: normalizedArtist,
-            currentAlbum: normalizedAlbum,
-            currentIsrc: currentIsrc,
-          );
-          if (score > bestScore) {
-            bestScore = score;
-            best = result;
-          }
-        }
-
-        if (best != null &&
-            !_metadataMatchIsConfident(
-              best,
+        final rankedResults = [...results]
+          ..sort((a, b) {
+            final aScore = _metadataMatchScore(
+              a,
               currentTitle: normalizedTitle,
               currentArtist: normalizedArtist,
               currentAlbum: normalizedAlbum,
               currentIsrc: currentIsrc,
-            )) {
-          best = null;
+            );
+            final bScore = _metadataMatchScore(
+              b,
+              currentTitle: normalizedTitle,
+              currentArtist: normalizedArtist,
+              currentAlbum: normalizedAlbum,
+              currentIsrc: currentIsrc,
+            );
+            return bScore.compareTo(aScore);
+          });
+
+        if (usesAutomaticProvider) {
+          best = rankedResults.first;
+          if (!_metadataMatchIsConfident(
+            best,
+            currentTitle: normalizedTitle,
+            currentArtist: normalizedArtist,
+            currentAlbum: normalizedAlbum,
+            currentIsrc: currentIsrc,
+          )) {
+            best = null;
+          }
+        } else {
+          best = await _showAutoFillCandidatePicker(
+            candidates: rankedResults,
+            sourceName: _metadataProviderName(selectedProviderId),
+            currentTitle: title,
+            currentArtist: searchArtist,
+          );
+          if (!mounted || best == null) return;
         }
 
         if (best == null) {
@@ -1375,9 +1630,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       }
       final coverUrl = selectedBest == null
           ? null
-          : (selectedBest['cover_url'] ?? selectedBest['images'] ?? '')
-                .toString()
-                .trim();
+          : _metadataCandidateCoverUrl(selectedBest);
       final hasSelectedValue = _autoFillFields.any(
         (key) => key == 'cover'
             ? coverUrl != null && coverUrl.isNotEmpty
