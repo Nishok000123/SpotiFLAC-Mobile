@@ -1,12 +1,5 @@
 part of 'track_metadata_screen.dart';
 
-class _ResolvedAutoFillTrack {
-  final Map<String, dynamic> track;
-  final String? deezerId;
-
-  const _ResolvedAutoFillTrack({required this.track, this.deezerId});
-}
-
 class _AutoFillPreview {
   final Map<String, String> values;
   final String sourceName;
@@ -837,53 +830,6 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     put('composer', track['composer']);
   }
 
-  Future<_ResolvedAutoFillTrack?> _resolveAutoFillTrackFromIdentifiers(
-    String currentIsrc,
-  ) async {
-    if (_looksLikeIsrc(currentIsrc)) {
-      final deezerTrack = await PlatformBridge.searchDeezerByISRC(currentIsrc);
-      return _ResolvedAutoFillTrack(
-        track: _unwrapTrackPayload(deezerTrack),
-        deezerId: _extractRawDeezerTrackId(deezerTrack),
-      );
-    }
-
-    final sourceTrackId = widget.sourceTrackId?.trim() ?? '';
-    if (sourceTrackId.isEmpty) {
-      return null;
-    }
-
-    final deezerId = _extractRawDeezerTrackIdFromValue(sourceTrackId);
-    if (deezerId != null) {
-      final deezerTrack = await PlatformBridge.getProviderMetadata(
-        'deezer',
-        'track',
-        deezerId,
-      );
-      return _ResolvedAutoFillTrack(
-        track: _unwrapTrackPayload(deezerTrack),
-        deezerId: deezerId,
-      );
-    }
-
-    final spotifyId = _extractRawSpotifyTrackIdFromValue(sourceTrackId);
-    if (spotifyId != null) {
-      final deezerTrack = await PlatformBridge.convertSpotifyToDeezer(
-        'track',
-        spotifyId,
-      );
-      final track = _unwrapTrackPayload(deezerTrack);
-      return _ResolvedAutoFillTrack(
-        track: track,
-        deezerId:
-            _extractRawDeezerTrackId(track) ??
-            _extractRawDeezerTrackId(deezerTrack),
-      );
-    }
-
-    return null;
-  }
-
   int _metadataMatchScore(
     Map<String, dynamic> track, {
     required String currentTitle,
@@ -1098,20 +1044,6 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       Map<String, dynamic>? best;
       String? deezerId;
       String? lyricsSourceName;
-
-      if (needsTrackLookup && usesAutomaticProvider) {
-        try {
-          final resolved = await _resolveAutoFillTrackFromIdentifiers(
-            currentIsrc,
-          );
-          if (resolved != null) {
-            best = resolved.track;
-            deezerId = resolved.deezerId;
-          }
-        } catch (e) {
-          _log.w('Identifier-first autofill lookup failed: $e');
-        }
-      }
 
       final queryParts = <String>[];
       if (title.isNotEmpty) queryParts.add(title);
