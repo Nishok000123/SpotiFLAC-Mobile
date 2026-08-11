@@ -717,7 +717,26 @@
       }
     }
   },
-  "trackReEnrich": "Re-enrich",
+  "trackReEnrich": "Perkaya ulang",
+  "trackReEnrichModeIsrc": "ISRC saja",
+  "trackReEnrichModeIsrcSubtitle": "Cari dan tambahkan pengenal rekaman tanpa mengubah tag lain",
+  "trackReEnrichModeMissing": "Isi tag yang kosong",
+  "trackReEnrichModeMissingSubtitle": "Pertahankan nilai yang ada dan isi hanya kolom yang kosong",
+  "trackReEnrichModeReplace": "Perbarui tag yang dipilih",
+  "trackReEnrichModeReplaceSubtitle": "Pilih nilai yang boleh diganti oleh metadata online",
+  "trackReEnrichFieldsTitle": "Tag yang diperbarui",
+  "trackReEnrichReview": "Tinjau perubahan",
+  "trackReEnrichReviewTitle": "Tinjau perubahan metadata",
+  "trackReEnrichReviewSubtitle": "{changeCount} perubahan diusulkan untuk {trackCount} trek",
+  "@trackReEnrichReviewSubtitle": {
+    "placeholders": {
+      "changeCount": {"type": "int"},
+      "trackCount": {"type": "int"}
+    }
+  },
+  "trackReEnrichNoChanges": "Tidak ada perubahan metadata yang ditemukan untuk trek yang dipilih.",
+  "trackReEnrichApplyChanges": "Terapkan perubahan",
+  "trackReEnrichRefreshOnline": "Perbarui dari online",
   "@trackReEnrich": {
     "description": "Menu action - re-embed metadata into audio file"
   },

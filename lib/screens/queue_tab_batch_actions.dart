@@ -3,39 +3,18 @@ part of 'queue_tab.dart';
 extension _QueueTabBatchActions on _QueueTabState {
   Future<bool> _reEnrichQueueLocalTrack(
     LocalLibraryItem item, {
-    List<String>? updateFields,
+    required List<String> updateFields,
+    required Map<String, dynamic> resolvedMetadata,
   }) async {
-    final durationMs = (item.duration ?? 0) * 1000;
     final settings = ref.read(settingsProvider);
     final artistTagMode = settings.artistTagMode;
     await ref.read(settingsProvider.notifier).syncLyricsSettingsToBackend();
-    final request = <String, dynamic>{
-      'file_path': item.filePath,
-      'cover_url': '',
-      'max_quality': true,
-      'embed_lyrics': settings.embedLyrics,
-      'lyrics_mode': settings.lyricsMode,
-      'artist_tag_mode': artistTagMode,
-      'spotify_id': '',
-      'track_name': item.trackName,
-      'artist_name': item.artistName,
-      'album_name': item.albumName,
-      'album_artist': item.albumArtist ?? '',
-      'track_number': item.trackNumber ?? 0,
-      'disc_number': item.discNumber ?? 0,
-      'release_date': item.releaseDate ?? '',
-      'isrc': item.isrc ?? '',
-      'genre': item.genre ?? '',
-      'label': '',
-      'copyright': '',
-      'duration_ms': durationMs,
-      'search_online': true,
-      'replace_release_metadata': allowsReleaseIdentityReplacement(
-        ReEnrichOperationScope.batch,
-      ),
-      // ignore: use_null_aware_elements
-      if (updateFields != null) 'update_fields': updateFields,
-    };
+    final request = buildBatchReEnrichRequest(
+      item: item,
+      settings: settings,
+      updateFields: updateFields,
+      resolvedMetadata: resolvedMetadata,
+    );
 
     final result = await PlatformBridge.reEnrichFile(request);
     final method = result['method'] as String?;
@@ -232,12 +211,89 @@ extension _QueueTabBatchActions on _QueueTabState {
       return;
     }
 
-    final updateFields = selection.isAll ? null : selection.fields;
+    await ref.read(settingsProvider.notifier).syncLyricsSettingsToBackend();
+    if (!mounted) return;
+    final settings = ref.read(settingsProvider);
+    final previews = <BatchReEnrichPreview>[];
+    var cancelled = false;
+    BatchProgressDialog.show(
+      context: context,
+      title: context.l10n.trackReEnrichSearching,
+      total: selectedLocalItems.length,
+      icon: Icons.manage_search,
+      onCancel: () {
+        cancelled = true;
+        BatchProgressDialog.dismiss(context);
+      },
+    );
+
+    for (var i = 0; i < selectedLocalItems.length; i++) {
+      if (!mounted || cancelled) break;
+      final item = selectedLocalItems[i];
+      BatchProgressDialog.update(
+        current: i + 1,
+        detail: '${item.trackName} - ${item.artistName}',
+      );
+      final updateFields = selection.updateFieldsFor(item);
+      if (updateFields.isEmpty) continue;
+      try {
+        final result = await PlatformBridge.reEnrichFile(
+          buildBatchReEnrichRequest(
+            item: item,
+            settings: settings,
+            updateFields: updateFields,
+            previewOnly: true,
+          ),
+        );
+        final rawMetadata = result['enriched_metadata'];
+        if (result['method'] != 'preview' || rawMetadata is! Map) continue;
+        final enrichedMetadata = rawMetadata.map(
+          (key, value) => MapEntry(key.toString(), value),
+        );
+        final changes = buildReEnrichMetadataChanges(
+          item,
+          enrichedMetadata,
+          updateFields,
+        );
+        if (changes.isEmpty) continue;
+        previews.add(
+          BatchReEnrichPreview(
+            item: item,
+            updateFields: updateFields,
+            enrichedMetadata: enrichedMetadata,
+            changes: changes,
+          ),
+        );
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+    if (!cancelled) BatchProgressDialog.dismiss(context);
+    if (cancelled) {
+      _setState(() => _isSelectionMode = true);
+      return;
+    }
+
+    if (previews.isEmpty) {
+      _setState(() => _isSelectionMode = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.trackReEnrichNoChanges)),
+      );
+      return;
+    }
+
+    final confirmed = await showReEnrichReviewSheet(
+      context,
+      previews: previews,
+    );
+    if (!confirmed || !mounted) {
+      if (mounted) _setState(() => _isSelectionMode = true);
+      return;
+    }
 
     var successCount = 0;
-    final total = selectedLocalItems.length;
-
-    var cancelled = false;
+    final total = previews.length;
+    cancelled = false;
     BatchProgressDialog.show(
       context: context,
       title: context.l10n.trackReEnrichProgress,
@@ -251,29 +307,24 @@ extension _QueueTabBatchActions on _QueueTabState {
 
     for (var i = 0; i < total; i++) {
       if (!mounted || cancelled) break;
-      final item = selectedLocalItems[i];
-
+      final preview = previews[i];
       BatchProgressDialog.update(
         current: i + 1,
-        detail: '${item.trackName} - ${item.artistName}',
+        detail: '${preview.item.trackName} - ${preview.item.artistName}',
       );
-
       try {
         final ok = await _reEnrichQueueLocalTrack(
-          item,
-          updateFields: updateFields,
+          preview.item,
+          updateFields: preview.updateFields,
+          resolvedMetadata: preview.enrichedMetadata,
         );
-        if (ok) {
-          successCount++;
-        }
+        if (ok) successCount++;
       } catch (_) {}
     }
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
+    if (!cancelled) BatchProgressDialog.dismiss(context);
 
-    final settings = ref.read(settingsProvider);
     final localLibraryPath = settings.localLibraryPath.trim();
     final iosBookmark = settings.localLibraryBookmark;
     try {
@@ -298,9 +349,6 @@ extension _QueueTabBatchActions on _QueueTabState {
       return;
     }
 
-    if (!cancelled) {
-      BatchProgressDialog.dismiss(context);
-    }
     ScaffoldMessenger.of(context).clearSnackBars();
     final failedCount = total - successCount;
     final summary = failedCount <= 0

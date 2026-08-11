@@ -2430,6 +2430,51 @@ class AppLocalizationsTr extends AppLocalizations {
   String get trackReEnrichSelectAll => 'Tümünü Seç';
 
   @override
+  String get trackReEnrichModeIsrc => 'ISRC only';
+
+  @override
+  String get trackReEnrichModeIsrcSubtitle =>
+      'Find and add the recording identifier without changing other tags';
+
+  @override
+  String get trackReEnrichModeMissing => 'Fill missing tags';
+
+  @override
+  String get trackReEnrichModeMissingSubtitle =>
+      'Keep existing values and fill only fields that are empty';
+
+  @override
+  String get trackReEnrichModeReplace => 'Update selected tags';
+
+  @override
+  String get trackReEnrichModeReplaceSubtitle =>
+      'Choose which existing values may be replaced by online metadata';
+
+  @override
+  String get trackReEnrichFieldsTitle => 'Tags to update';
+
+  @override
+  String get trackReEnrichReview => 'Review changes';
+
+  @override
+  String get trackReEnrichReviewTitle => 'Review metadata changes';
+
+  @override
+  String trackReEnrichReviewSubtitle(int changeCount, int trackCount) {
+    return '$changeCount proposed changes across $trackCount tracks';
+  }
+
+  @override
+  String get trackReEnrichNoChanges =>
+      'No metadata changes were found for the selected tracks.';
+
+  @override
+  String get trackReEnrichApplyChanges => 'Apply changes';
+
+  @override
+  String get trackReEnrichRefreshOnline => 'Refresh from online';
+
+  @override
   String get trackEditMetadata => 'Edit Metadata';
 
   @override

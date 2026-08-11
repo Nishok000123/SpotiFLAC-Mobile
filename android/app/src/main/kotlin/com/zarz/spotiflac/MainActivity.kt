@@ -1514,7 +1514,9 @@ class MainActivity: FlutterFragmentActivity() {
                                     val reqObj = JSONObject(requestJson)
                                     val filePath = reqObj.optString("file_path", "")
 
-                                    if (filePath.startsWith("content://")) {
+                                    // Preview only resolves online metadata; it does not need
+                                    // a full SAF document copy and never writes the source.
+                                    if (filePath.startsWith("content://") && !reqObj.optBoolean("preview_only", false)) {
                                         val uri = Uri.parse(filePath)
                                         val tempPath = copyUriToTemp(uri)
                                             ?: return@withContext """{"error":"Failed to copy SAF file to temp"}"""

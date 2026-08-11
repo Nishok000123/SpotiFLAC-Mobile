@@ -2385,7 +2385,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get trackSaveLyricsProgress => 'Saving lyrics...';
 
   @override
-  String get trackReEnrich => 'Re-enrich';
+  String get trackReEnrich => 'Perkaya ulang';
 
   @override
   String get trackReEnrichOnlineSubtitle =>
@@ -2411,6 +2411,51 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get trackReEnrichSelectAll => 'Select All';
+
+  @override
+  String get trackReEnrichModeIsrc => 'ISRC saja';
+
+  @override
+  String get trackReEnrichModeIsrcSubtitle =>
+      'Cari dan tambahkan pengenal rekaman tanpa mengubah tag lain';
+
+  @override
+  String get trackReEnrichModeMissing => 'Isi tag yang kosong';
+
+  @override
+  String get trackReEnrichModeMissingSubtitle =>
+      'Pertahankan nilai yang ada dan isi hanya kolom yang kosong';
+
+  @override
+  String get trackReEnrichModeReplace => 'Perbarui tag yang dipilih';
+
+  @override
+  String get trackReEnrichModeReplaceSubtitle =>
+      'Pilih nilai yang boleh diganti oleh metadata online';
+
+  @override
+  String get trackReEnrichFieldsTitle => 'Tag yang diperbarui';
+
+  @override
+  String get trackReEnrichReview => 'Tinjau perubahan';
+
+  @override
+  String get trackReEnrichReviewTitle => 'Tinjau perubahan metadata';
+
+  @override
+  String trackReEnrichReviewSubtitle(int changeCount, int trackCount) {
+    return '$changeCount perubahan diusulkan untuk $trackCount trek';
+  }
+
+  @override
+  String get trackReEnrichNoChanges =>
+      'Tidak ada perubahan metadata yang ditemukan untuk trek yang dipilih.';
+
+  @override
+  String get trackReEnrichApplyChanges => 'Terapkan perubahan';
+
+  @override
+  String get trackReEnrichRefreshOnline => 'Perbarui dari online';
 
   @override
   String get trackEditMetadata => 'Edit Metadata';

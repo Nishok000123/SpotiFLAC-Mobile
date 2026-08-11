@@ -16,13 +16,14 @@ import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/image_cache_utils.dart';
 import 'package:spotiflac_android/utils/lyrics_metadata_helper.dart';
 import 'package:spotiflac_android/utils/nav_bar_inset.dart';
-import 'package:spotiflac_android/utils/re_enrich_release_policy.dart';
 import 'package:spotiflac_android/services/library_database.dart';
 import 'package:spotiflac_android/services/batch_track_actions.dart';
+import 'package:spotiflac_android/services/batch_metadata_re_enrich.dart';
 import 'package:spotiflac_android/models/unified_library_item.dart';
 import 'package:spotiflac_android/services/local_track_redownload_service.dart';
 import 'package:spotiflac_android/widgets/batch_progress_dialog.dart';
 import 'package:spotiflac_android/widgets/re_enrich_field_dialog.dart';
+import 'package:spotiflac_android/widgets/re_enrich_review_sheet.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
 import 'package:spotiflac_android/providers/playback_provider.dart';
@@ -433,39 +434,18 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
 
   Future<bool> _reEnrichLocalTrack(
     LocalLibraryItem item, {
-    List<String>? updateFields,
+    required List<String> updateFields,
+    required Map<String, dynamic> resolvedMetadata,
   }) async {
-    final durationMs = (item.duration ?? 0) * 1000;
     final settings = ref.read(settingsProvider);
     final artistTagMode = settings.artistTagMode;
     await ref.read(settingsProvider.notifier).syncLyricsSettingsToBackend();
-    final request = <String, dynamic>{
-      'file_path': item.filePath,
-      'cover_url': '',
-      'max_quality': true,
-      'embed_lyrics': settings.embedLyrics,
-      'lyrics_mode': settings.lyricsMode,
-      'artist_tag_mode': artistTagMode,
-      'spotify_id': '',
-      'track_name': item.trackName,
-      'artist_name': item.artistName,
-      'album_name': item.albumName,
-      'album_artist': item.albumArtist ?? '',
-      'track_number': item.trackNumber ?? 0,
-      'disc_number': item.discNumber ?? 0,
-      'release_date': item.releaseDate ?? '',
-      'isrc': item.isrc ?? '',
-      'genre': item.genre ?? '',
-      'label': '',
-      'copyright': '',
-      'duration_ms': durationMs,
-      'search_online': true,
-      'replace_release_metadata': allowsReleaseIdentityReplacement(
-        ReEnrichOperationScope.batch,
-      ),
-      // ignore: use_null_aware_elements
-      if (updateFields != null) 'update_fields': updateFields,
-    };
+    final request = buildBatchReEnrichRequest(
+      item: item,
+      settings: settings,
+      updateFields: updateFields,
+      resolvedMetadata: resolvedMetadata,
+    );
 
     final result = await PlatformBridge.reEnrichFile(request);
     final method = result['method'] as String?;
@@ -481,7 +461,7 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
       return applyFfmpegReEnrichResult(
         item: item,
         result: result,
-        artistTagMode: ref.read(settingsProvider).artistTagMode,
+        artistTagMode: artistTagMode,
       );
     }
     return false;
@@ -653,12 +633,89 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
       return;
     }
 
-    final updateFields = selection.isAll ? null : selection.fields;
+    await ref.read(settingsProvider.notifier).syncLyricsSettingsToBackend();
+    if (!mounted) return;
+    final settings = ref.read(settingsProvider);
+    final previews = <BatchReEnrichPreview>[];
+    var cancelled = false;
+    BatchProgressDialog.show(
+      context: context,
+      title: context.l10n.trackReEnrichSearching,
+      total: selected.length,
+      icon: Icons.manage_search,
+      onCancel: () {
+        cancelled = true;
+        BatchProgressDialog.dismiss(context);
+      },
+    );
+
+    for (var i = 0; i < selected.length; i++) {
+      if (!mounted || cancelled) break;
+      final item = selected[i];
+      BatchProgressDialog.update(
+        current: i + 1,
+        detail: '${item.trackName} - ${item.artistName}',
+      );
+      final updateFields = selection.updateFieldsFor(item);
+      if (updateFields.isEmpty) continue;
+      try {
+        final result = await PlatformBridge.reEnrichFile(
+          buildBatchReEnrichRequest(
+            item: item,
+            settings: settings,
+            updateFields: updateFields,
+            previewOnly: true,
+          ),
+        );
+        final rawMetadata = result['enriched_metadata'];
+        if (result['method'] != 'preview' || rawMetadata is! Map) continue;
+        final enrichedMetadata = rawMetadata.map(
+          (key, value) => MapEntry(key.toString(), value),
+        );
+        final changes = buildReEnrichMetadataChanges(
+          item,
+          enrichedMetadata,
+          updateFields,
+        );
+        if (changes.isEmpty) continue;
+        previews.add(
+          BatchReEnrichPreview(
+            item: item,
+            updateFields: updateFields,
+            enrichedMetadata: enrichedMetadata,
+            changes: changes,
+          ),
+        );
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+    if (!cancelled) BatchProgressDialog.dismiss(context);
+    if (cancelled) {
+      setState(() => isSelectionMode = true);
+      return;
+    }
+
+    if (previews.isEmpty) {
+      setState(() => isSelectionMode = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.trackReEnrichNoChanges)),
+      );
+      return;
+    }
+
+    final confirmed = await showReEnrichReviewSheet(
+      context,
+      previews: previews,
+    );
+    if (!confirmed || !mounted) {
+      if (mounted) setState(() => isSelectionMode = true);
+      return;
+    }
 
     var successCount = 0;
-    final total = selected.length;
-
-    var cancelled = false;
+    final total = previews.length;
+    cancelled = false;
     BatchProgressDialog.show(
       context: context,
       title: context.l10n.trackReEnrichProgress,
@@ -672,26 +729,24 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
 
     for (var i = 0; i < total; i++) {
       if (!mounted || cancelled) break;
-      final item = selected[i];
-
+      final preview = previews[i];
       BatchProgressDialog.update(
         current: i + 1,
-        detail: '${item.trackName} - ${item.artistName}',
+        detail: '${preview.item.trackName} - ${preview.item.artistName}',
       );
-
       try {
-        final ok = await _reEnrichLocalTrack(item, updateFields: updateFields);
-        if (ok) {
-          successCount++;
-        }
+        final ok = await _reEnrichLocalTrack(
+          preview.item,
+          updateFields: preview.updateFields,
+          resolvedMetadata: preview.enrichedMetadata,
+        );
+        if (ok) successCount++;
       } catch (_) {}
     }
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
+    if (!cancelled) BatchProgressDialog.dismiss(context);
 
-    final settings = ref.read(settingsProvider);
     final localLibraryPath = settings.localLibraryPath.trim();
     final iosBookmark = settings.localLibraryBookmark;
     try {
@@ -716,9 +771,6 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
       return;
     }
 
-    if (!cancelled) {
-      BatchProgressDialog.dismiss(context);
-    }
     ScaffoldMessenger.of(context).clearSnackBars();
     final failedCount = total - successCount;
     final summary = failedCount <= 0

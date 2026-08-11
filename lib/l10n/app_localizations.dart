@@ -4270,6 +4270,84 @@ abstract class AppLocalizations {
   /// **'Select All'**
   String get trackReEnrichSelectAll;
 
+  /// Batch metadata mode that only writes ISRC
+  ///
+  /// In en, this message translates to:
+  /// **'ISRC only'**
+  String get trackReEnrichModeIsrc;
+
+  /// Explanation for the ISRC-only batch metadata mode
+  ///
+  /// In en, this message translates to:
+  /// **'Find and add the recording identifier without changing other tags'**
+  String get trackReEnrichModeIsrcSubtitle;
+
+  /// Batch metadata mode that fills only empty tags
+  ///
+  /// In en, this message translates to:
+  /// **'Fill missing tags'**
+  String get trackReEnrichModeMissing;
+
+  /// Explanation for the fill-missing batch metadata mode
+  ///
+  /// In en, this message translates to:
+  /// **'Keep existing values and fill only fields that are empty'**
+  String get trackReEnrichModeMissingSubtitle;
+
+  /// Batch metadata mode that replaces selected tag groups
+  ///
+  /// In en, this message translates to:
+  /// **'Update selected tags'**
+  String get trackReEnrichModeReplace;
+
+  /// Explanation for the selected-tag batch metadata mode
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which existing values may be replaced by online metadata'**
+  String get trackReEnrichModeReplaceSubtitle;
+
+  /// Heading above batch re-enrich field checkboxes
+  ///
+  /// In en, this message translates to:
+  /// **'Tags to update'**
+  String get trackReEnrichFieldsTitle;
+
+  /// Button that searches metadata and opens the batch change review
+  ///
+  /// In en, this message translates to:
+  /// **'Review changes'**
+  String get trackReEnrichReview;
+
+  /// Title of the batch metadata review sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Review metadata changes'**
+  String get trackReEnrichReviewTitle;
+
+  /// Summary shown above proposed batch metadata changes
+  ///
+  /// In en, this message translates to:
+  /// **'{changeCount} proposed changes across {trackCount} tracks'**
+  String trackReEnrichReviewSubtitle(int changeCount, int trackCount);
+
+  /// Message when batch metadata preview has no proposed changes
+  ///
+  /// In en, this message translates to:
+  /// **'No metadata changes were found for the selected tracks.'**
+  String get trackReEnrichNoChanges;
+
+  /// Confirmation button in the batch metadata review sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Apply changes'**
+  String get trackReEnrichApplyChanges;
+
+  /// Proposed value when lyrics will be refreshed during re-enrich
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh from online'**
+  String get trackReEnrichRefreshOnline;
+
   /// Menu action - edit embedded metadata
   ///
   /// In en, this message translates to:

@@ -1,43 +1,19 @@
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
-
-/// Field group keys matching the Go backend `update_fields` values.
-class ReEnrichFields {
-  static const String cover = 'cover';
-  static const String lyrics = 'lyrics';
-  static const String basicTags = 'basic_tags';
-  static const String trackInfo = 'track_info';
-  static const String releaseInfo = 'release_info';
-  static const String extra = 'extra';
-
-  static const List<String> all = [
-    cover,
-    lyrics,
-    basicTags,
-    trackInfo,
-    releaseInfo,
-    extra,
-  ];
-}
-
-/// Result returned by the re-enrich field selection sheet.
-class ReEnrichFieldSelection {
-  final List<String> fields;
-  const ReEnrichFieldSelection(this.fields);
-
-  /// True when every available field is selected (or update_fields can be omitted).
-  bool get isAll => fields.length == ReEnrichFields.all.length;
-}
+import 'package:spotiflac_android/services/batch_metadata_re_enrich.dart';
+import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
+import 'package:spotiflac_android/widgets/settings_group.dart';
 
 Future<ReEnrichFieldSelection?> showReEnrichFieldDialog(
   BuildContext context, {
   required int selectedCount,
 }) {
-  return showModalBottomSheet<ReEnrichFieldSelection>(
+  return showAppBottomSheet<ReEnrichFieldSelection>(
     context: context,
     useRootNavigator: true,
-    showDragHandle: true,
-    isScrollControlled: true,
+    title: AppLocalizations.of(context).trackReEnrich,
+    subtitle: AppLocalizations.of(context).trackReEnrichOnlineSubtitle,
+    maxHeightFactor: 0.9,
     builder: (ctx) => _ReEnrichFieldSheet(selectedCount: selectedCount),
   );
 }
@@ -52,6 +28,7 @@ class _ReEnrichFieldSheet extends StatefulWidget {
 
 class _ReEnrichFieldSheetState extends State<_ReEnrichFieldSheet> {
   final Set<String> _selected = Set<String>.from(ReEnrichFields.all);
+  ReEnrichBatchMode _mode = ReEnrichBatchMode.missingOnly;
 
   bool get _allSelected => _selected.length == ReEnrichFields.all.length;
 
@@ -117,80 +94,121 @@ class _ReEnrichFieldSheetState extends State<_ReEnrichFieldSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
 
     return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
-            child: Text(
-              l10n.trackReEnrich,
-              style: textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+      top: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: Text(
+                l10n.downloadedAlbumSelectedCount(widget.selectedCount),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
-            child: Text(
-              l10n.trackReEnrichOnlineSubtitle,
-              style: textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+            SettingsGroup(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.fingerprint),
+                  title: Text(l10n.trackReEnrichModeIsrc),
+                  subtitle: Text(l10n.trackReEnrichModeIsrcSubtitle),
+                  trailing: _mode == ReEnrichBatchMode.isrcOnly
+                      ? Icon(Icons.check, color: colorScheme.primary)
+                      : null,
+                  onTap: () =>
+                      setState(() => _mode = ReEnrichBatchMode.isrcOnly),
+                ),
+                const Divider(height: 1, indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.playlist_add_check),
+                  title: Text(l10n.trackReEnrichModeMissing),
+                  subtitle: Text(l10n.trackReEnrichModeMissingSubtitle),
+                  trailing: _mode == ReEnrichBatchMode.missingOnly
+                      ? Icon(Icons.check, color: colorScheme.primary)
+                      : null,
+                  onTap: () =>
+                      setState(() => _mode = ReEnrichBatchMode.missingOnly),
+                ),
+                const Divider(height: 1, indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.tune),
+                  title: Text(l10n.trackReEnrichModeReplace),
+                  subtitle: Text(l10n.trackReEnrichModeReplaceSubtitle),
+                  trailing: _mode == ReEnrichBatchMode.selectedFields
+                      ? Icon(Icons.check, color: colorScheme.primary)
+                      : null,
+                  onTap: () =>
+                      setState(() => _mode = ReEnrichBatchMode.selectedFields),
+                ),
+              ],
+            ),
+            if (_mode == ReEnrichBatchMode.selectedFields) ...[
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  l10n.trackReEnrichFieldsTitle,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              SettingsGroup(
+                children: [
+                  CheckboxListTile(
+                    title: Text(
+                      l10n.trackReEnrichSelectAll,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    value: _allSelected,
+                    tristate: true,
+                    onChanged: _toggleAll,
+                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
+                  for (final field in ReEnrichFields.all) ...[
+                    const Divider(height: 1, indent: 56),
+                    CheckboxListTile(
+                      secondary: Icon(_iconFor(field), size: 20),
+                      title: Text(_labelFor(field, l10n)),
+                      value: _selected.contains(field),
+                      onChanged: (value) => _toggle(field, value),
+                      controlAffinity: ListTileControlAffinity.leading,
+                    ),
+                  ],
+                ],
+              ),
+            ],
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed:
+                      _mode == ReEnrichBatchMode.selectedFields &&
+                          _selected.isEmpty
+                      ? null
+                      : () => Navigator.pop(
+                          context,
+                          ReEnrichFieldSelection(
+                            mode: _mode,
+                            fields: _selected.toList(),
+                          ),
+                        ),
+                  icon: const Icon(Icons.preview_outlined, size: 18),
+                  label: Text(l10n.trackReEnrichReview),
+                ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-            child: Text(
-              l10n.downloadedAlbumSelectedCount(widget.selectedCount),
-              style: textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          const Divider(height: 1),
-          CheckboxListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-            title: Text(
-              l10n.trackReEnrichSelectAll,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            value: _allSelected,
-            tristate: true,
-            onChanged: _toggleAll,
-            controlAffinity: ListTileControlAffinity.leading,
-          ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          for (final field in ReEnrichFields.all)
-            CheckboxListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              secondary: Icon(_iconFor(field), size: 20),
-              title: Text(_labelFor(field, l10n)),
-              value: _selected.contains(field),
-              onChanged: (v) => _toggle(field, v),
-              controlAffinity: ListTileControlAffinity.leading,
-            ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _selected.isEmpty
-                    ? null
-                    : () => Navigator.pop(
-                        context,
-                        ReEnrichFieldSelection(_selected.toList()),
-                      ),
-                icon: const Icon(Icons.auto_fix_high, size: 18),
-                label: Text(l10n.trackReEnrich),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

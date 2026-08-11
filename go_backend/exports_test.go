@@ -2,6 +2,7 @@ package gobackend
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 )
@@ -680,5 +681,85 @@ func TestBuildReEnrichFFmpegMetadataFormatsTotalsAndComposer(t *testing.T) {
 	}
 	if metadata["COMPOSER"] != "Composer" {
 		t.Fatalf("COMPOSER = %q", metadata["COMPOSER"])
+	}
+}
+
+func TestReEnrichGranularISRCDoesNotChangeReleaseDate(t *testing.T) {
+	req := reEnrichRequest{
+		ReleaseDate:  "2020-01-02",
+		ISRC:         "",
+		UpdateFields: []string{"isrc"},
+	}
+
+	applyReEnrichTrackMetadata(&req, ExtTrackMetadata{
+		ReleaseDate: "2025-04-05",
+		ISRC:        "USRC17607839",
+	})
+
+	if req.ISRC != "USRC17607839" {
+		t.Fatalf("isrc = %q", req.ISRC)
+	}
+	if req.ReleaseDate != "2020-01-02" {
+		t.Fatalf("release date = %q, want existing value", req.ReleaseDate)
+	}
+	metadata := buildReEnrichFFmpegMetadata(&req, "")
+	if metadata["ISRC"] != "USRC17607839" {
+		t.Fatalf("ISRC metadata = %q", metadata["ISRC"])
+	}
+	if _, exists := metadata["DATE"]; exists {
+		t.Fatalf("granular ISRC update unexpectedly included DATE: %#v", metadata)
+	}
+}
+
+func TestBuildReEnrichResultMetadataOnlyIncludesSelectedGranularTags(t *testing.T) {
+	req := reEnrichRequest{
+		TrackName:    "Existing title",
+		AlbumArtist:  "Resolved album artist",
+		ISRC:         "USRC17607839",
+		Genre:        "Rock",
+		UpdateFields: []string{"album_artist", "isrc"},
+	}
+
+	metadata := buildReEnrichResultMetadata(&req)
+	if metadata["album_artist"] != "Resolved album artist" {
+		t.Fatalf("album_artist = %#v", metadata["album_artist"])
+	}
+	if metadata["isrc"] != "USRC17607839" {
+		t.Fatalf("isrc = %#v", metadata["isrc"])
+	}
+	for _, key := range []string{"track_name", "release_date", "genre"} {
+		if _, exists := metadata[key]; exists {
+			t.Fatalf("unexpected key %q in preview metadata: %#v", key, metadata)
+		}
+	}
+}
+
+func TestReEnrichPreviewReturnsBeforeTouchingAudioFile(t *testing.T) {
+	request, err := json.Marshal(reEnrichRequest{
+		FilePath:     "content://library/nonexistent.flac",
+		TrackName:    "Song",
+		ArtistName:   "Artist",
+		ISRC:         "USRC17607839",
+		UpdateFields: []string{"isrc"},
+		PreviewOnly:  true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	raw, err := ReEnrichFile(string(request))
+	if err != nil {
+		t.Fatalf("preview unexpectedly touched the nonexistent file: %v", err)
+	}
+	var result map[string]any
+	if err := json.Unmarshal([]byte(raw), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result["method"] != "preview" || result["success"] != true {
+		t.Fatalf("result = %#v", result)
+	}
+	metadata, ok := result["enriched_metadata"].(map[string]any)
+	if !ok || metadata["isrc"] != "USRC17607839" {
+		t.Fatalf("preview metadata = %#v", result["enriched_metadata"])
 	}
 }
