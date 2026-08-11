@@ -68,6 +68,15 @@ internal object NativeFinalizationPolicy {
         }
     }
 
+    /**
+     * Audio-only ISO-BMFF files conventionally use .m4a. AC-4 remains .mp4
+     * because its passthrough and standards-repair path depends on that
+     * container identity.
+     */
+    fun isoBmffAudioExtension(audioCodec: String?): String {
+        return if (normalizeAudioCodec(audioCodec) == "ac4") ".mp4" else ".m4a"
+    }
+
     fun audioFormatForCodec(codec: String?): String? {
         return when (normalizeAudioCodec(codec)) {
             "flac" -> "FLAC"

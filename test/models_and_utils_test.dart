@@ -1038,6 +1038,13 @@ void main() {
       );
     });
 
+    test('uses m4a for ISO-BMFF audio except AC-4 passthrough', () {
+      expect(isoBmffAudioExtensionForCodec('opus'), '.m4a');
+      expect(isoBmffAudioExtensionForCodec('ec-3'), '.m4a');
+      expect(isoBmffAudioExtensionForCodec('aac'), '.m4a');
+      expect(isoBmffAudioExtensionForCodec('ac-4'), '.mp4');
+    });
+
     test(
       'detects Dolby formats from stored scan format before file extension',
       () {

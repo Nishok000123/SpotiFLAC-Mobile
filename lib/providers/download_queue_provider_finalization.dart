@@ -44,6 +44,44 @@ bool _isMp4Container(String path) {
   return lower.endsWith('.m4a') || lower.endsWith('.mp4');
 }
 
+Future<String> _normalizeDecryptedIsoBmffAudioPath(
+  String path,
+  Map<String, dynamic> result,
+) async {
+  if (!_isMp4Container(path)) return path;
+
+  final probedCodec = await FFmpegService.probePrimaryAudioCodec(path);
+  final reportedCodec =
+      result['audio_codec']?.toString() ??
+      result['actual_audio_codec']?.toString() ??
+      result['format']?.toString();
+  final desiredExt = isoBmffAudioExtensionForCodec(
+    probedCodec ?? reportedCodec,
+  );
+  if (path.toLowerCase().endsWith(desiredExt)) return path;
+
+  final targetPath = path.replaceFirst(
+    RegExp(r'\.(?:m4a|mp4)$', caseSensitive: false),
+    desiredExt,
+  );
+  if (targetPath == path) return path;
+  try {
+    final target = File(targetPath);
+    if (await target.exists()) {
+      _log.w(
+        'Cannot normalize ISO-BMFF audio extension; target already exists: '
+        '$targetPath',
+      );
+      return path;
+    }
+    final renamed = await File(path).rename(targetPath);
+    return renamed.path;
+  } catch (e) {
+    _log.w('Failed to normalize ISO-BMFF audio extension for $path: $e');
+    return path;
+  }
+}
+
 extension _DownloadQueueFinalization on DownloadQueueNotifier {
   Future<_AutoConversionOutcome> _autoConvertDownloadedFile({
     required String itemId,
@@ -770,16 +808,24 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
         relativeDir: safRelativeDir,
         op: (tempPath, addCleanup) async {
           opStarted = true;
-          final decryptedTempPath = await FFmpegService.decryptWithDescriptor(
-            inputPath: tempPath,
-            descriptor: descriptor,
-            deleteOriginal: false,
-          );
-          if (decryptedTempPath == null) {
+          final rawDecryptedTempPath =
+              await FFmpegService.decryptWithDescriptor(
+                inputPath: tempPath,
+                descriptor: descriptor,
+                deleteOriginal: false,
+              );
+          if (rawDecryptedTempPath == null) {
             failStage = DownloadQueueNotifier._decryptStageDecrypt;
             return null;
           }
-          addCleanup(decryptedTempPath);
+          addCleanup(rawDecryptedTempPath);
+          final decryptedTempPath = await _normalizeDecryptedIsoBmffAudioPath(
+            rawDecryptedTempPath,
+            result,
+          );
+          if (decryptedTempPath != rawDecryptedTempPath) {
+            addCleanup(decryptedTempPath);
+          }
           if (repairAc4 && _isMp4Container(decryptedTempPath)) {
             try {
               await PlatformBridge.ensureAC4Config(decryptedTempPath, tempPath);
@@ -814,12 +860,12 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
     }
 
     if (repairAc4) {
-      final decryptedPath = await FFmpegService.decryptWithDescriptor(
+      final rawDecryptedPath = await FFmpegService.decryptWithDescriptor(
         inputPath: filePath,
         descriptor: descriptor,
         deleteOriginal: false,
       );
-      if (decryptedPath == null) {
+      if (rawDecryptedPath == null) {
         try {
           await deleteFile(filePath);
         } catch (_) {}
@@ -828,6 +874,10 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
           failStage: DownloadQueueNotifier._decryptStageDecrypt,
         );
       }
+      final decryptedPath = await _normalizeDecryptedIsoBmffAudioPath(
+        rawDecryptedPath,
+        result,
+      );
       if (_isMp4Container(decryptedPath)) {
         try {
           await PlatformBridge.ensureAC4Config(decryptedPath, filePath);
@@ -841,11 +891,14 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
       return _DecryptOutcome(decryptedPath);
     }
 
-    final decryptedPath = await FFmpegService.decryptWithDescriptor(
+    final rawDecryptedPath = await FFmpegService.decryptWithDescriptor(
       inputPath: filePath,
       descriptor: descriptor,
       deleteOriginal: true,
     );
+    final decryptedPath = rawDecryptedPath == null
+        ? null
+        : await _normalizeDecryptedIsoBmffAudioPath(rawDecryptedPath, result);
     return _DecryptOutcome(
       decryptedPath,
       failStage: decryptedPath == null

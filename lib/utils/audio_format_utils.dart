@@ -118,6 +118,14 @@ String? normalizeAudioFormatValue(String? value) {
   };
 }
 
+/// Chooses the user-facing extension for an audio-only ISO-BMFF container.
+/// AC-4 stays `.mp4` because its compatibility repair and passthrough path
+/// depend on that container identity; other audio codecs use the conventional
+/// `.m4a` extension, including Opus and E-AC-3 streams carried inside MP4.
+String isoBmffAudioExtensionForCodec(String? codec) {
+  return normalizeAudioFormatValue(codec) == 'ac4' ? '.mp4' : '.m4a';
+}
+
 /// Resolves the actual audio codec reported by native metadata probing, while
 /// falling back to the container format when the codec is absent or generic.
 ///

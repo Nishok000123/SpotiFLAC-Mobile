@@ -542,7 +542,12 @@ object NativeDownloadFinalizer {
                 if (successPath != null) break
             }
 
-            val decryptedPath = successPath ?: throw IllegalStateException("decrypt failed: $lastOutput")
+            val rawDecryptedPath = successPath ?: throw IllegalStateException("decrypt failed: $lastOutput")
+            val decryptedPath = normalizeDecryptedIsoBmffAudioPath(
+                rawDecryptedPath,
+                state,
+                shouldCancel,
+            )
             replaceStatePath(context, input, state, decryptedPath, deleteOld = true)
         } finally {
             if (successPath == null) {
@@ -552,6 +557,37 @@ object NativeDownloadFinalizer {
                 File(originalPath).delete()
             }
         }
+    }
+
+    private fun normalizeDecryptedIsoBmffAudioPath(
+        path: String,
+        state: FinalizeState,
+        shouldCancel: () -> Boolean,
+    ): String {
+        if (!isMP4ContainerFile(path)) return path
+
+        val probedCodec = probePrimaryAudioCodec(path, shouldCancel)
+        val codec = normalizeAudioCodec(probedCodec.ifBlank { state.audioCodec.orEmpty() })
+        val desiredExt = NativeFinalizationPolicy.isoBmffAudioExtension(codec)
+        state.audioCodec = codec
+        if (path.lowercase(Locale.ROOT).endsWith(desiredExt)) return path
+
+        val target = File(buildOutputPath(path, desiredExt))
+        if (target.exists()) {
+            Log.w(TAG, "Cannot normalize ISO-BMFF audio extension; ${target.name} already exists")
+            return path
+        }
+        val source = File(path)
+        if (!source.renameTo(target)) {
+            Log.w(TAG, "Failed to normalize ISO-BMFF audio extension to ${target.name}")
+            return path
+        }
+        Log.i(
+            TAG,
+            "ISO-BMFF audio renamed: ${source.name} -> ${target.name} " +
+                "(codec=${codec.orEmpty().ifBlank { "unknown" }})",
+        )
+        return target.absolutePath
     }
 
     private fun finalizeHighConversion(
@@ -814,10 +850,10 @@ object NativeDownloadFinalizer {
         if (!currentFile.name.lowercase(Locale.ROOT).endsWith(".flac")) return
 
         val newExt = when {
-            codec == "aac" && isMP4ContainerFile(localInput) -> ".m4a"
+            isMP4ContainerFile(localInput) ->
+                NativeFinalizationPolicy.isoBmffAudioExtension(codec)
             codec == "mp3" -> ".mp3"
             codec == "opus" -> ".opus"
-            isMP4ContainerFile(localInput) -> ".m4a"
             else -> return
         }
         val renamed = File(

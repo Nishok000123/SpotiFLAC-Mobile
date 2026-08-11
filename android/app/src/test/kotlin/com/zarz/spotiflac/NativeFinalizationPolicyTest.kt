@@ -77,6 +77,26 @@ class NativeFinalizationPolicyTest {
     }
 
     @Test
+    fun isoBmffAudioUsesM4aExceptForAc4Passthrough() {
+        assertEquals(
+            ".m4a",
+            NativeFinalizationPolicy.isoBmffAudioExtension("opus"),
+        )
+        assertEquals(
+            ".m4a",
+            NativeFinalizationPolicy.isoBmffAudioExtension("ec-3"),
+        )
+        assertEquals(
+            ".m4a",
+            NativeFinalizationPolicy.isoBmffAudioExtension("aac"),
+        )
+        assertEquals(
+            ".mp4",
+            NativeFinalizationPolicy.isoBmffAudioExtension("ac-4"),
+        )
+    }
+
+    @Test
     fun displayQualityUsesMeasuredLosslessSpecifications() {
         assertEquals(
             "24-bit/96kHz",
