@@ -129,6 +129,115 @@ bool isStorageWriteFailure({String? errorType, String? errorMessage}) {
       message.contains('failed to copy extension output to saf');
 }
 
+/// Makes the album-artist credit stable for tracks from the same album.
+///
+/// Some metadata providers expose every `MAIN` track artist as the album
+/// artist. On collaboration tracks that turns one album into values such as
+/// "Artist", "Artist, Guest A", and "Artist, Guest B". Music libraries then
+/// split the files into separate albums. Keep the complete track artist credit
+/// intact, but reduce inconsistent album-artist credits to the artist names
+/// shared by every track in that album.
+List<Track> normalizeBatchAlbumArtists(List<Track> tracks) {
+  if (tracks.length < 2) return tracks;
+
+  final albumGroups = <String, List<int>>{};
+  for (var index = 0; index < tracks.length; index++) {
+    final key = _batchAlbumIdentity(tracks[index]);
+    if (key == null) continue;
+    albumGroups.putIfAbsent(key, () => <int>[]).add(index);
+  }
+
+  List<Track>? normalized;
+  for (final indices in albumGroups.values) {
+    if (indices.length < 2) continue;
+    final albumTracks = [for (final index in indices) tracks[index]];
+    final canonicalArtist = _sharedBatchAlbumArtist(albumTracks);
+    if (canonicalArtist == null) continue;
+
+    for (final index in indices) {
+      final currentArtist = normalizeOptionalString(tracks[index].albumArtist);
+      if (currentArtist == canonicalArtist) continue;
+      normalized ??= List<Track>.of(tracks);
+      normalized[index] = tracks[index].copyWith(
+        albumArtist: canonicalArtist,
+      );
+    }
+  }
+
+  return normalized ?? tracks;
+}
+
+String? _batchAlbumIdentity(Track track) {
+  final source = normalizeOptionalString(track.source)?.toLowerCase() ?? '';
+  final albumId = normalizeOptionalString(track.albumId)?.toLowerCase();
+  if (albumId != null) return '$source|id:$albumId';
+
+  final albumName = normalizeOptionalString(track.albumName)?.toLowerCase();
+  if (albumName == null) return null;
+
+  final cover = normalizeOptionalString(
+    normalizeCoverReference(track.coverUrl),
+  )?.toLowerCase();
+  if (cover != null) return '$source|cover:$albumName|$cover';
+
+  final releaseDate = normalizeOptionalString(track.releaseDate) ?? '';
+  final totalTracks = track.totalTracks ?? 0;
+  final primaryArtist = primaryArtistName(
+    track.artistName,
+    albumArtist: track.albumArtist,
+  ).trim().toLowerCase();
+  return '$source|meta:$albumName|$releaseDate|$totalTracks|$primaryArtist';
+}
+
+String? _sharedBatchAlbumArtist(List<Track> tracks) {
+  final albumArtists = tracks
+      .map((track) => normalizeOptionalString(track.albumArtist))
+      .toList(growable: false);
+  final firstAlbumArtist = albumArtists.first;
+  if (firstAlbumArtist != null &&
+      albumArtists.every(
+        (artist) => artist?.toLowerCase() == firstAlbumArtist.toLowerCase(),
+      )) {
+    return firstAlbumArtist;
+  }
+
+  final credits = <List<String>>[];
+  for (var index = 0; index < tracks.length; index++) {
+    final rawCredit = albumArtists[index] ?? tracks[index].artistName;
+    final names = splitArtistNames(rawCredit);
+    if (names.isEmpty) return null;
+    credits.add(names);
+  }
+
+  final sharedKeys = credits.first
+      .map((name) => name.toLowerCase())
+      .toSet();
+  for (final credit in credits.skip(1)) {
+    final keys = credit.map((name) => name.toLowerCase()).toSet();
+    sharedKeys.removeWhere((name) => !keys.contains(name));
+  }
+  if (sharedKeys.isEmpty) return null;
+
+  // Preserve a provider's original separator whenever one of its credits is
+  // already exactly the shared album credit.
+  for (final rawCredit in albumArtists.whereType<String>()) {
+    final keys = splitArtistNames(
+      rawCredit,
+    ).map((name) => name.toLowerCase()).toSet();
+    if (keys.length == sharedKeys.length && keys.containsAll(sharedKeys)) {
+      return rawCredit;
+    }
+  }
+
+  final displayNames = <String>[];
+  final seen = <String>{};
+  for (final name in credits.first) {
+    final key = name.toLowerCase();
+    if (sharedKeys.contains(key) && seen.add(key)) displayNames.add(name);
+  }
+  return displayNames.isEmpty ? null : displayNames.join(', ');
+}
+
 final _invalidFolderChars = RegExp(r'[<>:"/\\|?*]');
 final _trimDotsAndSpacesRegex = RegExp(r'^[. ]+|[. ]+$');
 final _trimUnderscoresAndSpacesRegex = RegExp(r'^[_ ]+|[_ ]+$');
@@ -748,8 +857,9 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     final takenIds = state.items.map((item) => item.id).toSet();
     final shouldAssignPlaylistPositions =
         playlistName != null && playlistName.trim().isNotEmpty;
-    final fromBatch = tracks.length > 1;
-    final newItems = tracks.asMap().entries.map((entry) {
+    final normalizedTracks = normalizeBatchAlbumArtists(tracks);
+    final fromBatch = normalizedTracks.length > 1;
+    final newItems = normalizedTracks.asMap().entries.map((entry) {
       final track = entry.value;
       final index = entry.key;
       final explicitPosition =

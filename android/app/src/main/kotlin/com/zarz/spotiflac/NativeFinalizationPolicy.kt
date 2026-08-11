@@ -277,6 +277,22 @@ internal object NativeFinalizationPolicy {
         return if (total > 0) "$number/$total" else number.toString()
     }
 
+    /**
+     * The app request contains the album artist after batch normalization and
+     * user metadata filters. Provider results are only a fallback: preferring
+     * them would reintroduce per-track collaboration credits while finalizing.
+     */
+    fun authoritativeAlbumArtist(
+        requestValue: String?,
+        trackValue: String?,
+        providerResultValue: String?,
+    ): String {
+        return normalizeOptional(requestValue)
+            ?: normalizeOptional(trackValue)
+            ?: normalizeOptional(providerResultValue)
+            ?: ""
+    }
+
     private fun audioFormatForPath(filePath: String, fileName: String): String? {
         for (candidate in listOf(filePath, fileName)) {
             val lower = candidate.trim().lowercase(Locale.ROOT)

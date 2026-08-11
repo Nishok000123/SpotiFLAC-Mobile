@@ -1068,7 +1068,14 @@ object NativeDownloadFinalizer {
             .put("title", trackString(input, "name", input.request.optString("track_name", "")))
             .put("artist", trackString(input, "artistName", input.request.optString("artist_name", "")))
             .put("album", trackString(input, "albumName", input.request.optString("album_name", "")))
-            .put("album_artist", trackString(input, "albumArtist", input.request.optString("album_artist", "")))
+            .put(
+                "album_artist",
+                NativeFinalizationPolicy.authoritativeAlbumArtist(
+                    requestValue = requestString(input, "album_artist"),
+                    trackValue = trackString(input, "albumArtist", ""),
+                    providerResultValue = resultString(input, "album_artist"),
+                ),
+            )
             .put("track_number", trackInt(input, "trackNumber", input.request.optInt("track_number", 0)))
             .put("disc_number", trackInt(input, "discNumber", input.request.optInt("disc_number", 0)))
             .put("isrc", trackString(input, "isrc", input.request.optString("isrc", "")))
@@ -1229,7 +1236,11 @@ object NativeDownloadFinalizer {
         val albumId = trackString(input, "albumId", "")
         if (albumId.isNotBlank()) return "id:$albumId"
         val albumName = trackString(input, "albumName", input.request.optString("album_name", ""))
-        val albumArtist = trackString(input, "albumArtist", input.request.optString("album_artist", ""))
+        val albumArtist = NativeFinalizationPolicy.authoritativeAlbumArtist(
+            requestValue = requestString(input, "album_artist"),
+            trackValue = trackString(input, "albumArtist", ""),
+            providerResultValue = resultString(input, "album_artist"),
+        )
         return "name:$albumName|$albumArtist"
     }
 
@@ -1248,7 +1259,16 @@ object NativeDownloadFinalizer {
         values.put("track_name", result.optString("title", "").ifBlank { trackString(input, "name", input.request.optString("track_name", "")) })
         values.put("artist_name", result.optString("artist", "").ifBlank { trackString(input, "artistName", input.request.optString("artist_name", "")) })
         values.put("album_name", result.optString("album", "").ifBlank { trackString(input, "albumName", input.request.optString("album_name", "")) })
-        values.put("album_artist", normalizeOptional(resultString(input, "album_artist").ifBlank { trackString(input, "albumArtist", requestString(input, "album_artist")) }))
+        values.put(
+            "album_artist",
+            normalizeOptional(
+                NativeFinalizationPolicy.authoritativeAlbumArtist(
+                    requestValue = requestString(input, "album_artist"),
+                    trackValue = trackString(input, "albumArtist", ""),
+                    providerResultValue = resultString(input, "album_artist"),
+                ),
+            ),
+        )
         values.put("cover_url", normalizeOptional(metadataCoverUrl(input).ifBlank { resultString(input, "cover_url") }))
         values.put("file_path", state.filePath)
         values.put("storage_mode", input.request.optString("storage_mode", "app"))

@@ -16,6 +16,7 @@ import com.antonkarpenko.ffmpegkit.ReturnCode
 import com.zarz.spotiflac.SafDownloadHandler.mimeTypeForExt
 import com.zarz.spotiflac.SafDownloadHandler.normalizeExt
 import com.zarz.spotiflac.NativeFinalizationPolicy.applyQualityVariantFilenameLabel
+import com.zarz.spotiflac.NativeFinalizationPolicy.authoritativeAlbumArtist
 import com.zarz.spotiflac.NativeFinalizationPolicy.displayAudioQuality
 import com.zarz.spotiflac.NativeFinalizationPolicy.formatIndexTag
 import com.zarz.spotiflac.NativeFinalizationPolicy.isLosslessAudioCodec
@@ -257,9 +258,11 @@ internal fun NativeDownloadFinalizer.embedBasicMetadata(context: Context, path: 
     val album = resultString(input, "album").ifBlank {
         trackString(input, "albumName", requestString(input, "album_name"))
     }
-    val albumArtist = resultString(input, "album_artist").ifBlank {
-        trackString(input, "albumArtist", requestString(input, "album_artist"))
-    }
+    val albumArtist = authoritativeAlbumArtist(
+        requestValue = requestString(input, "album_artist"),
+        trackValue = trackString(input, "albumArtist", ""),
+        providerResultValue = resultString(input, "album_artist"),
+    )
     val date = resultString(input, "release_date").ifBlank {
         resultString(input, "date").ifBlank {
             trackString(input, "releaseDate", requestString(input, "release_date"))

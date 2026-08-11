@@ -97,6 +97,26 @@ class NativeFinalizationPolicyTest {
     }
 
     @Test
+    fun normalizedRequestAlbumArtistOverridesPerTrackProviderCredits() {
+        assertEquals(
+            "Falling In Reverse",
+            NativeFinalizationPolicy.authoritativeAlbumArtist(
+                requestValue = "Falling In Reverse",
+                trackValue = "Falling In Reverse, Jelly Roll",
+                providerResultValue = "Falling In Reverse, Jelly Roll",
+            ),
+        )
+        assertEquals(
+            "Provider Album Artist",
+            NativeFinalizationPolicy.authoritativeAlbumArtist(
+                requestValue = "",
+                trackValue = null,
+                providerResultValue = "Provider Album Artist",
+            ),
+        )
+    }
+
+    @Test
     fun displayQualityUsesMeasuredLosslessSpecifications() {
         assertEquals(
             "24-bit/96kHz",
