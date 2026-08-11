@@ -646,6 +646,23 @@ class PlatformBridge {
     });
   }
 
+  /// Checks and repairs many SAF file references in a single native pass.
+  /// Android groups requests by tree and scans each tree no more than once.
+  static Future<List<Map<String, dynamic>>> inspectSafFiles(
+    List<Map<String, dynamic>> requests,
+  ) async {
+    if (requests.isEmpty) return const [];
+    final response = await _invokeMap('inspectSafFiles', {
+      'requests_json': jsonEncode(requests),
+    });
+    final results = response['results'];
+    if (results is! List) return const [];
+    return results
+        .whereType<Map<Object?, Object?>>()
+        .map((result) => result.map((key, value) => MapEntry('$key', value)))
+        .toList(growable: false);
+  }
+
   static Future<String?> copyContentUriToTemp(String uri) async {
     final result = await _channel.invokeMethod('safCopyToTemp', {'uri': uri});
     return result as String?;

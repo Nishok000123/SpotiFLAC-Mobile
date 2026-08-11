@@ -166,27 +166,11 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
     var verifiedCount = 0;
 
     try {
-      for (var c = 0; c < selectedIndexes.length; c++) {
-        final i = selectedIndexes[c];
+      final requests = <Map<String, dynamic>>[];
+      for (final i in selectedIndexes) {
         final item = items[i];
         final rawPath = item.filePath.trim();
         final isDirectSafUri = rawPath.isNotEmpty && isContentUri(rawPath);
-
-        if (isDirectSafUri) {
-          final exists = await fileExists(rawPath);
-          if (exists) {
-            final verified = item.copyWith(
-              safRepaired: true,
-              safFileName: item.safFileName ?? _fileNameFromUri(rawPath),
-            );
-            updatedItems[i] = verified;
-            changed = true;
-            verifiedCount++;
-            persistedUpdates.add(verified.toJson());
-            continue;
-          }
-        }
-
         var fallbackName = (item.safFileName ?? '').trim();
         if (fallbackName.isEmpty && isDirectSafUri) {
           fallbackName = _fileNameFromUri(rawPath);
@@ -195,48 +179,53 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
           _historyLog.w('Missing SAF filename for history item: ${item.id}');
           continue;
         }
+        requests.add({
+          'key': item.id,
+          'tree_uri': item.downloadTreeUri,
+          'relative_dir': item.safRelativeDir ?? '',
+          'current_uri': isDirectSafUri ? rawPath : '',
+          'file_names': _conversionRenameCandidates(fallbackName),
+        });
+      }
 
-        try {
-          Map<String, dynamic>? resolved;
-          String? resolvedFileName;
-          for (final candidate in _conversionRenameCandidates(fallbackName)) {
-            final candidateResult = await PlatformBridge.resolveSafFile(
-              treeUri: item.downloadTreeUri!,
-              relativeDir: item.safRelativeDir ?? '',
-              fileName: candidate,
-            );
-            final candidateUri = (candidateResult['uri'] as String? ?? '')
-                .trim();
-            if (candidateUri.isEmpty) continue;
-            resolved = candidateResult;
-            resolvedFileName = candidate;
-            break;
-          }
-          if (resolved == null || resolvedFileName == null) continue;
-          final newUri = (resolved['uri'] as String).trim();
-
-          final newRelativeDir = resolved['relative_dir'] as String?;
-          final updated = item.copyWith(
-            filePath: newUri,
-            safRelativeDir:
-                (newRelativeDir != null && newRelativeDir.isNotEmpty)
-                ? newRelativeDir
-                : item.safRelativeDir,
-            safFileName: resolvedFileName,
-            safRepaired: true,
-          );
-
-          updatedItems[i] = updated;
-          changed = true;
+      final results = await PlatformBridge.inspectSafFiles(requests);
+      final resultsById = <String, Map<String, dynamic>>{
+        for (final result in results)
+          if ((result['key'] as String? ?? '').isNotEmpty)
+            result['key'] as String: result,
+      };
+      final indexById = <String, int>{
+        for (final index in selectedIndexes) items[index].id: index,
+      };
+      for (final result in resultsById.values) {
+        if (result['status'] != 'found') continue;
+        final id = result['key'] as String;
+        final index = indexById[id];
+        if (index == null) continue;
+        final item = items[index];
+        final newUri = (result['uri'] as String? ?? '').trim();
+        if (newUri.isEmpty) continue;
+        final resultFileName = (result['file_name'] as String? ?? '').trim();
+        final resultRelativeDir = (result['relative_dir'] as String? ?? '')
+            .trim();
+        final updated = item.copyWith(
+          filePath: newUri,
+          safRelativeDir: resultRelativeDir.isNotEmpty
+              ? resultRelativeDir
+              : item.safRelativeDir,
+          safFileName: resultFileName.isNotEmpty
+              ? resultFileName
+              : item.safFileName,
+          safRepaired: true,
+        );
+        updatedItems[index] = updated;
+        changed = true;
+        if (newUri == item.filePath) {
+          verifiedCount++;
+        } else {
           repairedCount++;
-          persistedUpdates.add(updated.toJson());
-        } catch (e) {
-          _historyLog.w('Failed to repair SAF URI: $e');
         }
-
-        if ((c + 1) % DownloadHistoryNotifier._safRepairBatchSize == 0) {
-          await Future<void>.delayed(const Duration(milliseconds: 16));
-        }
+        persistedUpdates.add(updated.toJson());
       }
 
       if (changed) {

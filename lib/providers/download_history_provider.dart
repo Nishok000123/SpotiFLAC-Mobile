@@ -59,7 +59,6 @@ String? resolvePersistedHistoryQuality({
 
 class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
   static const int _initialHistoryLoadLimit = 100;
-  static const int _safRepairBatchSize = 20;
   static const int _safRepairMaxPerLaunch = 60;
   static const int _orphanCleanupMaxPerLaunch = 80;
   static const int _audioMetadataBackfillMaxPerLaunch = 24;
@@ -697,79 +696,35 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
     final replacementFileNames = <String, String>{};
     final replacementRelativeDirs = <String, String>{};
     final pathById = <String, String>{};
+    final regularEntries = <Map<String, dynamic>>[];
+    final safEntries = <Map<String, dynamic>>[];
+
+    for (final entry in entries) {
+      final id = entry['id'] as String;
+      final filePath = (entry['file_path'] as String? ?? '').trim();
+      if (filePath.isEmpty) continue;
+      pathById[id] = filePath;
+      if (entry['storage_mode'] == 'saf') {
+        safEntries.add(entry);
+      } else {
+        regularEntries.add(entry);
+      }
+    }
+
     const checkChunkSize = 16;
 
-    for (var i = 0; i < entries.length; i += checkChunkSize) {
-      final end = (i + checkChunkSize < entries.length)
+    for (var i = 0; i < regularEntries.length; i += checkChunkSize) {
+      final end = (i + checkChunkSize < regularEntries.length)
           ? i + checkChunkSize
-          : entries.length;
-      final chunk = entries.sublist(i, end);
+          : regularEntries.length;
+      final chunk = regularEntries.sublist(i, end);
 
       final checks = await Future.wait<MapEntry<String, bool?>?>(
         chunk.map((entry) async {
           final id = entry['id'] as String;
-          final filePath = entry['file_path'] as String?;
-          if (filePath == null || filePath.isEmpty) return null;
-          pathById[id] = filePath;
+          final filePath = entry['file_path'] as String;
           try {
             if (await fileExists(filePath)) return MapEntry(id, true);
-
-            if (entry['storage_mode'] == 'saf') {
-              final treeUri = (entry['download_tree_uri'] as String? ?? '')
-                  .trim();
-              var fileName = (entry['saf_file_name'] as String? ?? '').trim();
-              if (fileName.isEmpty && isContentUri(filePath)) {
-                fileName = _fileNameFromUri(filePath);
-              }
-              if (treeUri.isEmpty || fileName.isEmpty) {
-                return MapEntry(id, null);
-              }
-
-              bool treeAccessible;
-              try {
-                treeAccessible = await PlatformBridge.validateSafTreeAccess(
-                  treeUri,
-                );
-              } catch (error) {
-                _historyLog.w(
-                  'Unable to verify SAF tree while checking $id: $error',
-                );
-                return MapEntry(id, null);
-              }
-              if (!treeAccessible) {
-                return MapEntry(id, null);
-              }
-
-              for (final candidate in _conversionRenameCandidates(
-                fileName,
-                includeAlternateExtensions: true,
-              )) {
-                try {
-                  final resolved = await PlatformBridge.resolveSafFile(
-                    treeUri: treeUri,
-                    relativeDir: entry['saf_relative_dir'] as String? ?? '',
-                    fileName: candidate,
-                  );
-                  final uri = (resolved['uri'] as String? ?? '').trim();
-                  if (uri.isEmpty) continue;
-                  replacementPaths[id] = uri;
-                  replacementFileNames[id] = candidate;
-                  final relativeDir =
-                      (resolved['relative_dir'] as String? ?? '').trim();
-                  if (relativeDir.isNotEmpty) {
-                    replacementRelativeDirs[id] = relativeDir;
-                  }
-                  pathById[id] = uri;
-                  return MapEntry(id, true);
-                } catch (error) {
-                  _historyLog.w(
-                    'Unable to resolve SAF file while checking $id: $error',
-                  );
-                  return MapEntry(id, null);
-                }
-              }
-              return MapEntry(id, false);
-            }
 
             final sibling = await _findConvertedSibling(filePath);
             if (sibling != null) {
@@ -795,6 +750,73 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
         _historyLog.d(
           'Found orphaned entry: ${check.key} (${pathById[check.key] ?? ''})',
         );
+      }
+    }
+
+    if (safEntries.isNotEmpty && Platform.isAndroid) {
+      final requests = <Map<String, dynamic>>[];
+      for (final entry in safEntries) {
+        final id = entry['id'] as String;
+        final filePath = entry['file_path'] as String;
+        var fileName = (entry['saf_file_name'] as String? ?? '').trim();
+        if (fileName.isEmpty && isContentUri(filePath)) {
+          fileName = _fileNameFromUri(filePath);
+        }
+        requests.add({
+          'key': id,
+          'tree_uri': entry['download_tree_uri'] as String? ?? '',
+          'relative_dir': entry['saf_relative_dir'] as String? ?? '',
+          'current_uri': isContentUri(filePath) ? filePath : '',
+          'file_names': _conversionRenameCandidates(
+            fileName,
+            includeAlternateExtensions: true,
+          ),
+        });
+      }
+
+      try {
+        final results = await PlatformBridge.inspectSafFiles(requests);
+        final resultsById = <String, Map<String, dynamic>>{
+          for (final result in results)
+            if ((result['key'] as String? ?? '').isNotEmpty)
+              result['key'] as String: result,
+        };
+        for (final entry in safEntries) {
+          final id = entry['id'] as String;
+          final result = resultsById[id];
+          final status = result?['status'] as String? ?? 'unknown';
+          if (status == 'missing') {
+            orphanedIds.add(id);
+            _historyLog.d(
+              'Found orphaned SAF entry: $id (${pathById[id] ?? ''})',
+            );
+            continue;
+          }
+          if (status != 'found' || result == null) continue;
+
+          final uri = (result['uri'] as String? ?? '').trim();
+          if (uri.isEmpty) continue;
+          final fileName = (result['file_name'] as String? ?? '').trim();
+          final relativeDir = (result['relative_dir'] as String? ?? '').trim();
+          final oldPath = pathById[id] ?? '';
+          final oldFileName = (entry['saf_file_name'] as String? ?? '').trim();
+          final oldRelativeDir = (entry['saf_relative_dir'] as String? ?? '')
+              .trim();
+          if (uri != oldPath ||
+              (fileName.isNotEmpty && fileName != oldFileName) ||
+              (relativeDir.isNotEmpty && relativeDir != oldRelativeDir)) {
+            replacementPaths[id] = uri;
+            if (fileName.isNotEmpty) replacementFileNames[id] = fileName;
+            if (relativeDir.isNotEmpty) {
+              replacementRelativeDirs[id] = relativeDir;
+            }
+            pathById[id] = uri;
+          }
+        }
+      } catch (error) {
+        // A bridge or provider error is inconclusive. Never delete SAF history
+        // when the batch inspection could not establish that files are absent.
+        _historyLog.w('Unable to inspect SAF history entries: $error');
       }
     }
 

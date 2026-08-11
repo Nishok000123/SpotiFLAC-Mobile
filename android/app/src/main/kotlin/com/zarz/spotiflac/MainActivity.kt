@@ -973,6 +973,13 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(response)
                         }
+                        "inspectSafFiles" -> {
+                            val requestsJson = call.argument<String>("requests_json") ?: "[]"
+                            val response = withContext(Dispatchers.IO) {
+                                inspectSafFiles(requestsJson)
+                            }
+                            result.success(response)
+                        }
                         "safCopyToTemp" -> {
                             val uriStr = call.argument<String>("uri") ?: ""
                             val tempPath = withContext(Dispatchers.IO) {

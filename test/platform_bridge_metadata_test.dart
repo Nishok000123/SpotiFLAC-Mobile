@@ -130,4 +130,41 @@ void main() {
     expect(arguments?['request_id'], isA<String>());
     expect(results.single['provider_id'], 'custom-metadata');
   });
+
+  test('SAF inspection sends one batch and decodes repair results', () async {
+    MethodCall? capturedCall;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(backendChannel, (call) async {
+          capturedCall = call;
+          return jsonEncode({
+            'results': [
+              {
+                'key': 'history-1',
+                'status': 'found',
+                'uri': 'content://tree/repaired.flac',
+                'file_name': 'repaired.flac',
+                'relative_dir': 'Artist/Album',
+              },
+            ],
+          });
+        });
+
+    final results = await PlatformBridge.inspectSafFiles([
+      {
+        'key': 'history-1',
+        'tree_uri': 'content://tree/root',
+        'current_uri': 'content://tree/stale.flac',
+        'relative_dir': 'Artist/Album',
+        'file_names': ['song.flac', 'song_converted.flac'],
+      },
+    ]);
+
+    expect(capturedCall?.method, 'inspectSafFiles');
+    final arguments = capturedCall?.arguments as Map<Object?, Object?>;
+    final requests = jsonDecode(arguments['requests_json'] as String) as List;
+    expect(requests, hasLength(1));
+    expect((requests.single as Map)['file_names'], hasLength(2));
+    expect(results.single['status'], 'found');
+    expect(results.single['relative_dir'], 'Artist/Album');
+  });
 }
