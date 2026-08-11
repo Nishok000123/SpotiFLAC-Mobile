@@ -147,6 +147,7 @@ final _explicitQualityFilenameTokenPattern = RegExp(
 class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   Timer? _queuePersistDebounce;
   Future<void> _queuePersistenceWrite = Future<void>.value();
+  Future<void> _queuePausePersistenceWrite = Future<void>.value();
   final Map<String, String> _persistedQueueJsonById = {};
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   int _downloadCount = 0;
@@ -158,6 +159,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   static const _queuePersistDebounceDuration = Duration(milliseconds: 350);
   static const _nativeWorkerRunIdPrefsKey =
       'download_queue_native_worker_run_id';
+  static const _userPausedQueuePrefsKey = 'download_queue_user_paused_v1';
   static const _bytesUiStep = 104857; // ~0.1 MiB, matches one-decimal MB UI.
   static const _serviceProgressStepPercent = 2;
   static const _decryptStageSafAccess = 'safAccess';
@@ -291,6 +293,26 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       await _flushQueueToStorage();
     }
     await _queuePersistenceWrite;
+    await _queuePausePersistenceWrite;
+  }
+
+  void _persistUserPausedQueue(bool paused) {
+    final operation = _queuePausePersistenceWrite.then((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      if (paused) {
+        await prefs.setBool(_userPausedQueuePrefsKey, true);
+      } else {
+        await prefs.remove(_userPausedQueuePrefsKey);
+      }
+    });
+    _queuePausePersistenceWrite = operation.catchError((Object error) {
+      _log.w('Failed to persist queue pause state: $error');
+    });
+  }
+
+  Future<bool> _loadUserPausedQueue() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_userPausedQueuePrefsKey) == true;
   }
 
   /// Restarts a queue that was deliberately left pending because Android did
@@ -319,6 +341,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
 
     try {
       await _appStateDb.migrateQueueFromSharedPreferences();
+      final restorePaused = await _loadUserPausedQueue();
       final rows = await _appStateDb.getPendingDownloadQueueRows();
       _persistedQueueJsonById
         ..clear()
@@ -333,6 +356,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
               .where((entry) => entry.key.isNotEmpty),
         );
       if (rows.isEmpty) {
+        if (restorePaused) _persistUserPausedQueue(false);
         _log.d('No queue found in storage');
         return;
       }
@@ -364,6 +388,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       }
 
       if (pendingItems.isEmpty) {
+        if (restorePaused) _persistUserPausedQueue(false);
         _log.d('No pending items to restore');
         await _appStateDb.replacePendingDownloadQueueRows(const []);
         _persistedQueueJsonById.clear();
@@ -371,7 +396,10 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       }
 
       final normalizedPendingItems = _normalizeRestoredQueueIds(pendingItems);
-      state = state.copyWith(items: normalizedPendingItems);
+      state = state.copyWith(
+        items: normalizedPendingItems,
+        isPaused: restorePaused,
+      );
       _saveQueueToStorage();
       _log.i(
         'Restored ${normalizedPendingItems.length} pending items from storage',
@@ -379,7 +407,11 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       if (await _tryAdoptAndroidNativeWorkerSnapshot(normalizedPendingItems)) {
         return;
       }
-      Future.microtask(() => _processQueue());
+      if (!restorePaused) {
+        Future.microtask(() => _processQueue());
+      } else {
+        _log.i('Restored queue in user-paused state');
+      }
     } catch (e) {
       _log.e('Failed to load queue from storage: $e');
     }
@@ -929,6 +961,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     }
 
     state = state.copyWith(items: [], isPaused: false, currentDownload: null);
+    _persistUserPausedQueue(false);
     if (_hasActiveAndroidNativeWorker) {
       PlatformBridge.cancelNativeDownloadWorker().catchError((_) {});
     }
@@ -941,7 +974,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     _pausePendingItemIds.clear();
   }
 
-  void pauseQueue() {
+  void pauseQueue({bool persistAcrossRestarts = true}) {
     if (state.isProcessing && !state.isPaused) {
       if (_hasActiveAndroidNativeWorker) {
         PlatformBridge.pauseNativeDownloadWorker().catchError((_) {});
@@ -964,6 +997,9 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       }
 
       state = state.copyWith(isPaused: true, currentDownload: null);
+      if (persistAcrossRestarts) {
+        _persistUserPausedQueue(true);
+      }
       _notificationService.cancelDownloadNotification();
       _log.i('Queue paused');
     }
@@ -975,6 +1011,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         PlatformBridge.resumeNativeDownloadWorker().catchError((_) {});
       }
       state = state.copyWith(isPaused: false);
+      _persistUserPausedQueue(false);
       _log.i('Queue resumed');
       if (state.queuedCount > 0 && !state.isProcessing) {
         Future.microtask(() => _processQueue());
@@ -1087,6 +1124,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         .toList(growable: false);
 
     state = state.copyWith(items: items, isPaused: false);
+    _persistUserPausedQueue(false);
     _saveQueueToStorage();
 
     if (!state.isProcessing) {

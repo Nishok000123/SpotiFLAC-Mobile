@@ -144,7 +144,7 @@ extension _DownloadQueueConnectivity on DownloadQueueNotifier {
     if (state.isProcessing && !state.isPaused) {
       _networkPausedByWifiOnly = true;
       _log.w('WiFi connection lost, pausing active queue');
-      pauseQueue();
+      pauseQueue(persistAcrossRestarts: false);
     }
   }
 }
