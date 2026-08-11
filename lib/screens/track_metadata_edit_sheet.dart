@@ -991,6 +991,70 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     return false;
   }
 
+  Future<List<Map<String, dynamic>>> _searchAutoFillCandidates({
+    required String query,
+    required bool usesAutomaticProvider,
+    required Extension? selectedProvider,
+    required ExtensionState extensionState,
+    bool allowVerificationRetry = true,
+  }) async {
+    try {
+      if (usesAutomaticProvider) {
+        return await PlatformBridge.searchTracksWithMetadataProviders(
+          query,
+          limit: 5,
+        );
+      }
+
+      final provider = selectedProvider!;
+      if (provider.hasCustomSearch) {
+        final trackFilter = provider.searchBehavior?.filterIdForKind('track');
+        return await PlatformBridge.customSearchWithExtension(
+          provider.id,
+          query,
+          options: {'limit': 5, 'filter': ?trackFilter},
+        );
+      }
+      return await PlatformBridge.searchTracksWithMetadataProvider(
+        provider.id,
+        query,
+        limit: 5,
+      );
+    } catch (error) {
+      if (!allowVerificationRetry || !isExtensionVerificationRequired(error)) {
+        rethrow;
+      }
+
+      final extensionId = usesAutomaticProvider
+          ? extensionIdFromVerificationError(
+              error,
+              extensionState.extensions.map((extension) => extension.id),
+            )
+          : selectedProvider?.id;
+      if (extensionId == null || extensionId.isEmpty) rethrow;
+
+      _log.i(
+        'Metadata autofill requires verification; waiting for $extensionId',
+      );
+      final verified = await openVerificationAndAwaitGrant(
+        extensionId,
+        browserMode: ProviderScope.containerOf(
+          context,
+          listen: false,
+        ).read(settingsProvider).extensionVerificationBrowserMode,
+      );
+      if (!verified || !mounted) rethrow;
+
+      return _searchAutoFillCandidates(
+        query: query,
+        usesAutomaticProvider: usesAutomaticProvider,
+        selectedProvider: selectedProvider,
+        extensionState: extensionState,
+        allowVerificationRetry: false,
+      );
+    }
+  }
+
   Future<void> _fetchAutoFillPreview() async {
     if (_autoFillFields.isEmpty) {
       _showSheetSnackBar(context.l10n.editMetadataAutoFillNoneSelected);
@@ -1067,28 +1131,12 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
       if (needsTrackLookup && best == null) {
         final query = queryParts.join(' ');
-        final List<Map<String, dynamic>> results;
-        if (usesAutomaticProvider) {
-          results = await PlatformBridge.searchTracksWithMetadataProviders(
-            query,
-            limit: 5,
-          );
-        } else if (selectedProvider!.hasCustomSearch) {
-          final trackFilter = selectedProvider.searchBehavior?.filterIdForKind(
-            'track',
-          );
-          results = await PlatformBridge.customSearchWithExtension(
-            selectedProvider.id,
-            query,
-            options: {'limit': 5, 'filter': ?trackFilter},
-          );
-        } else {
-          results = await PlatformBridge.searchTracksWithMetadataProvider(
-            selectedProvider.id,
-            query,
-            limit: 5,
-          );
-        }
+        final results = await _searchAutoFillCandidates(
+          query: query,
+          usesAutomaticProvider: usesAutomaticProvider,
+          selectedProvider: selectedProvider,
+          extensionState: extensionState,
+        );
 
         if (!mounted) return;
 

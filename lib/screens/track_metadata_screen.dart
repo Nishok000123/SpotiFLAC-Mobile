@@ -30,6 +30,7 @@ import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/utils/lyrics_metadata_helper.dart';
 import 'package:spotiflac_android/utils/mime_utils.dart';
 import 'package:spotiflac_android/utils/image_cache_utils.dart';
+import 'package:spotiflac_android/utils/extension_auth_launcher.dart';
 
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/utils/user_facing_error.dart';

@@ -25,6 +25,37 @@ bool isExtensionVerificationRequired(Object error) {
       _containsHttpStatusCode(message, '428');
 }
 
+String? extensionIdFromVerificationError(
+  Object error,
+  Iterable<String> knownExtensionIds,
+) {
+  final idsByNormalized = <String, String>{
+    for (final id in knownExtensionIds)
+      if (id.trim().isNotEmpty) id.trim().toLowerCase(): id.trim(),
+  };
+  if (idsByNormalized.isEmpty) return null;
+
+  final message = error.toString();
+  final canonicalMatch = RegExp(
+    r'''extension\s+['"]([^'"]+)['"]''',
+    caseSensitive: false,
+  ).firstMatch(message);
+  final canonicalId = canonicalMatch?.group(1)?.trim().toLowerCase();
+  if (canonicalId != null && idsByNormalized.containsKey(canonicalId)) {
+    return idsByNormalized[canonicalId];
+  }
+
+  final lowerMessage = message.toLowerCase();
+  final orderedIds = idsByNormalized.keys.toList()
+    ..sort((a, b) => b.length.compareTo(a.length));
+  for (final normalizedId in orderedIds) {
+    if (lowerMessage.contains(normalizedId)) {
+      return idsByNormalized[normalizedId];
+    }
+  }
+  return null;
+}
+
 bool _containsHttpStatusCode(String message, String code) {
   return message.contains('http $code') ||
       message.contains('http status $code') ||

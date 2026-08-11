@@ -128,6 +128,7 @@ func (m *extensionManager) SearchTracksWithMetadataProvidersForItemID(query stri
 
 	tracks := make([]ExtTrackMetadata, 0, limit)
 	seenTracks := make(map[string]struct{})
+	var verificationErr error
 	for _, providerID := range orderedProviderIDs {
 		if isDownloadCancelled(itemID) {
 			return nil, ErrDownloadCancelled
@@ -150,6 +151,13 @@ func (m *extensionManager) SearchTracksWithMetadataProvidersForItemID(query stri
 			if errors.Is(err, ErrDownloadCancelled) {
 				return nil, ErrDownloadCancelled
 			}
+			if verificationErr == nil && strings.EqualFold(classifyDownloadErrorType(err.Error()), "verification_required") {
+				verificationErr = fmt.Errorf(
+					"verification_required: extension '%s' needs verification: %w",
+					providerID,
+					err,
+				)
+			}
 			GoLog("[MetadataSearch] Search error from %s: %v\n", providerID, err)
 			continue
 		}
@@ -168,6 +176,9 @@ func (m *extensionManager) SearchTracksWithMetadataProvidersForItemID(query stri
 				return tracks, nil
 			}
 		}
+	}
+	if len(tracks) == 0 && verificationErr != nil {
+		return nil, verificationErr
 	}
 
 	return tracks, nil
