@@ -1991,6 +1991,42 @@
   "@downloadLossyFormat": {
     "description": "Setting title to pick output format for lossy downloads"
   },
+  "downloadAutoConvert": "Auto-convert after download",
+  "@downloadAutoConvert": {
+    "description": "Toggle for automatic post-download audio conversion"
+  },
+  "downloadAutoConvertSubtitle": "Convert completed downloads to a smaller lossy format. The original is replaced only after conversion succeeds.",
+  "@downloadAutoConvertSubtitle": {
+    "description": "Explanation of safe automatic post-download conversion"
+  },
+  "downloadAutoConvertFormat": "Output format",
+  "@downloadAutoConvertFormat": {
+    "description": "Automatic conversion output format setting"
+  },
+  "downloadAutoConvertFormatSubtitle": "Choose the lossy format used for newly completed downloads.",
+  "@downloadAutoConvertFormatSubtitle": {
+    "description": "Automatic conversion format picker explanation"
+  },
+  "downloadAutoConvertBitrate": "Output quality",
+  "@downloadAutoConvertBitrate": {
+    "description": "Automatic conversion bitrate setting"
+  },
+  "downloadAutoConvertBitrateSubtitle": "Higher bitrates preserve more detail but create larger files.",
+  "@downloadAutoConvertBitrateSubtitle": {
+    "description": "Automatic conversion bitrate picker explanation"
+  },
+  "downloadAutoConvertMp3Subtitle": "Best compatibility across players and devices",
+  "@downloadAutoConvertMp3Subtitle": {
+    "description": "MP3 automatic conversion option description"
+  },
+  "downloadAutoConvertM4aSubtitle": "Efficient AAC audio in an M4A container",
+  "@downloadAutoConvertM4aSubtitle": {
+    "description": "M4A AAC automatic conversion option description"
+  },
+  "downloadAutoConvertOpusSubtitle": "Best efficiency for modern players",
+  "@downloadAutoConvertOpusSubtitle": {
+    "description": "Opus automatic conversion option description"
+  },
   "downloadLossy320Format": "Lossy 320kbps Format",
   "@downloadLossy320Format": {
     "description": "Title of the lossy format picker bottom sheet"

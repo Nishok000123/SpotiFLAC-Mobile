@@ -8,6 +8,7 @@ import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/constants/app_info.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/artist_utils.dart';
+import 'package:spotiflac_android/utils/audio_format_utils.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 
@@ -161,6 +162,12 @@ class SettingsNotifier extends Notifier<AppSettings> {
           ),
           libraryQualityLabelMode: _normalizeLibraryQualityLabelMode(
             loaded.libraryQualityLabelMode,
+          ),
+          autoConvertFormat: normalizeAutoConvertFormat(
+            loaded.autoConvertFormat,
+          ),
+          autoConvertBitrate: normalizeAutoConvertBitrate(
+            loaded.autoConvertBitrate,
           ),
           defaultService: loaded.defaultService,
           searchProvider: loaded.searchProvider,
@@ -732,6 +739,25 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   void setTidalHighFormat(String format) {
     state = state.copyWith(tidalHighFormat: format);
+    _saveSettings();
+  }
+
+  void setAutoConvertDownloads(bool enabled) {
+    state = state.copyWith(autoConvertDownloads: enabled);
+    _saveSettings();
+  }
+
+  void setAutoConvertFormat(String format) {
+    state = state.copyWith(
+      autoConvertFormat: normalizeAutoConvertFormat(format),
+    );
+    _saveSettings();
+  }
+
+  void setAutoConvertBitrate(String bitrate) {
+    state = state.copyWith(
+      autoConvertBitrate: normalizeAutoConvertBitrate(bitrate),
+    );
     _saveSettings();
   }
 

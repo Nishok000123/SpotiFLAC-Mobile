@@ -2764,6 +2764,60 @@ abstract class AppLocalizations {
   /// **'Lossy Format'**
   String get downloadLossyFormat;
 
+  /// Toggle for automatic post-download audio conversion
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-convert after download'**
+  String get downloadAutoConvert;
+
+  /// Explanation of safe automatic post-download conversion
+  ///
+  /// In en, this message translates to:
+  /// **'Convert completed downloads to a smaller lossy format. The original is replaced only after conversion succeeds.'**
+  String get downloadAutoConvertSubtitle;
+
+  /// Automatic conversion output format setting
+  ///
+  /// In en, this message translates to:
+  /// **'Output format'**
+  String get downloadAutoConvertFormat;
+
+  /// Automatic conversion format picker explanation
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the lossy format used for newly completed downloads.'**
+  String get downloadAutoConvertFormatSubtitle;
+
+  /// Automatic conversion bitrate setting
+  ///
+  /// In en, this message translates to:
+  /// **'Output quality'**
+  String get downloadAutoConvertBitrate;
+
+  /// Automatic conversion bitrate picker explanation
+  ///
+  /// In en, this message translates to:
+  /// **'Higher bitrates preserve more detail but create larger files.'**
+  String get downloadAutoConvertBitrateSubtitle;
+
+  /// MP3 automatic conversion option description
+  ///
+  /// In en, this message translates to:
+  /// **'Best compatibility across players and devices'**
+  String get downloadAutoConvertMp3Subtitle;
+
+  /// M4A AAC automatic conversion option description
+  ///
+  /// In en, this message translates to:
+  /// **'Efficient AAC audio in an M4A container'**
+  String get downloadAutoConvertM4aSubtitle;
+
+  /// Opus automatic conversion option description
+  ///
+  /// In en, this message translates to:
+  /// **'Best efficiency for modern players'**
+  String get downloadAutoConvertOpusSubtitle;
+
   /// Title of the lossy format picker bottom sheet
   ///
   /// In en, this message translates to:

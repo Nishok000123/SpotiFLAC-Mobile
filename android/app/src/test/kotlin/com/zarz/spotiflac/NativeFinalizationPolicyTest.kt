@@ -8,6 +8,41 @@ import org.junit.Test
 
 class NativeFinalizationPolicyTest {
     @Test
+    fun automaticConversionSettingsAreNormalizedAndComparable() {
+        val target = checkNotNull(
+            NativeFinalizationPolicy.autoConversionTarget(
+                enabled = true,
+                format = "M4A",
+                bitrate = "256 kbps",
+            ),
+        )
+        assertEquals("aac", target.codec)
+        assertEquals(".m4a", target.extension)
+        assertEquals(256, target.bitrateKbps)
+        assertTrue(
+            NativeFinalizationPolicy.autoConversionAlreadySatisfied(
+                target,
+                audioCodec = "mp4a",
+                bitrateKbps = 256,
+            ),
+        )
+        assertFalse(
+            NativeFinalizationPolicy.autoConversionAlreadySatisfied(
+                target,
+                audioCodec = "aac",
+                bitrateKbps = 128,
+            ),
+        )
+        assertNull(
+            NativeFinalizationPolicy.autoConversionTarget(
+                enabled = false,
+                format = "opus",
+                bitrate = "128k",
+            ),
+        )
+    }
+
+    @Test
     fun matchesSharedCrossPipelineQualityCases() {
         val stream = checkNotNull(
             javaClass.getResourceAsStream("/finalization_quality_cases.tsv"),

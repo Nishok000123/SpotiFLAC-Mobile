@@ -216,6 +216,22 @@ object NativeDownloadFinalizer {
                 checkCancelled(shouldCancel)
                 runPostProcessing(context, effectiveInput, state, shouldCancel)
                 checkCancelled(shouldCancel)
+                try {
+                    finalizeAutoConversion(
+                        context,
+                        effectiveInput,
+                        state,
+                        shouldCancel,
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Auto-conversion is best effort: a completed source file
+                    // must remain usable if FFmpeg or metadata embedding fails.
+                    Log.w(TAG, "Automatic conversion failed; keeping source: ${e.message}")
+                    result.put("auto_conversion_warning", e.message ?: "conversion failed")
+                }
+                checkCancelled(shouldCancel)
                 val replayGain = writeReplayGain(context, effectiveInput, state, shouldCancel)
                 if (replayGain != null) result.put("replaygain", replayGain)
                 checkCancelled(shouldCancel)
@@ -547,15 +563,22 @@ object NativeDownloadFinalizer {
         if (requestQuality(input) != "HIGH") return
         if (!looksLikeM4a(state.filePath, state.fileName)) return
 
+        val autoTarget = NativeFinalizationPolicy.autoConversionTarget(
+            enabled = input.request.optBoolean("auto_convert_downloads", false),
+            format = input.request.optString("auto_convert_format", ""),
+            bitrate = input.request.optString("auto_convert_bitrate", ""),
+        )
         val tidalHighFormat = input.request.optString("tidal_high_format", "").ifBlank { "mp3_320" }
-        val format = when {
+        val format = autoTarget?.codec ?: when {
             tidalHighFormat.startsWith("opus") -> "opus"
             tidalHighFormat.startsWith("aac") || tidalHighFormat.startsWith("m4a") -> "aac"
             else -> "mp3"
         }
         val metadataFormat = if (format == "aac") "m4a" else format
         val displayFormat = if (format == "aac") "AAC" else format.uppercase(Locale.ROOT)
-        val bitrate = if (tidalHighFormat.contains("_")) {
+        val bitrate = if (autoTarget != null) {
+            "${autoTarget.bitrateKbps}k"
+        } else if (tidalHighFormat.contains("_")) {
             "${tidalHighFormat.substringAfterLast("_")}k"
         } else {
             if (format == "opus") "128k" else "320k"
@@ -598,6 +621,111 @@ object NativeDownloadFinalizer {
         state.quality = "$displayFormat ${bitrate.removeSuffix("k")}kbps"
         state.bitDepth = null
         state.sampleRate = null
+        state.bitrateKbps = bitrate.removeSuffix("k").toIntOrNull()
+        state.audioCodec = format
+    }
+
+    private fun finalizeAutoConversion(
+        context: Context,
+        input: FinalizeInput,
+        state: FinalizeState,
+        shouldCancel: () -> Boolean,
+    ) {
+        val target = NativeFinalizationPolicy.autoConversionTarget(
+            enabled = input.request.optBoolean("auto_convert_downloads", false),
+            format = input.request.optString("auto_convert_format", ""),
+            bitrate = input.request.optString("auto_convert_bitrate", ""),
+        ) ?: return
+        if (
+            NativeFinalizationPolicy.autoConversionAlreadySatisfied(
+                target,
+                state.audioCodec,
+                state.bitrateKbps,
+            )
+        ) return
+
+        val localInput = materializeForFFmpeg(context, input, state)
+        val sourceWasSaf = state.filePath.startsWith("content://")
+        val sameLocalExtension = !sourceWasSaf &&
+            normalizeExt(File(localInput).extension) == target.extension
+        val output = if (sameLocalExtension) {
+            buildOutputPath(localInput, target.extension)
+        } else {
+            uniqueAutoConversionOutputPath(localInput, target.extension)
+        }
+        val stagedOutput = stagedConversionPath(output)
+        val bitrate = "${target.bitrateKbps}k"
+        var adoptedOutput = false
+        try {
+            val command = when (target.codec) {
+                "opus" -> "-v error -hide_banner -i ${q(localInput)} -codec:a libopus -b:a $bitrate -vbr on -compression_level 10 -map 0:a ${q(stagedOutput)} -y"
+                "aac" -> "-v error -hide_banner -i ${q(localInput)} -codec:a aac -b:a $bitrate -map 0:a -f mp4 ${q(stagedOutput)} -y"
+                else -> "-v error -hide_banner -i ${q(localInput)} -codec:a libmp3lame -b:a $bitrate -map 0:a -id3v2_version 3 ${q(stagedOutput)} -y"
+            }
+            val conversion = runFFmpeg(command, shouldCancel)
+            if (!conversion.first || !File(stagedOutput).exists()) {
+                throw IllegalStateException("automatic conversion failed: ${conversion.second}")
+            }
+            if (!promoteStagedConversion(stagedOutput, output)) {
+                throw IllegalStateException("failed to promote automatic conversion output")
+            }
+
+            val metadataFormat = if (target.codec == "aac") "m4a" else target.codec
+            embedBasicMetadata(context, output, input, metadataFormat)
+
+            if (sameLocalExtension) {
+                replaceSameFormatLocalOutput(localInput, output)
+                state.filePath = localInput
+                state.fileName = File(localInput).name
+            } else {
+                replaceStatePath(context, input, state, output, deleteOld = true)
+            }
+            adoptedOutput = true
+        } finally {
+            if (!adoptedOutput) {
+                File(stagedOutput).delete()
+                File(output).delete()
+            }
+            if (sourceWasSaf) File(localInput).delete()
+        }
+
+        state.quality = "${if (target.codec == "aac") "AAC" else target.codec.uppercase(Locale.ROOT)} ${target.bitrateKbps}kbps"
+        state.bitDepth = null
+        state.sampleRate = null
+        state.bitrateKbps = target.bitrateKbps
+        state.audioCodec = target.codec
+    }
+
+    private fun replaceSameFormatLocalOutput(inputPath: String, convertedPath: String) {
+        val source = File(inputPath)
+        val converted = File(convertedPath)
+        val backup = File("$inputPath.spotiflac-backup-${System.nanoTime()}")
+        if (!source.renameTo(backup)) {
+            throw IllegalStateException("failed to stage original for same-format conversion")
+        }
+        try {
+            if (!converted.renameTo(source)) {
+                throw IllegalStateException("failed to publish same-format conversion")
+            }
+            backup.delete()
+        } catch (e: Exception) {
+            if (!source.exists()) backup.renameTo(source)
+            throw e
+        }
+    }
+
+    private fun uniqueAutoConversionOutputPath(inputPath: String, extension: String): String {
+        val source = File(inputPath)
+        val requested = File(source.parentFile, "${source.nameWithoutExtension}$extension")
+        if (!requested.exists()) return requested.absolutePath
+        for (index in 2..Int.MAX_VALUE) {
+            val candidate = File(
+                source.parentFile,
+                "${source.nameWithoutExtension} ($index)$extension",
+            )
+            if (!candidate.exists()) return candidate.absolutePath
+        }
+        throw IllegalStateException("could not allocate automatic conversion output")
     }
 
     private fun finalizeContainerConversion(
@@ -754,7 +882,14 @@ object NativeDownloadFinalizer {
         } else {
             ext
         }
-        if (fileExt != ".flac" && fileExt != ".m4a" && fileExt != ".mp4") return null
+        if (
+            fileExt != ".flac" &&
+            fileExt != ".m4a" &&
+            fileExt != ".mp4" &&
+            fileExt != ".mp3" &&
+            fileExt != ".opus" &&
+            fileExt != ".ogg"
+        ) return null
 
         val scanPath = if (state.filePath.startsWith("content://")) {
             SafDownloadHandler.copyContentUriToTemp(context, state.filePath)

@@ -1212,6 +1212,30 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
     if (postProcessedPath != null && postProcessedPath.isNotEmpty) {
       filePath = postProcessedPath;
     }
+    final autoConvertOutcome = await _autoConvertDownloadedFile(
+      itemId: item.id,
+      filePath: filePath,
+      fileName: result['file_name'] as String? ?? context.safFileName,
+      currentQuality: actualQuality,
+      settings: settings,
+      track: trackToDownload,
+      result: result,
+      downloadService: context.item.service,
+      storageMode: context.storageMode,
+      downloadTreeUri: context.downloadTreeUri,
+      safRelativeDir: context.safRelativeDir,
+    );
+    filePath = autoConvertOutcome.filePath;
+    actualQuality = autoConvertOutcome.quality;
+    if (autoConvertOutcome.fileName != null) {
+      result['file_name'] = autoConvertOutcome.fileName;
+    }
+    if (autoConvertOutcome.converted) {
+      actualBitDepth = null;
+      actualSampleRate = null;
+      actualFormat = normalizeAutoConvertFormat(settings.autoConvertFormat);
+      actualBitrate = autoConvertBitrateKbps(settings.autoConvertBitrate);
+    }
     await _writeNativeWorkerReplayGain(
       context: context,
       settings: settings,

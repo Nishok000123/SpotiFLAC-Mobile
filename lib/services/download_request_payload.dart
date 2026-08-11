@@ -20,6 +20,9 @@ class DownloadRequestPayload {
   final bool embedReplayGain;
   final bool postProcessingEnabled;
   final String tidalHighFormat;
+  final bool autoConvertDownloads;
+  final String autoConvertFormat;
+  final String autoConvertBitrate;
   final int trackNumber;
   final int playlistPosition;
   final int discNumber;
@@ -73,6 +76,9 @@ class DownloadRequestPayload {
     this.embedReplayGain = false,
     this.postProcessingEnabled = false,
     this.tidalHighFormat = 'mp3_320',
+    this.autoConvertDownloads = false,
+    this.autoConvertFormat = 'mp3',
+    this.autoConvertBitrate = '320k',
     this.trackNumber = 0,
     this.playlistPosition = 0,
     this.discNumber = 0,
@@ -128,6 +134,9 @@ class DownloadRequestPayload {
       'embed_replaygain': embedReplayGain,
       'post_processing_enabled': postProcessingEnabled,
       'tidal_high_format': tidalHighFormat,
+      'auto_convert_downloads': autoConvertDownloads,
+      'auto_convert_format': autoConvertFormat,
+      'auto_convert_bitrate': autoConvertBitrate,
       'track_number': trackNumber,
       'playlist_position': playlistPosition,
       'disc_number': discNumber,
@@ -187,6 +196,9 @@ class DownloadRequestPayload {
       embedReplayGain: embedReplayGain,
       postProcessingEnabled: postProcessingEnabled,
       tidalHighFormat: tidalHighFormat,
+      autoConvertDownloads: autoConvertDownloads,
+      autoConvertFormat: autoConvertFormat,
+      autoConvertBitrate: autoConvertBitrate,
       trackNumber: trackNumber,
       playlistPosition: playlistPosition,
       discNumber: discNumber,

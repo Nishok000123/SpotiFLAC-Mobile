@@ -4253,6 +4253,42 @@
   "@downloadLossyFormat": {
     "description": "Setting title to pick output format for lossy downloads"
   },
+  "downloadAutoConvert": "Konversi otomatis setelah unduh",
+  "@downloadAutoConvert": {
+    "description": "Toggle for automatic post-download audio conversion"
+  },
+  "downloadAutoConvertSubtitle": "Ubah unduhan yang selesai ke format lossy yang lebih kecil. File asli hanya diganti setelah konversi berhasil.",
+  "@downloadAutoConvertSubtitle": {
+    "description": "Explanation of safe automatic post-download conversion"
+  },
+  "downloadAutoConvertFormat": "Format keluaran",
+  "@downloadAutoConvertFormat": {
+    "description": "Automatic conversion output format setting"
+  },
+  "downloadAutoConvertFormatSubtitle": "Pilih format lossy untuk unduhan yang baru selesai.",
+  "@downloadAutoConvertFormatSubtitle": {
+    "description": "Automatic conversion format picker explanation"
+  },
+  "downloadAutoConvertBitrate": "Kualitas keluaran",
+  "@downloadAutoConvertBitrate": {
+    "description": "Automatic conversion bitrate setting"
+  },
+  "downloadAutoConvertBitrateSubtitle": "Bitrate lebih tinggi menjaga lebih banyak detail, tetapi ukuran file juga lebih besar.",
+  "@downloadAutoConvertBitrateSubtitle": {
+    "description": "Automatic conversion bitrate picker explanation"
+  },
+  "downloadAutoConvertMp3Subtitle": "Kompatibilitas terbaik di berbagai pemutar dan perangkat",
+  "@downloadAutoConvertMp3Subtitle": {
+    "description": "MP3 automatic conversion option description"
+  },
+  "downloadAutoConvertM4aSubtitle": "Audio AAC yang efisien dalam container M4A",
+  "@downloadAutoConvertM4aSubtitle": {
+    "description": "M4A AAC automatic conversion option description"
+  },
+  "downloadAutoConvertOpusSubtitle": "Efisiensi terbaik untuk pemutar modern",
+  "@downloadAutoConvertOpusSubtitle": {
+    "description": "Opus automatic conversion option description"
+  },
   "snackbarAlreadyInLibrary": "\"{trackName}\" sudah ada di perpustakaan Anda",
   "@snackbarAlreadyInLibrary": {
     "description": "Snackbar - track already exists in local library",

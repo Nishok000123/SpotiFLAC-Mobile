@@ -28,6 +28,7 @@ import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/utils/artist_utils.dart';
 import 'package:spotiflac_android/utils/audio_format_utils.dart';
+import 'package:spotiflac_android/utils/audio_conversion_utils.dart';
 import 'package:spotiflac_android/utils/int_utils.dart';
 import 'package:spotiflac_android/utils/extension_auth_launcher.dart';
 import 'package:spotiflac_android/utils/progress_stream_poller.dart';
@@ -556,6 +557,11 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       embedReplayGain: settings.embedReplayGain,
       postProcessingEnabled: postProcessingEnabled,
       tidalHighFormat: settings.tidalHighFormat,
+      autoConvertDownloads: settings.autoConvertDownloads,
+      autoConvertFormat: normalizeAutoConvertFormat(settings.autoConvertFormat),
+      autoConvertBitrate: normalizeAutoConvertBitrate(
+        settings.autoConvertBitrate,
+      ),
       trackNumber: normalizedTrackNumber,
       playlistPosition: _validPlaylistPosition(item),
       discNumber: normalizedDiscNumber,

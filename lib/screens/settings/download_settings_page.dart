@@ -6,6 +6,8 @@ import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/screens/settings/download_fallback_extensions_page.dart';
+import 'package:spotiflac_android/utils/audio_format_utils.dart';
+import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 
@@ -109,10 +111,7 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
                         onTap: () => ref
                             .read(settingsProvider.notifier)
                             .setAudioQuality(quality.id),
-                        showDivider:
-                            quality != qualityOptions.last ||
-                            (usesTidalCompatibilityOptions &&
-                                settings.audioQuality == 'HIGH'),
+                        showDivider: true,
                       ),
                     if (usesTidalCompatibilityOptions &&
                         settings.audioQuality == 'HIGH')
@@ -128,8 +127,45 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
                           ref,
                           settings.tidalHighFormat,
                         ),
-                        showDivider: false,
+                        showDivider: true,
                       ),
+                  ],
+                  SettingsSwitchItem(
+                    icon: Icons.auto_fix_high_outlined,
+                    title: context.l10n.downloadAutoConvert,
+                    subtitle: context.l10n.downloadAutoConvertSubtitle,
+                    value: settings.autoConvertDownloads,
+                    onChanged: (value) => ref
+                        .read(settingsProvider.notifier)
+                        .setAutoConvertDownloads(value),
+                    showDivider: settings.autoConvertDownloads,
+                  ),
+                  if (settings.autoConvertDownloads) ...[
+                    SettingsItem(
+                      icon: Icons.audio_file_outlined,
+                      title: context.l10n.downloadAutoConvertFormat,
+                      subtitle: autoConvertFormatLabel(
+                        settings.autoConvertFormat,
+                      ),
+                      onTap: () => _showAutoConvertFormatPicker(
+                        context,
+                        ref,
+                        settings.autoConvertFormat,
+                      ),
+                    ),
+                    SettingsItem(
+                      icon: Icons.speed_outlined,
+                      title: context.l10n.downloadAutoConvertBitrate,
+                      subtitle: normalizeAutoConvertBitrate(
+                        settings.autoConvertBitrate,
+                      ).replaceAll('k', ' kbps'),
+                      onTap: () => _showAutoConvertBitratePicker(
+                        context,
+                        ref,
+                        settings.autoConvertBitrate,
+                      ),
+                      showDivider: false,
+                    ),
                   ],
                 ],
               ),
@@ -493,6 +529,91 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
             const SizedBox(height: 16),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showAutoConvertFormatPicker(
+    BuildContext context,
+    WidgetRef ref,
+    String current,
+  ) {
+    final normalizedCurrent = normalizeAutoConvertFormat(current);
+    showAppBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      title: context.l10n.downloadAutoConvertFormat,
+      subtitle: context.l10n.downloadAutoConvertFormatSubtitle,
+      builder: (sheetContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final format in autoConvertFormats)
+            ListTile(
+              leading: Icon(
+                format == 'opus'
+                    ? Icons.graphic_eq
+                    : format == 'aac'
+                    ? Icons.album_outlined
+                    : Icons.audiotrack,
+              ),
+              title: Text(autoConvertFormatLabel(format)),
+              subtitle: Text(switch (format) {
+                'aac' => context.l10n.downloadAutoConvertM4aSubtitle,
+                'opus' => context.l10n.downloadAutoConvertOpusSubtitle,
+                _ => context.l10n.downloadAutoConvertMp3Subtitle,
+              }),
+              trailing: normalizedCurrent == format
+                  ? Icon(
+                      Icons.check,
+                      color: Theme.of(sheetContext).colorScheme.primary,
+                    )
+                  : null,
+              onTap: () {
+                ref
+                    .read(settingsProvider.notifier)
+                    .setAutoConvertFormat(format);
+                Navigator.pop(sheetContext);
+              },
+            ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  void _showAutoConvertBitratePicker(
+    BuildContext context,
+    WidgetRef ref,
+    String current,
+  ) {
+    final normalizedCurrent = normalizeAutoConvertBitrate(current);
+    showAppBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      title: context.l10n.downloadAutoConvertBitrate,
+      subtitle: context.l10n.downloadAutoConvertBitrateSubtitle,
+      builder: (sheetContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final bitrate in autoConvertBitrates)
+            ListTile(
+              leading: const Icon(Icons.speed_outlined),
+              title: Text(bitrate.replaceAll('k', ' kbps')),
+              trailing: normalizedCurrent == bitrate
+                  ? Icon(
+                      Icons.check,
+                      color: Theme.of(sheetContext).colorScheme.primary,
+                    )
+                  : null,
+              onTap: () {
+                ref
+                    .read(settingsProvider.notifier)
+                    .setAutoConvertBitrate(bitrate);
+                Navigator.pop(sheetContext);
+              },
+            ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }

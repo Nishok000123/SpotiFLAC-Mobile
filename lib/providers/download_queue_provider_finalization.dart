@@ -23,6 +23,20 @@ class _QualityVariantFileOutcome {
   });
 }
 
+class _AutoConversionOutcome {
+  final String filePath;
+  final String? fileName;
+  final String quality;
+  final bool converted;
+
+  const _AutoConversionOutcome({
+    required this.filePath,
+    required this.fileName,
+    required this.quality,
+    required this.converted,
+  });
+}
+
 /// AC-4 repair only applies to MP4 containers; decrypt can also emit raw
 /// FLAC, which the native MP4 box parser would reject as corrupt.
 bool _isMp4Container(String path) {
@@ -31,6 +45,160 @@ bool _isMp4Container(String path) {
 }
 
 extension _DownloadQueueFinalization on DownloadQueueNotifier {
+  Future<_AutoConversionOutcome> _autoConvertDownloadedFile({
+    required String itemId,
+    required String filePath,
+    required String? fileName,
+    required String currentQuality,
+    required AppSettings settings,
+    required Track track,
+    required Map<String, dynamic> result,
+    required String downloadService,
+    required String storageMode,
+    String? downloadTreeUri,
+    String? safRelativeDir,
+  }) async {
+    if (!settings.autoConvertDownloads) {
+      return _AutoConversionOutcome(
+        filePath: filePath,
+        fileName: fileName,
+        quality: currentQuality,
+        converted: false,
+      );
+    }
+
+    final targetFormat = normalizeAutoConvertFormat(settings.autoConvertFormat);
+    final targetBitrate = normalizeAutoConvertBitrate(
+      settings.autoConvertBitrate,
+    );
+    final targetBitrateKbps = autoConvertBitrateKbps(targetBitrate);
+    if (autoConversionAlreadySatisfied(
+      filePath: filePath,
+      fileName: fileName,
+      targetFormat: targetFormat,
+      targetBitrate: targetBitrate,
+      quality: currentQuality,
+      bitrateKbps: readPositiveBitrateKbps(
+        result['bitrate'] ?? result['actual_bitrate'],
+      ),
+    )) {
+      return _AutoConversionOutcome(
+        filePath: filePath,
+        fileName: fileName,
+        quality: currentQuality,
+        converted: false,
+      );
+    }
+
+    final baseFileName = (fileName?.trim().isNotEmpty == true
+        ? fileName!.trim()
+        : File(filePath).uri.pathSegments.last);
+    final convertedFileName = convertedOutputFileName(
+      originalFileName: baseFileName,
+      targetFormat: targetFormat,
+    );
+    final convertedQuality =
+        '${displayFormatForLossyFormat(targetFormat)} ${targetBitrateKbps}kbps';
+
+    Future<void> embedConvertedMetadata(String convertedPath) async {
+      if (!settings.embedMetadata) return;
+      try {
+        await _embedMetadataToFile(
+          convertedPath,
+          track,
+          format: metadataFormatForLossyFormat(targetFormat),
+          genre: result['genre'] as String?,
+          label: result['label'] as String?,
+          copyright: result['copyright'] as String?,
+          downloadService: downloadService,
+          writeExternalLrc: storageMode != 'saf',
+        );
+      } catch (e) {
+        // The audio conversion itself is still valid. Preserve the converted
+        // file if an optional tag/cover write fails.
+        _log.w('Automatic conversion metadata embed failed: $e');
+        result['auto_conversion_metadata_warning'] = e.toString();
+      }
+    }
+
+    try {
+      updateItemStatus(itemId, DownloadStatus.finalizing, progress: 0.97);
+      String? convertedPath;
+      String? publishedFileName = convertedFileName;
+      if (storageMode == 'saf' && isContentUri(filePath)) {
+        if (downloadTreeUri == null || downloadTreeUri.isEmpty) {
+          throw StateError('Missing SAF tree for automatic conversion');
+        }
+        convertedPath = await _replaceSafFileVia(
+          uri: filePath,
+          treeUri: downloadTreeUri,
+          relativeDir: safRelativeDir ?? '',
+          avoidOverwrite:
+              convertedFileName.toLowerCase() != baseFileName.toLowerCase(),
+          onPublishedFileName: (value) => publishedFileName = value,
+          op: (tempPath, addCleanup) async {
+            final output = await FFmpegService.convertAudioFormat(
+              inputPath: tempPath,
+              targetFormat: targetFormat,
+              bitrate: targetBitrate,
+              metadata: const {},
+              deleteOriginal: false,
+            );
+            if (output == null) return null;
+            addCleanup(output);
+            await embedConvertedMetadata(output);
+            return (output, convertedFileName);
+          },
+        );
+      } else {
+        convertedPath = await FFmpegService.convertAudioFormat(
+          inputPath: filePath,
+          targetFormat: targetFormat,
+          bitrate: targetBitrate,
+          metadata: const {},
+          deleteOriginal: true,
+        );
+        if (convertedPath != null) {
+          publishedFileName = File(convertedPath).uri.pathSegments.last;
+          await embedConvertedMetadata(convertedPath);
+        }
+      }
+
+      if (convertedPath == null || convertedPath.isEmpty) {
+        throw StateError('FFmpeg returned no automatic conversion output');
+      }
+
+      result['file_path'] = convertedPath;
+      result['file_name'] = publishedFileName;
+      result['audio_codec'] = targetFormat;
+      result['format'] = targetFormat;
+      result['bitrate'] = targetBitrateKbps;
+      result.remove('actual_bit_depth');
+      result.remove('actual_sample_rate');
+      _log.i(
+        'Automatic conversion completed: ${autoConvertFormatLabel(targetFormat)} @ $targetBitrate',
+      );
+      return _AutoConversionOutcome(
+        filePath: convertedPath,
+        fileName: publishedFileName,
+        quality: convertedQuality,
+        converted: true,
+      );
+    } catch (e) {
+      // A successful download remains usable when the optional conversion
+      // fails. Conversion helpers only remove the source after atomic output
+      // promotion, so returning the original path is safe here.
+      result['auto_conversion_warning'] = e.toString();
+      _log.w('Automatic conversion failed; keeping downloaded source: $e');
+      return _AutoConversionOutcome(
+        filePath: filePath,
+        fileName: fileName,
+        quality: currentQuality,
+        converted: false,
+      );
+    }
+  }
+
   /// Builds the [DownloadHistoryItem] shared by the native-worker and inline
   /// completion paths. Fields whose source/derivation legitimately differs
   /// between the two callers (SAF location, probed vs. raw audio metadata,
@@ -709,7 +877,12 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
       return filePath;
     }
 
-    final tidalHighFormat = settings.tidalHighFormat;
+    final tidalHighFormat = settings.autoConvertDownloads
+        ? autoConvertLossySetting(
+            format: settings.autoConvertFormat,
+            bitrate: settings.autoConvertBitrate,
+          )
+        : settings.tidalHighFormat;
     final format = lossyFormatForSetting(tidalHighFormat);
     final newExt = lossyExtensionForFormat(format);
     final displayFormat = displayFormatForLossyFormat(format);
@@ -761,6 +934,11 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
       }
       result['file_name'] = newFileName;
       result['_native_actual_quality'] = '$displayFormat $bitrateDisplay';
+      result['audio_codec'] = format;
+      result['format'] = format;
+      result['bitrate'] = int.tryParse(tidalHighFormat.split('_').last);
+      result.remove('actual_bit_depth');
+      result.remove('actual_sample_rate');
       return newUri;
     }
 
@@ -775,6 +953,11 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
     }
     await embedConvertedMetadata(convertedPath);
     result['_native_actual_quality'] = '$displayFormat $bitrateDisplay';
+    result['audio_codec'] = format;
+    result['format'] = format;
+    result['bitrate'] = int.tryParse(tidalHighFormat.split('_').last);
+    result.remove('actual_bit_depth');
+    result.remove('actual_sample_rate');
     return convertedPath;
   }
 

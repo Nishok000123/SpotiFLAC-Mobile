@@ -11,6 +11,47 @@ import kotlin.math.roundToInt
  * finalizer's I/O-heavy orchestration.
  */
 internal object NativeFinalizationPolicy {
+    data class AutoConversionTarget(
+        val codec: String,
+        val extension: String,
+        val bitrateKbps: Int,
+    )
+
+    fun autoConversionTarget(
+        enabled: Boolean,
+        format: String?,
+        bitrate: String?,
+    ): AutoConversionTarget? {
+        if (!enabled) return null
+        val codec = when (format?.trim()?.lowercase(Locale.ROOT)) {
+            "aac", "m4a" -> "aac"
+            "opus" -> "opus"
+            else -> "mp3"
+        }
+        val normalizedBitrate = Regex("(\\d+)")
+            .find(bitrate.orEmpty())
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.toIntOrNull()
+            ?.takeIf { it in setOf(128, 192, 256, 320) }
+            ?: 320
+        val extension = when (codec) {
+            "aac" -> ".m4a"
+            "opus" -> ".opus"
+            else -> ".mp3"
+        }
+        return AutoConversionTarget(codec, extension, normalizedBitrate)
+    }
+
+    fun autoConversionAlreadySatisfied(
+        target: AutoConversionTarget,
+        audioCodec: String?,
+        bitrateKbps: Int?,
+    ): Boolean {
+        return normalizeAudioCodec(audioCodec) == target.codec &&
+            bitrateKbps == target.bitrateKbps
+    }
+
     fun normalizeAudioCodec(codec: String?): String? {
         val normalized = normalizeOptional(codec)
             ?.lowercase(Locale.ROOT)

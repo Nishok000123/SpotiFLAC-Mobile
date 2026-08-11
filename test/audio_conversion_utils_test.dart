@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spotiflac_android/utils/audio_conversion_utils.dart';
+import 'package:spotiflac_android/utils/audio_format_utils.dart';
 
 void main() {
   group('same-format lossless conversion', () {
@@ -83,6 +84,40 @@ void main() {
 
       expect(first, repeated);
       expect(first, isNot(other));
+    });
+  });
+
+  group('automatic download conversion settings', () {
+    test('normalizes supported formats and bitrates', () {
+      expect(normalizeAutoConvertFormat('M4A'), 'aac');
+      expect(normalizeAutoConvertFormat('unexpected'), 'mp3');
+      expect(normalizeAutoConvertBitrate('256 kbps'), '256k');
+      expect(normalizeAutoConvertBitrate('999k'), '320k');
+      expect(
+        autoConvertLossySetting(format: 'opus', bitrate: '192k'),
+        'opus_192',
+      );
+    });
+
+    test('skips only an output that already matches format and bitrate', () {
+      expect(
+        autoConversionAlreadySatisfied(
+          filePath: '/music/Track.mp3',
+          targetFormat: 'mp3',
+          targetBitrate: '320k',
+          quality: 'MP3 320kbps',
+        ),
+        isTrue,
+      );
+      expect(
+        autoConversionAlreadySatisfied(
+          filePath: '/music/Track.m4a',
+          targetFormat: 'aac',
+          targetBitrate: '128k',
+          bitrateKbps: 256,
+        ),
+        isFalse,
+      );
     });
   });
 }

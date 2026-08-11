@@ -671,6 +671,9 @@ void main() {
       expect(settings.deduplicateDownloads, isTrue);
       expect(settings.allowQualityVariants, isFalse);
       expect(settings.nativeDownloadWorkerEnabled, isFalse);
+      expect(settings.autoConvertDownloads, isFalse);
+      expect(settings.autoConvertFormat, 'mp3');
+      expect(settings.autoConvertBitrate, '320k');
       expect(
         settings.libraryQualityLabelMode,
         AppSettings.libraryQualityLabelBitrate,
@@ -733,6 +736,9 @@ void main() {
         deduplicateDownloads: false,
         allowQualityVariants: true,
         nativeDownloadWorkerEnabled: true,
+        autoConvertDownloads: true,
+        autoConvertFormat: 'opus',
+        autoConvertBitrate: '192k',
         libraryQualityLabelMode: AppSettings.libraryQualityLabelBitDepth,
       );
 
@@ -760,6 +766,9 @@ void main() {
       expect(decoded.deduplicateDownloads, isFalse);
       expect(decoded.allowQualityVariants, isTrue);
       expect(decoded.nativeDownloadWorkerEnabled, isTrue);
+      expect(decoded.autoConvertDownloads, isTrue);
+      expect(decoded.autoConvertFormat, 'opus');
+      expect(decoded.autoConvertBitrate, '192k');
     });
   });
 
@@ -808,6 +817,9 @@ void main() {
         embedReplayGain: true,
         postProcessingEnabled: true,
         tidalHighFormat: 'opus_256',
+        autoConvertDownloads: true,
+        autoConvertFormat: 'opus',
+        autoConvertBitrate: '192k',
         trackNumber: 7,
         playlistPosition: 3,
         discNumber: 2,
@@ -859,6 +871,9 @@ void main() {
         'embed_replaygain': true,
         'post_processing_enabled': true,
         'tidal_high_format': 'opus_256',
+        'auto_convert_downloads': true,
+        'auto_convert_format': 'opus',
+        'auto_convert_bitrate': '192k',
         'track_number': 7,
         'playlist_position': 3,
         'disc_number': 2,
@@ -913,6 +928,9 @@ void main() {
       expect(updated.filenameFormat, payload.filenameFormat);
       expect(updated.allowQualityVariant, payload.allowQualityVariant);
       expect(updated.qualityVariant, payload.qualityVariant);
+      expect(updated.autoConvertDownloads, payload.autoConvertDownloads);
+      expect(updated.autoConvertFormat, payload.autoConvertFormat);
+      expect(updated.autoConvertBitrate, payload.autoConvertBitrate);
       expect(
         updated.qualityVariantCollisionOnly,
         payload.qualityVariantCollisionOnly,

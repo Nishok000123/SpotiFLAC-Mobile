@@ -285,6 +285,69 @@ String displayFormatForLossyFormat(String format) {
   return format == 'aac' ? 'AAC' : format.toUpperCase();
 }
 
+const List<String> autoConvertFormats = ['mp3', 'aac', 'opus'];
+const List<String> autoConvertBitrates = ['128k', '192k', '256k', '320k'];
+
+String normalizeAutoConvertFormat(String value) {
+  final normalized = value.trim().toLowerCase();
+  if (normalized == 'm4a') return 'aac';
+  return autoConvertFormats.contains(normalized) ? normalized : 'mp3';
+}
+
+String normalizeAutoConvertBitrate(String value) {
+  final match = RegExp(r'(\d+)').firstMatch(value);
+  final normalized = match == null ? '' : '${match.group(1)}k';
+  return autoConvertBitrates.contains(normalized) ? normalized : '320k';
+}
+
+int autoConvertBitrateKbps(String value) {
+  return int.parse(normalizeAutoConvertBitrate(value).replaceAll('k', ''));
+}
+
+String autoConvertLossySetting({
+  required String format,
+  required String bitrate,
+}) {
+  final normalizedFormat = normalizeAutoConvertFormat(format);
+  final normalizedBitrate = autoConvertBitrateKbps(bitrate);
+  return '${normalizedFormat}_$normalizedBitrate';
+}
+
+String autoConvertFormatLabel(String format) {
+  return switch (normalizeAutoConvertFormat(format)) {
+    'aac' => 'M4A (AAC)',
+    'opus' => 'Opus',
+    _ => 'MP3',
+  };
+}
+
+bool autoConversionAlreadySatisfied({
+  required String? filePath,
+  String? fileName,
+  required String targetFormat,
+  required String targetBitrate,
+  String? quality,
+  int? bitrateKbps,
+}) {
+  final sourceFormat = audioFormatForPath(filePath, fileName: fileName);
+  final normalizedTarget = normalizeAutoConvertFormat(targetFormat);
+  final matchesFormat = switch (normalizedTarget) {
+    'aac' => sourceFormat == 'AAC' || sourceFormat == 'M4A',
+    'opus' => sourceFormat == 'OPUS',
+    _ => sourceFormat == 'MP3',
+  };
+  if (!matchesFormat) return false;
+
+  final targetKbps = autoConvertBitrateKbps(targetBitrate);
+  if (bitrateKbps != null && bitrateKbps > 0) {
+    return bitrateKbps == targetKbps;
+  }
+  return RegExp(
+    '\\b$targetKbps\\s*kbps\\b',
+    caseSensitive: false,
+  ).hasMatch(quality ?? '');
+}
+
 String? resolveDisplayQuality({
   required String? filePath,
   String? fileName,

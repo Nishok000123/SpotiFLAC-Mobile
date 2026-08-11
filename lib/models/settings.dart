@@ -69,6 +69,9 @@ class AppSettings {
   final String lyricsMode;
   final String
   tidalHighFormat; // Legacy key for 320kbps lossy output format: 'mp3_320', 'aac_320', 'opus_256', or 'opus_128'
+  final bool autoConvertDownloads;
+  final String autoConvertFormat; // 'mp3', 'aac' (M4A), or 'opus'
+  final String autoConvertBitrate; // '128k', '192k', '256k', or '320k'
   final bool
   useAllFilesAccess; // Android 13+ only: enable MANAGE_EXTERNAL_STORAGE
   final bool autoExportFailedDownloads;
@@ -142,7 +145,7 @@ class AppSettings {
     this.historyViewMode = 'grid',
     this.historyFilterMode = 'all',
     this.defaultLibraryView = 'last',
-    this.libraryQualityLabelMode = libraryQualityLabelBitrate,
+    this.libraryQualityLabelMode = AppSettings.libraryQualityLabelBitrate,
     this.askQualityBeforeDownload = true,
     this.enableLogging = false,
     this.useExtensionProviders = true,
@@ -160,6 +163,9 @@ class AppSettings {
     this.locale = 'system',
     this.lyricsMode = 'embed',
     this.tidalHighFormat = 'mp3_320',
+    this.autoConvertDownloads = false,
+    this.autoConvertFormat = 'mp3',
+    this.autoConvertBitrate = '320k',
     this.useAllFilesAccess = false,
     this.autoExportFailedDownloads = false,
     this.downloadNetworkMode = 'any',
@@ -235,6 +241,9 @@ class AppSettings {
     String? locale,
     String? lyricsMode,
     String? tidalHighFormat,
+    bool? autoConvertDownloads,
+    String? autoConvertFormat,
+    String? autoConvertBitrate,
     bool? useAllFilesAccess,
     bool? autoExportFailedDownloads,
     String? downloadNetworkMode,
@@ -323,6 +332,9 @@ class AppSettings {
       locale: locale ?? this.locale,
       lyricsMode: lyricsMode ?? this.lyricsMode,
       tidalHighFormat: tidalHighFormat ?? this.tidalHighFormat,
+      autoConvertDownloads: autoConvertDownloads ?? this.autoConvertDownloads,
+      autoConvertFormat: autoConvertFormat ?? this.autoConvertFormat,
+      autoConvertBitrate: autoConvertBitrate ?? this.autoConvertBitrate,
       useAllFilesAccess: useAllFilesAccess ?? this.useAllFilesAccess,
       autoExportFailedDownloads:
           autoExportFailedDownloads ?? this.autoExportFailedDownloads,

@@ -713,6 +713,27 @@ class _DownloadRun {
       }
     }
 
+    final autoConvertInput = filePath;
+    if (!wasExisting && autoConvertInput != null) {
+      final outcome = await n._autoConvertDownloadedFile(
+        itemId: item.id,
+        filePath: autoConvertInput,
+        fileName: finalSafFileName ?? result['file_name'] as String?,
+        currentQuality: actualQuality,
+        settings: settings,
+        track: trackToDownload,
+        result: result,
+        downloadService: item.service,
+        storageMode: effectiveSafMode ? 'saf' : 'app',
+        downloadTreeUri: settings.downloadTreeUri,
+        safRelativeDir: effectiveOutputDir,
+      );
+      filePath = outcome.filePath;
+      finalSafFileName = outcome.fileName;
+      actualQuality = outcome.quality;
+      if (outcome.converted) probedFinalMetadata = null;
+    }
+
     final variantInput = filePath;
     if (variantInput != null && item.preserveQualityVariant) {
       final variantOutcome = await n._finalizeQualityVariantFilename(
@@ -911,7 +932,12 @@ class _DownloadRun {
   }
 
   Future<void> _convertSafM4aToLossy(String currentFilePath) async {
-    final tidalHighFormat = settings.tidalHighFormat;
+    final tidalHighFormat = settings.autoConvertDownloads
+        ? autoConvertLossySetting(
+            format: settings.autoConvertFormat,
+            bitrate: settings.autoConvertBitrate,
+          )
+        : settings.tidalHighFormat;
     _log.i(
       'Lossy 320kbps quality (SAF), converting M4A to $tidalHighFormat...',
     );
@@ -972,6 +998,11 @@ class _DownloadRun {
             ? '${tidalHighFormat.split('_').last}kbps'
             : '320kbps';
         actualQuality = '$displayFormat $bitrateDisplay';
+        result['audio_codec'] = format;
+        result['format'] = format;
+        result['bitrate'] = int.tryParse(tidalHighFormat.split('_').last);
+        result.remove('actual_bit_depth');
+        result.remove('actual_sample_rate');
       } else if (convertFailed) {
         _log.w('M4A to $format conversion failed, keeping M4A file');
         actualQuality = 'AAC 320kbps';
@@ -1115,7 +1146,12 @@ class _DownloadRun {
   }
 
   Future<void> _convertLocalM4aToLossy(String currentFilePath) async {
-    final tidalHighFormat = settings.tidalHighFormat;
+    final tidalHighFormat = settings.autoConvertDownloads
+        ? autoConvertLossySetting(
+            format: settings.autoConvertFormat,
+            bitrate: settings.autoConvertBitrate,
+          )
+        : settings.tidalHighFormat;
     _log.i(
       'Lossy 320kbps quality download, converting M4A to $tidalHighFormat...',
     );
@@ -1138,6 +1174,11 @@ class _DownloadRun {
             ? '${tidalHighFormat.split('_').last}kbps'
             : '320kbps';
         actualQuality = '$displayFormat $bitrateDisplay';
+        result['audio_codec'] = format;
+        result['format'] = format;
+        result['bitrate'] = int.tryParse(tidalHighFormat.split('_').last);
+        result.remove('actual_bit_depth');
+        result.remove('actual_sample_rate');
         _log.i('Successfully converted M4A to $format: $convertedPath');
 
         _log.i('Embedding metadata to $format...');

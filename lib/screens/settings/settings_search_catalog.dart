@@ -322,6 +322,19 @@ class SettingsSearchCatalog {
           keywords: const ['mp3', 'aac', 'opus'],
         ),
         SettingsSearchEntry(
+          icon: Icons.auto_fix_high_outlined,
+          title: l10n.downloadAutoConvert,
+          subtitle: l10n.downloadAutoConvertSubtitle,
+          keywords: const [
+            'automatic conversion',
+            'mp3',
+            'm4a',
+            'aac',
+            'opus',
+            'bitrate',
+          ],
+        ),
+        SettingsSearchEntry(
           icon: Icons.wifi,
           title: l10n.settingsDownloadNetwork,
           subtitle: l10n.settingsDownloadNetworkSubtitle,

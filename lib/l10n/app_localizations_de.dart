@@ -1516,6 +1516,39 @@ class AppLocalizationsDe extends AppLocalizations {
   String get downloadLossyFormat => 'Verlustbehaftetes Format';
 
   @override
+  String get downloadAutoConvert => 'Auto-convert after download';
+
+  @override
+  String get downloadAutoConvertSubtitle =>
+      'Convert completed downloads to a smaller lossy format. The original is replaced only after conversion succeeds.';
+
+  @override
+  String get downloadAutoConvertFormat => 'Output format';
+
+  @override
+  String get downloadAutoConvertFormatSubtitle =>
+      'Choose the lossy format used for newly completed downloads.';
+
+  @override
+  String get downloadAutoConvertBitrate => 'Output quality';
+
+  @override
+  String get downloadAutoConvertBitrateSubtitle =>
+      'Higher bitrates preserve more detail but create larger files.';
+
+  @override
+  String get downloadAutoConvertMp3Subtitle =>
+      'Best compatibility across players and devices';
+
+  @override
+  String get downloadAutoConvertM4aSubtitle =>
+      'Efficient AAC audio in an M4A container';
+
+  @override
+  String get downloadAutoConvertOpusSubtitle =>
+      'Best efficiency for modern players';
+
+  @override
   String get downloadLossy320Format => 'Verlustbehaftetes 320kbps-Format';
 
   @override

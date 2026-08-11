@@ -1502,6 +1502,39 @@ class AppLocalizationsId extends AppLocalizations {
   String get downloadLossyFormat => 'Format Lossy';
 
   @override
+  String get downloadAutoConvert => 'Konversi otomatis setelah unduh';
+
+  @override
+  String get downloadAutoConvertSubtitle =>
+      'Ubah unduhan yang selesai ke format lossy yang lebih kecil. File asli hanya diganti setelah konversi berhasil.';
+
+  @override
+  String get downloadAutoConvertFormat => 'Format keluaran';
+
+  @override
+  String get downloadAutoConvertFormatSubtitle =>
+      'Pilih format lossy untuk unduhan yang baru selesai.';
+
+  @override
+  String get downloadAutoConvertBitrate => 'Kualitas keluaran';
+
+  @override
+  String get downloadAutoConvertBitrateSubtitle =>
+      'Bitrate lebih tinggi menjaga lebih banyak detail, tetapi ukuran file juga lebih besar.';
+
+  @override
+  String get downloadAutoConvertMp3Subtitle =>
+      'Kompatibilitas terbaik di berbagai pemutar dan perangkat';
+
+  @override
+  String get downloadAutoConvertM4aSubtitle =>
+      'Audio AAC yang efisien dalam container M4A';
+
+  @override
+  String get downloadAutoConvertOpusSubtitle =>
+      'Efisiensi terbaik untuk pemutar modern';
+
+  @override
   String get downloadLossy320Format => 'Format Lossy 320kbps';
 
   @override
