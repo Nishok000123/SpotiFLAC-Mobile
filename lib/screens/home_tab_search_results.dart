@@ -2,6 +2,51 @@
 part of 'home_tab.dart';
 
 extension _HomeTabSearchResultsUI on _HomeTabState {
+  Future<void> _saveSearchResultCover(Track item) async {
+    final coverUrl = item.coverUrl?.trim() ?? '';
+    if (coverUrl.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.trackCoverNoSource)));
+      return;
+    }
+    if (!_activeCoverDownloads.add(coverUrl)) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(context.l10n.updateDownloading)));
+
+    final baseName = item.isCollection || item.artistName.trim().isEmpty
+        ? item.name
+        : '${item.artistName} - ${item.name}';
+    try {
+      final saved = await CoverDownloadService.saveRemoteCover(
+        coverUrl: coverUrl,
+        baseName: baseName,
+        settings: ref.read(settingsProvider),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(context.l10n.trackCoverSaved(saved.fileName))),
+        );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n.trackSaveFailed(context.friendlyError(error)),
+            ),
+          ),
+        );
+    } finally {
+      _activeCoverDownloads.remove(coverUrl);
+    }
+  }
+
   Widget _buildErrorWidget(String error, ColorScheme colorScheme) {
     final l10n = context.l10n;
     final isRateLimit =
@@ -312,6 +357,7 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
             item: artistItems[index],
             showDivider: showDivider,
             onTap: () => _navigateToExtensionArtist(artistItems[index]),
+            onSaveCover: () => _saveSearchResultCover(artistItems[index]),
           ),
         ),
       );
@@ -330,6 +376,7 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
             item: albumItems[index],
             showDivider: showDivider,
             onTap: () => _navigateToExtensionAlbum(albumItems[index]),
+            onSaveCover: () => _saveSearchResultCover(albumItems[index]),
           ),
         ),
       );
@@ -348,6 +395,7 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
             item: playlistItems[index],
             showDivider: showDivider,
             onTap: () => _navigateToExtensionPlaylist(playlistItems[index]),
+            onSaveCover: () => _saveSearchResultCover(playlistItems[index]),
           ),
         ),
       );
@@ -386,6 +434,7 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
             isInHistory: existingHistoryKeys.contains(
               historyLookups[index].lookupKey,
             ),
+            onSaveCover: () => _saveSearchResultCover(sortedTracks[index]),
           ),
         ),
       );

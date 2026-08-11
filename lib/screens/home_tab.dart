@@ -22,6 +22,7 @@ import 'package:spotiflac_android/screens/album_screen.dart';
 import 'package:spotiflac_android/screens/artist_screen.dart';
 import 'package:spotiflac_android/screens/home_search_logic.dart';
 import 'package:spotiflac_android/services/csv_import_service.dart';
+import 'package:spotiflac_android/services/cover_download_service.dart';
 import 'package:spotiflac_android/services/downloaded_embedded_cover_resolver.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
@@ -75,6 +76,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
   bool _embeddedCoverRefreshScheduled = false;
   List<Extension>? _thumbnailSizesExtensionsCache;
   bool _isCsvImporting = false;
+  final Set<String> _activeCoverDownloads = <String>{};
 
   void _setCsvImporting(bool value) {
     if (_isCsvImporting == value) return;

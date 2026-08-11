@@ -196,6 +196,7 @@ class _TrackItemWithStatus extends ConsumerWidget {
   final String? searchExtensionId;
   final bool showLocalLibraryIndicator;
   final Map<String, (double, double)> thumbnailSizesByExtensionId;
+  final VoidCallback onSaveCover;
 
   /// Resolved by the result page via one batch lookup instead of a per-row
   /// exists query (which in SAF mode also costs a bridge call per row).
@@ -211,6 +212,7 @@ class _TrackItemWithStatus extends ConsumerWidget {
     required this.showLocalLibraryIndicator,
     required this.thumbnailSizesByExtensionId,
     required this.isInHistory,
+    required this.onSaveCover,
   });
 
   @override
@@ -248,6 +250,7 @@ class _TrackItemWithStatus extends ConsumerWidget {
     }
 
     final isQueued = queueItem != null;
+    final hasCover = track.coverUrl?.isNotEmpty == true;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -272,24 +275,36 @@ class _TrackItemWithStatus extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: track.coverUrl != null
-                      ? CachedCoverImage(
-                          imageUrl: track.coverUrl!,
-                          width: thumbWidth,
-                          height: thumbHeight,
-                          fit: BoxFit.cover,
-                        )
-                      : Container(
-                          width: thumbWidth,
-                          height: thumbHeight,
-                          color: colorScheme.surfaceContainerHighest,
-                          child: Icon(
-                            Icons.music_note,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
+                Semantics(
+                  label:
+                      '${context.l10n.dialogDownload} '
+                      '${context.l10n.editMetadataFieldCover}: ${track.name}',
+                  button: hasCover,
+                  onLongPress: hasCover ? onSaveCover : null,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    excludeFromSemantics: true,
+                    onLongPress: hasCover ? onSaveCover : null,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: hasCover
+                          ? CachedCoverImage(
+                              imageUrl: track.coverUrl!,
+                              width: thumbWidth,
+                              height: thumbHeight,
+                              fit: BoxFit.cover,
+                            )
+                          : Container(
+                              width: thumbWidth,
+                              height: thumbHeight,
+                              color: colorScheme.surfaceContainerHighest,
+                              child: Icon(
+                                Icons.music_note,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -417,12 +432,14 @@ class _CollectionItemWidget extends StatelessWidget {
   final Track item;
   final bool showDivider;
   final VoidCallback onTap;
+  final VoidCallback onSaveCover;
 
   const _CollectionItemWidget({
     super.key,
     required this.item,
     required this.showDivider,
     required this.onTap,
+    required this.onSaveCover,
   });
 
   @override
@@ -435,21 +452,37 @@ class _CollectionItemWidget extends StatelessWidget {
     if (isPlaylist) placeholderIcon = Icons.playlist_play;
     if (isArtist) placeholderIcon = Icons.person;
 
-    final cover = ClipRRect(
-      borderRadius: BorderRadius.circular(isArtist ? 28 : 10),
-      child: item.coverUrl != null && item.coverUrl!.isNotEmpty
-          ? CachedCoverImage(
-              imageUrl: item.coverUrl!,
-              width: 56,
-              height: 56,
-              fit: BoxFit.cover,
-            )
-          : Container(
-              width: 56,
-              height: 56,
-              color: colorScheme.surfaceContainerHighest,
-              child: Icon(placeholderIcon, color: colorScheme.onSurfaceVariant),
-            ),
+    final hasCover = item.coverUrl != null && item.coverUrl!.isNotEmpty;
+    final cover = Semantics(
+      label:
+          '${context.l10n.dialogDownload} '
+          '${context.l10n.editMetadataFieldCover}: ${item.name}',
+      button: hasCover,
+      onLongPress: hasCover ? onSaveCover : null,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        excludeFromSemantics: true,
+        onLongPress: hasCover ? onSaveCover : null,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(isArtist ? 28 : 10),
+          child: hasCover
+              ? CachedCoverImage(
+                  imageUrl: item.coverUrl!,
+                  width: 56,
+                  height: 56,
+                  fit: BoxFit.cover,
+                )
+              : Container(
+                  width: 56,
+                  height: 56,
+                  color: colorScheme.surfaceContainerHighest,
+                  child: Icon(
+                    placeholderIcon,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+        ),
+      ),
     );
     return Column(
       mainAxisSize: MainAxisSize.min,
