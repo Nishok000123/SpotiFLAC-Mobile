@@ -5,9 +5,13 @@ import 'package:spotiflac_android/utils/string_utils.dart';
 const highQualityBadgeBitrateThresholdKbps = 900;
 
 String normalizeLibraryQualityLabelMode(String? mode) {
-  return mode == AppSettings.libraryQualityLabelBitDepth
-      ? AppSettings.libraryQualityLabelBitDepth
-      : AppSettings.libraryQualityLabelBitrate;
+  return switch (mode) {
+    AppSettings.libraryQualityLabelBitDepth =>
+      AppSettings.libraryQualityLabelBitDepth,
+    AppSettings.libraryQualityLabelBitDepthBitrate =>
+      AppSettings.libraryQualityLabelBitDepthBitrate,
+    _ => AppSettings.libraryQualityLabelBitrate,
+  };
 }
 
 /// Builds a Library label from metadata already held in memory. Lossy formats
@@ -21,22 +25,61 @@ String? buildLibraryAudioQualityLabel({
   int? sampleRate,
   String? storedQuality,
 }) {
-  final bitrateLabel = bitrateKbps != null && bitrateKbps > 0
-      ? buildDisplayAudioQuality(bitrateKbps: bitrateKbps, format: format)
+  final stored = normalizeOptionalString(storedQuality);
+  final storedBitrate = _bitrateFromStoredQuality(stored);
+  final effectiveBitrate = bitrateKbps != null && bitrateKbps > 0
+      ? bitrateKbps
+      : storedBitrate;
+  final bitrateLabel = effectiveBitrate != null
+      ? buildDisplayAudioQuality(bitrateKbps: effectiveBitrate, format: format)
       : null;
   final bitDepthLabel =
       bitDepth != null && bitDepth > 0 && sampleRate != null && sampleRate > 0
       ? buildDisplayAudioQuality(bitDepth: bitDepth, sampleRate: sampleRate)
       : null;
-  final fallback = normalizeOptionalString(storedQuality);
+  final normalizedMode = normalizeLibraryQualityLabelMode(mode);
 
-  final useBitDepth =
-      normalizeLibraryQualityLabelMode(mode) ==
-          AppSettings.libraryQualityLabelBitDepth &&
-      !isLossyAudioFormat(format);
-  return useBitDepth
-      ? bitDepthLabel ?? bitrateLabel ?? fallback
-      : bitrateLabel ?? bitDepthLabel ?? fallback;
+  if (isLossyAudioFormat(format)) {
+    return bitrateLabel;
+  }
+
+  return switch (normalizedMode) {
+    AppSettings.libraryQualityLabelBitDepth =>
+      bitDepthLabel ?? bitrateLabel ?? stored,
+    AppSettings.libraryQualityLabelBitDepthBitrate =>
+      _buildBitDepthBitrateLabel(
+            bitDepth: bitDepth,
+            bitrateKbps: effectiveBitrate,
+          ) ??
+          bitrateLabel ??
+          bitDepthLabel ??
+          stored,
+    // Do not display bit depth/sample rate while the user selected bitrate.
+    // Legacy rows are backfilled separately; a stored measured bitrate remains
+    // usable while that migration completes.
+    _ => bitrateLabel,
+  };
+}
+
+int? _bitrateFromStoredQuality(String? quality) {
+  final match = RegExp(
+    r'\b(\d+(?:\.\d+)?)\s*(k(?:bps)?|mbps)\b',
+    caseSensitive: false,
+  ).firstMatch(quality ?? '');
+  final value = double.tryParse(match?.group(1) ?? '');
+  if (value == null || value <= 0) return null;
+  final unit = match?.group(2)?.toLowerCase();
+  return unit == 'mbps' ? (value * 1000).round() : value.round();
+}
+
+String? _buildBitDepthBitrateLabel({int? bitDepth, int? bitrateKbps}) {
+  if (bitDepth == null ||
+      bitDepth <= 0 ||
+      bitrateKbps == null ||
+      bitrateKbps <= 0) {
+    return null;
+  }
+  return '$bitDepth-bit/${bitrateKbps}kbps';
 }
 
 /// Preserves the highlighted color used by legacy 24-bit Library badges while

@@ -380,9 +380,13 @@ class SettingsNotifier extends Notifier<AppSettings> {
   }
 
   String _normalizeLibraryQualityLabelMode(String value) {
-    return value == AppSettings.libraryQualityLabelBitDepth
-        ? AppSettings.libraryQualityLabelBitDepth
-        : AppSettings.libraryQualityLabelBitrate;
+    return switch (value) {
+      AppSettings.libraryQualityLabelBitDepth =>
+        AppSettings.libraryQualityLabelBitDepth,
+      AppSettings.libraryQualityLabelBitDepthBitrate =>
+        AppSettings.libraryQualityLabelBitDepthBitrate,
+      _ => AppSettings.libraryQualityLabelBitrate,
+    };
   }
 
   String _normalizeExtensionVerificationBrowserMode(String value) {

@@ -8,6 +8,7 @@ class AppSettings {
   static const String homeFeedProviderOff = '__off__';
   static const String libraryQualityLabelBitrate = 'bitrate';
   static const String libraryQualityLabelBitDepth = 'bit_depth';
+  static const String libraryQualityLabelBitDepthBitrate = 'bit_depth_bitrate';
 
   final String defaultService;
   final String audioQuality;
@@ -41,7 +42,8 @@ class AppSettings {
   /// 'last' (keep last used), 'all', 'albums', 'singles', or 'playlists'.
   final String defaultLibraryView;
 
-  /// Library badge text: measured bitrate or the legacy bit depth/sample rate.
+  /// Library badge text: measured bitrate, bit depth/sample rate, or the
+  /// combined bit depth/bitrate label.
   final String libraryQualityLabelMode;
   final bool askQualityBeforeDownload;
   final bool enableLogging;

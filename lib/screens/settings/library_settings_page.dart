@@ -404,6 +404,10 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
       return '${context.l10n.audioAnalysisBitDepth} & '
           '${context.l10n.audioAnalysisSampleRate}';
     }
+    if (mode == AppSettings.libraryQualityLabelBitDepthBitrate) {
+      return '${context.l10n.audioAnalysisBitDepth} & '
+          '${context.l10n.trackConvertBitrate}';
+    }
     return context.l10n.trackConvertBitrate;
   }
 
@@ -420,6 +424,12 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
         Icons.graphic_eq_rounded,
         '${context.l10n.audioAnalysisBitDepth} & '
             '${context.l10n.audioAnalysisSampleRate}',
+      ),
+      (
+        AppSettings.libraryQualityLabelBitDepthBitrate,
+        Icons.multiline_chart_rounded,
+        '${context.l10n.audioAnalysisBitDepth} & '
+            '${context.l10n.trackConvertBitrate}',
       ),
     ];
     showModalBottomSheet<void>(

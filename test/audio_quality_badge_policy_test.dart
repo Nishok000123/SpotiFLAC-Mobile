@@ -40,6 +40,12 @@ void main() {
         normalizeLibraryQualityLabelMode('unsupported'),
         AppSettings.libraryQualityLabelBitrate,
       );
+      expect(
+        normalizeLibraryQualityLabelMode(
+          AppSettings.libraryQualityLabelBitDepthBitrate,
+        ),
+        AppSettings.libraryQualityLabelBitDepthBitrate,
+      );
     });
 
     test('restores legacy bit depth and sample rate labels', () {
@@ -68,6 +74,32 @@ void main() {
       );
     });
 
+    test('combines bit depth and measured bitrate for lossless audio', () {
+      expect(
+        buildLibraryAudioQualityLabel(
+          mode: AppSettings.libraryQualityLabelBitDepthBitrate,
+          format: 'flac',
+          bitrateKbps: 1760,
+          bitDepth: 24,
+          sampleRate: 48000,
+        ),
+        '24-bit/1760kbps',
+      );
+    });
+
+    test('keeps lossy audio on bitrate in the combined mode', () {
+      expect(
+        buildLibraryAudioQualityLabel(
+          mode: AppSettings.libraryQualityLabelBitDepthBitrate,
+          format: 'aac',
+          bitrateKbps: 256,
+          bitDepth: 16,
+          sampleRate: 44100,
+        ),
+        'AAC 256kbps',
+      );
+    });
+
     test('falls back when the preferred metadata is unavailable', () {
       expect(
         buildLibraryAudioQualityLabel(
@@ -83,7 +115,24 @@ void main() {
           mode: AppSettings.libraryQualityLabelBitrate,
           storedQuality: '24-bit/96kHz',
         ),
-        '24-bit/96kHz',
+        isNull,
+      );
+      expect(
+        buildLibraryAudioQualityLabel(
+          mode: AppSettings.libraryQualityLabelBitrate,
+          format: 'flac',
+          storedQuality: 'FLAC 1411kbps',
+        ),
+        'FLAC 1411kbps',
+      );
+      expect(
+        buildLibraryAudioQualityLabel(
+          mode: AppSettings.libraryQualityLabelBitDepthBitrate,
+          format: 'flac',
+          bitDepth: 24,
+          storedQuality: 'FLAC 1411kbps',
+        ),
+        '24-bit/1411kbps',
       );
     });
   });
