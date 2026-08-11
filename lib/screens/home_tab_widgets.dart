@@ -1155,12 +1155,16 @@ class _ExtensionPlaylistScreenState
   }
 
   Track _parseTrack(Map<String, dynamic> data) {
-    final base = Track.fromBackendMap(data, source: widget.extensionId);
+    final base = Track.fromBackendMap(
+      data,
+      source: widget.extensionId,
+      playlistName: widget.playlistName,
+    );
     return Track(
       id: (data['id'] ?? '').toString(),
       name: base.name,
       artistName: base.artistName,
-      albumName: (data['album_name'] ?? '').toString(),
+      albumName: base.albumName,
       artistId: base.artistId,
       albumId: base.albumId,
       coverUrl: _resolveTrackCoverUrl(

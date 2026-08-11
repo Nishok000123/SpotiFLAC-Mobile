@@ -207,18 +207,25 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen>
 
       final playlistInfo = result['playlist_info'] as Map<String, dynamic>?;
       final owner = playlistInfo?['owner'] as Map<String, dynamic>?;
+      final resolvedPlaylistName =
+          (playlistInfo?['name'] ?? owner?['name'])?.toString() ??
+          _playlistName;
 
       final trackList = result['track_list'] as List<dynamic>? ?? [];
       final tracks = trackList
-          .map((t) => Track.fromBackendMap(t as Map<String, dynamic>))
+          .map(
+            (t) => Track.fromBackendMap(
+              t as Map<String, dynamic>,
+              playlistName: resolvedPlaylistName,
+            ),
+          )
           .toList();
 
       final headerVideo = playlistInfo?['header_video']?.toString();
 
       setState(() {
         _fetchedTracks = tracks;
-        _resolvedPlaylistName = (playlistInfo?['name'] ?? owner?['name'])
-            ?.toString();
+        _resolvedPlaylistName = resolvedPlaylistName;
         _resolvedCoverUrl = (playlistInfo?['images'] ?? owner?['images'])
             ?.toString();
         _resolvedHeaderVideoUrl =

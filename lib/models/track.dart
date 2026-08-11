@@ -82,7 +82,11 @@ class Track {
   Map<String, dynamic> toJson() => _$TrackToJson(this);
 
   /// Builds a [Track] from a backend/extension search payload map.
-  factory Track.fromBackendMap(Map<String, dynamic> data, {String? source}) {
+  factory Track.fromBackendMap(
+    Map<String, dynamic> data, {
+    String? source,
+    String? playlistName,
+  }) {
     final durationMs = extractDurationMs(data);
 
     final itemType = data['item_type']?.toString();
@@ -93,12 +97,21 @@ class Track {
     final preferredId = effectiveSource != null && effectiveSource.isNotEmpty
         ? (nativeId.isNotEmpty ? nativeId : spotifyId)
         : (spotifyId.isNotEmpty ? spotifyId : nativeId);
+    final rawAlbumName = (data['album_name'] ?? data['album'] ?? '').toString();
+    final normalizedAlbumName = normalizeOptionalString(rawAlbumName);
+    final normalizedPlaylistName = normalizeOptionalString(playlistName);
+    final albumName =
+        normalizedPlaylistName != null &&
+            normalizedAlbumName?.toLowerCase() ==
+                normalizedPlaylistName.toLowerCase()
+        ? ''
+        : rawAlbumName;
 
     return Track(
       id: preferredId,
       name: (data['name'] ?? '').toString(),
       artistName: (data['artists'] ?? data['artist'] ?? '').toString(),
-      albumName: (data['album_name'] ?? data['album'] ?? '').toString(),
+      albumName: albumName,
       albumArtist: data['album_artist']?.toString(),
       artistId: (data['artist_id'] ?? data['artistId'])?.toString(),
       albumId: data['album_id']?.toString(),

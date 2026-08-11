@@ -224,11 +224,13 @@ class TrackNotifier extends Notifier<TrackState> {
         } else if ((type == 'album' || type == 'playlist') &&
             result['tracks'] != null) {
           final trackList = result['tracks'] as List<dynamic>;
+          final collectionName = result['name'] as String?;
           final tracks = trackList
               .map(
                 (t) => Track.fromBackendMap(
                   t as Map<String, dynamic>,
                   source: extensionId,
+                  playlistName: type == 'playlist' ? collectionName : null,
                 ),
               )
               .toList();
@@ -238,9 +240,9 @@ class TrackNotifier extends Notifier<TrackState> {
             albumId:
                 (result['album'] as Map<String, dynamic>?)?['id'] as String?,
             albumName:
-                result['name'] as String? ??
+                collectionName ??
                 (result['album'] as Map<String, dynamic>?)?['name'] as String?,
-            playlistName: type == 'playlist' ? result['name'] as String? : null,
+            playlistName: type == 'playlist' ? collectionName : null,
             coverUrl: normalizeCoverReference(result['cover_url']?.toString()),
             headerVideoUrl: normalizeRemoteHttpUrl(
               result['header_video']?.toString(),

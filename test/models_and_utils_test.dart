@@ -443,6 +443,26 @@ void main() {
       expect(track.isExplicit, isTrue);
     });
 
+    test('does not treat a playlist container name as a track album', () {
+      final playlistTrack = Track.fromBackendMap({
+        'id': 'playlist-track-1',
+        'name': 'Song',
+        'artists': 'Artist',
+        'album_name': ' Road Trip ',
+        'duration_ms': 180000,
+      }, playlistName: 'road trip');
+      final releaseTrack = Track.fromBackendMap({
+        'id': 'playlist-track-2',
+        'name': 'Song',
+        'artists': 'Artist',
+        'album_name': 'Real Album',
+        'duration_ms': 180000,
+      }, playlistName: 'Road Trip');
+
+      expect(playlistTrack.albumName, isEmpty);
+      expect(releaseTrack.albumName, 'Real Album');
+    });
+
     test('exposes collection, source, and quality flags', () {
       const album = Track(
         id: 'album-1',
