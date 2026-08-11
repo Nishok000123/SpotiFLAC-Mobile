@@ -423,43 +423,6 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
     return _loadDeezerExtendedMetadata(deezerTrackId);
   }
 
-  /// Deezer CDN cover size pattern: /WxH-0-0-0-0.jpg
-  static final _deezerSizeRegex = RegExp(r'/(\d+)x(\d+)-\d+-\d+-\d+-\d+\.jpg$');
-
-  String _upgradeToMaxQualityCover(String coverUrl) {
-    const spotifySize300 = 'ab67616d00001e02';
-    const spotifySize640 = 'ab67616d0000b273';
-    const spotifySizeMax = 'ab67616d000082c1';
-
-    var result = coverUrl;
-    if (result.contains(spotifySize300)) {
-      result = result.replaceFirst(spotifySize300, spotifySize640);
-    }
-    if (result.contains(spotifySize640)) {
-      result = result.replaceFirst(spotifySize640, spotifySizeMax);
-    }
-
-    if (result.contains('cdn-images.dzcdn.net')) {
-      final upgraded = result.replaceFirst(
-        _deezerSizeRegex,
-        '/1800x1800-000000-80-0-0.jpg',
-      );
-      if (upgraded != result) {
-        _log.d('Cover URL upgraded (Deezer): 1800x1800');
-        result = upgraded;
-      }
-    }
-
-    // Tidal CDN upgrade (1280x1280 → origin)
-    if (result.contains('resources.tidal.com') &&
-        result.contains('/1280x1280.jpg')) {
-      result = result.replaceFirst('/1280x1280.jpg', '/origin.jpg');
-      _log.d('Cover URL upgraded (Tidal): origin');
-    }
-
-    return result;
-  }
-
   bool _isUsableIndex(int? number, int? total) {
     if (number == null || number <= 0) return false;
     return total == null || total <= 0 || number <= total;
@@ -612,15 +575,15 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
     final isMp3 = format == 'mp3';
 
     Future<String?>? coverFuture;
-    var coverUrl = normalizeRemoteHttpUrl(track.coverUrl);
+    final coverUrl = normalizeRemoteHttpUrl(track.coverUrl);
     if (coverUrl != null && coverUrl.isNotEmpty) {
-      if (settings.maxQualityCover) {
-        coverUrl = _upgradeToMaxQualityCover(coverUrl);
-      }
       // Started here, awaited only after the lyrics fetch below so the two
       // network round trips overlap. Errors are handled inside the fetch
       // (it resolves to null), never as an unhandled rejection.
-      coverFuture = _sharedEmbedCover(coverUrl);
+      coverFuture = _sharedEmbedCover(
+        coverUrl,
+        maxQuality: settings.maxQualityCover,
+      );
     }
 
     String? lrcContent;
@@ -947,24 +910,33 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
   static const _embedCoverCacheMax = 8;
 
   /// One cover fetch per URL, shared by every track in the batch.
-  Future<String?> _sharedEmbedCover(String coverUrl) {
-    final existing = _embedCoverCache.remove(coverUrl);
+  Future<String?> _sharedEmbedCover(
+    String coverUrl, {
+    required bool maxQuality,
+  }) {
+    final cacheKey = '${maxQuality ? 'max' : 'original'}|$coverUrl';
+    final existing = _embedCoverCache.remove(cacheKey);
     if (existing != null) {
-      _embedCoverCache[coverUrl] = existing; // LRU touch
+      _embedCoverCache[cacheKey] = existing; // LRU touch
       return existing;
     }
-    final fetch = _downloadEmbedCover(coverUrl).then((path) {
-      if (path == null) _embedCoverCache.remove(coverUrl); // allow retry
+    final fetch = _downloadEmbedCover(coverUrl, maxQuality: maxQuality).then((
+      path,
+    ) {
+      if (path == null) _embedCoverCache.remove(cacheKey); // allow retry
       return path;
     });
-    _embedCoverCache[coverUrl] = fetch;
+    _embedCoverCache[cacheKey] = fetch;
     while (_embedCoverCache.length > _embedCoverCacheMax) {
       _evictEmbedCover(_embedCoverCache.keys.first);
     }
     return fetch;
   }
 
-  Future<String?> _downloadEmbedCover(String coverUrl) async {
+  Future<String?> _downloadEmbedCover(
+    String coverUrl, {
+    required bool maxQuality,
+  }) async {
     try {
       final tempDir = await getTemporaryDirectory();
       final uniqueId =
@@ -975,7 +947,7 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
       final result = await PlatformBridge.downloadCoverToFile(
         coverUrl,
         coverPath,
-        maxQuality: false,
+        maxQuality: maxQuality,
       );
       if (result['error'] != null) {
         _log.w('Failed to download cover: ${result['error']}');
