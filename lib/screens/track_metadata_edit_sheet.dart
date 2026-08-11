@@ -4,11 +4,17 @@ class _AutoFillPreview {
   final Map<String, String> values;
   final String sourceName;
   final String? coverUrl;
+  final String? coverPath;
+  final String? coverTempDir;
+  final ({int width, int height, int bytes})? coverDetails;
 
   const _AutoFillPreview({
     required this.values,
     required this.sourceName,
     this.coverUrl,
+    this.coverPath,
+    this.coverTempDir,
+    this.coverDetails,
   });
 }
 
@@ -53,8 +59,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
   String? _currentCoverTempDir;
   bool _loadingCurrentCover = false;
   int? _coverMaxDimension;
-  final Map<String, ({int width, int height})> _coverDimensions = {};
-  final Set<String> _coverDimensionLoads = {};
+  final Map<String, ({int width, int height, int bytes})> _coverDetails = {};
+  final Set<String> _coverDetailLoads = {};
   String? _selectedMetadataProviderId;
   _AutoFillPreview? _autoFillPreview;
   final GlobalKey<ScaffoldMessengerState> _sheetMessengerKey =
@@ -317,7 +323,26 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
   }
 
   void _invalidateAutoFillPreview() {
+    final preview = _autoFillPreview;
     _autoFillPreview = null;
+    final coverPath = preview?.coverPath;
+    if (coverPath != null) {
+      _coverDetails.remove(coverPath);
+      _coverDetailLoads.remove(coverPath);
+    }
+    final tempDir = preview?.coverTempDir;
+    if (tempDir != null && tempDir.isNotEmpty) {
+      unawaited(_deleteTempDirectory(tempDir));
+    }
+  }
+
+  Future<void> _deleteTempDirectory(String path) async {
+    try {
+      final directory = Directory(path);
+      if (await directory.exists()) {
+        await directory.delete(recursive: true);
+      }
+    } catch (_) {}
   }
 
   void _showSheetSnackBar(String message) {
@@ -373,25 +398,77 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
   String _originalCoverResolutionLabel(String originalLabel) {
     final sourcePath = _selectedCoverPath ?? _currentCoverPath;
-    final dimensions = sourcePath == null ? null : _coverDimensions[sourcePath];
-    if (dimensions == null) return originalLabel;
-    return '$originalLabel · ${dimensions.width} × ${dimensions.height} px';
+    final details = sourcePath == null ? null : _coverDetails[sourcePath];
+    if (details == null) return originalLabel;
+    return '$originalLabel · ${details.width} × ${details.height} px · '
+        '${_formatCoverBytes(details.bytes)}';
   }
 
-  Future<void> _loadCoverDimensions(String path) async {
-    if (_coverDimensions.containsKey(path) || !_coverDimensionLoads.add(path)) {
+  String _formatCoverBytes(int bytes) {
+    return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  }
+
+  Future<({int width, int height, int bytes})?> _readCoverDetails(
+    String path,
+  ) async {
+    final dimensions = await FFmpegService.probeImageDimensions(path);
+    if (dimensions == null) return null;
+    try {
+      final bytes = await File(path).length();
+      return (width: dimensions.width, height: dimensions.height, bytes: bytes);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _loadCoverDetails(String path) async {
+    if (_coverDetails.containsKey(path) || !_coverDetailLoads.add(path)) {
       return;
     }
-    final dimensions = await FFmpegService.probeImageDimensions(path);
+    final details = await _readCoverDetails(path);
     if (!mounted) return;
     setState(() {
-      _coverDimensionLoads.remove(path);
+      _coverDetailLoads.remove(path);
       final isActivePath =
           path == _currentCoverPath || path == _selectedCoverPath;
-      if (isActivePath && dimensions != null) {
-        _coverDimensions[path] = dimensions;
+      if (isActivePath && details != null) {
+        _coverDetails[path] = details;
       }
     });
+  }
+
+  Future<
+    ({
+      String path,
+      String tempDir,
+      ({int width, int height, int bytes})? details,
+    })?
+  >
+  _downloadAutoFillCoverPreview(String coverUrl) async {
+    final tempDir = await Directory.systemTemp.createTemp(
+      'autofill_cover_preview_',
+    );
+    final coverPath = '${tempDir.path}${Platform.pathSeparator}cover.jpg';
+    try {
+      await PlatformBridge.downloadCoverToFile(
+        coverUrl,
+        coverPath,
+        maxQuality: true,
+      );
+      final file = File(coverPath);
+      if (!await file.exists() || await file.length() <= 0) {
+        await tempDir.delete(recursive: true);
+        return null;
+      }
+      return (
+        path: coverPath,
+        tempDir: tempDir.path,
+        details: await _readCoverDetails(coverPath),
+      );
+    } catch (_) {
+      await _deleteTempDirectory(tempDir.path);
+      return null;
+    }
   }
 
   String _resolveImageExtension(String? ext, Uint8List? bytes) {
@@ -434,8 +511,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     _selectedCoverTempDir = null;
     _selectedCoverName = null;
     if (coverPath != null) {
-      _coverDimensions.remove(coverPath);
-      _coverDimensionLoads.remove(coverPath);
+      _coverDetails.remove(coverPath);
+      _coverDetailLoads.remove(coverPath);
     }
     if (dirPath == null || dirPath.isEmpty) return;
     try {
@@ -452,8 +529,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     _currentCoverPath = null;
     _currentCoverTempDir = null;
     if (coverPath != null) {
-      _coverDimensions.remove(coverPath);
-      _coverDimensionLoads.remove(coverPath);
+      _coverDetails.remove(coverPath);
+      _coverDetailLoads.remove(coverPath);
     }
     if (dirPath == null || dirPath.isEmpty) return;
     try {
@@ -505,15 +582,15 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     final oldCoverPath = _currentCoverPath;
     setState(() {
       if (oldCoverPath != null && oldCoverPath != newCoverPath) {
-        _coverDimensions.remove(oldCoverPath);
-        _coverDimensionLoads.remove(oldCoverPath);
+        _coverDetails.remove(oldCoverPath);
+        _coverDetailLoads.remove(oldCoverPath);
       }
       _currentCoverPath = newCoverPath;
       _currentCoverTempDir = newCoverDir;
       _loadingCurrentCover = false;
     });
     if (newCoverPath != null) {
-      unawaited(_loadCoverDimensions(newCoverPath));
+      unawaited(_loadCoverDetails(newCoverPath));
     }
     if (oldDir != null && oldDir.isNotEmpty && oldDir != newCoverDir) {
       try {
@@ -567,7 +644,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         _selectedCoverTempDir = tempDir.path;
         _selectedCoverName = picked.name;
       });
-      unawaited(_loadCoverDimensions(tempPath));
+      unawaited(_loadCoverDetails(tempPath));
     } catch (e) {
       if (!mounted) return;
       _showSheetSnackBar(context.l10n.snackbarError(context.friendlyError(e)));
@@ -1050,7 +1127,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       if (artist.isNotEmpty) queryParts.add(artist);
       if (queryParts.isEmpty && album.isNotEmpty) queryParts.add(album);
 
-      if (needsTrackLookup && best == null && queryParts.isEmpty) {
+      if (needsTrackLookup && queryParts.isEmpty) {
         if (mounted) {
           _showSheetSnackBar(context.l10n.editMetadataAutoFillNoResults);
         }
@@ -1061,7 +1138,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       final normalizedArtist = _normalizeMetadataText(artist);
       final normalizedAlbum = _normalizeMetadataText(album);
 
-      if (needsTrackLookup && best == null) {
+      if (needsTrackLookup) {
         final query = queryParts.join(' ');
         final results = await _searchAutoFillCandidates(
           query: query,
@@ -1311,6 +1388,19 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         return;
       }
 
+      final coverPreview =
+          _autoFillFields.contains('cover') &&
+              coverUrl != null &&
+              coverUrl.isNotEmpty
+          ? await _downloadAutoFillCoverPreview(coverUrl)
+          : null;
+      if (!mounted) {
+        if (coverPreview != null) {
+          await _deleteTempDirectory(coverPreview.tempDir);
+        }
+        return;
+      }
+
       final resolvedSourceId = selectedProviderId?.isNotEmpty == true
           ? selectedProviderId!
           : (selectedBest?['provider_id']?.toString().trim() ?? '');
@@ -1323,7 +1413,13 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           values: availableValues,
           sourceName: resolvedSourceName,
           coverUrl: coverUrl?.isNotEmpty == true ? coverUrl : null,
+          coverPath: coverPreview?.path,
+          coverTempDir: coverPreview?.tempDir,
+          coverDetails: coverPreview?.details,
         );
+        if (coverPreview?.details case final details?) {
+          _coverDetails[coverPreview!.path] = details;
+        }
       });
     } catch (e, stackTrace) {
       _log.e('Metadata auto-fill failed: $e', e, stackTrace);
@@ -1355,40 +1451,46 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       }
 
       if (_autoFillFields.contains('cover') && preview.coverUrl != null) {
-        final tempDir = await Directory.systemTemp.createTemp(
-          'autofill_cover_',
-        );
-        final coverOutput = '${tempDir.path}${Platform.pathSeparator}cover.jpg';
-        try {
-          await PlatformBridge.downloadCoverToFile(
+        var coverPath = preview.coverPath;
+        var coverTempDir = preview.coverTempDir;
+        var coverDetails = preview.coverDetails;
+        if (coverPath == null ||
+            coverTempDir == null ||
+            !await File(coverPath).exists()) {
+          final downloaded = await _downloadAutoFillCoverPreview(
             preview.coverUrl!,
-            coverOutput,
-            maxQuality: true,
           );
-          final file = File(coverOutput);
-          if (await file.exists() && await file.length() > 0) {
-            await _cleanupSelectedCoverTemp();
-            if (mounted) {
-              _selectedCoverPath = coverOutput;
-              _selectedCoverTempDir = tempDir.path;
-              _selectedCoverName = _EditMetadataSheet._onlineCoverSentinel;
-              filledCount++;
-              unawaited(_loadCoverDimensions(coverOutput));
+          coverPath = downloaded?.path;
+          coverTempDir = downloaded?.tempDir;
+          coverDetails = downloaded?.details;
+        }
+        if (coverPath != null && coverTempDir != null) {
+          await _cleanupSelectedCoverTemp();
+          if (mounted) {
+            _selectedCoverPath = coverPath;
+            _selectedCoverTempDir = coverTempDir;
+            _selectedCoverName = _EditMetadataSheet._onlineCoverSentinel;
+            if (coverDetails != null) {
+              _coverDetails[coverPath] = coverDetails;
+            } else {
+              unawaited(_loadCoverDetails(coverPath));
             }
-          } else {
-            await tempDir.delete(recursive: true);
+            filledCount++;
           }
-        } catch (_) {
-          try {
-            if (await tempDir.exists()) await tempDir.delete(recursive: true);
-          } catch (_) {}
         }
       }
 
       if (!mounted) return;
       setState(() {
         if (filledCount > 0) {
-          _invalidateAutoFillPreview();
+          final previewCoverWasTransferred =
+              preview.coverPath != null &&
+              preview.coverPath == _selectedCoverPath;
+          if (previewCoverWasTransferred) {
+            _autoFillPreview = null;
+          } else {
+            _invalidateAutoFillPreview();
+          }
         }
       });
       _showSheetSnackBar(
@@ -1435,6 +1537,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 
   @override
   void dispose() {
+    _invalidateAutoFillPreview();
     unawaited(_cleanupSelectedCoverTemp());
     unawaited(_cleanupCurrentCoverTemp());
     _titleCtrl.dispose();
@@ -2069,9 +2172,43 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
             ],
           ),
           const SizedBox(height: 8),
+          if (preview.coverPath case final coverPath?) ...[
+            Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.file(
+                  File(coverPath),
+                  width: 112,
+                  height: 112,
+                  fit: BoxFit.cover,
+                  semanticLabel:
+                      context.l10n.editMetadataAutoFillCoverAvailable,
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
+            if (preview.coverDetails case final details?) ...[
+              const SizedBox(height: 6),
+              Center(
+                child: Text(
+                  '${details.width} × ${details.height} px · '
+                  '${_formatCoverBytes(details.bytes)}',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+          ],
           ...previewFields.map((key) {
+            final details = preview.coverDetails;
             final value = key == 'cover'
-                ? context.l10n.editMetadataAutoFillCoverAvailable
+                ? details != null
+                      ? '${details.width} × ${details.height} px · '
+                            '${_formatCoverBytes(details.bytes)}'
+                      : context.l10n.editMetadataAutoFillCoverAvailable
                 : preview.values[key]!;
             return Padding(
               padding: const EdgeInsets.only(bottom: 6),
@@ -2298,8 +2435,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     required String path,
     required String label,
   }) {
-    final dimensions = _coverDimensions[path];
-    final loadingDimensions = _coverDimensionLoads.contains(path);
+    final details = _coverDetails[path];
+    final loadingDetails = _coverDetailLoads.contains(path);
     return Column(
       children: [
         Container(
@@ -2346,9 +2483,10 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 3),
-        if (dimensions != null)
+        if (details != null)
           Text(
-            '${dimensions.width} × ${dimensions.height} px',
+            '${details.width} × ${details.height} px · '
+            '${_formatCoverBytes(details.bytes)}',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: cs.primary,
               fontWeight: FontWeight.w600,
@@ -2356,7 +2494,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           )
-        else if (loadingDimensions)
+        else if (loadingDetails)
           SizedBox(
             width: 12,
             height: 12,
