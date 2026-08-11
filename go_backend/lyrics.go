@@ -192,6 +192,7 @@ func (c *LyricsClient) durationMatches(lrcDuration, targetDuration float64) bool
 func (c *LyricsClient) FetchLyricsAllSources(spotifyID, trackName, artistName string, durationSec float64) (*LyricsResponse, error) {
 	primaryArtist := normalizeArtistName(artistName)
 	fetchOptions := GetLyricsFetchOptions()
+	configuredProviderOrder := GetLyricsProviderOrder()
 
 	if isLikelyInstrumentalTrack(trackName) {
 		GoLog("[Lyrics] Track marked instrumental by title heuristic, skipping lyrics search: %s - %s\n", artistName, trackName)
@@ -203,62 +204,57 @@ func (c *LyricsClient) FetchLyricsAllSources(spotifyID, trackName, artistName st
 		return instrumental, nil
 	}
 
+	extensionProviders := make(map[string]*extensionProviderWrapper)
 	extManager := getExtensionManager()
-	var extensionProviders []*extensionProviderWrapper
 	if extManager != nil {
-		extensionProviders = extManager.GetLyricsProviders()
+		for _, provider := range extManager.GetLyricsProviders() {
+			providerName := "extension:" + strings.ToLower(strings.TrimSpace(provider.extension.ID))
+			extensionProviders[providerName] = provider
+		}
+	}
+
+	providerOrder := resolveLyricsProviderOrder(configuredProviderOrder, extensionProviders)
+	selectedExtensionCount := 0
+	for _, providerName := range providerOrder {
+		if strings.HasPrefix(providerName, "extension:") {
+			selectedExtensionCount++
+		}
 	}
 
 	var cachedNonExtension *LyricsResponse
 	if cached, found := globalLyricsCache.Get(artistName, trackName, durationSec); found {
 		isExtensionCache := strings.HasPrefix(cached.Source, "Extension:")
-		if len(extensionProviders) == 0 || isExtensionCache {
+		cachedProviderSelected := false
+		if isExtensionCache {
+			cachedProviderName := "extension:" + strings.ToLower(strings.TrimSpace(strings.TrimPrefix(cached.Source, "Extension:")))
+			for _, providerName := range providerOrder {
+				if providerName == cachedProviderName {
+					cachedProviderSelected = true
+					break
+				}
+			}
+		}
+		if (!isExtensionCache && selectedExtensionCount == 0) || cachedProviderSelected {
 			fmt.Printf("[Lyrics] Cache hit for: %s - %s\n", artistName, trackName)
 			cachedCopy := *cached
 			cachedCopy.Source = cached.Source + " (cached)"
 			return &cachedCopy, nil
 		}
 
-		// If extension providers are currently enabled, don't let stale built-in cache
-		// mask newly installed/activated extensions.
-		cachedNonExtension = cached
-		GoLog("[Lyrics] Ignoring cached non-extension lyrics because extension providers are available\n")
+		if !isExtensionCache {
+			// If extension providers are currently selected, don't let stale built-in
+			// cache mask them. It remains available as a fallback if they fail.
+			cachedNonExtension = cached
+			GoLog("[Lyrics] Ignoring cached non-extension lyrics because selected extension providers are available\n")
+		} else {
+			GoLog("[Lyrics] Ignoring cached lyrics from an unselected extension provider\n")
+		}
 	}
 
 	isValidResult := func(l *LyricsResponse) bool {
 		return lyricsHasUsableText(l)
 	}
 
-	if len(extensionProviders) > 0 {
-		for _, provider := range extensionProviders {
-			providerName := "extension:" + provider.extension.ID
-			if skip, remaining, reason := shouldSkipLyricsProvider(providerName); skip {
-				GoLog("[Lyrics] Skipping unavailable extension lyrics provider %s for %s: %s\n", provider.extension.ID, remaining.Round(time.Second), reason)
-				continue
-			}
-			GoLog("[Lyrics] Trying extension lyrics provider: %s\n", provider.extension.ID)
-			lyrics, err := provider.FetchLyrics(trackName, artistName, "", durationSec)
-			if err == nil && isValidResult(lyrics) {
-				GoLog("[Lyrics] Got lyrics from extension: %s\n", provider.extension.ID)
-				markLyricsProviderAvailable(providerName)
-				globalLyricsCache.Set(artistName, trackName, durationSec, lyrics)
-				return lyrics, nil
-			}
-			if err != nil {
-				GoLog("[Lyrics] Extension %s failed: %v\n", provider.extension.ID, err)
-				markLyricsProviderUnavailable(providerName, err)
-			}
-		}
-	}
-
-	if cachedNonExtension != nil {
-		cachedCopy := *cachedNonExtension
-		cachedCopy.Source = cachedNonExtension.Source + " (cached fallback)"
-		GoLog("[Lyrics] Extension providers unavailable for this track, using cached built-in lyrics\n")
-		return &cachedCopy, nil
-	}
-
-	providerOrder := GetLyricsProviderOrder()
 	simplifiedTrack := simplifyTrackName(trackName)
 	request := lyricsProviderSearchRequest{
 		spotifyID:       spotifyID,
@@ -272,16 +268,48 @@ func (c *LyricsClient) FetchLyricsAllSources(spotifyID, trackName, artistName st
 
 	GoLog("[Lyrics] Searching for: %s - %s (providers: %v)\n", artistName, trackName, providerOrder)
 
-	lyrics, err := fetchBuiltInLyricsProviders(providerOrder, request, c.fetchBuiltInLyricsProvider)
+	fetchProvider := func(providerName string, request lyricsProviderSearchRequest) (*LyricsResponse, error, bool) {
+		if provider, ok := extensionProviders[providerName]; ok {
+			lyrics, err := provider.FetchLyrics(request.trackName, request.artistName, "", request.durationSec)
+			return lyrics, err, true
+		}
+		return c.fetchBuiltInLyricsProvider(providerName, request)
+	}
+
+	lyrics, err := fetchLyricsProviders(providerOrder, request, fetchProvider)
 	if err == nil && isValidResult(lyrics) {
 		globalLyricsCache.Set(artistName, trackName, durationSec, lyrics)
 		return lyrics, nil
 	}
 
+	if cachedNonExtension != nil {
+		cachedCopy := *cachedNonExtension
+		cachedCopy.Source = cachedNonExtension.Source + " (cached fallback)"
+		GoLog("[Lyrics] Selected extension providers unavailable for this track, using cached built-in lyrics\n")
+		return &cachedCopy, nil
+	}
+
 	return nil, fmt.Errorf("lyrics not found from any source")
 }
 
-func fetchBuiltInLyricsProviders(
+func resolveLyricsProviderOrder(
+	configuredOrder []string,
+	extensionProviders map[string]*extensionProviderWrapper,
+) []string {
+	providerOrder := make([]string, 0, len(configuredOrder))
+	for _, providerName := range configuredOrder {
+		if isKnownBuiltInLyricsProvider(providerName) {
+			providerOrder = append(providerOrder, providerName)
+			continue
+		}
+		if _, available := extensionProviders[providerName]; available {
+			providerOrder = append(providerOrder, providerName)
+		}
+	}
+	return providerOrder
+}
+
+func fetchLyricsProviders(
 	providerOrder []string,
 	request lyricsProviderSearchRequest,
 	fetchProvider func(string, lyricsProviderSearchRequest) (*LyricsResponse, error, bool),
@@ -302,7 +330,8 @@ func fetchBuiltInLyricsProviders(
 			continue
 		}
 
-		knownProvider := isKnownBuiltInLyricsProvider(providerName)
+		knownProvider := isKnownBuiltInLyricsProvider(providerName) ||
+			(strings.HasPrefix(providerName, "extension:") && len(providerName) > len("extension:"))
 		if !knownProvider {
 			GoLog("[Lyrics] Unknown provider: %s, skipping\n", providerName)
 			continue

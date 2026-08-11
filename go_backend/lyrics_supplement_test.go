@@ -16,8 +16,8 @@ func TestLyricsCacheParsingAndLRCLibClient(t *testing.T) {
 	if ua := appUserAgent(); !strings.Contains(ua, "4.5.0") {
 		t.Fatalf("user agent = %q", ua)
 	}
-	SetLyricsProviderOrder([]string{"LRCLIB", "bad", "netease"})
-	if providers := GetLyricsProviderOrder(); len(providers) != 2 || providers[0] != LyricsProviderLRCLIB {
+	SetLyricsProviderOrder([]string{"LRCLIB", "bad", "extension:Apple-Music", "netease", "extension:apple-music"})
+	if providers := GetLyricsProviderOrder(); len(providers) != 3 || providers[0] != LyricsProviderLRCLIB || providers[1] != "extension:apple-music" {
 		t.Fatalf("providers = %#v", providers)
 	}
 	SetLyricsProviderOrder(nil)
@@ -228,7 +228,7 @@ func TestConcurrentLyricsProvidersReturnFastFallback(t *testing.T) {
 	defer clearLyricsProviderHealth()
 
 	start := time.Now()
-	lyrics, err := fetchBuiltInLyricsProviders(
+	lyrics, err := fetchLyricsProviders(
 		[]string{LyricsProviderLRCLIB, LyricsProviderAppleMusic},
 		lyricsProviderSearchRequest{},
 		func(providerName string, _ lyricsProviderSearchRequest) (*LyricsResponse, error, bool) {
@@ -250,11 +250,36 @@ func TestConcurrentLyricsProvidersReturnFastFallback(t *testing.T) {
 	}
 }
 
+func TestResolveLyricsProviderOrderOnlyIncludesSelectedAvailableExtensions(t *testing.T) {
+	availableExtensions := map[string]*extensionProviderWrapper{
+		"extension:apple-music":     nil,
+		"extension:future-provider": nil,
+	}
+	providers := resolveLyricsProviderOrder(
+		[]string{
+			LyricsProviderLRCLIB,
+			"extension:future-provider",
+			"extension:not-installed",
+			LyricsProviderNetease,
+		},
+		availableExtensions,
+	)
+
+	want := []string{
+		LyricsProviderLRCLIB,
+		"extension:future-provider",
+		LyricsProviderNetease,
+	}
+	if !equalLyricsProviderOrders(providers, want) {
+		t.Fatalf("providers = %#v, want %#v", providers, want)
+	}
+}
+
 func TestConcurrentLyricsProvidersPreferEarlierProviderWithinGrace(t *testing.T) {
 	clearLyricsProviderHealth()
 	defer clearLyricsProviderHealth()
 
-	lyrics, err := fetchBuiltInLyricsProviders(
+	lyrics, err := fetchLyricsProviders(
 		[]string{LyricsProviderLRCLIB, LyricsProviderAppleMusic},
 		lyricsProviderSearchRequest{},
 		func(providerName string, _ lyricsProviderSearchRequest) (*LyricsResponse, error, bool) {

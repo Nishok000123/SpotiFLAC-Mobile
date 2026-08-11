@@ -118,11 +118,15 @@ var (
 
 func SetLyricsProviderOrder(providers []string) {
 	lyricsProvidersMu.Lock()
-	defer lyricsProvidersMu.Unlock()
 
 	if len(providers) == 0 {
+		changed := len(lyricsProviders) != 0
 		lyricsProviders = nil
+		lyricsProvidersMu.Unlock()
 		clearLyricsProviderHealth()
+		if changed {
+			globalLyricsCache.ClearAll()
+		}
 		return
 	}
 
@@ -140,17 +144,42 @@ func SetLyricsProviderOrder(providers []string) {
 		LyricsProviderLyricsPlus: true,
 	}
 
-	var valid []string
+	valid := make([]string, 0, len(providers))
+	seen := make(map[string]struct{}, len(providers))
 	for _, p := range providers {
 		normalized := strings.ToLower(strings.TrimSpace(p))
-		if validNames[normalized] {
-			valid = append(valid, normalized)
+		isExtension := strings.HasPrefix(normalized, "extension:") &&
+			strings.TrimSpace(strings.TrimPrefix(normalized, "extension:")) != ""
+		if !validNames[normalized] && !isExtension {
+			continue
 		}
+		if _, exists := seen[normalized]; exists {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		valid = append(valid, normalized)
 	}
 
+	changed := !equalLyricsProviderOrders(lyricsProviders, valid)
 	lyricsProviders = valid
+	lyricsProvidersMu.Unlock()
 	clearLyricsProviderHealth()
+	if changed {
+		globalLyricsCache.ClearAll()
+	}
 	GoLog("[Lyrics] Provider order set to: %v\n", valid)
+}
+
+func equalLyricsProviderOrders(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func clearLyricsProviderHealth() {
@@ -242,7 +271,9 @@ func GetLyricsProviderOrder() []string {
 	defer lyricsProvidersMu.RUnlock()
 
 	if len(lyricsProviders) == 0 {
-		return DefaultLyricsProviders
+		result := make([]string, len(DefaultLyricsProviders))
+		copy(result, DefaultLyricsProviders)
+		return result
 	}
 
 	result := make([]string, len(lyricsProviders))

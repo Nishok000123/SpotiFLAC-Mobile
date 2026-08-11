@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/screens/settings/lyrics_provider_priority_page.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
@@ -12,6 +13,10 @@ class LyricsSettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
+    final extensionProviderNames = <String, String>{
+      for (final extension in ref.watch(extensionProvider).extensions)
+        'extension:${extension.id.toLowerCase()}': extension.displayName,
+    };
 
     return PopScope(
       canPop: true,
@@ -59,6 +64,7 @@ class LyricsSettingsPage extends ConsumerWidget {
                       subtitle: _getLyricsProvidersSubtitle(
                         context,
                         settings.lyricsProviders,
+                        extensionProviderNames,
                       ),
                       onTap: () => Navigator.push(
                         context,
@@ -187,9 +193,19 @@ class LyricsSettingsPage extends ConsumerWidget {
   String _getLyricsProvidersSubtitle(
     BuildContext context,
     List<String> providers,
+    Map<String, String> extensionProviderNames,
   ) {
     if (providers.isEmpty) return context.l10n.downloadProvidersNoneEnabled;
-    return providers.map((p) => _providerDisplayNames[p] ?? p).join(' > ');
+    return providers
+        .map(
+          (provider) =>
+              _providerDisplayNames[provider] ??
+              extensionProviderNames[provider] ??
+              (provider.startsWith('extension:')
+                  ? provider.substring('extension:'.length)
+                  : provider),
+        )
+        .join(' > ');
   }
 
   void _showLyricsModePicker(
