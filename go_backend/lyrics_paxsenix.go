@@ -151,7 +151,7 @@ func parsePaxsenixLyricsPayload(raw, provider string, multiPersonWordByWord bool
 	if err := json.Unmarshal([]byte(raw), &lrcPayload); err == nil {
 		lrcPayload = strings.TrimSpace(lrcPayload)
 		if lrcPayload == "" {
-			return nil, fmt.Errorf("%s returned empty lyrics", provider)
+			return nil, lyricsServiceUnavailableErrorf("%s returned empty lyrics", provider)
 		}
 		return lyricsResponseFromText(lrcPayload, provider), nil
 	}
@@ -191,7 +191,13 @@ func parsePaxsenixLyricsPayload(raw, provider string, multiPersonWordByWord bool
 	if trimmed != "" && !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
 		return lyricsResponseFromText(trimmed, provider), nil
 	}
-	return nil, fmt.Errorf("failed to decode %s lyrics response", provider)
+	if json.Valid([]byte(trimmed)) {
+		return nil, lyricsServiceUnavailableErrorf(
+			"%s returned a response without usable lyrics",
+			provider,
+		)
+	}
+	return nil, lyricsServiceUnavailableErrorf("failed to decode %s lyrics response", provider)
 }
 
 // lyricsResponseFromLRCText parses LRC-or-plain text into a response, or nil
@@ -541,6 +547,10 @@ func (c *GeniusLyricsClient) FetchLyrics(trackName, artistName string, durationS
 
 	params := url.Values{}
 	params.Set("url", geniusURL)
+	// The legacy v1 contract can report success with an empty lyrics string.
+	// v2 keeps the same string payload shape while using the maintained
+	// normalized Genius extractor.
+	params.Set("v", "2")
 	raw, err := fetchPaxsenixBody(c.httpClient, "https://lyrics.paxsenix.org/genius/lyrics", params)
 	if err != nil {
 		return nil, fmt.Errorf("genius lyrics fetch failed: %w", err)

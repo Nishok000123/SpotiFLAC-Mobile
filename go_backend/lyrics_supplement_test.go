@@ -165,6 +165,23 @@ func TestLyricsCacheParsingAndLRCLibClient(t *testing.T) {
 	}
 }
 
+func TestPaxsenixEmptyLyricsPayloadMarksProviderUnavailable(t *testing.T) {
+	lyrics, err := parsePaxsenixLyricsPayload(
+		`{"error":false,"lyrics":""}`,
+		"Genius",
+		false,
+	)
+	if lyrics != nil || err == nil {
+		t.Fatalf("empty PAX Senix payload = %#v/%v", lyrics, err)
+	}
+	if !isLyricsProviderUnavailableError(err) {
+		t.Fatalf("empty PAX Senix payload was not marked unavailable: %v", err)
+	}
+	if strings.Contains(strings.ToLower(err.Error()), "decode") {
+		t.Fatalf("empty JSON payload was misreported as a decode failure: %v", err)
+	}
+}
+
 func TestLyricsProviderHealthSkipsUnavailableProvider(t *testing.T) {
 	SetLyricsProviderOrder([]string{LyricsProviderLRCLIB})
 	defer SetLyricsProviderOrder(nil)
@@ -493,6 +510,9 @@ func TestExternalLyricsProvidersWithFakeHTTP(t *testing.T) {
 			}
 			return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"response":{"sections":[{"hits":[{"type":"song","result":{"title":"Song","primary_artist_names":"Artist","url":"https://genius.com/artist-song-lyrics"}}]}]}}`)), Request: req}, nil
 		case strings.Contains(req.URL.Path, "/genius/lyrics"):
+			if got := req.URL.Query().Get("v"); got != "2" {
+				t.Fatalf("genius API version = %q", got)
+			}
 			return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"error":false,"lyrics":"Genius line"}`)), Request: req}, nil
 		default:
 			return &http.Response{StatusCode: 404, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{}`)), Request: req}, nil
