@@ -863,6 +863,7 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
     if (itemSnapshots.isEmpty) {
       return;
     }
+    final workerRunning = snapshot['is_running'] == true;
 
     for (final itemSnapshot in itemSnapshots) {
       final itemId = itemSnapshot['item_id']?.toString() ?? '';
@@ -872,7 +873,10 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
       final context = contexts[itemId];
       if (context == null) continue;
 
-      final status = itemSnapshot['status']?.toString() ?? 'queued';
+      final status = nativeWorkerStatusAfterSnapshotStop(
+        workerRunning: workerRunning,
+        status: itemSnapshot['status']?.toString() ?? 'queued',
+      );
       final progress = ((itemSnapshot['progress'] as num?)?.toDouble() ?? 0.0)
           .clamp(0.0, 1.0)
           .toDouble();

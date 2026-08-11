@@ -75,6 +75,17 @@ bool canStartForegroundDownloadForLifecycle(AppLifecycleState? lifecycleState) {
   return lifecycleState == AppLifecycleState.resumed;
 }
 
+String nativeWorkerStatusAfterSnapshotStop({
+  required bool workerRunning,
+  required String status,
+}) {
+  if (workerRunning) return status;
+  return switch (status) {
+    'preparing' || 'downloading' || 'finalizing' => 'queued',
+    _ => status,
+  };
+}
+
 /// Keeps a download in its finalizing state until its durable Library record
 /// has been written. If persistence fails, completion is deliberately not
 /// published so the queue can surface the error instead of losing the file

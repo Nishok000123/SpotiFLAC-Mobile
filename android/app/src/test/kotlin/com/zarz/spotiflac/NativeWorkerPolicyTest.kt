@@ -149,4 +149,15 @@ class NativeWorkerPolicyTest {
             ),
         )
     }
+
+    @Test
+    fun stoppedWorkerRequeuesOnlyInFlightItems() {
+        listOf("preparing", "downloading", "finalizing").forEach { status ->
+            assertEquals("queued", NativeWorkerPolicy.statusAfterWorkerStop(status))
+        }
+        assertEquals("queued", NativeWorkerPolicy.statusAfterWorkerStop("queued"))
+        assertEquals("completed", NativeWorkerPolicy.statusAfterWorkerStop("completed"))
+        assertEquals("failed", NativeWorkerPolicy.statusAfterWorkerStop("failed"))
+        assertEquals("skipped", NativeWorkerPolicy.statusAfterWorkerStop("skipped"))
+    }
 }

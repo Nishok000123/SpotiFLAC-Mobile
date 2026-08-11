@@ -51,4 +51,42 @@ void main() {
       );
     });
   });
+
+  group('native worker stop recovery', () {
+    test('requeues every in-flight snapshot state after the worker stops', () {
+      for (final status in const ['preparing', 'downloading', 'finalizing']) {
+        expect(
+          nativeWorkerStatusAfterSnapshotStop(
+            workerRunning: false,
+            status: status,
+          ),
+          'queued',
+        );
+      }
+    });
+
+    test('preserves terminal states and live worker progress', () {
+      expect(
+        nativeWorkerStatusAfterSnapshotStop(
+          workerRunning: false,
+          status: 'completed',
+        ),
+        'completed',
+      );
+      expect(
+        nativeWorkerStatusAfterSnapshotStop(
+          workerRunning: false,
+          status: 'failed',
+        ),
+        'failed',
+      );
+      expect(
+        nativeWorkerStatusAfterSnapshotStop(
+          workerRunning: true,
+          status: 'downloading',
+        ),
+        'downloading',
+      );
+    });
+  });
 }

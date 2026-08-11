@@ -467,8 +467,58 @@ class DownloadService : Service() {
      */
     override fun onTimeout(startId: Int, fgsType: Int) {
         android.util.Log.w("DownloadService", "Foreground service timeout reached (6 hours limit). Stopping service.")
-        
-        stopForegroundService()
+
+        stopNativeWorkerForSystemTimeout()
+    }
+
+    private fun stopNativeWorkerForSystemTimeout() {
+        if (!hasNativeWorkerState()) {
+            stopForegroundService()
+            return
+        }
+        nativeWorkerCancelRequested = true
+        // Supersede the coroutine before cancelling it. Its catch/finally
+        // blocks must not publish a skipped/finished state over the recovery
+        // snapshot written below.
+        nativeWorkerGeneration++
+        val activeItemIds = synchronized(nativeWorkerItems) {
+            nativeWorkerItems
+                .filter { NativeWorkerPolicy.statusAfterWorkerStop(it.status) != it.status }
+                .map { it.itemId }
+        }
+        for (itemId in activeItemIds) {
+            try {
+                Gobackend.cancelDownload(itemId)
+            } catch (_: Exception) {
+            }
+        }
+        NativeDownloadFinalizer.cancelActiveWork()
+        nativeWorkerJob?.cancel(
+            CancellationException("Native queue stopped by Android timeout")
+        )
+        synchronized(nativeWorkerItems) {
+            for (item in nativeWorkerItems) {
+                val recoveredStatus = NativeWorkerPolicy.statusAfterWorkerStop(item.status)
+                if (recoveredStatus == item.status) continue
+                item.status = recoveredStatus
+                item.progress = 0.0
+                item.bytesReceived = 0L
+                item.bytesTotal = 0L
+                item.error = ""
+                item.resultJson = null
+            }
+        }
+        nativeWorkerCurrentItemId = ""
+        writeNativeWorkerSnapshot(
+            isRunning = false,
+            isPaused = false,
+            currentItemId = "",
+            message = "Android background time limit reached",
+            includeItems = true,
+        )
+        // Cancellation and the final recovery snapshot were handled above.
+        // Only tear down the foreground-service resources here.
+        stopForegroundService(cancelNativeWorker = false)
     }
     
     private fun createNotificationChannel() {
@@ -981,7 +1031,9 @@ class DownloadService : Service() {
                         )
                     }
                 } catch (e: CancellationException) {
-                    if (nativeWorkerCancelRequested) {
+                    if (nativeWorkerCancelRequested &&
+                        generation == nativeWorkerGeneration
+                    ) {
                         updateNativeWorkerItem(request.itemId) {
                             it.status = "skipped"
                             it.error = "Cancelled"
