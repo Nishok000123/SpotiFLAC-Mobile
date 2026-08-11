@@ -101,6 +101,10 @@ class LogEntry {
   }
 }
 
+String formatLogEntries(Iterable<LogEntry> entries) {
+  return entries.map((entry) => entry.toString()).join('\n');
+}
+
 class LogBuffer extends ChangeNotifier {
   static final LogBuffer _instance = LogBuffer._internal();
   factory LogBuffer() => _instance;

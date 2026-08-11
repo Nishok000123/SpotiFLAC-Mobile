@@ -24,6 +24,8 @@ class _LogScreenState extends State<LogScreen> {
   String _selectedLevel = 'ALL';
   String _searchQuery = '';
   bool _autoScroll = true;
+  bool _selectionMode = false;
+  final Set<LogEntry> _selectedEntries = <LogEntry>{};
 
   final List<String> _levels = ['ALL', 'DEBUG', 'INFO', 'WARN', 'ERROR'];
 
@@ -45,6 +47,13 @@ class _LogScreenState extends State<LogScreen> {
 
   void _onLogUpdate() {
     if (mounted) {
+      if (_selectionMode) {
+        final currentEntries = LogBuffer().entries.toSet();
+        _selectedEntries.removeWhere(
+          (entry) => !currentEntries.contains(entry),
+        );
+        if (_selectedEntries.isEmpty) _selectionMode = false;
+      }
       setState(() {});
       if (_autoScroll && _scrollController.hasClients) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -84,6 +93,65 @@ class _LogScreenState extends State<LogScreen> {
     }
   }
 
+  void _enterSelectionMode(LogEntry entry) {
+    setState(() {
+      _selectionMode = true;
+      _autoScroll = false;
+      _selectedEntries.add(entry);
+    });
+  }
+
+  void _toggleEntrySelection(LogEntry entry) {
+    if (!_selectionMode) return;
+    setState(() {
+      if (!_selectedEntries.add(entry)) {
+        _selectedEntries.remove(entry);
+      }
+      if (_selectedEntries.isEmpty) _selectionMode = false;
+    });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _selectionMode = false;
+      _selectedEntries.clear();
+    });
+  }
+
+  void _toggleSelectAllVisible() {
+    final visibleLogs = _filteredLogs;
+    final allVisibleSelected =
+        visibleLogs.isNotEmpty && visibleLogs.every(_selectedEntries.contains);
+    setState(() {
+      if (allVisibleSelected) {
+        _selectedEntries.removeAll(visibleLogs);
+      } else {
+        _selectedEntries.addAll(visibleLogs);
+      }
+      _selectionMode = _selectedEntries.isNotEmpty;
+    });
+  }
+
+  Future<void> _copySelectedLogs() async {
+    final selectedInLogOrder = LogBuffer().entries
+        .where(_selectedEntries.contains)
+        .toList(growable: false);
+    if (selectedInLogOrder.isEmpty) return;
+    await Clipboard.setData(
+      ClipboardData(text: formatLogEntries(selectedInLogOrder)),
+    );
+    if (!mounted) return;
+    _exitSelectionMode();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.l10n.logCopied),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   void _shareLogs() async {
     final logs = await LogBuffer().exportWithDeviceInfo();
     SharePlus.instance.share(
@@ -104,6 +172,8 @@ class _LogScreenState extends State<LogScreen> {
           ),
           FilledButton(
             onPressed: () {
+              _selectionMode = false;
+              _selectedEntries.clear();
               LogBuffer().clear();
               Navigator.pop(context);
             },
@@ -135,63 +205,104 @@ class _LogScreenState extends State<LogScreen> {
     final logs = _filteredLogs;
 
     return PopScope(
-      canPop: true,
+      canPop: !_selectionMode,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _selectionMode) _exitSelectionMode();
+      },
       child: Scaffold(
         body: CustomScrollView(
           controller: _scrollController,
           slivers: [
             AppSliverHeader.page(
-              title: context.l10n.logTitle,
-              actions: [
-                IconButton(
-                  icon: Icon(
-                    _autoScroll
-                        ? Icons.vertical_align_bottom
-                        : Icons.vertical_align_center,
-                  ),
-                  tooltip: _autoScroll
-                      ? context.l10n.logAutoScrollOn
-                      : context.l10n.logAutoScrollOff,
-                  onPressed: () => setState(() => _autoScroll = !_autoScroll),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.copy),
-                  tooltip: context.l10n.logCopyLogs,
-                  onPressed: _copyLogs,
-                ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert),
-                  tooltip: MaterialLocalizations.of(context).showMenuTooltip,
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'share':
-                        _shareLogs();
-                        break;
-                      case 'clear':
-                        _clearLogs();
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'share',
-                      child: ListTile(
-                        leading: const Icon(Icons.share),
-                        title: Text(context.l10n.logShareLogs),
-                        contentPadding: EdgeInsets.zero,
+              title: _selectionMode
+                  ? context.l10n.selectionSelected(_selectedEntries.length)
+                  : context.l10n.logTitle,
+              leading: _selectionMode
+                  ? IconButton(
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).closeButtonTooltip,
+                      icon: const Icon(Icons.close),
+                      onPressed: _exitSelectionMode,
+                    )
+                  : null,
+              actions: _selectionMode
+                  ? [
+                      IconButton(
+                        icon: Icon(
+                          logs.isNotEmpty &&
+                                  logs.every(_selectedEntries.contains)
+                              ? Icons.deselect
+                              : Icons.select_all,
+                        ),
+                        tooltip:
+                            logs.isNotEmpty &&
+                                logs.every(_selectedEntries.contains)
+                            ? context.l10n.actionDeselect
+                            : context.l10n.actionSelectAll,
+                        onPressed: _toggleSelectAllVisible,
                       ),
-                    ),
-                    PopupMenuItem(
-                      value: 'clear',
-                      child: ListTile(
-                        leading: const Icon(Icons.delete_outline),
-                        title: Text(context.l10n.logClearLogs),
-                        contentPadding: EdgeInsets.zero,
+                      IconButton(
+                        icon: const Icon(Icons.copy),
+                        tooltip: context.l10n.logCopyLogs,
+                        onPressed: _selectedEntries.isEmpty
+                            ? null
+                            : _copySelectedLogs,
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ]
+                  : [
+                      IconButton(
+                        icon: Icon(
+                          _autoScroll
+                              ? Icons.vertical_align_bottom
+                              : Icons.vertical_align_center,
+                        ),
+                        tooltip: _autoScroll
+                            ? context.l10n.logAutoScrollOn
+                            : context.l10n.logAutoScrollOff,
+                        onPressed: () =>
+                            setState(() => _autoScroll = !_autoScroll),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy),
+                        tooltip: context.l10n.logCopyLogs,
+                        onPressed: _copyLogs,
+                      ),
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert),
+                        tooltip: MaterialLocalizations.of(
+                          context,
+                        ).showMenuTooltip,
+                        onSelected: (value) {
+                          switch (value) {
+                            case 'share':
+                              _shareLogs();
+                              break;
+                            case 'clear':
+                              _clearLogs();
+                              break;
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'share',
+                            child: ListTile(
+                              leading: const Icon(Icons.share),
+                              title: Text(context.l10n.logShareLogs),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'clear',
+                            child: ListTile(
+                              leading: const Icon(Icons.delete_outline),
+                              title: Text(context.l10n.logClearLogs),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
             ),
 
             SliverToBoxAdapter(
@@ -374,6 +485,10 @@ class _LogScreenState extends State<LogScreen> {
                             entry: log,
                             levelColor: _getLevelColor(log.level, colorScheme),
                             showDivider: index < logs.length - 1,
+                            selectionMode: _selectionMode,
+                            selected: _selectedEntries.contains(log),
+                            onTap: () => _toggleEntrySelection(log),
+                            onLongPress: () => _enterSelectionMode(log),
                           );
                         }),
                       ],
@@ -392,11 +507,19 @@ class _LogEntryTile extends StatelessWidget {
   final LogEntry entry;
   final Color levelColor;
   final bool showDivider;
+  final bool selectionMode;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
 
   const _LogEntryTile({
     required this.entry,
     required this.levelColor,
     this.showDivider = true,
+    required this.selectionMode,
+    required this.selected,
+    required this.onTap,
+    required this.onLongPress,
   });
 
   @override
@@ -407,104 +530,129 @@ class _LogEntryTile extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: BoxDecoration(
-            color: isError
-                ? colorScheme.errorContainer.withValues(alpha: 0.2)
-                : null,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        Semantics(
+          container: true,
+          selected: selected,
+          onTap: selectionMode ? onTap : null,
+          onLongPress: onLongPress,
+          child: InkWell(
+            excludeFromSemantics: true,
+            onTap: selectionMode ? onTap : null,
+            onLongPress: onLongPress,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: selected
+                    ? colorScheme.primaryContainer.withValues(alpha: 0.5)
+                    : isError
+                    ? colorScheme.errorContainer.withValues(alpha: 0.2)
+                    : null,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    entry.formattedTime,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontFamily: 'monospace',
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: levelColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      entry.level,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: levelColor,
-                      ),
-                    ),
-                  ),
-                  if (entry.isFromGo) ...[
-                    const SizedBox(width: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.teal.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        context.l10n.actionGo,
-                        style: const TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.teal,
+                  Row(
+                    children: [
+                      Text(
+                        entry.formattedTime,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontFamily: 'monospace',
+                          color: colorScheme.onSurfaceVariant,
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: levelColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          entry.level,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: levelColor,
+                          ),
+                        ),
+                      ),
+                      if (entry.isFromGo) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.teal.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            context.l10n.actionGo,
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.teal,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          entry.tag,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.primary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (selectionMode) ...[
+                        const SizedBox(width: 8),
+                        Icon(
+                          selected
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
+                          size: 20,
+                          color: selected
+                              ? colorScheme.primary
+                              : colorScheme.onSurfaceVariant,
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    entry.previewMessage,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontFamily: 'monospace',
+                      color: colorScheme.onSurface,
+                      height: 1.4,
+                    ),
+                  ),
+                  if (entry.previewError != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      entry.previewError!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                        color: colorScheme.error,
+                        height: 1.3,
                       ),
                     ),
                   ],
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      entry.tag,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.primary,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
                 ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                entry.previewMessage,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontFamily: 'monospace',
-                  color: colorScheme.onSurface,
-                  height: 1.4,
-                ),
-              ),
-              if (entry.previewError != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  entry.previewError!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontFamily: 'monospace',
-                    color: colorScheme.error,
-                    height: 1.3,
-                  ),
-                ),
-              ],
-            ],
+            ),
           ),
         ),
         if (showDivider)
