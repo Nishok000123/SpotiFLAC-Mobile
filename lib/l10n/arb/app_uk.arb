@@ -1,7 +1,7 @@
 {
   "@@locale": "uk",
   "@@last_modified": "2026-04-28",
-  "appName": "SpotiFLAC Mobile",
+  "appName": "",
   "@appName": {
     "description": "App name - DO NOT TRANSLATE"
   },
@@ -29,7 +29,7 @@
   "@homeSubtitle": {
     "description": "Subtitle shown below search box"
   },
-  "homeEmptyTitle": "No search providers yet",
+  "homeEmptyTitle": "",
   "@homeEmptyTitle": {
     "description": "Title shown on home when no providers are available yet"
   },
