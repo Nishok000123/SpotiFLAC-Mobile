@@ -11,6 +11,8 @@ type DownloadRequest struct {
 	ContractVersion             int    `json:"contract_version,omitempty"`
 	ISRC                        string `json:"isrc"`
 	Service                     string `json:"service"`
+	DownloadProvider            string `json:"download_provider,omitempty"`
+	ProviderTrackID             string `json:"provider_track_id,omitempty"`
 	SpotifyID                   string `json:"spotify_id"`
 	TrackName                   string `json:"track_name"`
 	ArtistName                  string `json:"artist_name"`
@@ -59,6 +61,8 @@ type DownloadResponse struct {
 	Success                     bool                    `json:"success"`
 	Message                     string                  `json:"message"`
 	FilePath                    string                  `json:"file_path,omitempty"`
+	ResolvedFileName            string                  `json:"resolved_file_name,omitempty"`
+	ProviderTrackID             string                  `json:"provider_track_id,omitempty"`
 	Error                       string                  `json:"error,omitempty"`
 	ErrorType                   string                  `json:"error_type,omitempty"`
 	RetryAfterSeconds           int                     `json:"retry_after_seconds,omitempty"`
@@ -181,6 +185,8 @@ func buildDownloadSuccessResponse(
 		Success:                     true,
 		Message:                     message,
 		FilePath:                    filePath,
+		ResolvedFileName:            resolvedDownloadFilename(req, result, filePath),
+		ProviderTrackID:             req.ProviderTrackID,
 		AlreadyExists:               alreadyExists,
 		ActualBitDepth:              result.BitDepth,
 		ActualSampleRate:            result.SampleRate,

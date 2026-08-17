@@ -340,6 +340,8 @@ extension _DownloadQueuePaths on DownloadQueueNotifier {
       filenameFormat,
       _filenameMetadataForTrack(
         track,
+        provider: item.service,
+        providerTrackId: _knownProviderTrackId(track, item.service),
         quality: quality,
         qualityVariant: qualityVariant,
         playlistPosition: _validPlaylistPosition(item),
@@ -717,6 +719,8 @@ extension _DownloadQueuePaths on DownloadQueueNotifier {
 
   Map<String, dynamic> _filenameMetadataForTrack(
     Track track, {
+    required String provider,
+    required String providerTrackId,
     required String quality,
     String qualityVariant = '',
     int playlistPosition = 0,
@@ -729,10 +733,34 @@ extension _DownloadQueuePaths on DownloadQueueNotifier {
       'disc': track.discNumber ?? 0,
       'year': _extractYear(track.releaseDate) ?? '',
       'date': track.releaseDate ?? '',
+      'isrc': track.isrc ?? '',
+      'provider': provider,
+      'provider_id': providerTrackId,
       'playlist_position': playlistPosition,
       'playlistPosition': playlistPosition,
       'quality': quality,
       'quality_variant': qualityVariant,
     };
+  }
+
+  String _knownProviderTrackId(Track track, String provider) {
+    final normalizedProvider = provider.trim().toLowerCase();
+    final normalizedSource = track.source?.trim().toLowerCase() ?? '';
+    final rawId = track.id.trim();
+    if (rawId.isEmpty) return '';
+
+    if (normalizedSource == normalizedProvider && normalizedSource.isNotEmpty) {
+      final separator = rawId.indexOf(':');
+      return separator >= 0 && separator + 1 < rawId.length
+          ? rawId.substring(separator + 1)
+          : rawId;
+    }
+
+    final separator = rawId.indexOf(':');
+    if (separator > 0 &&
+        rawId.substring(0, separator).toLowerCase() == normalizedProvider) {
+      return rawId.substring(separator + 1);
+    }
+    return '';
   }
 }

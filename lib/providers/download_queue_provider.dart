@@ -690,6 +690,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     return DownloadRequestPayload(
       isrc: track.isrc ?? '',
       service: item.service,
+      downloadProvider: item.service,
+      providerTrackId: _knownProviderTrackId(track, item.service),
       spotifyId: payloadSpotifyId,
       trackName: track.name,
       artistName: track.artistName,

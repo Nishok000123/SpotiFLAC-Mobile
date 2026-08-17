@@ -821,6 +821,8 @@ void main() {
       const payload = DownloadRequestPayload(
         isrc: 'ISRC123',
         service: 'tidal',
+        downloadProvider: 'tidal-web',
+        providerTrackId: '123456789',
         spotifyId: 'spotify:track:1',
         trackName: 'Song',
         artistName: 'Artist',
@@ -875,6 +877,8 @@ void main() {
         'contract_version': DownloadRequestPayload.nativeWorkerContractVersion,
         'isrc': 'ISRC123',
         'service': 'tidal',
+        'download_provider': 'tidal-web',
+        'provider_track_id': '123456789',
         'spotify_id': 'spotify:track:1',
         'track_name': 'Song',
         'artist_name': 'Artist',
@@ -946,6 +950,8 @@ void main() {
       expect(updated.useFallback, isTrue);
       expect(updated.trackName, payload.trackName);
       expect(updated.filenameFormat, payload.filenameFormat);
+      expect(updated.downloadProvider, payload.downloadProvider);
+      expect(updated.providerTrackId, payload.providerTrackId);
       expect(updated.allowQualityVariant, payload.allowQualityVariant);
       expect(updated.qualityVariant, payload.qualityVariant);
       expect(updated.autoConvertDownloads, payload.autoConvertDownloads);

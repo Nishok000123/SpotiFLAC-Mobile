@@ -243,6 +243,7 @@ internal fun NativeDownloadFinalizer.buildOutputPath(inputPath: String, extensio
 internal fun NativeDownloadFinalizer.desiredFileName(input: NativeDownloadFinalizer.FinalizeInput, state: NativeDownloadFinalizer.FinalizeState, extension: String): String {
     val ext = normalizeExt(extension).ifBlank { normalizeExt(File(state.fileName).extension).ifBlank { ".flac" } }
     val rawName = input.result.optString("quality_variant_file_name", "")
+        .ifBlank { input.result.optString("resolved_file_name", "") }
         .ifBlank { input.request.optString("saf_file_name", "") }
         .ifBlank { state.fileName }
         .ifBlank { "${trackString(input, "artistName", input.request.optString("artist_name", "Artist"))} - ${trackString(input, "name", input.request.optString("track_name", "Track"))}" }

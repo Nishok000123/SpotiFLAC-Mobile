@@ -134,6 +134,38 @@ func TestBuildDownloadSuccessResponsePrefersProviderCoverURL(t *testing.T) {
 	}
 }
 
+func TestBuildDownloadSuccessResponseReturnsResolvedProviderFilename(t *testing.T) {
+	req := DownloadRequest{
+		TrackName:        "Track",
+		ArtistName:       "Artist",
+		DownloadProvider: "soundcloud",
+		ProviderTrackID:  "998877",
+		FilenameFormat:   "{artist} - {title} [{isrc}] [{provider}-{provider_id}]",
+		OutputExt:        ".flac",
+	}
+	result := DownloadResult{
+		ISRC:            "USABC1234567",
+		ActualExtension: ".m4a",
+	}
+
+	resp := buildDownloadSuccessResponse(
+		req,
+		result,
+		"soundcloud",
+		"ok",
+		"/proc/self/fd/10",
+		false,
+	)
+
+	want := "Artist - Track [USABC1234567] [soundcloud-998877].m4a"
+	if resp.ResolvedFileName != want {
+		t.Fatalf("resolved filename = %q, want %q", resp.ResolvedFileName, want)
+	}
+	if resp.ProviderTrackID != req.ProviderTrackID {
+		t.Fatalf("provider track ID = %q, want %q", resp.ProviderTrackID, req.ProviderTrackID)
+	}
+}
+
 func TestBuildDownloadSuccessResponseNormalizesDecryptionDescriptor(t *testing.T) {
 	req := DownloadRequest{
 		TrackName:  "Track",

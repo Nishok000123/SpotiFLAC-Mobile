@@ -16,6 +16,9 @@ var (
 	formattedNumberPlaceholderExpr = regexp.MustCompile(`\{(track|disc|playlist_position|playlistPosition|position):([0-9]+)\}`)
 	dateFormatPlaceholderExpr      = regexp.MustCompile(`\{date:([^{}]+)\}`)
 	yearPattern                    = regexp.MustCompile(`\d{4}`)
+	emptyFilenameGroupExpr         = regexp.MustCompile(`\[\s*\]|\(\s*\)`)
+	danglingGroupSeparatorExpr     = regexp.MustCompile(`\s*[-_|]\s*([\]\)])`)
+	repeatedFilenameSeparatorExpr  = regexp.MustCompile(`\s*[-–—_|]\s*(?:[-–—_|]\s*)+`)
 )
 
 const maxSanitizedFilenameBytes = 200
@@ -135,13 +138,42 @@ func buildFilenameFromTemplate(template string, metadata map[string]any) string 
 		"{disc_raw}":              formatRawNumber(getInt(metadata, "disc")),
 		"{quality}":               getString(metadata, "quality"),
 		"{quality_variant}":       getString(metadata, "quality_variant"),
+		"{isrc}":                  getString(metadata, "isrc"),
+		"{provider}":              getString(metadata, "provider"),
+		"{platform}":              getString(metadata, "provider"),
+		"{provider_id}":           getString(metadata, "provider_id"),
+		"{id}":                    getString(metadata, "provider_id"),
 	}
 
+	hasEmptyOptionalPlaceholder := false
 	for placeholder, value := range placeholders {
+		if value == "" && isOptionalFilenamePlaceholder(placeholder) && strings.Contains(result, placeholder) {
+			hasEmptyOptionalPlaceholder = true
+		}
 		result = strings.ReplaceAll(result, placeholder, value)
+	}
+	if hasEmptyOptionalPlaceholder {
+		result = cleanupEmptyFilenameDecorations(result)
 	}
 
 	return result
+}
+
+func isOptionalFilenamePlaceholder(placeholder string) bool {
+	switch placeholder {
+	case "{isrc}", "{provider}", "{platform}", "{provider_id}", "{id}":
+		return true
+	default:
+		return false
+	}
+}
+
+func cleanupEmptyFilenameDecorations(value string) string {
+	cleaned := emptyFilenameGroupExpr.ReplaceAllString(value, "")
+	cleaned = danglingGroupSeparatorExpr.ReplaceAllString(cleaned, "$1")
+	cleaned = repeatedFilenameSeparatorExpr.ReplaceAllString(cleaned, " - ")
+	cleaned = strings.Join(strings.Fields(cleaned), " ")
+	return strings.Trim(cleaned, " -–—_|")
 }
 
 func replaceFormattedNumberPlaceholders(template string, metadata map[string]any) string {

@@ -938,6 +938,9 @@ class _FilenameFormatEditorSheetState
     '{playlist_position}',
   ];
   static const _advancedTags = [
+    '{isrc}',
+    '{provider}',
+    '{provider_id}',
     '{track_raw}',
     '{track:02}',
     '{track:1}',
@@ -957,7 +960,7 @@ class _FilenameFormatEditorSheetState
     super.initState();
     _controller = TextEditingController(text: widget.initialText);
     _showAdvancedTags = RegExp(
-      r'\{(?:track_raw|disc_raw|track:\d+|disc:\d+|date:[^}]+)\}',
+      r'\{(?:isrc|provider|platform|provider_id|id|track_raw|disc_raw|track:\d+|disc:\d+|date:[^}]+)\}',
       caseSensitive: false,
     ).hasMatch(widget.initialText);
   }

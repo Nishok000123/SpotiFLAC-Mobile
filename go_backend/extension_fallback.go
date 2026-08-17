@@ -25,6 +25,8 @@ func attemptExtensionDownload(
 	lastErrType *string,
 	lastRetryAfterSeconds *int,
 ) (resp *DownloadResponse, cancelledOuter bool) {
+	req.DownloadProvider = strings.TrimSpace(providerLabel)
+	req.ProviderTrackID = strings.TrimSpace(trackID)
 	outputPath := buildOutputPathForExtension(req, ext)
 	if shouldReuseExistingOutput(req, outputPath) {
 		result := DownloadResult{FilePath: outputPath}

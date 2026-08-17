@@ -126,15 +126,18 @@ object SafDownloadHandler {
                 val response = downloader(req.toString())
                 val respObj = JSONObject(response)
                 if (respObj.optBoolean("success", false)) {
+                    val resolvedFileName = respObj.optString("resolved_file_name", "")
+                        .trim()
+                        .let { if (it.isNotEmpty()) forceFilenameExt(it, outputExt) else fileName }
                     val reportedPath = respObj.optString("file_path", "").trim()
                     if (reportedPath.isEmpty() || reportedPath.startsWith("/proc/self/fd/")) {
                         respObj.put("file_path", workingFile.absolutePath)
                     } else if (reportedPath != workingFile.absolutePath) {
                         workingFile.delete()
                     }
-                    respObj.put("file_name", respObj.optString("file_name", "").ifBlank { fileName })
+                    respObj.put("file_name", resolvedFileName)
                     respObj.put("saf_deferred_publish", true)
-                    respObj.put("saf_final_file_name", fileName)
+                    respObj.put("saf_final_file_name", resolvedFileName)
                     respObj.put("saf_relative_dir", relativeDir)
                     respObj.put("saf_tree_uri", treeUriStr)
                     respObj.put("saf_output_ext", outputExt)
@@ -169,7 +172,12 @@ object SafDownloadHandler {
             val response = downloader(req.toString())
             val respObj = JSONObject(response)
             if (respObj.optBoolean("success", false)) {
-                var finalFileName = fileName
+                val resolvedFileName = respObj.optString("resolved_file_name", "").trim()
+                var finalFileName = if (resolvedFileName.isNotEmpty()) {
+                    forceFilenameExt(resolvedFileName, outputExt)
+                } else {
+                    fileName
+                }
                 val goFilePath = respObj.optString("file_path", "")
                 if (goFilePath.isNotEmpty() &&
                     !goFilePath.startsWith("content://") &&
@@ -185,7 +193,11 @@ object SafDownloadHandler {
                             respObj.put("actual_extension", actualExt)
                         }
                         if (actualExt.isNotBlank() && actualExt != outputExt) {
-                            val actualFileName = buildSafFileName(req, actualExt)
+                            val actualFileName = if (resolvedFileName.isNotEmpty()) {
+                                forceFilenameExt(resolvedFileName, actualExt)
+                            } else {
+                                buildSafFileName(req, actualExt)
+                            }
                             val actualStagedFileName = if (useStagedOutput) {
                                 buildStagedSafFileName(actualFileName)
                             } else {

@@ -26,6 +26,8 @@ func buildDownloadFilename(req DownloadRequest) string {
 		"date":              req.ReleaseDate,
 		"release_date":      req.ReleaseDate,
 		"isrc":              req.ISRC,
+		"provider":          req.DownloadProvider,
+		"provider_id":       req.ProviderTrackID,
 		"composer":          req.Composer,
 		"quality":           req.Quality,
 		"quality_variant":   req.QualityVariant,
@@ -45,6 +47,24 @@ func buildDownloadFilename(req DownloadRequest) string {
 	}
 
 	return filename + ext
+}
+
+func resolvedDownloadFilename(req DownloadRequest, result DownloadResult, filePath string) string {
+	resolved := req
+	if isrc := strings.TrimSpace(result.ISRC); isrc != "" {
+		resolved.ISRC = isrc
+	}
+	extension := strings.TrimSpace(result.ActualExtension)
+	if extension == "" {
+		extension = filepath.Ext(strings.TrimSpace(result.FilePath))
+	}
+	if extension == "" {
+		extension = filepath.Ext(strings.TrimSpace(filePath))
+	}
+	if extension != "" {
+		resolved.OutputExt = extension
+	}
+	return buildDownloadFilename(resolved)
 }
 
 func buildOutputPath(req DownloadRequest) string {

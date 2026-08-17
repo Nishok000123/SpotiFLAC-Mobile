@@ -4,6 +4,8 @@ class DownloadRequestPayload {
   final int contractVersion;
   final String isrc;
   final String service;
+  final String downloadProvider;
+  final String providerTrackId;
   final String spotifyId;
   final String trackName;
   final String artistName;
@@ -60,6 +62,8 @@ class DownloadRequestPayload {
     this.contractVersion = nativeWorkerContractVersion,
     this.isrc = '',
     this.service = '',
+    this.downloadProvider = '',
+    this.providerTrackId = '',
     this.spotifyId = '',
     required this.trackName,
     required this.artistName,
@@ -118,6 +122,8 @@ class DownloadRequestPayload {
       'contract_version': contractVersion,
       'isrc': isrc,
       'service': service,
+      'download_provider': downloadProvider,
+      'provider_track_id': providerTrackId,
       'spotify_id': spotifyId,
       'track_name': trackName,
       'artist_name': artistName,
@@ -180,6 +186,8 @@ class DownloadRequestPayload {
       contractVersion: contractVersion,
       isrc: isrc,
       service: service,
+      downloadProvider: downloadProvider,
+      providerTrackId: providerTrackId,
       spotifyId: spotifyId,
       trackName: trackName,
       artistName: artistName,
