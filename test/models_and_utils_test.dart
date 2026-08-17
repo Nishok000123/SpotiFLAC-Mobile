@@ -1176,6 +1176,40 @@ void main() {
       expect(keys, contains('c:/music/song.mp3'));
       expect(keys, contains('C:/Music/Song'));
     });
+
+    test('matches a primary-storage SAF URI to its raw Android path', () {
+      const safUri =
+          'content://com.android.externalstorage.documents/'
+          'tree/primary%3AMusic%2FFlac%20Songs/'
+          'document/primary%3AMusic%2FFlac%20Songs%2FAdore%20You.m4a';
+      const rawPath = '/storage/emulated/0/Music/Flac Songs/Adore You.m4a';
+
+      expect(physicalFilePathsMatch(safUri, rawPath), isTrue);
+      expect(buildPhysicalPathMatchKeys(safUri), contains(rawPath));
+    });
+
+    test('physical matching keeps coexisting audio formats distinct', () {
+      const flac = '/storage/emulated/0/Music/Song.flac';
+      const opus = '/storage/emulated/0/Music/Song.opus';
+
+      expect(
+        buildPathMatchKeys(flac),
+        contains('/storage/emulated/0/Music/Song'),
+      );
+      expect(physicalFilePathsMatch(flac, opus), isFalse);
+      expect(isPhysicalFileRetained(opus, [flac]), isFalse);
+    });
+
+    test('retains a shared SAF file during duplicate cleanup', () {
+      const safUri =
+          'content://com.android.externalstorage.documents/'
+          'document/primary%3AMusic%2FSong.flac';
+
+      expect(
+        isPhysicalFileRetained('/storage/emulated/0/Music/Song.flac', [safUri]),
+        isTrue,
+      );
+    });
   });
 
   group('AppRemoteConfig', () {

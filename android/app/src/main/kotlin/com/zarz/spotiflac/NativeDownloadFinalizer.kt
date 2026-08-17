@@ -1682,6 +1682,9 @@ object NativeDownloadFinalizer {
 	                if (parsed.scheme.equals("file", ignoreCase = true)) {
 	                    parsed.path?.let { addNormalized(it) }
 	                }
+	                for (alias in androidExternalStorageDocumentPaths(parsed)) {
+	                    addNormalized(alias)
+	                }
 	            } else if (trimmed.startsWith("/")) {
 	                try {
 	                    val asFileUri = Uri.fromFile(File(trimmed)).toString()
@@ -1706,6 +1709,40 @@ object NativeDownloadFinalizer {
 	        }
 	        keys.addAll(extensionStripped)
 	        return keys
+	    }
+
+	    private fun androidExternalStorageDocumentPaths(uri: Uri): List<String> {
+	        if (
+	            !uri.scheme.equals("content", ignoreCase = true) ||
+	            !uri.authority.equals(
+	                "com.android.externalstorage.documents",
+	                ignoreCase = true,
+	            )
+	        ) {
+	            return emptyList()
+	        }
+
+	        val segments = uri.pathSegments
+	        val documentIndex = segments.indexOfLast { it == "document" }
+	        val treeIndex = segments.indexOfLast { it == "tree" }
+	        val idIndex = if (documentIndex >= 0) documentIndex + 1 else treeIndex + 1
+	        if (idIndex <= 0 || idIndex >= segments.size) return emptyList()
+
+	        val documentId = segments.subList(idIndex, segments.size).joinToString("/")
+	        val separator = documentId.indexOf(':')
+	        if (
+	            separator < 0 ||
+	            !documentId.substring(0, separator).equals("primary", ignoreCase = true)
+	        ) {
+	            return emptyList()
+	        }
+
+	        val relativePath = documentId
+	            .substring(separator + 1)
+	            .replace('\\', '/')
+	            .trimStart('/')
+	        val suffix = if (relativePath.isEmpty()) "" else "/$relativePath"
+	        return androidStoragePathAliases.map { "$it$suffix" }
 	    }
 
 	    private fun stripUriQueryAndFragment(value: String): String {

@@ -37,15 +37,46 @@ String? _stripAudioExtension(String path) {
   return null;
 }
 
-Set<String> buildPathMatchKeys(String? filePath) {
+/// Path aliases that refer to the same physical file.
+///
+/// Unlike [buildPathMatchKeys], this deliberately keeps the audio extension.
+/// A converted `.flac` and `.opus` can coexist on disk and must not be treated
+/// as the same physical file by destructive operations.
+Set<String> buildPhysicalPathMatchKeys(String? filePath) =>
+    _buildPathMatchKeys(filePath, includeExtensionless: false);
+
+Set<String> buildPathMatchKeys(String? filePath) =>
+    _buildPathMatchKeys(filePath, includeExtensionless: true);
+
+bool physicalFilePathsMatch(String? first, String? second) {
+  final firstKeys = buildPhysicalPathMatchKeys(first);
+  if (firstKeys.isEmpty) return false;
+  return buildPhysicalPathMatchKeys(
+    second,
+  ).any((key) => firstKeys.contains(key));
+}
+
+bool isPhysicalFileRetained(
+  String? candidatePath,
+  Iterable<String?> retainedPaths,
+) => retainedPaths.any(
+  (retainedPath) => physicalFilePathsMatch(candidatePath, retainedPath),
+);
+
+Set<String> _buildPathMatchKeys(
+  String? filePath, {
+  required bool includeExtensionless,
+}) {
   final raw = filePath?.trim() ?? '';
   if (raw.isEmpty) return const {};
 
   final cleaned = raw.startsWith('EXISTS:') ? raw.substring(7).trim() : raw;
   if (cleaned.isEmpty) return const {};
-  final cached = _pathMatchKeyCache.remove(cleaned);
+  final cacheKey =
+      '${includeExtensionless ? 'track' : 'physical'}\u0000$cleaned';
+  final cached = _pathMatchKeyCache.remove(cacheKey);
   if (cached != null) {
-    _pathMatchKeyCache[cleaned] = cached;
+    _pathMatchKeyCache[cacheKey] = cached;
     return cached;
   }
 
@@ -95,6 +126,10 @@ Set<String> buildPathMatchKeys(String? filePath) {
           addNormalized(parsed.toFilePath());
         } catch (_) {}
       }
+
+      for (final alias in _androidExternalStorageDocumentPaths(parsed)) {
+        addNormalized(alias);
+      }
     } else if (trimmed.startsWith('/')) {
       try {
         final asFileUri = Uri.file(trimmed).toString();
@@ -114,21 +149,53 @@ Set<String> buildPathMatchKeys(String? filePath) {
 
   addNormalized(cleaned);
 
-  final extensionStrippedKeys = <String>{};
-  for (final key in keys) {
-    final stripped = _stripAudioExtension(key);
-    if (stripped != null && stripped.isNotEmpty) {
-      extensionStrippedKeys.add(stripped);
+  if (includeExtensionless) {
+    final extensionStrippedKeys = <String>{};
+    for (final key in keys) {
+      final stripped = _stripAudioExtension(key);
+      if (stripped != null && stripped.isNotEmpty) {
+        extensionStrippedKeys.add(stripped);
+      }
     }
+    keys.addAll(extensionStrippedKeys);
   }
-  keys.addAll(extensionStrippedKeys);
 
   final result = Set<String>.unmodifiable(keys);
-  _pathMatchKeyCache[cleaned] = result;
+  _pathMatchKeyCache[cacheKey] = result;
   while (_pathMatchKeyCache.length > _maxPathMatchKeyCacheSize) {
     _pathMatchKeyCache.remove(_pathMatchKeyCache.keys.first);
   }
   return result;
+}
+
+Iterable<String> _androidExternalStorageDocumentPaths(Uri uri) {
+  if (uri.scheme.toLowerCase() != 'content' ||
+      uri.host.toLowerCase() != 'com.android.externalstorage.documents') {
+    return const [];
+  }
+
+  final segments = uri.pathSegments;
+  final documentIndex = segments.lastIndexOf('document');
+  final treeIndex = segments.lastIndexOf('tree');
+  final idIndex = documentIndex >= 0 ? documentIndex + 1 : treeIndex + 1;
+  if (idIndex <= 0 || idIndex >= segments.length) return const [];
+
+  var documentId = segments.sublist(idIndex).join('/');
+  try {
+    documentId = Uri.decodeComponent(documentId);
+  } catch (_) {}
+  final separator = documentId.indexOf(':');
+  if (separator < 0 ||
+      documentId.substring(0, separator).toLowerCase() != 'primary') {
+    return const [];
+  }
+
+  final relativePath = documentId
+      .substring(separator + 1)
+      .replaceAll('\\', '/')
+      .replaceFirst(RegExp(r'^/+'), '');
+  final suffix = relativePath.isEmpty ? '' : '/$relativePath';
+  return _androidStoragePathAliases.map((prefix) => '$prefix$suffix');
 }
 
 Iterable<String> _androidEquivalentPaths(String path) {

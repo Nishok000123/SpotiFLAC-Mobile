@@ -8,6 +8,7 @@ import 'package:spotiflac_android/providers/local_library_provider.dart';
 import 'package:spotiflac_android/services/downloaded_embedded_cover_resolver.dart';
 import 'package:spotiflac_android/services/library_database.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
+import 'package:spotiflac_android/utils/path_match_keys.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 
@@ -109,13 +110,27 @@ class _DuplicateReviewSheetState extends ConsumerState<DuplicateReviewSheet> {
     return confirmed == true && mounted;
   }
 
-  Future<void> _deleteEntries(List<IsrcDuplicateEntry> entries) async {
+  Future<void> _deleteEntries(
+    List<IsrcDuplicateEntry> entries, {
+    required List<IsrcDuplicateEntry> retainedEntries,
+  }) async {
     final historyNotifier = ref.read(downloadHistoryProvider.notifier);
     var deleted = 0;
     for (final entry in entries) {
-      final fileDeleted = await deleteFile(
-        DownloadedEmbeddedCoverResolver.cleanFilePath(entry.filePath),
+      final entryPath = DownloadedEmbeddedCoverResolver.cleanFilePath(
+        entry.filePath,
       );
+      final sharesRetainedFile = isPhysicalFileRetained(
+        entryPath,
+        retainedEntries.map(
+          (retained) =>
+              DownloadedEmbeddedCoverResolver.cleanFilePath(retained.filePath),
+        ),
+      );
+      // Two database rows may describe one SAF file through different URI or
+      // raw-path aliases. Remove only the redundant row in that case; deleting
+      // the shared file would also destroy the copy the user chose to retain.
+      final fileDeleted = sharesRetainedFile || await deleteFile(entryPath);
       if (!fileDeleted) continue;
       if (entry.source == 'downloaded') {
         historyNotifier.removeFromHistory(entry.id);
@@ -140,14 +155,29 @@ class _DuplicateReviewSheetState extends ConsumerState<DuplicateReviewSheet> {
         group.entries.first.trackName,
       ),
     );
-    if (confirmed) await _deleteEntries(toDelete);
+    if (confirmed) {
+      await _deleteEntries(toDelete, retainedEntries: [group.entries.first]);
+    }
   }
 
-  Future<void> _deleteSingle(IsrcDuplicateEntry entry) async {
+  Future<void> _deleteSingle(
+    IsrcDuplicateGroup group,
+    IsrcDuplicateEntry entry,
+  ) async {
     final confirmed = await _confirmDelete(
       context.l10n.duplicatesDeleteCopyMessage(entry.trackName),
     );
-    if (confirmed) await _deleteEntries([entry]);
+    if (confirmed) {
+      await _deleteEntries(
+        [entry],
+        retainedEntries: group.entries
+            .where(
+              (candidate) =>
+                  candidate.source != entry.source || candidate.id != entry.id,
+            )
+            .toList(growable: false),
+      );
+    }
   }
 
   @override
@@ -261,7 +291,7 @@ class _DuplicateReviewSheetState extends ConsumerState<DuplicateReviewSheet> {
                 : IconButton(
                     tooltip: context.l10n.dialogDelete,
                     icon: Icon(Icons.delete_outline, color: colorScheme.error),
-                    onPressed: () => _deleteSingle(group.entries[i]),
+                    onPressed: () => _deleteSingle(group, group.entries[i]),
                   ),
           ),
       ],
