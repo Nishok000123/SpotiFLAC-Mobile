@@ -216,6 +216,39 @@ class _ExtensionDetailPageState extends ConsumerState<ExtensionDetailPage> {
               ),
             ),
 
+            if (extension.settings.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: SettingsSectionHeader(
+                  title: context.l10n.extensionSettings,
+                ),
+              ),
+              if (_isLoadingSettings)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                )
+              else
+                SliverToBoxAdapter(
+                  child: SettingsGroup(
+                    children: extension.settings.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final setting = entry.value;
+                      return _SettingItem(
+                        setting: setting,
+                        value: _settings[setting.key] ?? setting.defaultValue,
+                        showDivider: index < extension.settings.length - 1,
+                        onChanged: (value) =>
+                            _updateSetting(setting.key, value),
+                        extensionId: widget.extensionId,
+                        onActionPayload: _handleExtensionActionPayload,
+                      );
+                    }).toList(),
+                  ),
+                ),
+            ],
+
             if (extension.hasServiceHealth) ...[
               SliverToBoxAdapter(
                 child: SettingsSectionHeader(
@@ -243,80 +276,6 @@ class _ExtensionDetailPageState extends ConsumerState<ExtensionDetailPage> {
                 ),
               ),
             ],
-
-            SliverToBoxAdapter(
-              child: SettingsSectionHeader(
-                title: context.l10n.extensionCapabilities,
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: SettingsGroup(
-                children: [
-                  _CapabilityItem(
-                    icon: Icons.search,
-                    title: context.l10n.extensionMetadataProvider,
-                    enabled: extension.hasMetadataProvider,
-                  ),
-                  _CapabilityItem(
-                    icon: Icons.download,
-                    title: context.l10n.extensionDownloadProvider,
-                    enabled: extension.hasDownloadProvider,
-                  ),
-                  _CapabilityItem(
-                    icon: Icons.lyrics,
-                    title: context.l10n.extensionLyricsProvider,
-                    enabled: extension.hasLyricsProvider,
-                  ),
-                  _CapabilityItem(
-                    icon: Icons.manage_search,
-                    title: context.l10n.extensionsSearchProvider,
-                    enabled: extension.hasCustomSearch,
-                    subtitle: extension.searchBehavior?.placeholder,
-                  ),
-                  _CapabilityItem(
-                    icon: Icons.compare_arrows,
-                    title: context.l10n.extensionCustomTrackMatching,
-                    enabled: extension.hasCustomMatching,
-                    subtitle: extension.trackMatching?.strategy != null
-                        ? context.l10n.extensionStrategy(
-                            extension.trackMatching!.strategy!,
-                          )
-                        : null,
-                  ),
-                  _CapabilityItem(
-                    icon: Icons.auto_fix_high,
-                    title: context.l10n.extensionPostProcessing,
-                    enabled: extension.hasPostProcessing,
-                    subtitle: extension.postProcessing?.hooks.isNotEmpty == true
-                        ? context.l10n.extensionHooksAvailable(
-                            extension.postProcessing!.hooks.length,
-                          )
-                        : null,
-                  ),
-                  _CapabilityItem(
-                    icon: Icons.link,
-                    title: context.l10n.extensionUrlHandler,
-                    enabled: extension.hasURLHandler,
-                    subtitle: extension.urlHandler?.patterns.isNotEmpty == true
-                        ? context.l10n.extensionPatternsCount(
-                            extension.urlHandler!.patterns.length,
-                          )
-                        : null,
-                  ),
-                  _CapabilityItem(
-                    icon: Icons.monitor_heart_outlined,
-                    title: context.l10n.extensionServiceHealth,
-                    enabled: extension.hasServiceHealth,
-                    subtitle: extension.hasServiceHealth
-                        ? context.l10n.extensionHealthChecksConfigured(
-                            extension.serviceHealth.length,
-                          )
-                        : null,
-                    showDivider: false,
-                  ),
-                ],
-              ),
-            ),
 
             if (extension.hasURLHandler &&
                 extension.urlHandler!.patterns.isNotEmpty) ...[
@@ -401,38 +360,79 @@ class _ExtensionDetailPageState extends ConsumerState<ExtensionDetailPage> {
               ),
             ],
 
-            if (extension.settings.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: SettingsSectionHeader(
-                  title: context.l10n.extensionSettings,
-                ),
+            SliverToBoxAdapter(
+              child: SettingsSectionHeader(
+                title: context.l10n.extensionCapabilities,
               ),
-              if (_isLoadingSettings)
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.all(32),
-                    child: Center(child: CircularProgressIndicator()),
+            ),
+            SliverToBoxAdapter(
+              child: SettingsGroup(
+                children: [
+                  _CapabilityItem(
+                    icon: Icons.search,
+                    title: context.l10n.extensionMetadataProvider,
+                    enabled: extension.hasMetadataProvider,
                   ),
-                )
-              else
-                SliverToBoxAdapter(
-                  child: SettingsGroup(
-                    children: extension.settings.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final setting = entry.value;
-                      return _SettingItem(
-                        setting: setting,
-                        value: _settings[setting.key] ?? setting.defaultValue,
-                        showDivider: index < extension.settings.length - 1,
-                        onChanged: (value) =>
-                            _updateSetting(setting.key, value),
-                        extensionId: widget.extensionId,
-                        onActionPayload: _handleExtensionActionPayload,
-                      );
-                    }).toList(),
+                  _CapabilityItem(
+                    icon: Icons.download,
+                    title: context.l10n.extensionDownloadProvider,
+                    enabled: extension.hasDownloadProvider,
                   ),
-                ),
-            ],
+                  _CapabilityItem(
+                    icon: Icons.lyrics,
+                    title: context.l10n.extensionLyricsProvider,
+                    enabled: extension.hasLyricsProvider,
+                  ),
+                  _CapabilityItem(
+                    icon: Icons.manage_search,
+                    title: context.l10n.extensionsSearchProvider,
+                    enabled: extension.hasCustomSearch,
+                    subtitle: extension.searchBehavior?.placeholder,
+                  ),
+                  _CapabilityItem(
+                    icon: Icons.compare_arrows,
+                    title: context.l10n.extensionCustomTrackMatching,
+                    enabled: extension.hasCustomMatching,
+                    subtitle: extension.trackMatching?.strategy != null
+                        ? context.l10n.extensionStrategy(
+                            extension.trackMatching!.strategy!,
+                          )
+                        : null,
+                  ),
+                  _CapabilityItem(
+                    icon: Icons.auto_fix_high,
+                    title: context.l10n.extensionPostProcessing,
+                    enabled: extension.hasPostProcessing,
+                    subtitle: extension.postProcessing?.hooks.isNotEmpty == true
+                        ? context.l10n.extensionHooksAvailable(
+                            extension.postProcessing!.hooks.length,
+                          )
+                        : null,
+                  ),
+                  _CapabilityItem(
+                    icon: Icons.link,
+                    title: context.l10n.extensionUrlHandler,
+                    enabled: extension.hasURLHandler,
+                    subtitle: extension.urlHandler?.patterns.isNotEmpty == true
+                        ? context.l10n.extensionPatternsCount(
+                            extension.urlHandler!.patterns.length,
+                          )
+                        : null,
+                  ),
+                  _CapabilityItem(
+                    icon: Icons.monitor_heart_outlined,
+                    title: context.l10n.extensionServiceHealth,
+                    enabled: extension.hasServiceHealth,
+                    subtitle: extension.hasServiceHealth
+                        ? context.l10n.extensionHealthChecksConfigured(
+                            extension.serviceHealth.length,
+                          )
+                        : null,
+                    showDivider: false,
+                  ),
+                ],
+              ),
+            ),
 
             SliverToBoxAdapter(
               child: Padding(
