@@ -167,4 +167,25 @@ void main() {
     expect(results.single['status'], 'found');
     expect(results.single['relative_dir'], 'Artist/Album');
   });
+
+  test('iOS bookmark access releases the matching native lease', () async {
+    final calls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(backendChannel, (call) async {
+          calls.add(call);
+          if (call.method == 'startAccessingIosBookmark') {
+            return {'path': '/music', 'token': 'lease-1'};
+          }
+          if (call.method == 'stopAccessingIosBookmark') return null;
+          fail('Unexpected method: ${call.method}');
+        });
+
+    final access = await PlatformBridge.startAccessingIosBookmark('bookmark');
+    expect(access?.path, '/music');
+    expect(access?.token, 'lease-1');
+    await PlatformBridge.stopAccessingIosBookmark(access!);
+
+    expect(calls[1].method, 'stopAccessingIosBookmark');
+    expect(calls[1].arguments, {'token': 'lease-1'});
+  });
 }

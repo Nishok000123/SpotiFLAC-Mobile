@@ -89,6 +89,7 @@ class _QueueLibraryPageRequest {
   final String? filterMetadata;
   final String sortMode;
   final bool localLibraryEnabled;
+  final QueueLibraryDbCursor? cursor;
 
   const _QueueLibraryPageRequest({
     required this.filterMode,
@@ -101,6 +102,7 @@ class _QueueLibraryPageRequest {
     required this.filterMetadata,
     required this.sortMode,
     required this.localLibraryEnabled,
+    this.cursor,
   });
 
   QueueLibraryDbQuery toDbQuery() => QueueLibraryDbQuery(
@@ -114,6 +116,7 @@ class _QueueLibraryPageRequest {
     metadata: filterMetadata,
     sortMode: sortMode,
     includeLocal: localLibraryEnabled,
+    cursor: cursor,
   );
 
   bool get allowsInMemoryHistoryFallback =>
@@ -141,7 +144,8 @@ class _QueueLibraryPageRequest {
           filterFormat == other.filterFormat &&
           filterMetadata == other.filterMetadata &&
           sortMode == other.sortMode &&
-          localLibraryEnabled == other.localLibraryEnabled;
+          localLibraryEnabled == other.localLibraryEnabled &&
+          cursor == other.cursor;
 
   @override
   int get hashCode => Object.hash(
@@ -155,6 +159,7 @@ class _QueueLibraryPageRequest {
     filterMetadata,
     sortMode,
     localLibraryEnabled,
+    cursor,
   );
 }
 
@@ -219,6 +224,7 @@ class _QueueLibraryPageData {
   final List<LocalLibraryItem> localItems;
   final List<_GroupedAlbum> groupedAlbums;
   final List<_GroupedLocalAlbum> groupedLocalAlbums;
+  final QueueLibraryDbCursor? nextCursor;
 
   const _QueueLibraryPageData({
     this.items = const [],
@@ -226,6 +232,7 @@ class _QueueLibraryPageData {
     this.localItems = const [],
     this.groupedAlbums = const [],
     this.groupedLocalAlbums = const [],
+    this.nextCursor,
   });
 
   bool get isEmpty =>
@@ -331,6 +338,7 @@ class _QueueLibraryPageData {
       localItems: localItems,
       groupedAlbums: groupedAlbums,
       groupedLocalAlbums: groupedLocalAlbums,
+      nextCursor: pages.last.nextCursor,
     );
   }
 
@@ -403,7 +411,10 @@ final _queueLibraryPageProvider = FutureProvider.autoDispose
       }
       final dbQuery = request.toDbQuery();
       if (request.filterMode == 'albums') {
-        final rows = await LibraryDatabase.instance.getQueueAlbumPage(dbQuery);
+        final page = await LibraryDatabase.instance.getQueueAlbumPageResult(
+          dbQuery,
+        );
+        final rows = page.rows;
         final groupedAlbums = <_GroupedAlbum>[];
         final groupedLocalAlbums = <_GroupedLocalAlbum>[];
         for (final row in rows) {
@@ -439,10 +450,14 @@ final _queueLibraryPageProvider = FutureProvider.autoDispose
         return _QueueLibraryPageData(
           groupedAlbums: groupedAlbums,
           groupedLocalAlbums: groupedLocalAlbums,
+          nextCursor: page.nextCursor,
         );
       }
 
-      final rows = await LibraryDatabase.instance.getQueueTrackPage(dbQuery);
+      final page = await LibraryDatabase.instance.getQueueTrackPageResult(
+        dbQuery,
+      );
+      final rows = page.rows;
       final items = <UnifiedLibraryItem>[];
       final historyItems = <DownloadHistoryItem>[];
       final localItems = <LocalLibraryItem>[];
@@ -463,6 +478,7 @@ final _queueLibraryPageProvider = FutureProvider.autoDispose
         items: items,
         historyItems: historyItems,
         localItems: localItems,
+        nextCursor: page.nextCursor,
       );
     });
 

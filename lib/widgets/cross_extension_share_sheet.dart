@@ -158,7 +158,7 @@ class _CrossExtensionShareTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         clipBehavior: Clip.antiAlias,
-        child: _buildIcon(colorScheme),
+        child: _buildIcon(context, colorScheme),
       ),
       title: Text(
         result.displayName,
@@ -205,7 +205,7 @@ class _CrossExtensionShareTile extends StatelessWidget {
     return Opacity(opacity: 0.5, child: tile);
   }
 
-  Widget _buildIcon(ColorScheme colorScheme) {
+  Widget _buildIcon(BuildContext context, ColorScheme colorScheme) {
     final fallbackIcon = Icon(
       Icons.extension_rounded,
       color: colorScheme.onSurfaceVariant,
@@ -219,6 +219,9 @@ class _CrossExtensionShareTile extends StatelessWidget {
       width: 44,
       height: 44,
       fit: BoxFit.cover,
+      cacheWidth: (44 * MediaQuery.devicePixelRatioOf(context)).round(),
+      cacheHeight: (44 * MediaQuery.devicePixelRatioOf(context)).round(),
+      filterQuality: FilterQuality.low,
       errorBuilder: (_, _, _) => fallbackIcon,
     );
   }

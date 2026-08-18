@@ -335,7 +335,7 @@ class _PlaylistPickerThumbnail extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: borderRadius,
-            child: _buildCoverImage(colorScheme, size),
+            child: _buildCoverImage(context, colorScheme, size),
           ),
           if (isSelected) ...[
             Positioned.fill(
@@ -368,7 +368,11 @@ class _PlaylistPickerThumbnail extends StatelessWidget {
     );
   }
 
-  Widget _buildCoverImage(ColorScheme colorScheme, double size) {
+  Widget _buildCoverImage(
+    BuildContext context,
+    ColorScheme colorScheme,
+    double size,
+  ) {
     final customCoverPath = playlist.coverImagePath;
     if (customCoverPath != null && customCoverPath.isNotEmpty) {
       return Image.file(
@@ -376,6 +380,9 @@ class _PlaylistPickerThumbnail extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.cover,
+        cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
+        cacheHeight: (size * MediaQuery.devicePixelRatioOf(context)).round(),
+        filterQuality: FilterQuality.low,
         errorBuilder: (_, _, _) => _iconFallback(colorScheme, size),
       );
     }

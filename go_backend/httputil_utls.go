@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	utls "github.com/refraction-networking/utls"
 	"golang.org/x/net/http2"
@@ -25,7 +26,15 @@ type utlsTransport struct {
 	dialer *net.Dialer
 	h2     *http2.Transport
 	mu     sync.Mutex
-	conns  map[string]*http2.ClientConn
+	conns  map[string]pooledHTTP2ClientConn
+}
+
+type pooledHTTP2ClientConn interface {
+	RoundTrip(*http.Request) (*http.Response, error)
+	ReserveNewRequest() bool
+	State() http2.ClientConnState
+	Close() error
+	Shutdown(context.Context) error
 }
 
 func newUTLSTransport() *utlsTransport {
@@ -35,7 +44,7 @@ func newUTLSTransport() *utlsTransport {
 			KeepAlive: 30 * Second,
 		},
 		h2:    &http2.Transport{},
-		conns: make(map[string]*http2.ClientConn),
+		conns: make(map[string]pooledHTTP2ClientConn),
 	}
 }
 
@@ -51,6 +60,9 @@ func (t *utlsTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		resp, err := cc.RoundTrip(req)
 		if err == nil {
 			return resp, nil
+		}
+		if req.Context().Err() != nil {
+			return nil, err
 		}
 		// A pooled conn can be silently dead after a network switch. Drop it
 		// and, when the request is safely repeatable, fall through to a fresh
@@ -85,8 +97,8 @@ func (t *utlsTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		tlsConn.Close()
 		return nil, err
 	}
-	cc = t.storeConn(addr, cc)
-	return cc.RoundTrip(req)
+	pooled := t.storeConn(addr, cc)
+	return pooled.RoundTrip(req)
 }
 
 // rewindRequestBody returns a request whose body can be sent again after a
@@ -132,35 +144,97 @@ func (t *utlsTransport) dial(ctx context.Context, host, addr string) (*utls.UCon
 	return tlsConn, tlsConn.ConnectionState().NegotiatedProtocol, nil
 }
 
-func (t *utlsTransport) cachedConn(addr string) *http2.ClientConn {
+func (t *utlsTransport) cachedConn(addr string) pooledHTTP2ClientConn {
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	if cc := t.conns[addr]; cc != nil && cc.CanTakeNewRequest() {
+	cc := t.conns[addr]
+	if cc != nil && cc.ReserveNewRequest() {
+		t.mu.Unlock()
 		return cc
+	}
+	if cc != nil {
+		delete(t.conns, addr)
+	}
+	t.mu.Unlock()
+	if cc != nil {
+		retirePooledHTTP2Conn(cc)
 	}
 	return nil
 }
 
-func (t *utlsTransport) invalidate(addr string, cc *http2.ClientConn) {
+func (t *utlsTransport) invalidate(addr string, cc pooledHTTP2ClientConn) {
 	t.mu.Lock()
+	removed := false
 	if t.conns[addr] == cc {
 		delete(t.conns, addr)
+		removed = true
 	}
 	t.mu.Unlock()
+	if removed {
+		retirePooledHTTP2Conn(cc)
+	}
 }
 
 // storeConn caches cc, but if a concurrent dial already cached a healthy conn for
 // addr it discards the freshly built cc (no in-flight requests) and returns the
 // existing one, avoiding a leaked connection.
-func (t *utlsTransport) storeConn(addr string, cc *http2.ClientConn) *http2.ClientConn {
+func (t *utlsTransport) storeConn(addr string, cc pooledHTTP2ClientConn) pooledHTTP2ClientConn {
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	if existing := t.conns[addr]; existing != nil && existing.CanTakeNewRequest() {
-		cc.Close()
+	if existing := t.conns[addr]; existing != nil && existing.ReserveNewRequest() {
+		t.mu.Unlock()
+		_ = cc.Close()
 		return existing
 	}
+	stale := t.conns[addr]
 	t.conns[addr] = cc
+	_ = cc.ReserveNewRequest()
+	t.mu.Unlock()
+	if stale != nil {
+		retirePooledHTTP2Conn(stale)
+	}
 	return cc
+}
+
+// retirePooledHTTP2Conn prevents new streams while allowing existing streams
+// to finish. The independent watchdog also bounds Shutdown implementations
+// that block before observing their context.
+func pooledHTTP2RetirementTimeout(state http2.ClientConnState) time.Duration {
+	if state.StreamsActive > 0 || state.StreamsPending > 0 || state.StreamsReserved > 0 {
+		return 0
+	}
+	return 5 * Second
+}
+
+func retirePooledHTTP2Conn(conn pooledHTTP2ClientConn) {
+	go func() {
+		retirePooledHTTP2ConnWithTimeout(conn, pooledHTTP2RetirementTimeout(conn.State()))
+	}()
+}
+
+func retirePooledHTTP2ConnWithTimeout(conn pooledHTTP2ClientConn, timeout time.Duration) {
+	go func() {
+		var closeOnce sync.Once
+		forceClose := func() {
+			closeOnce.Do(func() { _ = conn.Close() })
+		}
+		if timeout <= 0 {
+			if err := conn.Shutdown(context.Background()); err != nil {
+				forceClose()
+			}
+			return
+		}
+
+		watchdogDone := make(chan struct{})
+		watchdog := time.AfterFunc(timeout, func() {
+			forceClose()
+			close(watchdogDone)
+		})
+		if err := conn.Shutdown(context.Background()); err != nil {
+			forceClose()
+		}
+		if !watchdog.Stop() {
+			<-watchdogDone
+		}
+	}()
 }
 
 // closeIdleConnections drops every pooled conn so the next request re-dials —
@@ -170,10 +244,10 @@ func (t *utlsTransport) storeConn(addr string, cc *http2.ClientConn) *http2.Clie
 func (t *utlsTransport) closeIdleConnections() {
 	t.mu.Lock()
 	conns := t.conns
-	t.conns = make(map[string]*http2.ClientConn)
+	t.conns = make(map[string]pooledHTTP2ClientConn)
 	t.mu.Unlock()
 	for _, cc := range conns {
-		go cc.Shutdown(context.Background())
+		retirePooledHTTP2Conn(cc)
 	}
 }
 

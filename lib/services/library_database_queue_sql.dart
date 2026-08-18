@@ -2,8 +2,20 @@ part of 'library_database.dart';
 
 // SQL builders for the queue tab's history+local union queries.
 
+class _QueueOrderTerm {
+  final String column;
+  final bool descending;
+
+  const _QueueOrderTerm(this.column, {this.descending = false});
+}
+
 extension _LibraryDbQueueSql on LibraryDatabase {
-  String _queueTrackUnionSql(QueueLibraryDbQuery request, List<Object?> args) {
+  String _queueTrackUnionSql(
+    QueueLibraryDbQuery request,
+    List<Object?> args, {
+    required List<_QueueOrderTerm> orderTerms,
+    required bool usesCursor,
+  }) {
     final parts = <String>[];
     if (request.source != 'local') {
       final where = <String>[];
@@ -18,7 +30,8 @@ extension _LibraryDbQueueSql on LibraryDatabase {
           )
           ''');
       }
-      parts.add('''
+      final selectSql =
+          '''
         SELECT
           'downloaded' AS queue_source,
           'dl_' || h.id AS unified_id,
@@ -56,15 +69,24 @@ extension _LibraryDbQueueSql on LibraryDatabase {
           NULL AS file_mod_time,
           h.bitrate,
           h.format,
-          LOWER(h.track_name) AS sort_track,
-          LOWER(h.artist_name) AS sort_artist,
-          LOWER(h.album_name) AS sort_album,
-          LOWER(COALESCE(h.genre, '')) AS sort_genre,
-          h.release_date AS sort_release,
-          CAST(strftime('%s', h.downloaded_at) AS INTEGER) * 1000 AS sort_added
+          h.sort_track,
+          h.sort_artist,
+          h.sort_album,
+          h.sort_genre,
+          h.sort_release,
+          h.sort_added
         FROM history_db.history h
         ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
-        ''');
+        ''';
+      parts.add(
+        _boundedQueuePart(
+          selectSql,
+          request,
+          args,
+          orderTerms,
+          usesCursor: usesCursor,
+        ),
+      );
     }
 
     if (request.includeLocal && request.source != 'downloaded') {
@@ -95,7 +117,8 @@ extension _LibraryDbQueueSql on LibraryDatabase {
           )
           ''');
       }
-      parts.add('''
+      final selectSql =
+          '''
         SELECT
           'local' AS queue_source,
           'local_' || l.id AS unified_id,
@@ -136,12 +159,21 @@ extension _LibraryDbQueueSql on LibraryDatabase {
           l.track_name_norm AS sort_track,
           l.artist_name_norm AS sort_artist,
           l.album_name_norm AS sort_album,
-          LOWER(COALESCE(l.genre, '')) AS sort_genre,
-          l.release_date AS sort_release,
-          COALESCE(l.file_mod_time, CAST(strftime('%s', l.scanned_at) AS INTEGER) * 1000) AS sort_added
+          l.sort_genre,
+          l.sort_release,
+          l.sort_added
         FROM library l
         ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
-        ''');
+        ''';
+      parts.add(
+        _boundedQueuePart(
+          selectSql,
+          request,
+          args,
+          orderTerms,
+          usesCursor: usesCursor,
+        ),
+      );
     }
 
     if (parts.isEmpty) {
@@ -195,12 +227,18 @@ extension _LibraryDbQueueSql on LibraryDatabase {
     return parts.join(' UNION ALL ');
   }
 
-  String _queueAlbumUnionSql(QueueLibraryDbQuery request, List<Object?> args) {
+  String _queueAlbumUnionSql(
+    QueueLibraryDbQuery request,
+    List<Object?> args, {
+    required List<_QueueOrderTerm> orderTerms,
+    required bool usesCursor,
+  }) {
     final parts = <String>[];
     if (request.source != 'local') {
       final where = <String>[];
       _appendQueueHistoryFilters(where, args, request);
-      parts.add('''
+      final selectSql =
+          '''
         SELECT
           'downloaded' AS queue_source,
           c.album_key,
@@ -211,16 +249,16 @@ extension _LibraryDbQueueSql on LibraryDatabase {
           MAX(h.file_path) AS sample_file_path,
           COUNT(*) AS track_count,
           c.latest_added AS sort_added,
-          MIN(LOWER(COALESCE(h.album_name, ''))) AS sort_album,
-          MIN(LOWER(COALESCE(h.album_artist, h.artist_name, ''))) AS sort_artist,
-          MAX(h.release_date) AS sort_release,
-          MAX(LOWER(COALESCE(h.genre, ''))) AS sort_genre
+          MIN(COALESCE(h.sort_album, '')) AS sort_album,
+          MIN(COALESCE(h.sort_album_artist, '')) AS sort_artist,
+          COALESCE(MAX(h.release_date), '') AS sort_release,
+          COALESCE(MAX(h.sort_genre), '') AS sort_genre
         FROM history_db.history h
         JOIN (
           SELECT
             album_key,
             COUNT(*) AS track_count,
-            MAX(CAST(strftime('%s', downloaded_at) AS INTEGER) * 1000) AS latest_added
+            MAX(COALESCE(sort_added, 0)) AS latest_added
           FROM history_db.history
           GROUP BY album_key
           HAVING COUNT(*) > 1
@@ -228,7 +266,16 @@ extension _LibraryDbQueueSql on LibraryDatabase {
           ON c.album_key = h.album_key
         ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
         GROUP BY c.album_key
-        ''');
+        ''';
+      parts.add(
+        _boundedQueuePart(
+          selectSql,
+          request,
+          args,
+          orderTerms,
+          usesCursor: usesCursor,
+        ),
+      );
     }
 
     if (request.includeLocal && request.source != 'downloaded') {
@@ -243,7 +290,8 @@ extension _LibraryDbQueueSql on LibraryDatabase {
         ''',
       ];
       _appendQueueLocalFilters(where, args, request);
-      parts.add('''
+      final selectSql =
+          '''
         SELECT
           'local' AS queue_source,
           c.album_key,
@@ -256,14 +304,14 @@ extension _LibraryDbQueueSql on LibraryDatabase {
           c.latest_added AS sort_added,
           MIN(l.album_name_norm) AS sort_album,
           MIN(l.album_artist_norm) AS sort_artist,
-          MAX(l.release_date) AS sort_release,
-          MAX(LOWER(COALESCE(l.genre, ''))) AS sort_genre
+          COALESCE(MAX(l.release_date), '') AS sort_release,
+          COALESCE(MAX(l.sort_genre), '') AS sort_genre
         FROM library l
         JOIN (
           SELECT
             album_key,
             COUNT(*) AS track_count,
-            MAX(COALESCE(file_mod_time, CAST(strftime('%s', scanned_at) AS INTEGER) * 1000)) AS latest_added
+            MAX(COALESCE(sort_added, 0)) AS latest_added
           FROM library
           WHERE NOT EXISTS (
             SELECT 1
@@ -276,7 +324,16 @@ extension _LibraryDbQueueSql on LibraryDatabase {
         ) c ON c.album_key = l.album_key
         ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
         GROUP BY c.album_key
-        ''');
+        ''';
+      parts.add(
+        _boundedQueuePart(
+          selectSql,
+          request,
+          args,
+          orderTerms,
+          usesCursor: usesCursor,
+        ),
+      );
     }
 
     if (parts.isEmpty) {
@@ -339,15 +396,8 @@ extension _LibraryDbQueueSql on LibraryDatabase {
     final query = LibraryDatabase.normalizeLookupText(request.searchQuery);
     if (query.isNotEmpty) {
       final like = '%${_escapeLikePattern(query)}%';
-      where.add('''
-        (
-          l.track_name_norm LIKE ? ESCAPE '\\' OR
-          l.artist_name_norm LIKE ? ESCAPE '\\' OR
-          l.album_name_norm LIKE ? ESCAPE '\\' OR
-          l.album_artist_norm LIKE ? ESCAPE '\\'
-        )
-        ''');
-      args.addAll([like, like, like, like]);
+      where.add("l.search_text LIKE ? ESCAPE '\\'");
+      args.add(like);
     }
     _appendQueueCommonFilters(
       where,
@@ -472,35 +522,224 @@ extension _LibraryDbQueueSql on LibraryDatabase {
   }
 
   String _queueTrackOrderBy(String sortMode) {
-    return switch (sortMode) {
-      'oldest' => 'sort_added ASC, sort_track ASC',
-      'a-z' => 'sort_track ASC, sort_artist ASC',
-      'z-a' => 'sort_track DESC, sort_artist DESC',
-      'artist-asc' => 'sort_artist ASC, sort_track ASC',
-      'artist-desc' => 'sort_artist DESC, sort_track ASC',
-      'album-asc' => 'sort_album ASC, sort_track ASC',
-      'album-desc' => 'sort_album DESC, sort_track ASC',
-      'release-oldest' => 'sort_release ASC, sort_track ASC',
-      'release-newest' => 'sort_release DESC, sort_track ASC',
-      'genre-asc' => 'sort_genre ASC, sort_track ASC',
-      'genre-desc' => 'sort_genre DESC, sort_track ASC',
-      _ => 'sort_added DESC, sort_track ASC',
-    };
+    return _queueOrderBy(_queueTrackOrderTerms(sortMode));
   }
 
   String _queueAlbumOrderBy(String sortMode) {
+    return _queueOrderBy(_queueAlbumOrderTerms(sortMode));
+  }
+
+  String _boundedQueuePart(
+    String selectSql,
+    QueueLibraryDbQuery request,
+    List<Object?> args,
+    List<_QueueOrderTerm> orderTerms, {
+    required bool usesCursor,
+  }) {
+    final cursorPredicate = usesCursor
+        ? _queueCursorPredicate(request.cursor, orderTerms, args)
+        : '';
+    final branchLimit = usesCursor
+        ? request.limit
+        : request.limit + request.offset;
+    args.add(branchLimit);
+    final branchOrder = orderTerms
+        .where((term) => term.column != 'queue_source')
+        .toList(growable: false);
+    return '''
+      SELECT * FROM (
+        SELECT *
+        FROM ($selectSql)
+        ${cursorPredicate.isEmpty ? '' : 'WHERE $cursorPredicate'}
+        ORDER BY ${_queueOrderBy(branchOrder)}
+        LIMIT ?
+      )
+    ''';
+  }
+
+  List<_QueueOrderTerm> _queueTrackOrderTerms(String sortMode) {
     return switch (sortMode) {
-      'oldest' => 'sort_added ASC, sort_album ASC',
-      'a-z' || 'album-asc' => 'sort_album ASC, sort_artist ASC',
-      'z-a' || 'album-desc' => 'sort_album DESC, sort_artist DESC',
-      'artist-asc' => 'sort_artist ASC, sort_album ASC',
-      'artist-desc' => 'sort_artist DESC, sort_album ASC',
-      'release-oldest' => 'sort_release ASC, sort_album ASC',
-      'release-newest' => 'sort_release DESC, sort_album ASC',
-      'genre-asc' => 'sort_genre ASC, sort_album ASC',
-      'genre-desc' => 'sort_genre DESC, sort_album ASC',
-      _ => 'sort_added DESC, sort_album ASC',
+      'oldest' => const [
+        _QueueOrderTerm('sort_added'),
+        _QueueOrderTerm('sort_track'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('id'),
+      ],
+      'a-z' => const [
+        _QueueOrderTerm('sort_track'),
+        _QueueOrderTerm('sort_artist'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('id'),
+      ],
+      'z-a' => const [
+        _QueueOrderTerm('sort_track', descending: true),
+        _QueueOrderTerm('sort_artist', descending: true),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('id'),
+      ],
+      'artist-asc' => const [
+        _QueueOrderTerm('sort_artist'),
+        _QueueOrderTerm('sort_track'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('id'),
+      ],
+      'artist-desc' => const [
+        _QueueOrderTerm('sort_artist', descending: true),
+        _QueueOrderTerm('sort_track'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('id'),
+      ],
+      'album-asc' => const [
+        _QueueOrderTerm('sort_album'),
+        _QueueOrderTerm('sort_track'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('id'),
+      ],
+      'album-desc' => const [
+        _QueueOrderTerm('sort_album', descending: true),
+        _QueueOrderTerm('sort_track'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('id'),
+      ],
+      'release-oldest' => const [
+        _QueueOrderTerm('sort_release'),
+        _QueueOrderTerm('sort_track'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('id'),
+      ],
+      'release-newest' => const [
+        _QueueOrderTerm('sort_release', descending: true),
+        _QueueOrderTerm('sort_track'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('id'),
+      ],
+      'genre-asc' => const [
+        _QueueOrderTerm('sort_genre'),
+        _QueueOrderTerm('sort_track'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('id'),
+      ],
+      'genre-desc' => const [
+        _QueueOrderTerm('sort_genre', descending: true),
+        _QueueOrderTerm('sort_track'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('id'),
+      ],
+      _ => const [
+        _QueueOrderTerm('sort_added', descending: true),
+        _QueueOrderTerm('sort_track'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('id'),
+      ],
     };
+  }
+
+  List<_QueueOrderTerm> _queueAlbumOrderTerms(String sortMode) {
+    return switch (sortMode) {
+      'oldest' => const [
+        _QueueOrderTerm('sort_added'),
+        _QueueOrderTerm('sort_album'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('album_key'),
+      ],
+      'a-z' || 'album-asc' => const [
+        _QueueOrderTerm('sort_album'),
+        _QueueOrderTerm('sort_artist'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('album_key'),
+      ],
+      'z-a' || 'album-desc' => const [
+        _QueueOrderTerm('sort_album', descending: true),
+        _QueueOrderTerm('sort_artist', descending: true),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('album_key'),
+      ],
+      'artist-asc' => const [
+        _QueueOrderTerm('sort_artist'),
+        _QueueOrderTerm('sort_album'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('album_key'),
+      ],
+      'artist-desc' => const [
+        _QueueOrderTerm('sort_artist', descending: true),
+        _QueueOrderTerm('sort_album'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('album_key'),
+      ],
+      'release-oldest' => const [
+        _QueueOrderTerm('sort_release'),
+        _QueueOrderTerm('sort_album'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('album_key'),
+      ],
+      'release-newest' => const [
+        _QueueOrderTerm('sort_release', descending: true),
+        _QueueOrderTerm('sort_album'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('album_key'),
+      ],
+      'genre-asc' => const [
+        _QueueOrderTerm('sort_genre'),
+        _QueueOrderTerm('sort_album'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('album_key'),
+      ],
+      'genre-desc' => const [
+        _QueueOrderTerm('sort_genre', descending: true),
+        _QueueOrderTerm('sort_album'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('album_key'),
+      ],
+      _ => const [
+        _QueueOrderTerm('sort_added', descending: true),
+        _QueueOrderTerm('sort_album'),
+        _QueueOrderTerm('queue_source'),
+        _QueueOrderTerm('album_key'),
+      ],
+    };
+  }
+
+  String _queueOrderBy(List<_QueueOrderTerm> terms) => terms
+      .map((term) => '${term.column} ${term.descending ? 'DESC' : 'ASC'}')
+      .join(', ');
+
+  String _queueCursorPredicate(
+    QueueLibraryDbCursor? cursor,
+    List<_QueueOrderTerm> terms,
+    List<Object?> args,
+  ) {
+    if (cursor == null || cursor.values.length != terms.length) return '';
+    final clauses = <String>[];
+    final first = terms.first;
+    final coarseOperator = first.descending ? '<=' : '>=';
+    args.add(cursor.values.first);
+    for (var i = 0; i < terms.length; i++) {
+      final comparisons = <String>[];
+      for (var j = 0; j < i; j++) {
+        comparisons.add('${terms[j].column} = ?');
+        args.add(cursor.values[j]);
+      }
+      comparisons.add(
+        '${terms[i].column} ${terms[i].descending ? '<' : '>'} ?',
+      );
+      args.add(cursor.values[i]);
+      clauses.add('(${comparisons.join(' AND ')})');
+    }
+    return '(${first.column} $coarseOperator ?) AND (${clauses.join(' OR ')})';
+  }
+
+  QueueLibraryDbCursor? _queueCursorFromRow(
+    Map<String, dynamic>? row,
+    List<_QueueOrderTerm> terms,
+  ) {
+    if (row == null) return null;
+    final values = <Object>[];
+    for (final term in terms) {
+      final value = row[term.column];
+      if (value is! Object) return null;
+      values.add(value);
+    }
+    return QueueLibraryDbCursor(List<Object>.unmodifiable(values));
   }
 
   Map<String, dynamic> _queueTrackRowToJson(Map<String, dynamic> row) {

@@ -49,6 +49,9 @@ class ExtensionAvatar extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.cover,
+        cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
+        cacheHeight: (size * MediaQuery.devicePixelRatioOf(context)).round(),
+        filterQuality: FilterQuality.low,
         errorBuilder: (_, _, _) => fallback,
       );
     } else if (imageUrl != null && imageUrl!.isNotEmpty) {
@@ -57,6 +60,9 @@ class ExtensionAvatar extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.cover,
+        cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
+        cacheHeight: (size * MediaQuery.devicePixelRatioOf(context)).round(),
+        filterQuality: FilterQuality.low,
         errorBuilder: (_, _, _) => fallback,
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;

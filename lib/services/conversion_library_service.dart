@@ -111,7 +111,7 @@ class ConversionLibraryService {
     final converted = source.toJson()
       ..['id'] = convertedLibraryItemId(source.id, newFilePath)
       ..['filePath'] = newFilePath
-      ..['downloadedAt'] = DateTime.now().toIso8601String()
+      ..['downloadedAt'] = DateTime.now().toUtc().toIso8601String()
       ..['quality'] = newQuality
       ..['format'] = normalizedConvertedAudioFormat(targetFormat)
       ..['bitrate'] = convertedBitrate

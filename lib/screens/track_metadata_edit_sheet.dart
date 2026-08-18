@@ -105,6 +105,9 @@ class _MetadataCandidateArtworkState extends State<_MetadataCandidateArtwork> {
             width: 56,
             height: 56,
             fit: BoxFit.cover,
+            cacheWidth: (56 * MediaQuery.devicePixelRatioOf(context)).round(),
+            cacheHeight: (56 * MediaQuery.devicePixelRatioOf(context)).round(),
+            filterQuality: FilterQuality.low,
           )
         : coverUrl != null
         ? CachedCoverImage(
@@ -2434,6 +2437,11 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
                   width: 112,
                   height: 112,
                   fit: BoxFit.cover,
+                  cacheWidth: (112 * MediaQuery.devicePixelRatioOf(context))
+                      .round(),
+                  cacheHeight: (112 * MediaQuery.devicePixelRatioOf(context))
+                      .round(),
+                  filterQuality: FilterQuality.low,
                   semanticLabel:
                       context.l10n.editMetadataAutoFillCoverAvailable,
                   errorBuilder: (_, _, _) => const SizedBox.shrink(),
@@ -2710,6 +2718,11 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
               height: 160,
               width: 160,
               fit: BoxFit.cover,
+              cacheWidth: (160 * MediaQuery.devicePixelRatioOf(context))
+                  .round(),
+              cacheHeight: (160 * MediaQuery.devicePixelRatioOf(context))
+                  .round(),
+              filterQuality: FilterQuality.low,
               errorBuilder: (_, _, _) => Container(
                 width: 160,
                 height: 160,

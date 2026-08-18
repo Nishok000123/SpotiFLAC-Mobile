@@ -158,9 +158,7 @@ List<Track> normalizeBatchAlbumArtists(List<Track> tracks) {
       final currentArtist = normalizeOptionalString(tracks[index].albumArtist);
       if (currentArtist == canonicalArtist) continue;
       normalized ??= List<Track>.of(tracks);
-      normalized[index] = tracks[index].copyWith(
-        albumArtist: canonicalArtist,
-      );
+      normalized[index] = tracks[index].copyWith(albumArtist: canonicalArtist);
     }
   }
 
@@ -209,9 +207,7 @@ String? _sharedBatchAlbumArtist(List<Track> tracks) {
     credits.add(names);
   }
 
-  final sharedKeys = credits.first
-      .map((name) => name.toLowerCase())
-      .toSet();
+  final sharedKeys = credits.first.map((name) => name.toLowerCase()).toSet();
   for (final credit in credits.skip(1)) {
     final keys = credit.map((name) => name.toLowerCase()).toSet();
     sharedKeys.removeWhere((name) => !keys.contains(name));
@@ -1453,7 +1449,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     var settings = ref.read(settingsProvider);
     updateSettings(settings);
     var isSafMode = _isSafMode(settings);
-    var iosDownloadBookmarkActive = false;
+    IosSecurityScopedAccess? iosDownloadBookmarkAccess;
 
     // Validate SAF before handing the batch to either queue implementation.
     // Never silently redirect a user-selected SAF destination into private app
@@ -1630,11 +1626,12 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     if (!isSafMode &&
         Platform.isIOS &&
         settings.downloadDirectoryBookmark.isNotEmpty) {
-      final resolvedPath = await PlatformBridge.startAccessingIosBookmark(
-        settings.downloadDirectoryBookmark,
-      );
+      iosDownloadBookmarkAccess =
+          await PlatformBridge.startAccessingIosBookmark(
+            settings.downloadDirectoryBookmark,
+          );
+      final resolvedPath = iosDownloadBookmarkAccess?.path;
       if (resolvedPath != null && resolvedPath.isNotEmpty) {
-        iosDownloadBookmarkActive = true;
         if (resolvedPath != state.outputDir) {
           _log.i('Resolved iOS download bookmark path: $resolvedPath');
           state = state.copyWith(outputDir: resolvedPath);
@@ -1662,9 +1659,11 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     try {
       await _runQueueLoop();
     } finally {
-      if (iosDownloadBookmarkActive) {
-        await PlatformBridge.stopAccessingIosBookmark();
-        iosDownloadBookmarkActive = false;
+      if (iosDownloadBookmarkAccess != null) {
+        await PlatformBridge.stopAccessingIosBookmark(
+          iosDownloadBookmarkAccess,
+        );
+        iosDownloadBookmarkAccess = null;
       }
     }
     final stoppedWhilePaused = state.isPaused;

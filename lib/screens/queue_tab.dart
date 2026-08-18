@@ -481,13 +481,24 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     _QueueLibraryPageData? nonEmptyFallback,
   }) {
     void storePage(_QueueLibraryPageData data) {
-      final cached = _queueLibraryPageDataCache[request];
+      final cached = _cachedQueueLibraryPageAt(request, request.offset);
       if (shouldRetainQueueLibraryPageSnapshot(
         currentIsEmpty: data.isEmpty,
         cachedHasContent: cached != null && !cached.isEmpty,
         activeDownloadFallbackAvailable: nonEmptyFallback != null,
       )) {
         return;
+      }
+      final staleRequests = _queueLibraryPageDataCache.keys
+          .where(
+            (cachedRequest) =>
+                cachedRequest.offset == request.offset &&
+                cachedRequest != request &&
+                _sameQueueLibraryPageScope(cachedRequest, request),
+          )
+          .toList(growable: false);
+      for (final staleRequest in staleRequests) {
+        _queueLibraryPageDataCache.remove(staleRequest);
       }
       _queueLibraryPageDataCache[request] = data;
       _trimQueueLibraryPageDataCache(protectedRequest: request);
@@ -503,19 +514,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
 
     final pages = <_QueueLibraryPageData>[];
     for (var offset = 0; offset <= request.offset; offset += _libraryPageSize) {
-      final page =
-          _queueLibraryPageDataCache[_QueueLibraryPageRequest(
-            filterMode: request.filterMode,
-            limit: request.limit,
-            offset: offset,
-            searchQuery: request.searchQuery,
-            filterSource: request.filterSource,
-            filterQuality: request.filterQuality,
-            filterFormat: request.filterFormat,
-            filterMetadata: request.filterMetadata,
-            sortMode: request.sortMode,
-            localLibraryEnabled: request.localLibraryEnabled,
-          )];
+      final page = _cachedQueueLibraryPageAt(request, offset);
       if (page != null) pages.add(page);
     }
 
@@ -569,16 +568,37 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     _QueueLibraryPageRequest request,
     _QueueLibraryPageRequest protectedRequest,
   ) {
-    return request.filterMode == protectedRequest.filterMode &&
+    return _sameQueueLibraryPageScope(request, protectedRequest) &&
         request.limit == protectedRequest.limit &&
-        request.offset <= protectedRequest.offset &&
-        request.searchQuery == protectedRequest.searchQuery &&
-        request.filterSource == protectedRequest.filterSource &&
-        request.filterQuality == protectedRequest.filterQuality &&
-        request.filterFormat == protectedRequest.filterFormat &&
-        request.filterMetadata == protectedRequest.filterMetadata &&
-        request.sortMode == protectedRequest.sortMode &&
-        request.localLibraryEnabled == protectedRequest.localLibraryEnabled;
+        request.offset <= protectedRequest.offset;
+  }
+
+  bool _sameQueueLibraryPageScope(
+    _QueueLibraryPageRequest a,
+    _QueueLibraryPageRequest b,
+  ) {
+    return a.filterMode == b.filterMode &&
+        a.limit == b.limit &&
+        a.searchQuery == b.searchQuery &&
+        a.filterSource == b.filterSource &&
+        a.filterQuality == b.filterQuality &&
+        a.filterFormat == b.filterFormat &&
+        a.filterMetadata == b.filterMetadata &&
+        a.sortMode == b.sortMode &&
+        a.localLibraryEnabled == b.localLibraryEnabled;
+  }
+
+  _QueueLibraryPageData? _cachedQueueLibraryPageAt(
+    _QueueLibraryPageRequest request,
+    int offset,
+  ) {
+    for (final entry in _queueLibraryPageDataCache.entries) {
+      if (entry.key.offset == offset &&
+          _sameQueueLibraryPageScope(entry.key, request)) {
+        return entry.value;
+      }
+    }
+    return null;
   }
 
   void _trimQueueLibraryPageDataCache({
@@ -1292,19 +1312,39 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       nonEmptyFallback: historySnapshotCounts,
     );
 
-    _QueueLibraryPageRequest pageRequest(String filterMode) =>
-        _QueueLibraryPageRequest(
-          filterMode: filterMode,
-          limit: _libraryPageSize,
-          offset: _libraryPageOffsetFor(filterMode),
-          searchQuery: _searchQuery,
-          filterSource: _filterSource,
-          filterQuality: _filterQuality,
-          filterFormat: _filterFormat,
-          filterMetadata: _filterMetadata,
-          sortMode: _sortMode,
-          localLibraryEnabled: localLibraryEnabled,
-        );
+    _QueueLibraryPageRequest pageRequest(String filterMode) {
+      final offset = _libraryPageOffsetFor(filterMode);
+      final baseRequest = _QueueLibraryPageRequest(
+        filterMode: filterMode,
+        limit: _libraryPageSize,
+        offset: offset,
+        searchQuery: _searchQuery,
+        filterSource: _filterSource,
+        filterQuality: _filterQuality,
+        filterFormat: _filterFormat,
+        filterMetadata: _filterMetadata,
+        sortMode: _sortMode,
+        localLibraryEnabled: localLibraryEnabled,
+      );
+      if (offset == 0) return baseRequest;
+      final previousPage = _cachedQueueLibraryPageAt(
+        baseRequest,
+        offset - _libraryPageSize,
+      );
+      return _QueueLibraryPageRequest(
+        filterMode: baseRequest.filterMode,
+        limit: baseRequest.limit,
+        offset: baseRequest.offset,
+        searchQuery: baseRequest.searchQuery,
+        filterSource: baseRequest.filterSource,
+        filterQuality: baseRequest.filterQuality,
+        filterFormat: baseRequest.filterFormat,
+        filterMetadata: baseRequest.filterMetadata,
+        sortMode: baseRequest.sortMode,
+        localLibraryEnabled: baseRequest.localLibraryEnabled,
+        cursor: previousPage?.nextCursor,
+      );
+    }
 
     final activePageRequest = pageRequest(historyFilterMode);
     final activePageValue = ref.watch(

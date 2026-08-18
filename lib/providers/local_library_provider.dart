@@ -131,6 +131,7 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
   bool _hasLoadedFromDatabase = false;
   Future<void>? _loadFuture;
   bool _scanCancelRequested = false;
+  bool _scanInProgress = false;
   static const _scanNotificationHeartbeat = Duration(seconds: 4);
   int _lastScanNotificationPercent = -1;
   int _lastScanNotificationTotalFiles = -1;
@@ -237,16 +238,73 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
     return false;
   }
 
+  Future<({int inserted, int skipped})?> _replaceFromFullScanStream({
+    required String folderPath,
+    required bool isSaf,
+    required Set<String> downloadedPathKeys,
+  }) async {
+    if (_scanCancelRequested) return null;
+    final scanFile = isSaf
+        ? await PlatformBridge.scanSafTreeToNDJSONFile(
+            folderPath,
+            isCancelled: () => _scanCancelRequested,
+          )
+        : await PlatformBridge.scanLibraryFolderToNDJSONFile(
+            folderPath,
+            isCancelled: () => _scanCancelRequested,
+          );
+    var skipped = 0;
+    try {
+      if (_scanCancelRequested) return null;
+      state = state.copyWith(
+        scanIsFinalizing: true,
+        scanProgress: state.scanProgress >= 99 ? state.scanProgress : 99,
+        scanCurrentFile: null,
+      );
+      Stream<Map<String, dynamic>> filteredRows() async* {
+        var decodedRows = 0;
+        await for (final json in scanFile.rows()) {
+          if (_scanCancelRequested) {
+            throw StateError('Library scan cancelled during ingestion');
+          }
+          decodedRows++;
+          final filePath = json['filePath'] as String?;
+          if (_isDownloadedPath(filePath, downloadedPathKeys)) {
+            skipped++;
+            continue;
+          }
+          yield json;
+        }
+        if (decodedRows != scanFile.expectedCount) {
+          throw FormatException(
+            'Library scan row count mismatch: decoded $decodedRows, '
+            'expected ${scanFile.expectedCount}',
+          );
+        }
+      }
+
+      final inserted = await _db.replaceAllStream(filteredRows());
+      _log.i(
+        'Stream-ingested $inserted/${scanFile.expectedCount} scan rows '
+        '($skipped downloads excluded)',
+      );
+      return (inserted: inserted, skipped: skipped);
+    } finally {
+      await scanFile.delete();
+    }
+  }
+
   Future<void> startScan(
     String folderPath, {
     bool forceFullScan = false,
     String? iosBookmark,
   }) async {
-    if (state.isScanning) {
+    if (_scanInProgress || state.isScanning) {
       _log.w('Scan already in progress');
       return;
     }
 
+    _scanInProgress = true;
     _scanCancelRequested = false;
     _log.i(
       'Starting library scan: $folderPath (incremental: ${!forceFullScan})',
@@ -287,13 +345,13 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
     _startProgressPolling();
 
     String? resolvedPath;
-    bool didStartSecurityAccess = false;
+    IosSecurityScopedAccess? securityAccess;
     if (Platform.isIOS && iosBookmark != null && iosBookmark.isNotEmpty) {
-      resolvedPath = await PlatformBridge.startAccessingIosBookmark(
+      securityAccess = await PlatformBridge.startAccessingIosBookmark(
         iosBookmark,
       );
-      if (resolvedPath != null) {
-        didStartSecurityAccess = true;
+      resolvedPath = securityAccess?.path;
+      if (securityAccess != null) {
         _log.i('Started iOS security-scoped access: $resolvedPath');
       } else {
         _log.w(
@@ -326,11 +384,14 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
         '(${downloadedPathKeys.length} path keys)',
       );
 
-      if (forceFullScan) {
-        final results = isSaf
-            ? await PlatformBridge.scanSafTree(effectiveFolderPath)
-            : await PlatformBridge.scanLibraryFolder(effectiveFolderPath);
-        if (_scanCancelRequested) {
+      final useStreamingFullScan = forceFullScan || await _db.getCount() == 0;
+      if (useStreamingFullScan) {
+        final scanResult = await _replaceFromFullScanStream(
+          folderPath: effectiveFolderPath,
+          isSaf: isSaf,
+          downloadedPathKeys: downloadedPathKeys,
+        );
+        if (scanResult == null || _scanCancelRequested) {
           state = state.copyWith(
             isScanning: false,
             scanIsFinalizing: false,
@@ -346,23 +407,11 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
           scanCurrentFile: null,
         );
 
-        final items = <LocalLibraryItem>[];
-        int skippedDownloads = 0;
-        for (final json in results) {
-          final filePath = json['filePath'] as String?;
-          if (_isDownloadedPath(filePath, downloadedPathKeys)) {
-            skippedDownloads++;
-            continue;
-          }
-          final item = LocalLibraryItem.fromJson(json);
-          items.add(item);
-        }
+        final skippedDownloads = scanResult.skipped;
 
         if (skippedDownloads > 0) {
           _log.i('Skipped $skippedDownloads files already in download history');
         }
-
-        await _db.replaceAll(items.map((e) => e.toJson()).toList());
 
         final now = DateTime.now();
         try {
@@ -421,6 +470,9 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
 
         Map<String, dynamic> result;
         try {
+          if (_scanCancelRequested) {
+            throw StateError('Library scan cancelled before native scan');
+          }
           if (isSaf) {
             result = useSnapshotBridge && snapshotPath != null
                 ? await PlatformBridge.scanSafTreeIncrementalFromSnapshot(
@@ -564,6 +616,16 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
         );
       }
     } catch (e, stack) {
+      if (_scanCancelRequested) {
+        _log.i('Library scan cancelled');
+        state = state.copyWith(
+          isScanning: false,
+          scanIsFinalizing: false,
+          scanWasCancelled: true,
+        );
+        await _showScanCancelledNotification();
+        return;
+      }
       _log.e('Library scan failed: $e', e, stack);
       state = state.copyWith(
         isScanning: false,
@@ -572,11 +634,12 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
       );
       await _showScanFailedNotification(e.toString());
     } finally {
-      if (didStartSecurityAccess) {
-        await PlatformBridge.stopAccessingIosBookmark();
+      if (securityAccess != null) {
+        await PlatformBridge.stopAccessingIosBookmark(securityAccess);
         _log.i('Stopped iOS security-scoped access');
       }
       _stopProgressPolling();
+      _scanInProgress = false;
     }
   }
 
@@ -593,6 +656,7 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
   }
 
   Future<void> _handleLibraryScanProgress(Map<String, dynamic> progress) async {
+    if (_scanCancelRequested) return;
     final nextProgress = (progress['progress_pct'] as num?)?.toDouble() ?? 0;
     final normalizedProgress = ((nextProgress * 10).round() / 10).clamp(
       0.0,
@@ -683,11 +747,7 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
     _log.i('Cancelling library scan');
     _scanCancelRequested = true;
     await PlatformBridge.cancelLibraryScan();
-    state = state.copyWith(
-      isScanning: false,
-      scanIsFinalizing: false,
-      scanWasCancelled: true,
-    );
+    state = state.copyWith(scanIsFinalizing: false, scanWasCancelled: true);
     _stopProgressPolling();
     await _showScanCancelledNotification();
   }
@@ -761,13 +821,15 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
   }
 
   Future<int> cleanupMissingFiles({String? iosBookmark}) async {
-    bool didStartSecurityAccess = false;
+    IosSecurityScopedAccess? securityAccess;
     if (Platform.isIOS && iosBookmark != null && iosBookmark.isNotEmpty) {
-      final resolved = await PlatformBridge.startAccessingIosBookmark(
+      securityAccess = await PlatformBridge.startAccessingIosBookmark(
         iosBookmark,
       );
-      if (resolved != null) {
-        didStartSecurityAccess = true;
+      if (securityAccess == null) {
+        throw const FileSystemException(
+          'Cannot clean the library without folder access',
+        );
       }
     }
     try {
@@ -777,8 +839,8 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
       }
       return removed;
     } finally {
-      if (didStartSecurityAccess) {
-        await PlatformBridge.stopAccessingIosBookmark();
+      if (securityAccess != null) {
+        await PlatformBridge.stopAccessingIosBookmark(securityAccess);
       }
     }
   }

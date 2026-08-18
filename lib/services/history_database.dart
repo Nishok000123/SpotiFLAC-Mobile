@@ -65,7 +65,7 @@ class HistoryBatchLookupRequest {
 }
 
 class HistoryDatabase {
-  static const int schemaVersion = 10;
+  static const int schemaVersion = 11;
   static final HistoryDatabase instance = HistoryDatabase._init();
   static final sqlite.SingleFlightInitializer<Database> _database =
       sqlite.SingleFlightInitializer<Database>();
@@ -123,7 +123,14 @@ class HistoryDatabase {
         isrc_norm TEXT,
         match_key TEXT,
         album_key TEXT,
-        search_text TEXT
+        search_text TEXT,
+        sort_track TEXT,
+        sort_artist TEXT,
+        sort_album TEXT,
+        sort_album_artist TEXT,
+        sort_genre TEXT,
+        sort_release TEXT,
+        sort_added INTEGER
       )
     ''');
 
@@ -139,6 +146,7 @@ class HistoryDatabase {
       'CREATE INDEX IF NOT EXISTS idx_history_track_artist ON history(track_name, artist_name)',
     );
     await _createNormalizedIndexes(db);
+    await _createQueueIndexes(db);
     await _createPathKeyTable(db);
 
     _log.i('Database schema created with indexes');
@@ -204,6 +212,23 @@ class HistoryDatabase {
       await _backfillNormalizedColumns(db);
       await _createNormalizedIndexes(db);
     }
+    if (oldVersion < 11) {
+      await sqlite.addColumnIfMissing(db, 'history', 'sort_track', 'TEXT');
+      await sqlite.addColumnIfMissing(db, 'history', 'sort_artist', 'TEXT');
+      await sqlite.addColumnIfMissing(db, 'history', 'sort_album', 'TEXT');
+      await sqlite.addColumnIfMissing(
+        db,
+        'history',
+        'sort_album_artist',
+        'TEXT',
+      );
+      await sqlite.addColumnIfMissing(db, 'history', 'sort_genre', 'TEXT');
+      await sqlite.addColumnIfMissing(db, 'history', 'sort_release', 'TEXT');
+      await sqlite.addColumnIfMissing(db, 'history', 'sort_added', 'INTEGER');
+      await _backfillQueueSortColumns(db);
+      await _createQueueIndexes(db);
+      _log.i('Added persisted queue sort columns');
+    }
   }
 
   static String normalizeLookupText(String? value) =>
@@ -259,6 +284,27 @@ class HistoryDatabase {
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_history_album_key ON history(album_key)',
+    );
+  }
+
+  Future<void> _createQueueIndexes(DatabaseExecutor db) async {
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_history_queue_added ON history(sort_added DESC, sort_track, id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_history_queue_track ON history(sort_track, sort_artist, id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_history_queue_artist ON history(sort_artist, sort_track, id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_history_queue_album ON history(sort_album, sort_track, id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_history_queue_genre ON history(sort_genre, sort_track, id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_history_queue_release ON history(sort_release, sort_track, id)',
     );
   }
 
@@ -320,6 +366,65 @@ class HistoryDatabase {
         normalizedAlbumArtist,
       ].where((value) => value.isNotEmpty).join(' '),
     };
+  }
+
+  Map<String, dynamic> _queueSortColumns({
+    required String? trackName,
+    required String? artistName,
+    required String? albumName,
+    required String? albumArtist,
+    required String? genre,
+    required String? releaseDate,
+    required Object? downloadedAt,
+  }) {
+    final parsedDownloadedAt = downloadedAt is DateTime
+        ? downloadedAt
+        : DateTime.tryParse(downloadedAt?.toString() ?? '');
+    return {
+      'sort_track': normalizeLookupText(trackName),
+      'sort_artist': normalizeLookupText(artistName),
+      'sort_album': normalizeLookupText(albumName),
+      'sort_album_artist': normalizeLookupText(
+        (albumArtist ?? '').trim().isEmpty ? artistName : albumArtist,
+      ),
+      'sort_genre': normalizeLookupText(genre),
+      'sort_release': releaseDate?.trim() ?? '',
+      'sort_added': parsedDownloadedAt?.millisecondsSinceEpoch ?? 0,
+    };
+  }
+
+  Future<void> _backfillQueueSortColumns(Database db) async {
+    final rows = await db.query(
+      'history',
+      columns: [
+        'id',
+        'track_name',
+        'artist_name',
+        'album_name',
+        'album_artist',
+        'genre',
+        'release_date',
+        'downloaded_at',
+      ],
+    );
+    final batch = db.batch();
+    for (final row in rows) {
+      batch.update(
+        'history',
+        _queueSortColumns(
+          trackName: row['track_name'] as String?,
+          artistName: row['artist_name'] as String?,
+          albumName: row['album_name'] as String?,
+          albumArtist: row['album_artist'] as String?,
+          genre: row['genre'] as String?,
+          releaseDate: row['release_date'] as String?,
+          downloadedAt: row['downloaded_at'],
+        ),
+        where: 'id = ?',
+        whereArgs: [row['id']],
+      );
+    }
+    await batch.commit(noResult: true);
   }
 
   Future<void> _createPathKeyTable(DatabaseExecutor db) =>
@@ -474,6 +579,10 @@ class HistoryDatabase {
   }
 
   Map<String, dynamic> _jsonToDbRow(Map<String, dynamic> json) {
+    final downloadedAt = json['downloadedAt'];
+    final parsedDownloadedAt = downloadedAt is DateTime
+        ? downloadedAt
+        : DateTime.tryParse(downloadedAt?.toString() ?? '');
     final row = {
       'id': json['id'],
       'track_name': json['trackName'],
@@ -488,7 +597,9 @@ class HistoryDatabase {
       'saf_file_name': json['safFileName'],
       'saf_repaired': json['safRepaired'] == true ? 1 : 0,
       'service': json['service'],
-      'downloaded_at': json['downloadedAt'],
+      'downloaded_at':
+          parsedDownloadedAt?.toUtc().toIso8601String() ??
+          downloadedAt?.toString(),
       'isrc': json['isrc'],
       'spotify_id': json['spotifyId'],
       'track_number': json['trackNumber'],
@@ -507,6 +618,17 @@ class HistoryDatabase {
       'label': json['label'],
       'copyright': json['copyright'],
     };
+    row.addAll(
+      _queueSortColumns(
+        trackName: json['trackName'] as String?,
+        artistName: json['artistName'] as String?,
+        albumName: json['albumName'] as String?,
+        albumArtist: json['albumArtist'] as String?,
+        genre: json['genre'] as String?,
+        releaseDate: json['releaseDate'] as String?,
+        downloadedAt: parsedDownloadedAt,
+      ),
+    );
     row.addAll(
       _normalizedColumns(
         spotifyId: json['spotifyId'] as String?,
@@ -599,7 +721,7 @@ class HistoryDatabase {
     final db = await database;
     final rows = await db.query(
       'history',
-      orderBy: 'downloaded_at DESC',
+      orderBy: 'sort_added DESC, id DESC',
       limit: limit,
       offset: offset,
     );
@@ -634,7 +756,7 @@ class HistoryDatabase {
       'history',
       where: 'match_key = ?',
       whereArgs: [key],
-      orderBy: 'downloaded_at DESC',
+      orderBy: 'sort_added DESC, id DESC',
       limit: 1,
     );
     if (rows.isEmpty) return null;
@@ -664,7 +786,7 @@ class HistoryDatabase {
       FROM history h
       JOIN history_path_keys hpk ON hpk.item_id = h.id
       WHERE hpk.path_key IN ($placeholders)
-      ORDER BY h.downloaded_at DESC
+      ORDER BY h.sort_added DESC, h.id DESC
       LIMIT 1
       ''', pathKeys);
     if (rows.isEmpty) return null;
@@ -677,7 +799,7 @@ class HistoryDatabase {
       'history',
       where: 'spotify_id = ?',
       whereArgs: [spotifyId],
-      orderBy: 'downloaded_at DESC',
+      orderBy: 'sort_added DESC, id DESC',
       limit: 1,
     );
     if (rows.isEmpty) return null;
@@ -690,7 +812,7 @@ class HistoryDatabase {
       'history',
       where: 'isrc = ?',
       whereArgs: [isrc],
-      orderBy: 'downloaded_at DESC',
+      orderBy: 'sort_added DESC, id DESC',
       limit: 1,
     );
     if (rows.isEmpty) return null;
@@ -712,7 +834,7 @@ class HistoryDatabase {
         where:
             'spotify_id IN ($placeholders) OR spotify_id_norm IN ($placeholders)',
         whereArgs: [...spotifyCandidates, ...normalized],
-        orderBy: 'downloaded_at DESC',
+        orderBy: 'sort_added DESC, id DESC',
         limit: 1,
       );
       if (rows.isNotEmpty) return _dbRowToJson(rows.first);
@@ -725,7 +847,7 @@ class HistoryDatabase {
         columns: columns,
         where: 'isrc_norm = ?',
         whereArgs: [isrcNorm],
-        orderBy: 'downloaded_at DESC',
+        orderBy: 'sort_added DESC, id DESC',
         limit: 1,
       );
       if (rows.isNotEmpty) return _dbRowToJson(rows.first);
@@ -738,7 +860,7 @@ class HistoryDatabase {
         columns: columns,
         where: 'match_key = ?',
         whereArgs: [matchKey],
-        orderBy: 'downloaded_at DESC',
+        orderBy: 'sort_added DESC, id DESC',
         limit: 1,
       );
       if (rows.isNotEmpty) return _dbRowToJson(rows.first);
@@ -771,7 +893,7 @@ class HistoryDatabase {
         rawValues: rawValues,
         destination: destination,
         mapRow: _dbRowToJson,
-        orderBy: 'downloaded_at DESC',
+        orderBy: 'sort_added DESC, id DESC',
       );
     }
 
@@ -997,7 +1119,7 @@ class HistoryDatabase {
         'saf_file_name',
       ],
       where: 'file_path IS NOT NULL AND file_path != ""',
-      orderBy: 'downloaded_at DESC, id DESC',
+      orderBy: 'sort_added DESC, id DESC',
       limit: limit,
       offset: offset,
     );

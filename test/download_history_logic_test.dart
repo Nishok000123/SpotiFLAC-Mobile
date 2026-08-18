@@ -22,6 +22,16 @@ DownloadHistoryItem _historyItem({
 
 void main() {
   group('download history identity', () {
+    test('serializes download timestamps with an explicit UTC offset', () {
+      final item = _historyItem(
+        id: 'utc',
+        filePath: '/music/Album/Same Song.flac',
+        downloadedAt: DateTime(2026, 7, 22, 12, 30),
+      );
+
+      expect(item.toJson()['downloadedAt'], endsWith('Z'));
+    });
+
     test('same track metadata does not merge files from different albums', () {
       final first = _historyItem(
         id: 'first',

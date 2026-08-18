@@ -8,6 +8,10 @@ func ScanLibraryFolderJSON(folderPath string) (string, error) {
 	return ScanLibraryFolder(folderPath)
 }
 
+func ScanLibraryFolderToNDJSONFileJSON(folderPath, outputPath string) (int, error) {
+	return ScanLibraryFolderToNDJSONFile(folderPath, outputPath)
+}
+
 func ScanLibraryFolderIncrementalJSON(folderPath, existingFilesJSON string) (string, error) {
 	return ScanLibraryFolderIncremental(folderPath, existingFilesJSON)
 }

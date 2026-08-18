@@ -1,6 +1,7 @@
 package gobackend
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -122,7 +123,7 @@ func collectLibraryAudioFiles(folderPath string, cancelCh <-chan struct{}) ([]li
 
 	err := filepath.WalkDir(folderPath, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return fmt.Errorf("walk library path %s: %w", path, err)
 		}
 
 		select {
@@ -145,7 +146,7 @@ func collectLibraryAudioFiles(folderPath string, cancelCh <-chan struct{}) ([]li
 
 		info, err := entry.Info()
 		if err != nil {
-			return nil
+			return fmt.Errorf("read library file info %s: %w", path, err)
 		}
 
 		files = append(files, libraryAudioFileInfo{
@@ -195,7 +196,28 @@ func updateLibraryScanProgress(scannedFiles, totalFiles int, currentPath string)
 }
 
 func scanLibraryAudioTasksParallel(tasks []libraryScanTask, scanTime string, cancelCh <-chan struct{}, totalFiles int, completed *int) (map[int][]LibraryScanResult, int, error) {
-	resultsByIndex := make(map[int][]LibraryScanResult, len(tasks))
+	return scanLibraryAudioTasksParallelWithSink(
+		tasks,
+		scanTime,
+		cancelCh,
+		totalFiles,
+		completed,
+		nil,
+	)
+}
+
+func scanLibraryAudioTasksParallelWithSink(
+	tasks []libraryScanTask,
+	scanTime string,
+	cancelCh <-chan struct{},
+	totalFiles int,
+	completed *int,
+	sink func([]LibraryScanResult) error,
+) (map[int][]LibraryScanResult, int, error) {
+	var resultsByIndex map[int][]LibraryScanResult
+	if sink == nil {
+		resultsByIndex = make(map[int][]LibraryScanResult, len(tasks))
+	}
 	if len(tasks) == 0 {
 		return resultsByIndex, 0, nil
 	}
@@ -223,7 +245,14 @@ func scanLibraryAudioTasksParallel(tasks []libraryScanTask, scanTime string, can
 				GoLog("[LibraryScan] Error scanning %s: %v\n", task.info.path, err)
 				continue
 			}
-			resultsByIndex[task.index] = []LibraryScanResult{*result}
+			results := []LibraryScanResult{*result}
+			if sink != nil {
+				if err := sink(results); err != nil {
+					return resultsByIndex, errorCount, err
+				}
+			} else {
+				resultsByIndex[task.index] = results
+			}
 		}
 		return resultsByIndex, errorCount, nil
 	}
@@ -283,6 +312,7 @@ func scanLibraryAudioTasksParallel(tasks []libraryScanTask, scanTime string, can
 	}()
 
 	errorCount := 0
+	var sinkErr error
 	for taskResult := range resultCh {
 		*completed++
 		updateLibraryScanProgress(*completed, totalFiles, taskResult.path)
@@ -291,7 +321,16 @@ func scanLibraryAudioTasksParallel(tasks []libraryScanTask, scanTime string, can
 			GoLog("[LibraryScan] Error scanning %s: %v\n", taskResult.path, taskResult.err)
 			continue
 		}
-		resultsByIndex[taskResult.index] = taskResult.results
+		if sink != nil {
+			if sinkErr == nil {
+				sinkErr = sink(taskResult.results)
+			}
+		} else {
+			resultsByIndex[taskResult.index] = taskResult.results
+		}
+	}
+	if sinkErr != nil {
+		return resultsByIndex, errorCount, sinkErr
 	}
 
 	select {
@@ -308,17 +347,21 @@ func SetLibraryCoverCacheDir(cacheDir string) {
 	libraryCoverCacheMu.Unlock()
 }
 
-func ScanLibraryFolder(folderPath string) (string, error) {
+func scanLibraryFolderWithSink(
+	folderPath string,
+	sink func(LibraryScanResult) error,
+	preserveOrder bool,
+) (int, error) {
 	if folderPath == "" {
-		return "[]", fmt.Errorf("folder path is empty")
+		return 0, fmt.Errorf("folder path is empty")
 	}
 
 	info, err := os.Stat(folderPath)
 	if err != nil {
-		return "[]", fmt.Errorf("folder not found: %w", err)
+		return 0, fmt.Errorf("folder not found: %w", err)
 	}
 	if !info.IsDir() {
-		return "[]", fmt.Errorf("path is not a folder: %s", folderPath)
+		return 0, fmt.Errorf("path is not a folder: %s", folderPath)
 	}
 
 	libraryScanProgressMu.Lock()
@@ -335,7 +378,7 @@ func ScanLibraryFolder(folderPath string) (string, error) {
 
 	audioFileInfos, err := collectLibraryAudioFiles(folderPath, cancelCh)
 	if err != nil {
-		return "[]", err
+		return 0, err
 	}
 
 	totalFiles := len(audioFileInfos)
@@ -346,51 +389,61 @@ func ScanLibraryFolder(folderPath string) (string, error) {
 	if totalFiles == 0 {
 		libraryScanProgressMu.Lock()
 		libraryScanProgress.IsComplete = true
+		libraryScanProgress.ProgressPct = 100
 		libraryScanProgressMu.Unlock()
-		return "[]", nil
+		return 0, nil
 	}
 
 	GoLog("[LibraryScan] Found %d audio files to scan\n", totalFiles)
 
-	results := make([]LibraryScanResult, 0, totalFiles)
 	scanTime := time.Now().UTC().Format(time.RFC3339)
 	errorCount := 0
+	emittedCount := 0
+	emitResults := func(results []LibraryScanResult) error {
+		for i := range results {
+			if err := sink(results[i]); err != nil {
+				return err
+			}
+			emittedCount++
+		}
+		return nil
+	}
 
 	cueReferencedAudioFiles := make(map[string]bool)
 	parsedCueFiles := make(map[string]scannedCueFileInfo)
-
 	for _, fileInfo := range audioFileInfos {
 		filePath := fileInfo.path
-		ext := strings.ToLower(filepath.Ext(filePath))
-		if ext == ".cue" {
-			sheet, err := ParseCueFile(filePath)
-			if err == nil && sheet.FileName != "" {
-				audioPath := ResolveCueAudioPath(filePath, sheet.FileName)
-				if audioPath != "" {
-					parsedCueFiles[filePath] = scannedCueFileInfo{
-						sheet:     sheet,
-						audioPath: audioPath,
-					}
-					cueReferencedAudioFiles[audioPath] = true
+		if strings.ToLower(filepath.Ext(filePath)) != ".cue" {
+			continue
+		}
+		sheet, parseErr := ParseCueFile(filePath)
+		if parseErr == nil && sheet.FileName != "" {
+			audioPath := ResolveCueAudioPath(filePath, sheet.FileName)
+			if audioPath != "" {
+				parsedCueFiles[filePath] = scannedCueFileInfo{
+					sheet:     sheet,
+					audioPath: audioPath,
 				}
+				cueReferencedAudioFiles[audioPath] = true
 			}
 		}
 	}
 
-	resultsByIndex := make(map[int][]LibraryScanResult, totalFiles)
 	audioTasks := make([]libraryScanTask, 0, totalFiles)
+	var orderedResults map[int][]LibraryScanResult
+	if preserveOrder {
+		orderedResults = make(map[int][]LibraryScanResult, totalFiles)
+	}
 	completedFiles := 0
-
 	for i, fileInfo := range audioFileInfos {
 		filePath := fileInfo.path
 		select {
 		case <-cancelCh:
-			return "[]", fmt.Errorf("scan cancelled")
+			return emittedCount, fmt.Errorf("scan cancelled")
 		default:
 		}
 
 		ext := strings.ToLower(filepath.Ext(filePath))
-
 		if ext == ".cue" {
 			var cueResults []LibraryScanResult
 			cueInfo, ok := parsedCueFiles[filePath]
@@ -407,16 +460,18 @@ func ScanLibraryFolder(folderPath string) (string, error) {
 			} else {
 				cueResults, err = ScanCueFileForLibrary(filePath, scanTime)
 			}
+			completedFiles++
+			updateLibraryScanProgress(completedFiles, totalFiles, filePath)
 			if err != nil {
 				errorCount++
 				GoLog("[LibraryScan] Error scanning cue %s: %v\n", filePath, err)
-				completedFiles++
-				updateLibraryScanProgress(completedFiles, totalFiles, filePath)
 				continue
 			}
-			resultsByIndex[i] = cueResults
-			completedFiles++
-			updateLibraryScanProgress(completedFiles, totalFiles, filePath)
+			if preserveOrder {
+				orderedResults[i] = cueResults
+			} else if err := emitResults(cueResults); err != nil {
+				return emittedCount, fmt.Errorf("write scan result: %w", err)
+			}
 			GoLog("[LibraryScan] CUE sheet %s: %d tracks\n", filepath.Base(filePath), len(cueResults))
 			continue
 		}
@@ -431,31 +486,53 @@ func ScanLibraryFolder(folderPath string) (string, error) {
 		audioTasks = append(audioTasks, libraryScanTask{index: i, info: fileInfo})
 	}
 
-	audioResults, audioErrors, err := scanLibraryAudioTasksParallel(
+	var audioSink func([]LibraryScanResult) error
+	if !preserveOrder {
+		audioSink = emitResults
+	}
+	audioResults, audioErrors, err := scanLibraryAudioTasksParallelWithSink(
 		audioTasks,
 		scanTime,
 		cancelCh,
 		totalFiles,
 		&completedFiles,
+		audioSink,
 	)
 	if err != nil {
-		return "[]", err
+		return emittedCount, err
 	}
 	errorCount += audioErrors
-	for index, scanResults := range audioResults {
-		resultsByIndex[index] = scanResults
-	}
-
-	for i := range audioFileInfos {
-		results = append(results, resultsByIndex[i]...)
+	if preserveOrder {
+		for index, results := range audioResults {
+			orderedResults[index] = results
+		}
+		for i := range audioFileInfos {
+			if err := emitResults(orderedResults[i]); err != nil {
+				return emittedCount, fmt.Errorf("write scan result: %w", err)
+			}
+		}
 	}
 
 	libraryScanProgressMu.Lock()
 	libraryScanProgress.ErrorCount = errorCount
 	libraryScanProgress.IsComplete = true
+	libraryScanProgress.ScannedFiles = totalFiles
+	libraryScanProgress.ProgressPct = 100
 	libraryScanProgressMu.Unlock()
 
-	GoLog("[LibraryScan] Scan complete: %d tracks found, %d errors\n", len(results), errorCount)
+	GoLog("[LibraryScan] Scan complete: %d tracks found, %d errors\n", emittedCount, errorCount)
+	return emittedCount, nil
+}
+
+func ScanLibraryFolder(folderPath string) (string, error) {
+	results := make([]LibraryScanResult, 0)
+	_, err := scanLibraryFolderWithSink(folderPath, func(result LibraryScanResult) error {
+		results = append(results, result)
+		return nil
+	}, true)
+	if err != nil {
+		return "[]", err
+	}
 
 	jsonBytes, err := json.Marshal(results)
 	if err != nil {
@@ -463,6 +540,43 @@ func ScanLibraryFolder(folderPath string) (string, error) {
 	}
 
 	return string(jsonBytes), nil
+}
+
+// ScanLibraryFolderToNDJSONFile writes one JSON object per line so mobile
+// clients can decode and ingest bounded batches instead of materializing a
+// full-library JSON array in both the Go and Dart heaps.
+func ScanLibraryFolderToNDJSONFile(folderPath, outputPath string) (int, error) {
+	if outputPath == "" {
+		return 0, fmt.Errorf("output path is empty")
+	}
+	file, err := os.Create(outputPath)
+	if err != nil {
+		return 0, fmt.Errorf("create scan output: %w", err)
+	}
+	removeOnError := true
+	defer func() {
+		_ = file.Close()
+		if removeOnError {
+			_ = os.Remove(outputPath)
+		}
+	}()
+
+	writer := bufio.NewWriterSize(file, 64*1024)
+	encoder := json.NewEncoder(writer)
+	count, err := scanLibraryFolderWithSink(folderPath, func(result LibraryScanResult) error {
+		return encoder.Encode(result)
+	}, false)
+	if err != nil {
+		return count, err
+	}
+	if err := writer.Flush(); err != nil {
+		return count, fmt.Errorf("flush scan output: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		return count, fmt.Errorf("close scan output: %w", err)
+	}
+	removeOnError = false
+	return count, nil
 }
 
 func GetLibraryScanProgress() string {

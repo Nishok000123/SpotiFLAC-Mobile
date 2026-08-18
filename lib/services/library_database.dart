@@ -16,7 +16,7 @@ final _log = AppLogger('LibraryDatabase');
 
 class LibraryDatabase {
   static final LibraryDatabase instance = LibraryDatabase._init();
-  static const int schemaVersion = 9;
+  static const int schemaVersion = 10;
   static const int audioMetadataScanVersion = 1;
   static final sqlite.SingleFlightInitializer<Database> _database =
       sqlite.SingleFlightInitializer<Database>();
@@ -87,7 +87,11 @@ class LibraryDatabase {
         album_name_norm TEXT,
         album_artist_norm TEXT,
         match_key TEXT,
-        album_key TEXT
+        album_key TEXT,
+        search_text TEXT,
+        sort_genre TEXT,
+        sort_release TEXT,
+        sort_added INTEGER
       )
     ''');
 
@@ -102,6 +106,7 @@ class LibraryDatabase {
       'CREATE INDEX idx_library_file_path ON library(file_path)',
     );
     await _createNormalizedIndexes(db);
+    await _createQueueIndexes(db);
     await _createPathKeyTable(db);
 
     _log.i('Library database schema created with indexes');
@@ -173,6 +178,15 @@ class LibraryDatabase {
       );
       _log.i('Marked existing rows for one-time audio metadata rescan');
     }
+    if (oldVersion < 10) {
+      await sqlite.addColumnIfMissing(db, 'library', 'search_text', 'TEXT');
+      await sqlite.addColumnIfMissing(db, 'library', 'sort_genre', 'TEXT');
+      await sqlite.addColumnIfMissing(db, 'library', 'sort_release', 'TEXT');
+      await sqlite.addColumnIfMissing(db, 'library', 'sort_added', 'INTEGER');
+      await _backfillQueueColumns(db);
+      await _createQueueIndexes(db);
+      _log.i('Added persisted queue sort/search columns');
+    }
   }
 
   Future<void> _createPathKeyTable(DatabaseExecutor db) =>
@@ -214,6 +228,33 @@ class LibraryDatabase {
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_library_scanned_at ON library(scanned_at)',
+    );
+  }
+
+  Future<void> _createQueueIndexes(DatabaseExecutor db) async {
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_library_queue_added '
+      'ON library(sort_added DESC, track_name_norm, id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_library_queue_track '
+      'ON library(track_name_norm, artist_name_norm, id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_library_queue_artist '
+      'ON library(artist_name_norm, track_name_norm, id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_library_queue_album '
+      'ON library(album_name_norm, track_name_norm, id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_library_queue_genre '
+      'ON library(sort_genre, track_name_norm, id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_library_queue_release '
+      'ON library(sort_release, track_name_norm, id)',
     );
   }
 
@@ -269,7 +310,77 @@ class LibraryDatabase {
     };
   }
 
+  Map<String, dynamic> _queueColumns({
+    required String? trackName,
+    required String? artistName,
+    required String? albumName,
+    required String? albumArtist,
+    required String? genre,
+    required String? releaseDate,
+    required int? fileModTime,
+    required String? scannedAt,
+  }) {
+    final trackNorm = normalizeLookupText(trackName);
+    final artistNorm = normalizeLookupText(artistName);
+    final albumNorm = normalizeLookupText(albumName);
+    final albumArtistNorm = normalizeLookupText(
+      (albumArtist ?? '').trim().isEmpty ? artistName : albumArtist,
+    );
+    return {
+      'search_text': [
+        trackNorm,
+        artistNorm,
+        albumNorm,
+        albumArtistNorm,
+      ].where((value) => value.isNotEmpty).join(' '),
+      'sort_genre': normalizeLookupText(genre),
+      'sort_release': releaseDate?.trim() ?? '',
+      'sort_added':
+          fileModTime ??
+          DateTime.tryParse(scannedAt ?? '')?.millisecondsSinceEpoch ??
+          0,
+    };
+  }
+
+  Future<void> _backfillQueueColumns(Database db) async {
+    final rows = await db.query(
+      'library',
+      columns: [
+        'id',
+        'track_name',
+        'artist_name',
+        'album_name',
+        'album_artist',
+        'genre',
+        'release_date',
+        'file_mod_time',
+        'scanned_at',
+      ],
+    );
+    final batch = db.batch();
+    for (final row in rows) {
+      batch.update(
+        'library',
+        _queueColumns(
+          trackName: row['track_name'] as String?,
+          artistName: row['artist_name'] as String?,
+          albumName: row['album_name'] as String?,
+          albumArtist: row['album_artist'] as String?,
+          genre: row['genre'] as String?,
+          releaseDate: row['release_date'] as String?,
+          fileModTime: (row['file_mod_time'] as num?)?.toInt(),
+          scannedAt: row['scanned_at'] as String?,
+        ),
+        where: 'id = ?',
+        whereArgs: [row['id']],
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
   Map<String, dynamic> _jsonToDbRow(Map<String, dynamic> json) {
+    final fileModTime = (json['fileModTime'] as num?)?.toInt();
+    final scannedAt = json['scannedAt'] as String?;
     final row = {
       'id': json['id'],
       'track_name': json['trackName'],
@@ -299,6 +410,18 @@ class LibraryDatabase {
           (json['audioMetadataScanVersion'] as num?)?.toInt() ??
           audioMetadataScanVersion,
     };
+    row.addAll(
+      _queueColumns(
+        trackName: json['trackName'] as String?,
+        artistName: json['artistName'] as String?,
+        albumName: json['albumName'] as String?,
+        albumArtist: json['albumArtist'] as String?,
+        genre: json['genre'] as String?,
+        releaseDate: json['releaseDate'] as String?,
+        fileModTime: fileModTime,
+        scannedAt: scannedAt,
+      ),
+    );
     row.addAll(
       _normalizedColumns(
         trackName: json['trackName'] as String? ?? '',
@@ -406,6 +529,52 @@ class LibraryDatabase {
     _log.i('Replaced library with ${items.length} items');
   }
 
+  /// Atomically replaces the Library while consuming bounded scan batches.
+  /// The stream may represent tens of thousands of tracks without requiring a
+  /// second full list of models/maps on the Dart heap.
+  Future<int> replaceAllStream(
+    Stream<Map<String, dynamic>> items, {
+    int batchSize = 300,
+  }) async {
+    if (batchSize <= 0) {
+      throw ArgumentError.value(batchSize, 'batchSize', 'Must be positive');
+    }
+    final db = await database;
+    var inserted = 0;
+    await db.transaction((txn) async {
+      await txn.delete('library_path_keys');
+      await txn.delete('library');
+
+      var batch = txn.batch();
+      var pending = 0;
+      Future<void> flush() async {
+        if (pending == 0) return;
+        await batch.commit(noResult: true);
+        batch = txn.batch();
+        pending = 0;
+      }
+
+      await for (final json in items) {
+        final id = json['id'] as String?;
+        if (id == null || id.trim().isEmpty) {
+          throw const FormatException('Library scan row has no valid id');
+        }
+        batch.insert(
+          'library',
+          _jsonToDbRow(json),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        _putPathKeysInBatch(batch, id, json['filePath'] as String?);
+        inserted++;
+        pending++;
+        if (pending >= batchSize) await flush();
+      }
+      await flush();
+    });
+    _log.i('Stream-replaced library with $inserted items');
+    return inserted;
+  }
+
   Future<List<Map<String, dynamic>>> getAll({int? limit, int? offset}) async {
     final db = await database;
     final rows = await db.query(
@@ -442,25 +611,45 @@ class LibraryDatabase {
   Future<List<Map<String, dynamic>>> getQueueTrackPage(
     QueueLibraryDbQuery request,
   ) async {
+    return (await getQueueTrackPageResult(request)).rows;
+  }
+
+  Future<QueueLibraryDbPage> getQueueTrackPageResult(
+    QueueLibraryDbQuery request,
+  ) async {
     final db = await database;
     await _ensureHistoryAttached(db);
     final args = <Object?>[];
-    final unionSql = _queueTrackUnionSql(request, args);
+    final orderTerms = _queueTrackOrderTerms(request.sortMode);
+    final usesCursor =
+        request.cursor != null &&
+        request.cursor!.values.length == orderTerms.length;
+    final unionSql = _queueTrackUnionSql(
+      request,
+      args,
+      orderTerms: orderTerms,
+      usesCursor: usesCursor,
+    );
     final rows = await db.rawQuery(
       '''
       SELECT *
       FROM ($unionSql)
       ORDER BY ${_queueTrackOrderBy(request.sortMode)}
-      LIMIT ? OFFSET ?
+      LIMIT ? ${usesCursor ? '' : 'OFFSET ?'}
       ''',
-      [...args, request.limit, request.offset],
+      [...args, request.limit, if (!usesCursor) request.offset],
     );
-    return rows.map(_queueTrackRowToJson).toList(growable: false);
+    return QueueLibraryDbPage(
+      rows: rows.map(_queueTrackRowToJson).toList(growable: false),
+      nextCursor: _queueCursorFromRow(rows.lastOrNull, orderTerms),
+    );
   }
 
   Future<QueueLibraryCounts> getQueueCounts(QueueLibraryDbQuery request) async {
     final db = await database;
     await _ensureHistoryAttached(db);
+    final fastCounts = await _getUnfilteredQueueCounts(db, request);
+    if (fastCounts != null) return fastCounts;
     final parts = <String>[];
     final args = <Object?>[];
 
@@ -539,23 +728,115 @@ class LibraryDatabase {
     );
   }
 
+  /// The default Library badges do not need a row-by-row join against album
+  /// counts. Aggregate the covering album-key indexes directly and reserve the
+  /// more expensive filtered query for active search/quality/metadata filters.
+  Future<QueueLibraryCounts?> _getUnfilteredQueueCounts(
+    Database db,
+    QueueLibraryDbQuery request,
+  ) async {
+    if (normalizeLookupText(request.searchQuery).isNotEmpty ||
+        request.quality != null ||
+        request.format != null ||
+        request.metadata != null) {
+      return null;
+    }
+    final source = request.source;
+    if (source != null && source != 'downloaded' && source != 'local') {
+      return null;
+    }
+
+    final parts = <String>[];
+    if (source != 'local') {
+      parts.add('''
+        SELECT
+          COALESCE(SUM(track_count), 0) AS all_count,
+          COALESCE(SUM(CASE WHEN track_count > 1 THEN 1 ELSE 0 END), 0) AS album_count,
+          COALESCE(SUM(CASE WHEN track_count = 1 THEN 1 ELSE 0 END), 0) AS single_count
+        FROM (
+          SELECT album_key, COUNT(*) AS track_count
+          FROM history_db.history
+          GROUP BY album_key
+        )
+      ''');
+    }
+    if (request.includeLocal && source != 'downloaded') {
+      parts.add('''
+        SELECT
+          COALESCE(SUM(track_count), 0) AS all_count,
+          COALESCE(SUM(CASE WHEN track_count > 1 THEN 1 ELSE 0 END), 0) AS album_count,
+          COALESCE(SUM(CASE WHEN track_count = 1 THEN 1 ELSE 0 END), 0) AS single_count
+        FROM (
+          SELECT l.album_key, COUNT(*) AS track_count
+          FROM library l
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM library_path_keys lpk
+            JOIN history_db.history_path_keys hpk ON hpk.path_key = lpk.path_key
+            WHERE lpk.item_id = l.id
+          )
+          GROUP BY l.album_key
+        )
+      ''');
+    }
+    if (parts.isEmpty) {
+      return const QueueLibraryCounts(
+        allTrackCount: 0,
+        albumCount: 0,
+        singleTrackCount: 0,
+      );
+    }
+
+    final rows = await db.rawQuery('''
+      SELECT
+        COALESCE(SUM(all_count), 0) AS all_count,
+        COALESCE(SUM(album_count), 0) AS album_count,
+        COALESCE(SUM(single_count), 0) AS single_count
+      FROM (${parts.join(' UNION ALL ')})
+    ''');
+    final row = rows.isEmpty ? const <String, Object?>{} : rows.first;
+    return QueueLibraryCounts(
+      allTrackCount: (row['all_count'] as num?)?.toInt() ?? 0,
+      albumCount: (row['album_count'] as num?)?.toInt() ?? 0,
+      singleTrackCount: (row['single_count'] as num?)?.toInt() ?? 0,
+    );
+  }
+
   Future<List<Map<String, dynamic>>> getQueueAlbumPage(
+    QueueLibraryDbQuery request,
+  ) async {
+    return (await getQueueAlbumPageResult(request)).rows;
+  }
+
+  Future<QueueLibraryDbPage> getQueueAlbumPageResult(
     QueueLibraryDbQuery request,
   ) async {
     final db = await database;
     await _ensureHistoryAttached(db);
     final args = <Object?>[];
-    final unionSql = _queueAlbumUnionSql(request, args);
+    final orderTerms = _queueAlbumOrderTerms(request.sortMode);
+    final usesCursor =
+        request.cursor != null &&
+        request.cursor!.values.length == orderTerms.length;
+    final unionSql = _queueAlbumUnionSql(
+      request,
+      args,
+      orderTerms: orderTerms,
+      usesCursor: usesCursor,
+    );
     final rows = await db.rawQuery(
       '''
       SELECT *
       FROM ($unionSql)
       ORDER BY ${_queueAlbumOrderBy(request.sortMode)}
-      LIMIT ? OFFSET ?
+      LIMIT ? ${usesCursor ? '' : 'OFFSET ?'}
       ''',
-      [...args, request.limit, request.offset],
+      [...args, request.limit, if (!usesCursor) request.offset],
     );
-    return rows.toList(growable: false);
+    return QueueLibraryDbPage(
+      rows: rows.toList(growable: false),
+      nextCursor: _queueCursorFromRow(rows.lastOrNull, orderTerms),
+    );
   }
 
   Future<List<Map<String, dynamic>>> getQueueLocalAlbumTracks(
@@ -1081,7 +1362,7 @@ class LibraryDatabase {
     for (final entry in fileModTimes.entries) {
       batch.update(
         'library',
-        {'file_mod_time': entry.value},
+        {'file_mod_time': entry.value, 'sort_added': entry.value},
         where: 'file_path = ?',
         whereArgs: [entry.key],
       );

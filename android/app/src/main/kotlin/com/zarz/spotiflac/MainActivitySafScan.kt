@@ -3,9 +3,11 @@ package com.zarz.spotiflac
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.DocumentsContract
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
@@ -34,6 +36,7 @@ import org.json.JSONTokener
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.security.MessageDigest
 import java.util.Locale
 
@@ -460,21 +463,13 @@ internal fun MainActivity.getSafChildFileLookup(
     ): Map<String, DocumentFile> {
         val dirKey = dir.uri.toString()
         return cache.getOrPut(dirKey) {
-            try {
-                buildMap {
-                    for (child in dir.listFiles()) {
-                        if (!child.isFile) continue
-                        val childName = child.name?.trim().orEmpty()
-                        if (childName.isBlank()) continue
-                        put(childName.lowercase(Locale.ROOT), child)
-                    }
+            buildMap {
+                for (child in listSafChildrenOrThrow(dir)) {
+                    if (!child.isFile) continue
+                    val childName = child.name?.trim().orEmpty()
+                    if (childName.isBlank()) continue
+                    put(childName.lowercase(Locale.ROOT), child)
                 }
-            } catch (e: Exception) {
-                android.util.Log.w(
-                    "SpotiFLAC",
-                    "Failed to build SAF child lookup for $dirKey: ${e.message}",
-                )
-                emptyMap()
             }
         }
     }
@@ -510,11 +505,80 @@ internal fun MainActivity.resolveCueAudioSibling(
         return null
     }
 
-internal fun MainActivity.scanSafTree(treeUriStr: String): Any {
-        if (treeUriStr.isBlank()) return "[]"
+internal fun MainActivity.listSafChildrenOrThrow(dir: DocumentFile): List<DocumentFile> {
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+            dir.uri,
+            DocumentsContract.getDocumentId(dir.uri),
+        )
+        val cursor = contentResolver.query(
+            childrenUri,
+            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
+            null,
+            null,
+            null,
+        ) ?: throw IOException("SAF provider returned no cursor for ${dir.uri}")
+        return cursor.use {
+            val documentIdIndex = it.getColumnIndexOrThrow(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            )
+            buildList {
+                while (it.moveToNext()) {
+                    val childUri = DocumentsContract.buildDocumentUriUsingTree(
+                        dir.uri,
+                        it.getString(documentIdIndex),
+                    )
+                    val child = DocumentFile.fromSingleUri(this@listSafChildrenOrThrow, childUri)
+                        ?: throw IOException("Invalid SAF child URI: $childUri")
+                    add(child)
+                }
+            }
+        }
+    }
 
+internal fun MainActivity.resolveReadableSafTreeOrThrow(
+        treeUriStr: String,
+    ): Pair<Uri, DocumentFile> {
+        if (treeUriStr.isBlank()) {
+            throw IllegalArgumentException("SAF tree URI is empty")
+        }
         val treeUri = Uri.parse(treeUriStr)
-        val root = DocumentFile.fromTreeUri(this, treeUri) ?: return "[]"
+        val hasReadPermission = contentResolver.persistedUriPermissions.any {
+            it.uri == treeUri && it.isReadPermission
+        } || checkUriPermission(
+            treeUri,
+            android.os.Process.myPid(),
+            android.os.Process.myUid(),
+            Intent.FLAG_GRANT_READ_URI_PERMISSION,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!hasReadPermission) {
+            throw SecurityException("Read access to the SAF tree has been revoked")
+        }
+        val root = DocumentFile.fromTreeUri(this, treeUri)
+            ?: throw IOException("Unable to resolve SAF tree")
+        if (!root.exists() || !root.canRead()) {
+            throw IOException("SAF tree is unavailable or unreadable")
+        }
+        return treeUri to root
+    }
+
+internal fun MainActivity.scanSafTree(
+        treeUriStr: String,
+        ndjsonOutputPath: String? = null,
+    ): Any {
+        fun emptyResult(): Any {
+            if (ndjsonOutputPath == null) return "[]"
+            File(ndjsonOutputPath).writeText("", Charsets.UTF_8)
+            return mapOf("path" to ndjsonOutputPath, "count" to 0)
+        }
+
+        fun cancelledResult(): Any {
+            updateSafScanProgress { it.isComplete = true }
+            if (ndjsonOutputPath == null) return "[]"
+            try { File(ndjsonOutputPath).delete() } catch (_: Exception) {}
+            throw java.util.concurrent.CancellationException("SAF library scan cancelled")
+        }
+
+        val (_, root) = resolveReadableSafTreeOrThrow(treeUriStr)
 
         resetSafScanProgress()
         safScanCancel = false
@@ -535,8 +599,7 @@ internal fun MainActivity.scanSafTree(treeUriStr: String): Any {
 
         while (queue.isNotEmpty()) {
             if (safScanCancel) {
-                updateSafScanProgress { it.isComplete = true }
-                return "[]"
+                return cancelledResult()
             }
 
             val (dir, path) = queue.removeFirst()
@@ -546,7 +609,7 @@ internal fun MainActivity.scanSafTree(treeUriStr: String): Any {
             }
 
             val children = try {
-                dir.listFiles()
+                listSafChildrenOrThrow(dir)
             } catch (e: Exception) {
                 traversalErrors++
                 updateSafScanProgress { it.errorCount = traversalErrors }
@@ -559,8 +622,7 @@ internal fun MainActivity.scanSafTree(treeUriStr: String): Any {
 
             for (child in children) {
                 if (safScanCancel) {
-                    updateSafScanProgress { it.isComplete = true }
-                    return "[]"
+                    return cancelledResult()
                 }
 
                 try {
@@ -592,6 +654,10 @@ internal fun MainActivity.scanSafTree(treeUriStr: String): Any {
             }
         }
 
+        if (traversalErrors > 0) {
+            throw IOException("SAF traversal failed for $traversalErrors entries")
+        }
+
         val totalItems = audioFiles.size + cueFiles.size
         updateSafScanProgress {
             it.totalFiles = totalItems
@@ -602,19 +668,28 @@ internal fun MainActivity.scanSafTree(treeUriStr: String): Any {
                 it.isComplete = true
                 it.progressPct = 100.0
             }
-            return "[]"
+            return emptyResult()
         }
 
         // Stream results to a spill file: a full-library scan's JSONArray plus
         // its serialized string would otherwise hold the whole payload on the
         // Java heap several times over.
-        val spill = this.SpillJsonWriter()
+        val spill = if (ndjsonOutputPath == null) this.SpillJsonWriter() else null
+        val ndjsonWriter = ndjsonOutputPath?.let {
+            File(it).bufferedWriter(Charsets.UTF_8, 64 * 1024)
+        }
         var resultCount = 0
         fun putResult(obj: JSONObject) {
-            spill.raw(if (resultCount == 0) "[" else ",")
-            spill.raw(obj.toString())
+            if (ndjsonWriter != null) {
+                ndjsonWriter.write(obj.toString())
+                ndjsonWriter.newLine()
+            } else {
+                spill!!.raw(if (resultCount == 0) "[" else ",")
+                spill.raw(obj.toString())
+            }
             resultCount++
         }
+        try {
         var scanned = 0
         var errors = traversalErrors
 
@@ -622,9 +697,9 @@ internal fun MainActivity.scanSafTree(treeUriStr: String): Any {
 
         for ((cueDoc, parentDir) in cueFiles) {
             if (safScanCancel) {
-                updateSafScanProgress { it.isComplete = true }
-                spill.abandon()
-                return "[]"
+                ndjsonWriter?.close()
+                spill?.abandon()
+                return cancelledResult()
             }
 
             val cueName = try { cueDoc.name ?: "" } catch (_: Exception) { "" }
@@ -722,9 +797,9 @@ internal fun MainActivity.scanSafTree(treeUriStr: String): Any {
 
         for ((doc, _) in audioFiles) {
             if (safScanCancel) {
-                updateSafScanProgress { it.isComplete = true }
-                spill.abandon()
-                return "[]"
+                ndjsonWriter?.close()
+                spill?.abandon()
+                return cancelledResult()
             }
 
             if (cueReferencedAudioUris.contains(doc.uri.toString())) {
@@ -780,8 +855,20 @@ internal fun MainActivity.scanSafTree(treeUriStr: String): Any {
             it.progressPct = 100.0
         }
 
-        spill.raw(if (resultCount == 0) "[]" else "]")
+        if (ndjsonWriter != null) {
+            ndjsonWriter.close()
+            return mapOf("path" to ndjsonOutputPath, "count" to resultCount)
+        }
+        spill!!.raw(if (resultCount == 0) "[]" else "]")
         return spill.result()
+        } catch (e: Exception) {
+            try { ndjsonWriter?.close() } catch (_: Exception) {}
+            spill?.abandon()
+            if (ndjsonOutputPath != null) {
+                try { File(ndjsonOutputPath).delete() } catch (_: Exception) {}
+            }
+            throw e
+        }
     }
 
     /**
@@ -809,24 +896,7 @@ internal fun MainActivity.scanSafTreeIncremental(
         treeUriStr: String,
         existingFiles: Map<String, Long>,
     ): Any {
-        if (treeUriStr.isBlank()) {
-            val result = JSONObject()
-            result.put("files", JSONArray())
-            result.put("removedUris", JSONArray())
-            result.put("skippedCount", 0)
-            result.put("totalFiles", 0)
-            return result.toString()
-        }
-
-        val treeUri = Uri.parse(treeUriStr)
-        val root = DocumentFile.fromTreeUri(this, treeUri) ?: run {
-            val result = JSONObject()
-            result.put("files", JSONArray())
-            result.put("removedUris", JSONArray())
-            result.put("skippedCount", 0)
-            result.put("totalFiles", 0)
-            return result.toString()
-        }
+        val (_, root) = resolveReadableSafTreeOrThrow(treeUriStr)
 
         resetSafScanProgress()
         safScanCancel = false
@@ -875,7 +945,7 @@ internal fun MainActivity.scanSafTreeIncremental(
             }
 
             val children = try {
-                dir.listFiles()
+                listSafChildrenOrThrow(dir)
             } catch (e: Exception) {
                 traversalErrors++
                 updateSafScanProgress { it.errorCount = traversalErrors }
@@ -952,6 +1022,10 @@ internal fun MainActivity.scanSafTreeIncremental(
                     )
                 }
             }
+        }
+
+        if (traversalErrors > 0) {
+            throw IOException("SAF traversal failed for $traversalErrors entries")
         }
 
         val removedUris = existingFiles.keys.filter { !currentUris.contains(it) }

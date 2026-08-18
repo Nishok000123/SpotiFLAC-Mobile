@@ -6,7 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:spotiflac_android/models/track.dart';
+import 'package:spotiflac_android/services/ffmpeg_service.dart';
 import 'package:spotiflac_android/services/library_collections_database.dart';
+
+const _playlistCoverMaxDimension = 1024;
+const _playlistCoverMaxStoredBytes = 2 * 1024 * 1024;
 
 String trackCollectionKey(Track track) {
   final isrc = track.isrc?.trim();
@@ -986,12 +990,11 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
     final playlist = state.playlistById(playlistId);
     if (playlist == null) return;
 
-    final coversDir = await _playlistCoversDir();
-    final ext = p.extension(sourceFilePath).toLowerCase();
-    final destPath = p.join(coversDir.path, '$playlistId$ext');
-    if (playlist.coverImagePath == destPath) return;
-
-    await File(sourceFilePath).copy(destPath);
+    final previousCoverPath = playlist.coverImagePath;
+    final destPath = await _normalizePlaylistCoverFile(
+      playlistId,
+      sourceFilePath,
+    );
 
     final now = DateTime.now();
     await _db.updatePlaylistCover(
@@ -1004,6 +1007,78 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
       return playlist.copyWith(coverImagePath: () => destPath, updatedAt: now);
     });
     _invalidatePlaylistPickerSummaries();
+    if (previousCoverPath != null && previousCoverPath != destPath) {
+      try {
+        final previous = File(previousCoverPath);
+        if (await previous.exists()) await previous.delete();
+      } catch (_) {}
+    }
+  }
+
+  Future<String> _normalizePlaylistCoverFile(
+    String playlistId,
+    String sourceFilePath,
+  ) async {
+    final coversDir = await _playlistCoversDir();
+    final destPath = p.join(coversDir.path, '$playlistId.jpg');
+    final tempPath = p.join(
+      coversDir.path,
+      '.$playlistId.${DateTime.now().microsecondsSinceEpoch}.jpg',
+    );
+    try {
+      final dimensions = await FFmpegService.probeImageDimensions(
+        sourceFilePath,
+      );
+      final longestEdge = dimensions == null
+          ? _playlistCoverMaxDimension
+          : (dimensions.width > dimensions.height
+                ? dimensions.width
+                : dimensions.height);
+      var targetDimension = longestEdge
+          .clamp(64, _playlistCoverMaxDimension)
+          .toInt();
+      while (true) {
+        final resized = await FFmpegService.resizeCoverArt(
+          inputPath: sourceFilePath,
+          outputPath: tempPath,
+          maxDimension: targetDimension,
+        );
+        if (!resized) {
+          throw StateError('Unable to normalize playlist cover');
+        }
+        if (await File(tempPath).length() <= _playlistCoverMaxStoredBytes) {
+          break;
+        }
+        if (targetDimension <= 64) {
+          throw StateError('Normalized playlist cover exceeds the size limit');
+        }
+        targetDimension = (targetDimension * 3 ~/ 4)
+            .clamp(64, targetDimension)
+            .toInt();
+      }
+      final destination = File(destPath);
+      if (await destination.exists()) await destination.delete();
+      await File(tempPath).rename(destPath);
+      return destPath;
+    } finally {
+      try {
+        final temp = File(tempPath);
+        if (await temp.exists()) await temp.delete();
+      } catch (_) {}
+    }
+  }
+
+  Future<bool> _playlistCoverNeedsNormalization(String path) async {
+    final file = File(path);
+    if (!await file.exists()) return false;
+    if (p.extension(path).toLowerCase() != '.jpg' ||
+        await file.length() > _playlistCoverMaxStoredBytes) {
+      return true;
+    }
+    final dimensions = await FFmpegService.probeImageDimensions(path);
+    return dimensions == null ||
+        dimensions.width > _playlistCoverMaxDimension ||
+        dimensions.height > _playlistCoverMaxDimension;
   }
 
   Future<void> removePlaylistCover(String playlistId) async {
@@ -1046,10 +1121,15 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
   Future<Map<String, Map<String, String>>> exportPlaylistCovers() async {
     await _ensureLoaded();
     final covers = <String, Map<String, String>>{};
-    for (final playlist in state.playlists) {
-      final path = playlist.coverImagePath;
+    final playlists = List<UserPlaylistCollection>.of(state.playlists);
+    for (final playlist in playlists) {
+      var path = playlist.coverImagePath;
       if (path == null || path.isEmpty) continue;
       try {
+        if (await _playlistCoverNeedsNormalization(path)) {
+          await setPlaylistCover(playlist.id, path);
+          path = state.playlistById(playlist.id)?.coverImagePath ?? path;
+        }
         final file = File(path);
         if (!await file.exists()) continue;
         final bytes = await file.readAsBytes();
@@ -1092,9 +1172,22 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
           final ext = (coverEntry['ext'] as String?) ?? '.jpg';
           if (data != null && data.isNotEmpty) {
             try {
-              final destPath = p.join(coversDir.path, '$id$ext');
-              await File(destPath).writeAsBytes(base64Decode(data));
-              newCoverPath = destPath;
+              final sourcePath = p.join(
+                coversDir.path,
+                '.$id.restore${ext.startsWith('.') ? ext : '.$ext'}',
+              );
+              final source = File(sourcePath);
+              await source.writeAsBytes(base64Decode(data), flush: true);
+              try {
+                newCoverPath = await _normalizePlaylistCoverFile(
+                  id,
+                  sourcePath,
+                );
+              } finally {
+                try {
+                  if (await source.exists()) await source.delete();
+                } catch (_) {}
+              }
             } catch (_) {
               newCoverPath = null;
             }

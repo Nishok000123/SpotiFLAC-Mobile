@@ -31,7 +31,7 @@ class CoverDownloadService {
         : safeBaseName.trim();
     final tempDir = await Directory.systemTemp.createTemp('save_cover_');
     final tempPath = p.join(tempDir.path, 'cover.image');
-    var iosBookmarkActive = false;
+    IosSecurityScopedAccess? iosBookmarkAccess;
 
     try {
       final download = await PlatformBridge.downloadCoverToFile(
@@ -74,13 +74,13 @@ class CoverDownloadService {
 
       var outputDirectory = settings.downloadDirectory.trim();
       if (Platform.isIOS && settings.downloadDirectoryBookmark.isNotEmpty) {
-        final resolved = await PlatformBridge.startAccessingIosBookmark(
+        iosBookmarkAccess = await PlatformBridge.startAccessingIosBookmark(
           settings.downloadDirectoryBookmark,
         );
+        final resolved = iosBookmarkAccess?.path;
         if (resolved == null || resolved.trim().isEmpty) {
           throw const FileSystemException('No storage access');
         }
-        iosBookmarkActive = true;
         outputDirectory = resolved.trim();
       }
       if (outputDirectory.isEmpty) {
@@ -100,8 +100,8 @@ class CoverDownloadService {
         location: outputPath,
       );
     } finally {
-      if (iosBookmarkActive) {
-        await PlatformBridge.stopAccessingIosBookmark();
+      if (iosBookmarkAccess != null) {
+        await PlatformBridge.stopAccessingIosBookmark(iosBookmarkAccess);
       }
       try {
         if (await tempDir.exists()) await tempDir.delete(recursive: true);

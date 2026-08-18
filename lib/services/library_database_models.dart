@@ -232,6 +232,7 @@ class QueueLibraryDbQuery {
   final String? metadata;
   final String sortMode;
   final bool includeLocal;
+  final QueueLibraryDbCursor? cursor;
 
   const QueueLibraryDbQuery({
     this.limit = 100,
@@ -244,7 +245,42 @@ class QueueLibraryDbQuery {
     this.metadata,
     this.sortMode = 'latest',
     this.includeLocal = true,
+    this.cursor,
   });
+}
+
+/// Opaque seek cursor for queue Library pagination.
+///
+/// Values follow the active SQL order (including its unique tie-breaker), so
+/// later pages can seek from the last row instead of making SQLite discard an
+/// ever-growing OFFSET prefix.
+class QueueLibraryDbCursor {
+  final List<Object> values;
+
+  const QueueLibraryDbCursor(this.values);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! QueueLibraryDbCursor ||
+        other.values.length != values.length) {
+      return false;
+    }
+    for (var i = 0; i < values.length; i++) {
+      if (values[i] != other.values[i]) return false;
+    }
+    return true;
+  }
+
+  @override
+  int get hashCode => Object.hashAll(values);
+}
+
+class QueueLibraryDbPage {
+  final List<Map<String, dynamic>> rows;
+  final QueueLibraryDbCursor? nextCursor;
+
+  const QueueLibraryDbPage({required this.rows, required this.nextCursor});
 }
 
 class QueueLibraryCounts {

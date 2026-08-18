@@ -22,8 +22,8 @@ import Gobackend
     private var backendChannel: FlutterMethodChannel?
     private var pendingSessionGrantEvents: [[String: Any]] = []
     
-    /// Currently accessed security-scoped URL for library folder
-    private var activeSecurityScopedURL: URL?
+    private let securityScopedAccessLock = NSLock()
+    private var securityScopedAccesses: [String: URL] = [:]
 
     /// Pending Flutter result for the native folder picker
     private var pendingDirectoryPickerResult: FlutterResult?
@@ -1074,6 +1074,24 @@ import Gobackend
             let response = GobackendScanLibraryFolderJSON(folderPath, &error)
             if let error = error { throw error }
             return bridgeJsonResult(response as String? ?? "[]")
+
+        case "scanLibraryFolderToNDJSONFile":
+            guard
+                let args = call.arguments as? [String: Any],
+                let folderPath = args["folder_path"] as? String,
+                !folderPath.isEmpty,
+                let outputPath = args["output_path"] as? String,
+                !outputPath.isEmpty
+            else {
+                throw invalidArgumentsError(call.method)
+            }
+            let count = GobackendScanLibraryFolderToNDJSONFileJSON(
+                folderPath,
+                outputPath,
+                &error
+            )
+            if let error = error { throw error }
+            return ["path": outputPath, "count": count]
             
         case "scanLibraryFolderIncremental":
             let args = call.arguments as! [String: Any]
@@ -1104,12 +1122,24 @@ import Gobackend
             return try resolveIosBookmark(bookmarkBase64)
             
         case "startAccessingIosBookmark":
-            let args = call.arguments as! [String: Any]
-            let bookmarkBase64 = args["bookmark"] as! String
+            guard
+                let args = call.arguments as? [String: Any],
+                let bookmarkBase64 = args["bookmark"] as? String,
+                !bookmarkBase64.isEmpty
+            else {
+                throw invalidArgumentsError(call.method)
+            }
             return try startAccessingIosBookmark(bookmarkBase64)
             
         case "stopAccessingIosBookmark":
-            stopAccessingIosBookmark()
+            guard
+                let args = call.arguments as? [String: Any],
+                let token = args["token"] as? String,
+                !token.isEmpty
+            else {
+                throw invalidArgumentsError(call.method)
+            }
+            stopAccessingIosBookmark(token: token)
             return nil
             
         case "createIosBookmarkFromPath":
@@ -1259,13 +1289,16 @@ import Gobackend
         return url.path
     }
     
-    /// Resolve a base64-encoded bookmark, start accessing the security-scoped resource,
-    /// and return the resolved filesystem path. The resource stays accessed until
-    /// `stopAccessingIosBookmark()` is called.
-    private func startAccessingIosBookmark(_ bookmarkBase64: String) throws -> String {
-        // Stop any previously accessed resource first
-        stopAccessingIosBookmark()
-        
+    private func invalidArgumentsError(_ method: String) -> NSError {
+        return NSError(
+            domain: "SpotiFLAC",
+            code: -1,
+            userInfo: [NSLocalizedDescriptionKey: "Invalid arguments for \(method)"]
+        )
+    }
+
+    /// Starts an independently owned security-scoped lease.
+    private func startAccessingIosBookmark(_ bookmarkBase64: String) throws -> [String: String] {
         guard let bookmarkData = Data(base64Encoded: bookmarkBase64) else {
             throw NSError(
                 domain: "SpotiFLAC",
@@ -1304,16 +1337,19 @@ import Gobackend
             )
         }
         
-        activeSecurityScopedURL = url
-        return url.path
+        let token = UUID().uuidString
+        securityScopedAccessLock.lock()
+        securityScopedAccesses[token] = url
+        securityScopedAccessLock.unlock()
+        return ["path": url.path, "token": token]
     }
     
-    /// Stop accessing the currently active security-scoped resource, if any.
-    private func stopAccessingIosBookmark() {
-        if let url = activeSecurityScopedURL {
-            url.stopAccessingSecurityScopedResource()
-            activeSecurityScopedURL = nil
-        }
+    /// Releases only the lease identified by the caller's token.
+    private func stopAccessingIosBookmark(token: String) {
+        securityScopedAccessLock.lock()
+        let url = securityScopedAccesses.removeValue(forKey: token)
+        securityScopedAccessLock.unlock()
+        url?.stopAccessingSecurityScopedResource()
     }
 }
 

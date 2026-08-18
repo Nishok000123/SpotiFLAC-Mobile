@@ -2165,6 +2165,23 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(response)
                         }
+                        "scanLibraryFolderToNDJSONFile" -> {
+                            val folderPath = call.argument<String>("folder_path") ?: ""
+                            val outputPath = call.argument<String>("output_path") ?: ""
+                            val count = withContext(Dispatchers.IO) {
+                                safScanActive = false
+                                Gobackend.scanLibraryFolderToNDJSONFileJSON(
+                                    folderPath,
+                                    outputPath,
+                                )
+                            }
+                            result.success(
+                                mapOf(
+                                    "path" to outputPath,
+                                    "count" to count,
+                                )
+                            )
+                        }
                         "scanLibraryFolderIncremental" -> {
                             val folderPath = call.argument<String>("folder_path") ?: ""
                             val existingFiles = call.argument<String>("existing_files") ?: "{}"
@@ -2194,6 +2211,14 @@ class MainActivity: FlutterFragmentActivity() {
                             val treeUri = call.argument<String>("tree_uri") ?: ""
                             val response = withContext(Dispatchers.IO) {
                                 scanSafTree(treeUri)
+                            }
+                            result.success(response)
+                        }
+                        "scanSafTreeToNDJSONFile" -> {
+                            val treeUri = call.argument<String>("tree_uri") ?: ""
+                            val outputPath = call.argument<String>("output_path") ?: ""
+                            val response = withContext(Dispatchers.IO) {
+                                scanSafTree(treeUri, outputPath)
                             }
                             result.success(response)
                         }

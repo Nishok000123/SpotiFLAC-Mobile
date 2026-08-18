@@ -1,7 +1,9 @@
 package gobackend
 
 import (
+	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -89,6 +91,35 @@ func TestLibraryScanFullIncrementalAndMetadataFallbacks(t *testing.T) {
 	if !foundTagged {
 		t.Fatalf("tagged APE not found in %#v", results)
 	}
+
+	ndjsonPath := filepath.Join(t.TempDir(), "library.ndjson")
+	streamedCount, err := ScanLibraryFolderToNDJSONFile(dir, ndjsonPath)
+	if err != nil {
+		t.Fatalf("ScanLibraryFolderToNDJSONFile: %v", err)
+	}
+	ndjsonFile, err := os.Open(ndjsonPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ndjsonFile.Close()
+	decodedCount := 0
+	scanner := bufio.NewScanner(ndjsonFile)
+	for scanner.Scan() {
+		var result LibraryScanResult
+		if err := json.Unmarshal(scanner.Bytes(), &result); err != nil {
+			t.Fatalf("decode NDJSON row: %v", err)
+		}
+		if result.FilePath == "" {
+			t.Fatal("NDJSON row has no file path")
+		}
+		decodedCount++
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if decodedCount != streamedCount || decodedCount != len(results) {
+		t.Fatalf("NDJSON counts = decoded:%d streamed:%d array:%d", decodedCount, streamedCount, len(results))
+	}
 	if progress := GetLibraryScanProgress(); !strings.Contains(progress, `"IsComplete":true`) && !strings.Contains(progress, `"is_complete":true`) {
 		t.Fatalf("progress = %s", progress)
 	}
@@ -160,4 +191,32 @@ func TestLibraryScanFullIncrementalAndMetadataFallbacks(t *testing.T) {
 	}
 	CancelLibraryScan()
 	SetLibraryCoverCacheDir("")
+}
+
+func TestScanLibraryFolderPreservesFileOrderWithParallelWorkers(t *testing.T) {
+	dir := t.TempDir()
+	for i := 0; i < 20; i++ {
+		name := fmt.Sprintf("%02d - Track.mp3", i)
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("not really mp3"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	jsonText, err := ScanLibraryFolder(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var results []LibraryScanResult
+	if err := json.Unmarshal([]byte(jsonText), &results); err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 20 {
+		t.Fatalf("results = %d", len(results))
+	}
+	for i, result := range results {
+		expected := filepath.Join(dir, fmt.Sprintf("%02d - Track.mp3", i))
+		if result.FilePath != expected {
+			t.Fatalf("result %d path = %q, want %q", i, result.FilePath, expected)
+		}
+	}
 }

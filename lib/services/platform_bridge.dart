@@ -20,6 +20,38 @@ bool isForegroundServiceStartNotAllowed(Object error) {
 }
 
 Object? _decodeJsonInBackground(String json) => jsonDecode(json);
+String _encodeJsonInBackground(Object? value) => jsonEncode(value);
+
+class LibraryScanNDJSONFile {
+  final File file;
+  final int expectedCount;
+
+  const LibraryScanNDJSONFile({
+    required this.file,
+    required this.expectedCount,
+  });
+
+  Stream<Map<String, dynamic>> rows() async* {
+    await for (final line
+        in file
+            .openRead()
+            .transform(utf8.decoder)
+            .transform(const LineSplitter())) {
+      if (line.trim().isEmpty) continue;
+      final decoded = jsonDecode(line);
+      if (decoded is! Map) {
+        throw const FormatException('Library scan NDJSON row is not an object');
+      }
+      yield Map<String, dynamic>.from(decoded);
+    }
+  }
+
+  Future<void> delete() async {
+    try {
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
+  }
+}
 
 class ExtensionSessionGrantEvent {
   final String extensionId;
@@ -38,6 +70,13 @@ class IosPickedDirectory {
   final String bookmark;
 
   const IosPickedDirectory({required this.path, required this.bookmark});
+}
+
+class IosSecurityScopedAccess {
+  final String path;
+  final String token;
+
+  const IosSecurityScopedAccess({required this.path, required this.token});
 }
 
 class InstallationState {
@@ -113,6 +152,7 @@ class PlatformBridge {
   static const _urlHandleCacheTtl = Duration(minutes: 5);
   static const _customSearchCacheTtl = Duration(minutes: 2);
   static const _bridgeCacheMaxEntries = 256;
+  static const _lookupCachePersistDebounce = Duration(milliseconds: 500);
   static const _metadataPersistentCacheKey = 'bridge_metadata_lookup_cache_v1';
   static const _downloadProgressEvents = EventChannel(
     'com.zarz.spotiflac/download_progress_stream',
@@ -132,6 +172,9 @@ class PlatformBridge {
   _homeFeedInFlight = {};
   static Future<void>? _persistentLookupCacheLoadFuture;
   static int _lookupCacheGeneration = 0;
+  static Timer? _lookupCachePersistTimer;
+  static Future<void>? _lookupCachePersistInFlight;
+  static bool _lookupCachePersistDirty = false;
   static int _extensionRequestSequence = 0;
   static final StreamController<ExtensionSessionGrantEvent>
   _extensionSessionGrantEvents =
@@ -259,8 +302,10 @@ class PlatformBridge {
       value: _copyStringMap(value),
       expiresAt: DateTime.now().add(ttl),
     );
-    unawaited(
-      _persistLookupCache(cache, persistentCacheKey, _lookupCacheGeneration),
+    _scheduleLookupCachePersist(
+      cache,
+      persistentCacheKey,
+      _lookupCacheGeneration,
     );
   }
 
@@ -383,12 +428,67 @@ class PlatformBridge {
             'value': entry.value.value,
           },
       };
+      final encoded = data.length >= 32
+          ? await compute(_encodeJsonInBackground, data)
+          : jsonEncode(data);
+      if (generation != _lookupCacheGeneration) return;
       final prefs = await SharedPreferences.getInstance();
       if (generation != _lookupCacheGeneration) return;
-      await prefs.setString(prefsKey, jsonEncode(data));
+      await prefs.setString(prefsKey, encoded);
     } catch (e) {
       _log.w('Failed to persist bridge lookup cache: $e');
     }
+  }
+
+  static void _scheduleLookupCachePersist(
+    Map<String, _BridgeCacheEntry> cache,
+    String prefsKey,
+    int generation,
+  ) {
+    _lookupCachePersistDirty = true;
+    if (_lookupCachePersistInFlight != null) return;
+    _lookupCachePersistTimer?.cancel();
+    _lookupCachePersistTimer = Timer(_lookupCachePersistDebounce, () {
+      _lookupCachePersistTimer = null;
+      unawaited(_flushLookupCachePersist(cache, prefsKey, generation));
+    });
+  }
+
+  static Future<void> _flushLookupCachePersist(
+    Map<String, _BridgeCacheEntry> cache,
+    String prefsKey,
+    int generation,
+  ) {
+    final active = _lookupCachePersistInFlight;
+    if (active != null) {
+      _lookupCachePersistDirty = true;
+      return active;
+    }
+
+    late final Future<void> flush;
+    flush =
+        () async {
+          do {
+            _lookupCachePersistDirty = false;
+            if (generation != _lookupCacheGeneration) return;
+            await _persistLookupCache(cache, prefsKey, generation);
+          } while (_lookupCachePersistDirty &&
+              generation == _lookupCacheGeneration);
+        }().whenComplete(() {
+          if (identical(_lookupCachePersistInFlight, flush)) {
+            _lookupCachePersistInFlight = null;
+          }
+        });
+    _lookupCachePersistInFlight = flush;
+    return flush;
+  }
+
+  static Future<void> _cancelLookupCachePersistence() async {
+    _lookupCachePersistTimer?.cancel();
+    _lookupCachePersistTimer = null;
+    _lookupCachePersistDirty = false;
+    final active = _lookupCachePersistInFlight;
+    if (active != null) await active;
   }
 
   static Future<void> _clearPersistentLookupCaches() async {
@@ -404,6 +504,7 @@ class PlatformBridge {
 
   static Future<void> _clearLookupCaches() async {
     _lookupCacheGeneration++;
+    await _cancelLookupCachePersistence();
     _persistentLookupCacheLoadFuture = null;
     _metadataCache.clear();
     _urlHandleCache.clear();
@@ -1839,6 +1940,17 @@ class PlatformBridge {
     return _decodeMapListResultAsync(result, 'scanLibraryFolder');
   }
 
+  static Future<LibraryScanNDJSONFile> scanLibraryFolderToNDJSONFile(
+    String folderPath, {
+    bool Function()? isCancelled,
+  }) {
+    return _scanToNDJSONFile(
+      method: 'scanLibraryFolderToNDJSONFile',
+      arguments: {'folder_path': folderPath},
+      isCancelled: isCancelled,
+    );
+  }
+
   static Future<Map<String, dynamic>> scanLibraryFolderIncremental(
     String folderPath,
     Map<String, int> existingFiles,
@@ -1876,6 +1988,67 @@ class PlatformBridge {
       'tree_uri': treeUri,
     });
     return _decodeMapListResultAsync(result, 'scanSafTree');
+  }
+
+  static Future<LibraryScanNDJSONFile> scanSafTreeToNDJSONFile(
+    String treeUri, {
+    bool Function()? isCancelled,
+  }) {
+    return _scanToNDJSONFile(
+      method: 'scanSafTreeToNDJSONFile',
+      arguments: {'tree_uri': treeUri},
+      isCancelled: isCancelled,
+    );
+  }
+
+  static Future<LibraryScanNDJSONFile> _scanToNDJSONFile({
+    required String method,
+    required Map<String, dynamic> arguments,
+    bool Function()? isCancelled,
+  }) async {
+    final tempDir = await getTemporaryDirectory();
+    final output = File(
+      '${tempDir.path}${Platform.pathSeparator}'
+      'library_scan_${DateTime.now().microsecondsSinceEpoch}.ndjson',
+    );
+    try {
+      if (isCancelled?.call() == true) {
+        throw StateError('Library scan cancelled before native scan');
+      }
+      final result = await _channel.invokeMethod(method, {
+        ...arguments,
+        'output_path': output.path,
+      });
+      if (result is! Map) {
+        throw FormatException('$method returned ${result.runtimeType}');
+      }
+      if (result['cancelled'] == true) {
+        throw FormatException('$method returned a cancelled partial scan');
+      }
+      final pathValue = result['path'];
+      final countValue = result['count'];
+      if (pathValue is! String || pathValue.trim().isEmpty) {
+        throw FormatException('$method returned an invalid output path');
+      }
+      if (countValue is! num ||
+          !countValue.isFinite ||
+          countValue < 0 ||
+          countValue != countValue.toInt()) {
+        throw FormatException('$method returned an invalid row count');
+      }
+      final path = pathValue;
+      final count = countValue.toInt();
+      final file = File(path);
+      if (!await file.exists()) {
+        throw FormatException('$method did not create its output file');
+      }
+      return LibraryScanNDJSONFile(file: file, expectedCount: count);
+    } catch (_) {
+      try {
+        if (await output.exists()) await output.delete();
+      } catch (_) {}
+      rethrow;
+    }
   }
 
   static Future<Map<String, dynamic>> scanSafTreeIncremental(
@@ -2103,24 +2276,43 @@ class PlatformBridge {
   }
 
   /// Resolve a base64-encoded iOS security-scoped bookmark and start accessing
-  /// the resource. Returns the resolved filesystem path.
-  /// The resource stays accessed until [stopAccessingIosBookmark] is called.
-  static Future<String?> startAccessingIosBookmark(String bookmark) async {
+  /// the resource. The returned lease must be passed to
+  /// [stopAccessingIosBookmark] by the operation that acquired it.
+  static Future<IosSecurityScopedAccess?> startAccessingIosBookmark(
+    String bookmark,
+  ) async {
     try {
       final result = await _channel.invokeMethod('startAccessingIosBookmark', {
         'bookmark': bookmark,
       });
-      return result as String?;
+      if (result is! Map) {
+        throw FormatException(
+          'startAccessingIosBookmark returned ${result.runtimeType}',
+        );
+      }
+      final path = result['path'];
+      final token = result['token'];
+      if (path is! String ||
+          path.trim().isEmpty ||
+          token is! String ||
+          token.trim().isEmpty) {
+        throw const FormatException('Invalid iOS bookmark access lease');
+      }
+      return IosSecurityScopedAccess(path: path, token: token);
     } catch (e) {
       _log.w('Failed to start accessing iOS bookmark: $e');
       return null;
     }
   }
 
-  /// Stop accessing the currently active iOS security-scoped resource.
-  static Future<void> stopAccessingIosBookmark() async {
+  /// Releases exactly the security-scoped lease acquired by the caller.
+  static Future<void> stopAccessingIosBookmark(
+    IosSecurityScopedAccess access,
+  ) async {
     try {
-      await _channel.invokeMethod('stopAccessingIosBookmark');
+      await _channel.invokeMethod('stopAccessingIosBookmark', {
+        'token': access.token,
+      });
     } catch (e) {
       _log.w('Failed to stop accessing iOS bookmark: $e');
     }

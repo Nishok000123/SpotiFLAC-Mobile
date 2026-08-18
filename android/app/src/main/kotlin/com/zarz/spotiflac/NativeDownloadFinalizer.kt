@@ -39,7 +39,7 @@ object NativeDownloadFinalizer {
     const val NATIVE_WORKER_CONTRACT_VERSION = 1
     // Native finalizer owns background-safe history writes while Flutter may be suspended.
     // Keep this schema contract in sync with Dart HistoryDatabase before bumping either side.
-    const val HISTORY_SCHEMA_VERSION = 10
+    const val HISTORY_SCHEMA_VERSION = 11
     internal val activeFFmpegSessionIds = mutableSetOf<Long>()
     internal val nativeFFmpegSessionIds = mutableSetOf<Long>()
     internal val activeFFmpegSessionLock = Any()
@@ -94,6 +94,13 @@ object NativeDownloadFinalizer {
         "match_key",
         "album_key",
         "search_text",
+        "sort_track",
+        "sort_artist",
+        "sort_album",
+        "sort_album_artist",
+        "sort_genre",
+        "sort_release",
+        "sort_added",
     )
     private val androidStoragePathAliases = listOf(
         "/storage/emulated/0",
@@ -1363,7 +1370,14 @@ object NativeDownloadFinalizer {
                       isrc_norm TEXT,
                       match_key TEXT,
                       album_key TEXT,
-                      search_text TEXT
+                      search_text TEXT,
+                      sort_track TEXT,
+                      sort_artist TEXT,
+                      sort_album TEXT,
+                      sort_album_artist TEXT,
+                      sort_genre TEXT,
+                      sort_release TEXT,
+                      sort_added INTEGER
                     )
                     """.trimIndent()
                 )
@@ -1382,6 +1396,13 @@ object NativeDownloadFinalizer {
 	                ensureHistoryColumn(db, "match_key", "ALTER TABLE history ADD COLUMN match_key TEXT")
 	                ensureHistoryColumn(db, "album_key", "ALTER TABLE history ADD COLUMN album_key TEXT")
 	                ensureHistoryColumn(db, "search_text", "ALTER TABLE history ADD COLUMN search_text TEXT")
+	                ensureHistoryColumn(db, "sort_track", "ALTER TABLE history ADD COLUMN sort_track TEXT")
+	                ensureHistoryColumn(db, "sort_artist", "ALTER TABLE history ADD COLUMN sort_artist TEXT")
+	                ensureHistoryColumn(db, "sort_album", "ALTER TABLE history ADD COLUMN sort_album TEXT")
+	                ensureHistoryColumn(db, "sort_album_artist", "ALTER TABLE history ADD COLUMN sort_album_artist TEXT")
+	                ensureHistoryColumn(db, "sort_genre", "ALTER TABLE history ADD COLUMN sort_genre TEXT")
+	                ensureHistoryColumn(db, "sort_release", "ALTER TABLE history ADD COLUMN sort_release TEXT")
+	                ensureHistoryColumn(db, "sort_added", "ALTER TABLE history ADD COLUMN sort_added INTEGER")
 	                ensureHistoryPathKeyTable(db)
 	                if (needsBackfill) {
 	                    backfillNormalizedHistoryColumns(db)
@@ -1397,6 +1418,12 @@ object NativeDownloadFinalizer {
 	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_isrc_norm ON history(isrc_norm)")
 	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_match_key ON history(match_key)")
 	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_album_key ON history(album_key)")
+	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_queue_added ON history(sort_added DESC, sort_track, id)")
+	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_queue_track ON history(sort_track, sort_artist, id)")
+	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_queue_artist ON history(sort_artist, sort_track, id)")
+	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_queue_album ON history(sort_album, sort_track, id)")
+	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_queue_genre ON history(sort_genre, sort_track, id)")
+	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_queue_release ON history(sort_release, sort_track, id)")
 	                if (db.version < HISTORY_SCHEMA_VERSION) db.version = HISTORY_SCHEMA_VERSION
 	                if (deduplicateTrack) deleteDuplicateHistoryRows(db, values)
 	                db.insertWithOnConflict("history", null, values, SQLiteDatabase.CONFLICT_REPLACE)
@@ -1523,8 +1550,8 @@ object NativeDownloadFinalizer {
 	    private fun backfillNormalizedHistoryColumns(db: SQLiteDatabase) {
 	        db.query(
 	            "history",
-	            arrayOf("id", "spotify_id", "isrc", "track_name", "artist_name", "album_name", "album_artist"),
-	            "spotify_id_norm IS NULL OR isrc_norm IS NULL OR match_key IS NULL OR album_key IS NULL OR search_text IS NULL",
+	            arrayOf("id", "spotify_id", "isrc", "track_name", "artist_name", "album_name", "album_artist", "genre", "release_date", "downloaded_at"),
+	            "spotify_id_norm IS NULL OR isrc_norm IS NULL OR match_key IS NULL OR album_key IS NULL OR search_text IS NULL OR sort_track IS NULL OR sort_release IS NULL OR sort_added IS NULL",
 	            null,
 	            null,
 	            null,
@@ -1537,6 +1564,9 @@ object NativeDownloadFinalizer {
 	            val artistIndex = cursor.getColumnIndex("artist_name")
 	            val albumIndex = cursor.getColumnIndex("album_name")
 	            val albumArtistIndex = cursor.getColumnIndex("album_artist")
+	            val genreIndex = cursor.getColumnIndex("genre")
+	            val releaseDateIndex = cursor.getColumnIndex("release_date")
+	            val downloadedAtIndex = cursor.getColumnIndex("downloaded_at")
 	            while (cursor.moveToNext()) {
 	                if (idIndex < 0) continue
 	                val values = ContentValues()
@@ -1555,6 +1585,16 @@ object NativeDownloadFinalizer {
 	                    artistName = artistName,
 	                    albumName = albumName,
 	                    albumArtist = albumArtist,
+	                )
+	                putQueueSortHistoryColumns(
+	                    values,
+	                    trackName = trackName,
+	                    artistName = artistName,
+	                    albumName = albumName,
+	                    albumArtist = albumArtist,
+	                    genre = cursor.getNullableString(genreIndex),
+	                    releaseDate = cursor.getNullableString(releaseDateIndex),
+	                    downloadedAt = cursor.getNullableString(downloadedAtIndex),
 	                )
 	                db.update("history", values, "id = ?", arrayOf(cursor.getString(idIndex)))
 	            }
@@ -1599,6 +1639,60 @@ object NativeDownloadFinalizer {
 	            albumName = values.getAsString("album_name"),
 	            albumArtist = values.getAsString("album_artist"),
 	        )
+	        putQueueSortHistoryColumns(
+	            values,
+	            trackName = values.getAsString("track_name"),
+	            artistName = values.getAsString("artist_name"),
+	            albumName = values.getAsString("album_name"),
+	            albumArtist = values.getAsString("album_artist"),
+	            genre = values.getAsString("genre"),
+	            releaseDate = values.getAsString("release_date"),
+	            downloadedAt = values.getAsString("downloaded_at"),
+	        )
+	    }
+
+	    private fun putQueueSortHistoryColumns(
+	        values: ContentValues,
+	        trackName: String?,
+	        artistName: String?,
+	        albumName: String?,
+	        albumArtist: String?,
+	        genre: String?,
+	        releaseDate: String?,
+	        downloadedAt: String?,
+	    ) {
+	        values.put("sort_track", normalizeLookupText(trackName))
+	        values.put("sort_artist", normalizeLookupText(artistName))
+	        values.put("sort_album", normalizeLookupText(albumName))
+	        values.put(
+	            "sort_album_artist",
+	            normalizeLookupText(albumArtist?.takeIf { it.trim().isNotEmpty() } ?: artistName),
+	        )
+	        values.put("sort_genre", normalizeLookupText(genre))
+	        values.put("sort_release", releaseDate?.trim().orEmpty())
+	        val sortAdded = parseHistoryTimestampMillis(downloadedAt)
+	        values.put("sort_added", sortAdded)
+	    }
+
+	    private fun parseHistoryTimestampMillis(value: String?): Long {
+	        val timestamp = value?.trim().orEmpty()
+	        if (timestamp.isEmpty()) return 0L
+	        return try {
+	            java.time.Instant.parse(timestamp).toEpochMilli()
+	        } catch (_: Exception) {
+	            try {
+	                java.time.OffsetDateTime.parse(timestamp).toInstant().toEpochMilli()
+	            } catch (_: Exception) {
+	                try {
+	                    java.time.LocalDateTime.parse(timestamp)
+	                        .atZone(java.time.ZoneId.systemDefault())
+	                        .toInstant()
+	                        .toEpochMilli()
+	                } catch (_: Exception) {
+	                    0L
+	                }
+	            }
+	        }
 	    }
 
 	    private fun putAlbumSearchHistoryColumns(
