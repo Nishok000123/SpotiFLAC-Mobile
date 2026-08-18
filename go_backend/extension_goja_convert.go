@@ -184,6 +184,7 @@ func parseExtensionTrackValue(vm *goja.Runtime, value goja.Value) ExtTrackMetada
 		Copyright:     gojaObjectString(obj, "copyright"),
 		Genre:         gojaObjectString(obj, "genre"),
 		Composer:      gojaObjectString(obj, "composer"),
+		Comment:       gojaObjectString(obj, "comment", "comments"),
 		AudioQuality:  gojaObjectString(obj, "audio_quality", "audioQuality"),
 		AudioModes:    gojaObjectString(obj, "audio_modes", "audioModes"),
 	}
@@ -504,6 +505,7 @@ func parseExtensionDownloadResultValue(vm *goja.Runtime, value goja.Value) ExtDo
 		Label:             gojaObjectString(obj, "label"),
 		Copyright:         gojaObjectString(obj, "copyright"),
 		Composer:          gojaObjectString(obj, "composer"),
+		Comment:           gojaObjectString(obj, "comment", "comments"),
 		LyricsLRC:         gojaObjectString(obj, "lyrics_lrc", "lyricsLrc"),
 		DecryptionKey:     gojaObjectString(obj, "decryption_key", "decryptionKey"),
 		Decryption:        parseExtensionDownloadDecryptionValue(vm, gojaObjectValue(obj, "decryption")),

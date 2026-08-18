@@ -45,6 +45,7 @@ type DownloadRequest struct {
 	Label                       string `json:"label,omitempty"`
 	Copyright                   string `json:"copyright,omitempty"`
 	Composer                    string `json:"composer,omitempty"`
+	Comment                     string `json:"comment,omitempty"`
 	TidalID                     string `json:"tidal_id,omitempty"`
 	QobuzID                     string `json:"qobuz_id,omitempty"`
 	DeezerID                    string `json:"deezer_id,omitempty"`
@@ -89,6 +90,7 @@ type DownloadResponse struct {
 	Label                       string                  `json:"label,omitempty"`
 	Copyright                   string                  `json:"copyright,omitempty"`
 	Composer                    string                  `json:"composer,omitempty"`
+	Comment                     string                  `json:"comment,omitempty"`
 	SkipMetadataEnrichment      bool                    `json:"skip_metadata_enrichment,omitempty"`
 	LyricsLRC                   string                  `json:"lyrics_lrc,omitempty"`
 	DecryptionKey               string                  `json:"decryption_key,omitempty"`
@@ -114,6 +116,7 @@ type DownloadResult struct {
 	Label                       string
 	Copyright                   string
 	Composer                    string
+	Comment                     string
 	LyricsLRC                   string
 	DecryptionKey               string
 	Decryption                  *DownloadDecryptionInfo
@@ -175,6 +178,10 @@ func buildDownloadSuccessResponse(
 	if composer == "" {
 		composer = req.Composer
 	}
+	comment := result.Comment
+	if comment == "" {
+		comment = req.Comment
+	}
 
 	coverURL := strings.TrimSpace(result.CoverURL)
 	if coverURL == "" {
@@ -210,6 +217,7 @@ func buildDownloadSuccessResponse(
 		Label:                       label,
 		Copyright:                   copyright,
 		Composer:                    composer,
+		Comment:                     comment,
 		LyricsLRC:                   result.LyricsLRC,
 		DecryptionKey:               result.DecryptionKey,
 		Decryption:                  normalizeDownloadDecryptionInfo(result.Decryption, result.DecryptionKey),

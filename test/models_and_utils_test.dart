@@ -443,6 +443,28 @@ void main() {
       expect(track.isExplicit, isTrue);
     });
 
+    test('preserves extension tagging metadata', () {
+      final track = Track.fromBackendMap({
+        'id': 'extension-track-1',
+        'name': 'Song',
+        'artists': 'Artist',
+        'album_name': 'Album',
+        'duration_ms': 180000,
+        'genre': 'Pop',
+        'label': 'Label',
+        'copyright': 'Copyright',
+        'composer': 'Composer',
+        'comment': 'https://example.test/album/1',
+      });
+
+      expect(track.genre, 'Pop');
+      expect(track.label, 'Label');
+      expect(track.copyright, 'Copyright');
+      expect(track.composer, 'Composer');
+      expect(track.comment, 'https://example.test/album/1');
+      expect(track.toJson()['comment'], 'https://example.test/album/1');
+    });
+
     test('does not treat a playlist container name as a track album', () {
       final playlistTrack = Track.fromBackendMap({
         'id': 'playlist-track-1',
@@ -855,6 +877,7 @@ void main() {
         label: 'Label',
         copyright: 'Copyright',
         composer: 'Composer',
+        comment: 'https://example.test/album/1',
         tidalId: 'tidal-1',
         qobuzId: 'qobuz-1',
         deezerId: 'deezer-1',
@@ -911,6 +934,7 @@ void main() {
         'label': 'Label',
         'copyright': 'Copyright',
         'composer': 'Composer',
+        'comment': 'https://example.test/album/1',
         'tidal_id': 'tidal-1',
         'qobuz_id': 'qobuz-1',
         'deezer_id': 'deezer-1',

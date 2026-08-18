@@ -790,24 +790,34 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
     }
 
     var trackForPayload = item.track;
-    String? nativeDeezerTrackId = await _resolveDeezerIdFromKnownOrIsrc(
-      trackForPayload,
-      item.id,
-      lookupContext: 'native worker ISRC',
-    );
-    final providerResolved = await _resolveDeezerIdViaProviderIfNeeded(
-      trackForPayload,
-      nativeDeezerTrackId,
-      item.id,
-    );
-    trackForPayload = providerResolved.track;
-    nativeDeezerTrackId = providerResolved.deezerTrackId;
-
-    final extendedMetadata = await _loadExtendedMetadataForDeezerId(
-      nativeDeezerTrackId,
-    );
-
     final extensionState = ref.read(extensionProvider);
+    final skipMetadataEnrichment = _shouldSkipMetadataEnrichment(
+      extensionState,
+      trackForPayload.source,
+      item.service,
+    );
+    String? nativeDeezerTrackId;
+    if (skipMetadataEnrichment) {
+      nativeDeezerTrackId = _extractKnownDeezerTrackId(trackForPayload);
+    } else {
+      nativeDeezerTrackId = await _resolveDeezerIdFromKnownOrIsrc(
+        trackForPayload,
+        item.id,
+        lookupContext: 'native worker ISRC',
+      );
+      final providerResolved = await _resolveDeezerIdViaProviderIfNeeded(
+        trackForPayload,
+        nativeDeezerTrackId,
+        item.id,
+      );
+      trackForPayload = providerResolved.track;
+      nativeDeezerTrackId = providerResolved.deezerTrackId;
+    }
+
+    final extendedMetadata = skipMetadataEnrichment
+        ? null
+        : await _loadExtendedMetadataForDeezerId(nativeDeezerTrackId);
+
     final payload = _buildDownloadRequestPayload(
       track: trackForPayload,
       item: item,

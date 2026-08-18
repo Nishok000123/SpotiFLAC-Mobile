@@ -107,6 +107,7 @@ class _DownloadRun {
   late ExtensionState extensionState;
   late bool selectedExtensionDownloadProvider;
   late bool shouldSkipExtensionSongLinkPrelookup;
+  late bool shouldSkipMetadataEnrichment;
   late bool useExtensions;
 
   String? deezerTrackId;
@@ -193,12 +194,14 @@ class _DownloadRun {
       // copy is just echoed back in the response), so this lookup overlaps
       // with the download instead of delaying its start; it is awaited right
       // after the download returns.
-      final extendedMetadataFuture = n
-          ._loadExtendedMetadataForDeezerId(deezerTrackId)
-          .catchError((Object e) {
-            _log.w('Extended metadata lookup failed: $e');
-            return null;
-          });
+      final extendedMetadataFuture = shouldSkipMetadataEnrichment
+          ? Future<_DeezerExtendedMetadataFields?>.value(null)
+          : n._loadExtendedMetadataForDeezerId(deezerTrackId).catchError((
+              Object e,
+            ) {
+              _log.w('Extended metadata lookup failed: $e');
+              return null;
+            });
 
       if (await _shouldAbort('before native download start')) {
         return;
@@ -350,7 +353,16 @@ class _DownloadRun {
                   (data['album_type'] as String?) ?? trackToDownload.albumType,
               totalTracks: enrichedTotalTracks ?? trackToDownload.totalTracks,
               composer: enrichedComposer ?? trackToDownload.composer,
+              genre: data['genre']?.toString() ?? trackToDownload.genre,
+              label: data['label']?.toString() ?? trackToDownload.label,
+              copyright:
+                  data['copyright']?.toString() ?? trackToDownload.copyright,
+              comment: data['comment']?.toString() ?? trackToDownload.comment,
               source: trackToDownload.source,
+              itemType: trackToDownload.itemType,
+              audioQuality: trackToDownload.audioQuality,
+              audioModes: trackToDownload.audioModes,
+              explicit: trackToDownload.explicit,
             );
             _log.d(
               'Metadata enriched: Track ${trackToDownload.trackNumber}, Disc ${trackToDownload.discNumber}, ISRC ${trackToDownload.isrc}, AlbumType ${trackToDownload.albumType}',
@@ -456,11 +468,21 @@ class _DownloadRun {
               e.hasMetadataProvider &&
               e.id.toLowerCase() == trackSource,
         );
+    shouldSkipMetadataEnrichment = n._shouldSkipMetadataEnrichment(
+      extensionState,
+      trackToDownload.source,
+      item.service,
+    );
     final hasActiveExtensions = extensionState.extensions.any((e) => e.enabled);
     useExtensions = settings.useExtensionProviders && hasActiveExtensions;
   }
 
   Future<bool> _resolveTrackIdentifiers() async {
+    if (shouldSkipMetadataEnrichment) {
+      deezerTrackId = n._extractKnownDeezerTrackId(trackToDownload);
+      _log.d('Skipping cross-provider metadata enrichment for ${item.service}');
+      return true;
+    }
     deezerTrackId = await n._resolveDeezerIdFromKnownOrIsrc(
       trackToDownload,
       item.id,
@@ -1451,6 +1473,7 @@ class _DownloadRun {
       genre: (result['genre'] as String?) ?? genre,
       label: (result['label'] as String?) ?? label,
       copyright: result['copyright'] as String?,
+      comment: result['comment'] as String?,
       downloadService: item.service,
       writeExternalLrc: writeExternalLrc,
     );

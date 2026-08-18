@@ -38,6 +38,7 @@ class DownloadRequestPayload {
   final String label;
   final String copyright;
   final String composer;
+  final String comment;
   final String tidalId;
   final String qobuzId;
   final String deezerId;
@@ -96,6 +97,7 @@ class DownloadRequestPayload {
     this.label = '',
     this.copyright = '',
     this.composer = '',
+    this.comment = '',
     this.tidalId = '',
     this.qobuzId = '',
     this.deezerId = '',
@@ -156,6 +158,7 @@ class DownloadRequestPayload {
       'label': label,
       'copyright': copyright,
       'composer': composer,
+      'comment': comment,
       'tidal_id': tidalId,
       'qobuz_id': qobuzId,
       'deezer_id': deezerId,
@@ -220,6 +223,7 @@ class DownloadRequestPayload {
       label: label,
       copyright: copyright,
       composer: composer,
+      comment: comment,
       tidalId: tidalId,
       qobuzId: qobuzId,
       deezerId: deezerId,

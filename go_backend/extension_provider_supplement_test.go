@@ -21,7 +21,7 @@ func TestExtensionProviderWrapperFullSurface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetTrack: %v", err)
 	}
-	if track.Name != "Track track-1" || track.ProviderID != ext.ID || track.AudioQuality == "" {
+	if track.Name != "Track track-1" || track.ProviderID != ext.ID || track.AudioQuality == "" || track.Comment != "https://example.test/album/1" {
 		t.Fatalf("track = %#v", track)
 	}
 
@@ -72,7 +72,7 @@ func TestExtensionProviderWrapperFullSurface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Download: %v", err)
 	}
-	if !download.Success || download.Decryption == nil || download.DecryptionKey != "001122" || len(progress) != 1 || progress[0] != 100 {
+	if !download.Success || download.Decryption == nil || download.DecryptionKey != "001122" || download.Comment != "https://example.test/album/1" || len(progress) != 1 || progress[0] != 100 {
 		t.Fatalf("download = %#v progress=%v", download, progress)
 	}
 

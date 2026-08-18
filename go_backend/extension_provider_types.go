@@ -38,6 +38,7 @@ type ExtTrackMetadata struct {
 	Copyright string `json:"copyright,omitempty"`
 	Genre     string `json:"genre,omitempty"`
 	Composer  string `json:"composer,omitempty"`
+	Comment   string `json:"comment,omitempty"`
 
 	AudioQuality string `json:"audio_quality,omitempty"`
 	AudioModes   string `json:"audio_modes,omitempty"`
@@ -127,6 +128,7 @@ type ExtDownloadResult struct {
 	Label                       string                  `json:"label,omitempty"`
 	Copyright                   string                  `json:"copyright,omitempty"`
 	Composer                    string                  `json:"composer,omitempty"`
+	Comment                     string                  `json:"comment,omitempty"`
 	LyricsLRC                   string                  `json:"lyrics_lrc,omitempty"`
 	DecryptionKey               string                  `json:"decryption_key,omitempty"`
 	Decryption                  *DownloadDecryptionInfo `json:"decryption,omitempty"`

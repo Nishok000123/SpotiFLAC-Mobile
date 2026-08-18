@@ -283,6 +283,9 @@ internal fun NativeDownloadFinalizer.embedBasicMetadata(context: Context, path: 
     val genre = resultString(input, "genre").ifBlank { requestString(input, "genre") }
     val label = resultString(input, "label").ifBlank { requestString(input, "label") }
     val copyright = resultString(input, "copyright").ifBlank { requestString(input, "copyright") }
+    val comment = resultString(input, "comment").ifBlank {
+        trackString(input, "comment", requestString(input, "comment"))
+    }
     val lyricsMode = input.request.optString("lyrics_mode", "embed")
     val shouldResolveLyrics = input.request.optBoolean("embed_lyrics", false) &&
         (lyricsMode == "embed" || lyricsMode == "both")
@@ -308,6 +311,7 @@ internal fun NativeDownloadFinalizer.embedBasicMetadata(context: Context, path: 
                 .put("genre", genre)
                 .put("label", label)
                 .put("copyright", copyright)
+                .put("comment", comment)
             if (trackNumberValue > 0) fields.put("track_number", trackNumberValue.toString())
             if (totalTracksValue > 0) fields.put("track_total", totalTracksValue.toString())
             if (discNumberValue > 0) fields.put("disc_number", discNumberValue.toString())
@@ -356,6 +360,7 @@ internal fun NativeDownloadFinalizer.embedBasicMetadata(context: Context, path: 
         "genre" to genre,
         labelKey to label,
         "copyright" to copyright,
+        "comment" to comment,
         "lyrics" to if (shouldEmbedLyrics) lyrics else "",
         "unsyncedlyrics" to if (shouldEmbedLyrics) lyrics else "",
     )

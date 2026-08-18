@@ -59,6 +59,27 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
     );
   }
 
+  bool _shouldSkipMetadataEnrichment(
+    ExtensionState extensionState,
+    String? source,
+    String? service,
+  ) {
+    final candidates = <String>{};
+    for (final value in [source, service]) {
+      final normalized = value?.trim().toLowerCase();
+      if (normalized != null && normalized.isNotEmpty) {
+        candidates.add(normalized);
+      }
+    }
+    if (candidates.isEmpty) return false;
+    return extensionState.extensions.any(
+      (extension) =>
+          extension.enabled &&
+          extension.skipMetadataEnrichment &&
+          candidates.contains(extension.id.toLowerCase()),
+    );
+  }
+
   String? _extractKnownDeezerTrackId(Track track) {
     final deezerId = track.deezerId?.trim();
     if (deezerId != null && deezerId.isNotEmpty) {
@@ -155,7 +176,14 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
       composer: (track.composer != null && track.composer!.isNotEmpty)
           ? track.composer
           : normalizedComposer,
+      genre: track.genre,
+      label: track.label,
+      copyright: track.copyright,
+      comment: track.comment,
       itemType: track.itemType,
+      audioQuality: track.audioQuality,
+      audioModes: track.audioModes,
+      explicit: track.explicit,
     );
   }
 
@@ -482,6 +510,18 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
     final sourceIsrc = normalizeOptionalString(baseTrack.isrc);
     final sourceReleaseDate = normalizeOptionalString(baseTrack.releaseDate);
     final sourceComposer = normalizeOptionalString(baseTrack.composer);
+    final backendGenre = normalizeOptionalString(
+      backendResult['genre']?.toString(),
+    );
+    final backendLabel = normalizeOptionalString(
+      backendResult['label']?.toString(),
+    );
+    final backendCopyright = normalizeOptionalString(
+      backendResult['copyright']?.toString(),
+    );
+    final backendComment = normalizeOptionalString(
+      backendResult['comment']?.toString(),
+    );
     final resolvedTotalTracks = _resolvePositiveMetadataInt(
       baseTrack.totalTracks,
       backendTotalTracks,
@@ -541,7 +581,15 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
       albumType: baseTrack.albumType,
       totalTracks: resolvedTotalTracks,
       composer: sourceComposer ?? backendComposer,
+      genre: baseTrack.genre ?? backendGenre,
+      label: baseTrack.label ?? backendLabel,
+      copyright: baseTrack.copyright ?? backendCopyright,
+      comment: baseTrack.comment ?? backendComment,
       source: baseTrack.source,
+      itemType: baseTrack.itemType,
+      audioQuality: baseTrack.audioQuality,
+      audioModes: baseTrack.audioModes,
+      explicit: baseTrack.explicit,
     );
   }
 
@@ -559,6 +607,7 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
     String? genre,
     String? label,
     String? copyright,
+    String? comment,
     String? downloadService,
     bool writeExternalLrc = true,
   }) async {
@@ -573,6 +622,10 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
     final isFlac = format == 'flac';
     final isM4a = format == 'm4a';
     final isMp3 = format == 'mp3';
+    final resolvedGenre = genre ?? track.genre;
+    final resolvedLabel = label ?? track.label;
+    final resolvedCopyright = copyright ?? track.copyright;
+    final resolvedComment = comment ?? track.comment;
 
     Future<String?>? coverFuture;
     final coverUrl = normalizeRemoteHttpUrl(track.coverUrl);
@@ -622,10 +675,17 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
         }
       }
       if (track.isrc != null) metadata['ISRC'] = track.isrc!;
-      if (genre != null && genre.isNotEmpty) metadata['GENRE'] = genre;
-      if (label != null && label.isNotEmpty) metadata['ORGANIZATION'] = label;
-      if (copyright != null && copyright.isNotEmpty) {
-        metadata['COPYRIGHT'] = copyright;
+      if (resolvedGenre != null && resolvedGenre.isNotEmpty) {
+        metadata['GENRE'] = resolvedGenre;
+      }
+      if (resolvedLabel != null && resolvedLabel.isNotEmpty) {
+        metadata['ORGANIZATION'] = resolvedLabel;
+      }
+      if (resolvedCopyright != null && resolvedCopyright.isNotEmpty) {
+        metadata['COPYRIGHT'] = resolvedCopyright;
+      }
+      if (resolvedComment != null && resolvedComment.isNotEmpty) {
+        metadata['COMMENT'] = resolvedComment;
       }
       if (track.composer != null && track.composer!.isNotEmpty) {
         metadata['COMPOSER'] = track.composer!;
@@ -727,7 +787,8 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
             'album': track.albumName,
             'albumArtist': ?albumArtist,
             if (track.releaseDate != null) 'date': track.releaseDate!,
-            if (genre != null && genre.isNotEmpty) 'genre': genre,
+            if (resolvedGenre != null && resolvedGenre.isNotEmpty)
+              'genre': resolvedGenre,
             if (track.composer != null && track.composer!.isNotEmpty)
               'composer': track.composer!,
             if (track.trackNumber != null && track.trackNumber! > 0)
@@ -739,9 +800,12 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
             if (track.totalDiscs != null && track.totalDiscs! > 0)
               'totalDiscs': track.totalDiscs!.toString(),
             if (track.isrc != null) 'isrc': track.isrc!,
-            if (label != null && label.isNotEmpty) 'label': label,
-            if (copyright != null && copyright.isNotEmpty)
-              'copyright': copyright,
+            if (resolvedLabel != null && resolvedLabel.isNotEmpty)
+              'label': resolvedLabel,
+            if (resolvedCopyright != null && resolvedCopyright.isNotEmpty)
+              'copyright': resolvedCopyright,
+            if (resolvedComment != null && resolvedComment.isNotEmpty)
+              'comment': resolvedComment,
             if (shouldEmbedLyrics) 'lyrics': ?lrcContent,
           };
           final ac4Result = await PlatformBridge.writeAC4Metadata(
@@ -777,10 +841,14 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
             if (track.isrc != null) 'isrc': track.isrc!,
             if (track.composer != null && track.composer!.isNotEmpty)
               'composer': track.composer!,
-            if (genre != null && genre.isNotEmpty) 'genre': genre,
-            if (label != null && label.isNotEmpty) 'label': label,
-            if (copyright != null && copyright.isNotEmpty)
-              'copyright': copyright,
+            if (resolvedGenre != null && resolvedGenre.isNotEmpty)
+              'genre': resolvedGenre,
+            if (resolvedLabel != null && resolvedLabel.isNotEmpty)
+              'label': resolvedLabel,
+            if (resolvedCopyright != null && resolvedCopyright.isNotEmpty)
+              'copyright': resolvedCopyright,
+            if (resolvedComment != null && resolvedComment.isNotEmpty)
+              'comment': resolvedComment,
             if (track.trackNumber != null && track.trackNumber! > 0)
               'track_number': track.trackNumber!.toString(),
             if (track.totalTracks != null && track.totalTracks! > 0)

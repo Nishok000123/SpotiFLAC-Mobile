@@ -148,6 +148,7 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
           genre: result['genre'] as String?,
           label: result['label'] as String?,
           copyright: result['copyright'] as String?,
+          comment: result['comment'] as String?,
           downloadService: downloadService,
           writeExternalLrc: storageMode != 'saf',
         );
@@ -952,6 +953,7 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
         genre: result['genre'] as String?,
         label: result['label'] as String?,
         copyright: result['copyright'] as String?,
+        comment: result['comment'] as String?,
         downloadService: context.item.service,
       );
     }
@@ -1088,6 +1090,7 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
         genre: result['genre'] as String?,
         label: result['label'] as String?,
         copyright: result['copyright'] as String?,
+        comment: result['comment'] as String?,
         downloadService: context.item.service,
         writeExternalLrc: context.storageMode != 'saf',
       );

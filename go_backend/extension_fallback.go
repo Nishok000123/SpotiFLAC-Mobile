@@ -88,7 +88,9 @@ func attemptExtensionDownload(
 
 	if downloadSucceeded {
 		metadataStartedAt := time.Now()
-		enrichRequestExtendedMetadata(&req)
+		if !ext.Manifest.SkipMetadataEnrichment {
+			enrichRequestExtendedMetadata(&req)
+		}
 		LogDebug(
 			"DownloadPipeline",
 			"item=%s provider=%s post-transfer metadataMs=%.1f",

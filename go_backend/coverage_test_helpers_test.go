@@ -72,6 +72,7 @@ function track(id) {
     copyright: "Copyright",
     genre: "Pop",
     composer: "Composer",
+    comment: "https://example.test/album/1",
     audioQuality: "FLAC 24-bit",
     audioModes: "DOLBY_ATMOS",
     explicit: true
@@ -165,6 +166,7 @@ registerExtension({
       label: "Label",
       copyright: "Copyright",
       composer: "Composer",
+      comment: "https://example.test/album/1",
       lyricsLrc: "[00:00.00]Hello",
       decryptionKey: "001122",
       decryption: { strategy: "mp4_decryption_key", options: { kid: "1" } }

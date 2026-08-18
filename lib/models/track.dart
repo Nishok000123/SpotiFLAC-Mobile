@@ -27,6 +27,10 @@ class Track {
   final String? albumType;
   final int? totalTracks;
   final String? composer;
+  final String? genre;
+  final String? label;
+  final String? copyright;
+  final String? comment;
   final String? itemType;
   final String? audioQuality;
   final String? audioModes;
@@ -54,6 +58,10 @@ class Track {
     this.albumType,
     this.totalTracks,
     this.composer,
+    this.genre,
+    this.label,
+    this.copyright,
+    this.comment,
     this.itemType,
     this.audioQuality,
     this.audioModes,
@@ -128,6 +136,10 @@ class Track {
       source: effectiveSource,
       albumType: normalizeOptionalString(data['album_type']?.toString()),
       composer: data['composer']?.toString(),
+      genre: data['genre']?.toString(),
+      label: data['label']?.toString(),
+      copyright: data['copyright']?.toString(),
+      comment: data['comment']?.toString(),
       itemType: itemType,
       audioQuality: data['audio_quality']?.toString(),
       audioModes: data['audio_modes']?.toString(),
@@ -158,6 +170,10 @@ class Track {
     String? albumType,
     int? totalTracks,
     String? composer,
+    String? genre,
+    String? label,
+    String? copyright,
+    String? comment,
     String? itemType,
     String? audioQuality,
     String? audioModes,
@@ -185,6 +201,10 @@ class Track {
       albumType: albumType ?? this.albumType,
       totalTracks: totalTracks ?? this.totalTracks,
       composer: composer ?? this.composer,
+      genre: genre ?? this.genre,
+      label: label ?? this.label,
+      copyright: copyright ?? this.copyright,
+      comment: comment ?? this.comment,
       itemType: itemType ?? this.itemType,
       audioQuality: audioQuality ?? this.audioQuality,
       audioModes: audioModes ?? this.audioModes,

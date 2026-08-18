@@ -170,6 +170,7 @@ func embedExtensionDownloadMetadata(resp DownloadResponse, req DownloadRequest, 
 		Label:         firstNonEmptyTrimmed(resp.Label, req.Label),
 		Copyright:     firstNonEmptyTrimmed(resp.Copyright, req.Copyright),
 		Composer:      firstNonEmptyTrimmed(resp.Composer, req.Composer),
+		Comment:       firstNonEmptyTrimmed(resp.Comment, req.Comment),
 	}
 	if req.EmbedLyrics {
 		metadata.Lyrics = resp.LyricsLRC
