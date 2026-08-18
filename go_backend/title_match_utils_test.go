@@ -91,6 +91,80 @@ func TestTrackMatchesRequestAcceptsDifferentEditionWithExactISRC(t *testing.T) {
 	}
 }
 
+func TestTrackMatchesRequestAcceptsSameTrackFromDifferentRelease(t *testing.T) {
+	req := DownloadRequest{
+		TrackName:  "Crossing Field",
+		ArtistName: "LiSA",
+		AlbumName:  "Crossing Field - EP",
+		DurationMS: 233000,
+	}
+	resolved := resolvedTrackInfo{
+		Title:      "Crossing Field",
+		ArtistName: "LiSA",
+		AlbumName:  "LANDSPACE",
+		Duration:   233,
+	}
+
+	if !trackMatchesRequest(req, resolved, "test") {
+		t.Fatal("expected the same track to be accepted across release albums")
+	}
+}
+
+func TestTrackMatchesRequestRejectsAlbumMismatchForDifferentVersion(t *testing.T) {
+	req := DownloadRequest{
+		TrackName:  "Song (Live)",
+		ArtistName: "Artist",
+		AlbumName:  "Live at the Theatre",
+	}
+	resolved := resolvedTrackInfo{
+		Title:      "Song",
+		ArtistName: "Artist",
+		AlbumName:  "Studio Album",
+	}
+
+	if trackMatchesRequest(req, resolved, "test") {
+		t.Fatal("expected an album mismatch to reject a different track version")
+	}
+}
+
+func TestTrackMatchesRequestRejectsConflictingISRCDespiteStrongNames(t *testing.T) {
+	req := DownloadRequest{
+		TrackName:  "Song",
+		ArtistName: "Artist",
+		AlbumName:  "Original Album",
+		ISRC:       "USAAA2600001",
+	}
+	resolved := resolvedTrackInfo{
+		Title:      "Song",
+		ArtistName: "Artist",
+		AlbumName:  "Other Album",
+		ISRC:       "USAAA2600002",
+	}
+
+	if trackMatchesRequest(req, resolved, "test") {
+		t.Fatal("expected conflicting ISRCs to keep album verification strict")
+	}
+}
+
+func TestTrackMatchesRequestRejectsDurationMismatchAcrossReleases(t *testing.T) {
+	req := DownloadRequest{
+		TrackName:  "Crossing Field",
+		ArtistName: "LiSA",
+		AlbumName:  "Crossing Field - EP",
+		DurationMS: 233000,
+	}
+	resolved := resolvedTrackInfo{
+		Title:      "Crossing Field",
+		ArtistName: "LiSA",
+		AlbumName:  "LANDSPACE",
+		Duration:   280,
+	}
+
+	if trackMatchesRequest(req, resolved, "test") {
+		t.Fatal("expected a large duration mismatch to reject another recording")
+	}
+}
+
 func TestTitlesMatch_SeparatorVariants(t *testing.T) {
 	if !titlesMatch("Doctor / Cops", "Doctor _ Cops") {
 		t.Fatal("expected tidal titlesMatch to accept / vs _ variant")

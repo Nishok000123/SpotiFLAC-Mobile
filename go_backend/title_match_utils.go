@@ -369,10 +369,52 @@ type resolvedTrackInfo struct {
 	SkipNameVerification bool
 }
 
+func exactLooseIdentityMatch(expected, found string, normalize func(string) string) bool {
+	normExpected := normalize(expected)
+	normFound := normalize(found)
+	if normExpected != "" && normFound != "" {
+		return normExpected == normFound
+	}
+	return strings.EqualFold(strings.TrimSpace(expected), strings.TrimSpace(found))
+}
+
+func durationMatchesRequest(req DownloadRequest, resolved resolvedTrackInfo) bool {
+	expectedDurationSec := req.DurationMS / 1000
+	if expectedDurationSec <= 0 || resolved.Duration <= 0 {
+		return false
+	}
+	diff := expectedDurationSec - resolved.Duration
+	if diff < 0 {
+		diff = -diff
+	}
+	return diff <= 10
+}
+
+func hasStrongTrackIdentity(req DownloadRequest, resolved resolvedTrackInfo) bool {
+	if req.TrackName == "" || resolved.Title == "" ||
+		req.ArtistName == "" || resolved.ArtistName == "" {
+		return false
+	}
+
+	titleExact := exactLooseIdentityMatch(req.TrackName, resolved.Title, normalizeLooseTitle)
+	if !titleExact {
+		return false
+	}
+
+	artistExact := exactLooseIdentityMatch(
+		req.ArtistName,
+		resolved.ArtistName,
+		normalizeLooseArtistName,
+	)
+	return artistExact || (artistsMatch(req.ArtistName, resolved.ArtistName) &&
+		durationMatchesRequest(req, resolved))
+}
+
 func trackMatchesRequest(req DownloadRequest, resolved resolvedTrackInfo, logPrefix string) bool {
 	exactISRCMatch := req.ISRC != "" &&
 		resolved.ISRC != "" &&
 		strings.EqualFold(strings.TrimSpace(req.ISRC), strings.TrimSpace(resolved.ISRC))
+	conflictingISRC := req.ISRC != "" && resolved.ISRC != "" && !exactISRCMatch
 
 	if !exactISRCMatch && !resolved.SkipNameVerification {
 		if req.ArtistName != "" && resolved.ArtistName != "" &&
@@ -391,9 +433,13 @@ func trackMatchesRequest(req DownloadRequest, resolved resolvedTrackInfo, logPre
 
 		if req.AlbumName != "" && resolved.AlbumName != "" &&
 			!titlesMatch(req.AlbumName, resolved.AlbumName) {
-			GoLog("[%s] Verification failed: album mismatch — expected '%s', got '%s'\n",
+			if conflictingISRC || !hasStrongTrackIdentity(req, resolved) {
+				GoLog("[%s] Verification failed: album mismatch — expected '%s', got '%s'\n",
+					logPrefix, req.AlbumName, resolved.AlbumName)
+				return false
+			}
+			GoLog("[%s] Verification accepted album mismatch for matching track identity — expected '%s', got '%s'\n",
 				logPrefix, req.AlbumName, resolved.AlbumName)
-			return false
 		}
 	}
 
