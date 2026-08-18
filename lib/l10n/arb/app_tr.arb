@@ -3948,7 +3948,7 @@
   "@errorRateLimited": {
     "description": "Error title - too many requests"
   },
-  "setupDownloadInFlac": "Spotify şarkılarını FLAC olarak indirin",
+  "setupDownloadInFlac": "Müziği kayıpsız ve Hi-Res kalitesinde indirin",
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
@@ -5082,7 +5082,7 @@
   "@setupStorageGranted": {
     "description": "Success message for storage permission"
   },
-  "tutorialWelcomeTitle": "SpotiFLAC'e hoş geldiniz!",
+  "tutorialWelcomeTitle": "SpotiFLAC Mobile'a hoş geldiniz!",
   "a11ySelectAlbum": "Select album {albumName}",
   "@a11ySelectAlbum": {
     "description": "Accessibility label for selecting an album",
@@ -5396,7 +5396,7 @@
   "@downloadAppleQqMultiPerson": {
     "description": "Setting for word-by-word multi-person lyrics from Apple Music and QQ Music"
   },
-  "tutorialWelcomeTip1": "Spotify, Deezer'dan müzik indirin veya desteklenen herhangi bir URL'yi yapıştırın",
+  "tutorialWelcomeTip1": "Yüklü bir uzantıyla arama yapın veya desteklenen bir bağlantı yapıştırın",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },

@@ -487,7 +487,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get setupDownloadInFlac =>
-      'Télécharger des morceaux Spotify au format FLAC';
+      'Téléchargez de la musique en qualité sans perte et Hi-Res';
 
   @override
   String get setupStorageGranted => 'Autorisation de stockage accordée !';
@@ -2170,7 +2170,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get tutorialWelcomeTitle => 'Bienvenue sur SpotiFLAC !';
+  String get tutorialWelcomeTitle => 'Bienvenue dans SpotiFLAC Mobile !';
 
   @override
   String get tutorialWelcomeDesc =>
@@ -2178,7 +2178,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get tutorialWelcomeTip1 =>
-      'Téléchargez de la musique depuis Spotify ou Deezer, ou collez n\'importe quelle URL prise en charge';
+      'Recherchez avec une extension installée ou collez un lien compatible';
 
   @override
   String get tutorialWelcomeTip2 =>

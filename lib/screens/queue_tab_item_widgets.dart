@@ -1063,18 +1063,12 @@ extension _QueueTabItemWidgets on _QueueTabState {
               valueListenable: fileExistsListenable,
               builder: (context, fileExists, child) {
                 if (fileExists) {
-                  return IconButton.filled(
+                  return TrackGridPlayButton(
                     tooltip: context.l10n.a11yPlayTrackByArtist(
                       item.trackName,
                       item.artistName,
                     ),
                     onPressed: () => _playLibraryItem(item, libraryItems),
-                    iconSize: 18,
-                    icon: const Icon(Icons.play_arrow),
-                    style: IconButton.styleFrom(
-                      minimumSize: Size.square(context.tokens.minTouchTarget),
-                      padding: EdgeInsets.zero,
-                    ),
                   );
                 }
                 return Tooltip(

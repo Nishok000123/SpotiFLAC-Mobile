@@ -3948,7 +3948,7 @@
   "@errorRateLimited": {
     "description": "Error title - too many requests"
   },
-  "setupDownloadInFlac": "Spotify のトラックを FLAC でダウンロード",
+  "setupDownloadInFlac": "ロスレス／ハイレゾ音質で音楽をダウンロード",
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
@@ -5082,7 +5082,7 @@
   "@setupStorageGranted": {
     "description": "Success message for storage permission"
   },
-  "tutorialWelcomeTitle": "SpotiFLAC へようこそ！",
+  "tutorialWelcomeTitle": "SpotiFLAC Mobile へようこそ！",
   "a11ySelectAlbum": "Select album {albumName}",
   "@a11ySelectAlbum": {
     "description": "Accessibility label for selecting an album",
@@ -5396,7 +5396,7 @@
   "@downloadAppleQqMultiPerson": {
     "description": "Setting for word-by-word multi-person lyrics from Apple Music and QQ Music"
   },
-  "tutorialWelcomeTip1": "Download music from Spotify, Deezer, or paste any supported URL",
+  "tutorialWelcomeTip1": "インストール済みの拡張機能で検索するか、対応リンクを貼り付けます",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },

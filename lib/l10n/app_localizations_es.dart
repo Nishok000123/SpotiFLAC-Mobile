@@ -472,7 +472,8 @@ class AppLocalizationsEs extends AppLocalizations {
       'iCloud Drive is not supported. Please use the app Documents folder.';
 
   @override
-  String get setupDownloadInFlac => 'Download Spotify tracks in FLAC';
+  String get setupDownloadInFlac =>
+      'Descarga música con calidad sin pérdida y Hi-Res';
 
   @override
   String get setupStorageGranted => 'Storage Permission Granted!';
@@ -2116,7 +2117,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get tutorialWelcomeTitle => 'Welcome to SpotiFLAC!';
+  String get tutorialWelcomeTitle =>
+      '¡Te damos la bienvenida a SpotiFLAC Mobile!';
 
   @override
   String get tutorialWelcomeDesc =>
@@ -2124,7 +2126,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get tutorialWelcomeTip1 =>
-      'Download music from Spotify, Deezer, or paste any supported URL';
+      'Busca con una extensión instalada o pega un enlace compatible';
 
   @override
   String get tutorialWelcomeTip2 =>
@@ -5418,7 +5420,8 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
       'iCloud Drive no es compatible. Utilice la carpeta Documentos de la aplicación.';
 
   @override
-  String get setupDownloadInFlac => 'Descargar pistas de Spotify en FLAC';
+  String get setupDownloadInFlac =>
+      'Descarga música con calidad sin pérdida y Hi-Res';
 
   @override
   String get setupStorageGranted => '¡Permiso de almacenamiento concedido!';
@@ -6997,7 +7000,8 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   }
 
   @override
-  String get tutorialWelcomeTitle => '¡Bienvenido a SpotiFLAC!';
+  String get tutorialWelcomeTitle =>
+      '¡Te damos la bienvenida a SpotiFLAC Mobile!';
 
   @override
   String get tutorialWelcomeDesc =>
@@ -7005,7 +7009,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get tutorialWelcomeTip1 =>
-      'Descarga música de Spotify, Deezer, o pega cualquier URL soportada';
+      'Busca con una extensión instalada o pega un enlace compatible';
 
   @override
   String get tutorialWelcomeTip2 =>

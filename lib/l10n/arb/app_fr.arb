@@ -3948,7 +3948,7 @@
   "@errorRateLimited": {
     "description": "Error title - too many requests"
   },
-  "setupDownloadInFlac": "Télécharger des morceaux Spotify au format FLAC",
+  "setupDownloadInFlac": "Téléchargez de la musique en qualité sans perte et Hi-Res",
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
@@ -5082,7 +5082,7 @@
   "@setupStorageGranted": {
     "description": "Success message for storage permission"
   },
-  "tutorialWelcomeTitle": "Bienvenue sur SpotiFLAC !",
+  "tutorialWelcomeTitle": "Bienvenue dans SpotiFLAC Mobile !",
   "a11ySelectAlbum": "Sélectionnez l'album {albumName}",
   "@a11ySelectAlbum": {
     "description": "Accessibility label for selecting an album",
@@ -5396,7 +5396,7 @@
   "@downloadAppleQqMultiPerson": {
     "description": "Setting for word-by-word multi-person lyrics from Apple Music and QQ Music"
   },
-  "tutorialWelcomeTip1": "Téléchargez de la musique depuis Spotify ou Deezer, ou collez n'importe quelle URL prise en charge",
+  "tutorialWelcomeTip1": "Recherchez avec une extension installée ou collez un lien compatible",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },

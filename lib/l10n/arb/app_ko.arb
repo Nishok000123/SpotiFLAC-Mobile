@@ -606,7 +606,7 @@
   "@setupIcloudNotSupported": {
     "description": "Error when user selects iCloud Drive on iOS"
   },
-  "setupDownloadInFlac": "Spotify 음악을 FLAC 형식으로 다운로드하세요",
+  "setupDownloadInFlac": "무손실 및 Hi-Res 음질로 음악을 다운로드하세요",
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
@@ -2678,7 +2678,7 @@
       }
     }
   },
-  "tutorialWelcomeTitle": "SpotiFLAC에 오신 것을 환영합니다!",
+  "tutorialWelcomeTitle": "SpotiFLAC Mobile에 오신 것을 환영합니다!",
   "@tutorialWelcomeTitle": {
     "description": "Tutorial welcome page title"
   },
@@ -2686,7 +2686,7 @@
   "@tutorialWelcomeDesc": {
     "description": "Tutorial welcome page description"
   },
-  "tutorialWelcomeTip1": "Spotify, Deezer 또는 지원되는 URL에서 음악을 다운로드할 수 있습니다",
+  "tutorialWelcomeTip1": "설치된 확장 프로그램으로 검색하거나 지원되는 링크를 붙여넣으세요",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },

@@ -438,7 +438,7 @@
   "@setupIosEmptyFolderWarning": {
     "description": "iOS folder selection warning"
   },
-  "setupDownloadInFlac": "Download Spotify tracks in FLAC",
+  "setupDownloadInFlac": "Baixe músicas com qualidade sem perdas e Hi-Res",
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
@@ -2514,7 +2514,7 @@
       }
     }
   },
-  "tutorialWelcomeTitle": "Welcome to SpotiFLAC!",
+  "tutorialWelcomeTitle": "Boas-vindas ao SpotiFLAC Mobile!",
   "@tutorialWelcomeTitle": {
     "description": "Tutorial welcome page title"
   },
@@ -2522,7 +2522,7 @@
   "@tutorialWelcomeDesc": {
     "description": "Tutorial welcome page description"
   },
-  "tutorialWelcomeTip1": "Download music from Spotify, Deezer, or paste any supported URL",
+  "tutorialWelcomeTip1": "Pesquise com uma extensão instalada ou cole um link compatível",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },

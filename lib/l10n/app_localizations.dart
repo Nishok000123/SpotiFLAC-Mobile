@@ -961,7 +961,7 @@ abstract class AppLocalizations {
   /// App tagline in setup
   ///
   /// In en, this message translates to:
-  /// **'Download Spotify tracks in FLAC'**
+  /// **'Download music in lossless and Hi-Res quality'**
   String get setupDownloadInFlac;
 
   /// Success message for storage permission
@@ -3799,25 +3799,25 @@ abstract class AppLocalizations {
   /// Tutorial welcome page description
   ///
   /// In en, this message translates to:
-  /// **'Let\'s learn how to download your favorite music in lossless quality. This quick tutorial will show you the basics.'**
+  /// **'Learn how to find music with extensions, choose the quality you want, and manage downloads in SpotiFLAC Mobile.'**
   String get tutorialWelcomeDesc;
 
   /// Tutorial welcome tip 1
   ///
   /// In en, this message translates to:
-  /// **'Search music or paste a link from any source your installed extensions support'**
+  /// **'Search with an installed extension or paste a supported music link'**
   String get tutorialWelcomeTip1;
 
   /// Tutorial welcome tip 2
   ///
   /// In en, this message translates to:
-  /// **'Get FLAC quality audio from installed download extensions'**
+  /// **'Choose from the audio qualities offered by your download provider'**
   String get tutorialWelcomeTip2;
 
   /// Tutorial welcome tip 3
   ///
   /// In en, this message translates to:
-  /// **'Automatic metadata, cover art, and lyrics embedding'**
+  /// **'Embed metadata, cover art, lyrics, and release information automatically'**
   String get tutorialWelcomeTip3;
 
   /// Tutorial search page title
@@ -3829,7 +3829,7 @@ abstract class AppLocalizations {
   /// Tutorial search page description
   ///
   /// In en, this message translates to:
-  /// **'There are two easy ways to find music you want to download.'**
+  /// **'Search with your selected extension or paste a supported music link.'**
   String get tutorialSearchDesc;
 
   /// Tutorial download page title
@@ -3841,7 +3841,7 @@ abstract class AppLocalizations {
   /// Tutorial download page description
   ///
   /// In en, this message translates to:
-  /// **'Downloading music is simple and fast. Here\'s how it works.'**
+  /// **'Pick an available quality, start the download, and follow its progress in the queue.'**
   String get tutorialDownloadDesc;
 
   /// Tutorial library page title
@@ -3853,25 +3853,25 @@ abstract class AppLocalizations {
   /// Tutorial library page description
   ///
   /// In en, this message translates to:
-  /// **'All your downloaded music is organized in the Library tab.'**
+  /// **'Downloaded and locally scanned music is organized in your Library.'**
   String get tutorialLibraryDesc;
 
   /// Tutorial library tip 1
   ///
   /// In en, this message translates to:
-  /// **'View download progress and queue in the Library tab'**
+  /// **'Manage active, pending, and completed downloads from the Library queue'**
   String get tutorialLibraryTip1;
 
   /// Tutorial library tip 2
   ///
   /// In en, this message translates to:
-  /// **'Tap any track to play it with your music player'**
+  /// **'Tap a track to play it with the built-in player'**
   String get tutorialLibraryTip2;
 
   /// Tutorial library tip 3
   ///
   /// In en, this message translates to:
-  /// **'Switch between list and grid view for better browsing'**
+  /// **'Browse tracks, albums, and playlists in list or grid views'**
   String get tutorialLibraryTip3;
 
   /// Tutorial extensions page title
@@ -3883,7 +3883,7 @@ abstract class AppLocalizations {
   /// Tutorial extensions page description
   ///
   /// In en, this message translates to:
-  /// **'Extend the app\'s capabilities with community extensions.'**
+  /// **'Extensions add search, download, metadata, lyrics, and other integrations.'**
   String get tutorialExtensionsDesc;
 
   /// Tutorial extensions tip 1
@@ -3895,13 +3895,13 @@ abstract class AppLocalizations {
   /// Tutorial extensions tip 2
   ///
   /// In en, this message translates to:
-  /// **'Add new download providers or search sources'**
+  /// **'Choose providers for search, downloads, metadata, and fallbacks'**
   String get tutorialExtensionsTip2;
 
   /// Tutorial extensions tip 3
   ///
   /// In en, this message translates to:
-  /// **'Get lyrics, enhanced metadata, and more features'**
+  /// **'Connect accounts when required and keep extensions up to date'**
   String get tutorialExtensionsTip3;
 
   /// Tutorial settings page title
@@ -3913,7 +3913,7 @@ abstract class AppLocalizations {
   /// Tutorial settings page description
   ///
   /// In en, this message translates to:
-  /// **'Personalize the app in Settings to match your preferences.'**
+  /// **'Fine-tune downloads, playback, Library behavior, appearance, and storage.'**
   String get tutorialSettingsDesc;
 
   /// Tutorial settings tip 1
@@ -3925,7 +3925,7 @@ abstract class AppLocalizations {
   /// Tutorial settings tip 2
   ///
   /// In en, this message translates to:
-  /// **'Set default audio quality and format preferences'**
+  /// **'Set quality, concurrency, filenames, and conversion preferences'**
   String get tutorialSettingsTip2;
 
   /// Tutorial settings tip 3
@@ -3937,7 +3937,7 @@ abstract class AppLocalizations {
   /// Tutorial completion message
   ///
   /// In en, this message translates to:
-  /// **'You\'re all set! Start downloading your favorite music now.'**
+  /// **'You\'re ready. Select your extensions, then search or paste a supported link.'**
   String get tutorialReadyMessage;
 
   /// Button to force a complete rescan of library

@@ -472,7 +472,8 @@ class AppLocalizationsPt extends AppLocalizations {
       'iCloud Drive is not supported. Please use the app Documents folder.';
 
   @override
-  String get setupDownloadInFlac => 'Download Spotify tracks in FLAC';
+  String get setupDownloadInFlac =>
+      'Baixe músicas com qualidade sem perdas e Hi-Res';
 
   @override
   String get setupStorageGranted => 'Storage Permission Granted!';
@@ -2116,7 +2117,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get tutorialWelcomeTitle => 'Welcome to SpotiFLAC!';
+  String get tutorialWelcomeTitle => 'Boas-vindas ao SpotiFLAC Mobile!';
 
   @override
   String get tutorialWelcomeDesc =>
@@ -2124,7 +2125,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get tutorialWelcomeTip1 =>
-      'Download music from Spotify, Deezer, or paste any supported URL';
+      'Pesquise com uma extensão instalada ou cole um link compatível';
 
   @override
   String get tutorialWelcomeTip2 =>
@@ -5418,7 +5419,8 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
       'O iCloud Drive não é compatível. Use a pasta Documentos do aplicativo.';
 
   @override
-  String get setupDownloadInFlac => 'Baixar faixas do Spotify em FLAC';
+  String get setupDownloadInFlac =>
+      'Baixe músicas com qualidade sem perdas e Hi-Res';
 
   @override
   String get setupStorageGranted => 'Permissão de Armazenamento Concedida!';
@@ -6986,7 +6988,7 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
   }
 
   @override
-  String get tutorialWelcomeTitle => 'Welcome to SpotiFLAC!';
+  String get tutorialWelcomeTitle => 'Boas-vindas ao SpotiFLAC Mobile!';
 
   @override
   String get tutorialWelcomeDesc =>
@@ -6994,7 +6996,7 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
 
   @override
   String get tutorialWelcomeTip1 =>
-      'Download music from Spotify, Deezer, or paste any supported URL';
+      'Pesquise com uma extensão instalada ou cole um link compatível';
 
   @override
   String get tutorialWelcomeTip2 =>

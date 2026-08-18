@@ -458,7 +458,7 @@ class AppLocalizationsKo extends AppLocalizations {
       'iCloud Drive는 지원되지 않습니다. 앱의 문서 폴더를 사용해 주세요';
 
   @override
-  String get setupDownloadInFlac => 'Spotify 음악을 FLAC 형식으로 다운로드하세요';
+  String get setupDownloadInFlac => '무손실 및 Hi-Res 음질로 음악을 다운로드하세요';
 
   @override
   String get setupStorageGranted => '저장소 접근 권한이 부여되었습니다!';
@@ -2074,15 +2074,14 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get tutorialWelcomeTitle => 'SpotiFLAC에 오신 것을 환영합니다!';
+  String get tutorialWelcomeTitle => 'SpotiFLAC Mobile에 오신 것을 환영합니다!';
 
   @override
   String get tutorialWelcomeDesc =>
       '좋아하는 음악을 무손실 음질로 다운로드하는 방법을 알아보겠습니다. 이 간단한 튜토리얼은 기본 사항을 보여줍니다';
 
   @override
-  String get tutorialWelcomeTip1 =>
-      'Spotify, Deezer 또는 지원되는 URL에서 음악을 다운로드할 수 있습니다';
+  String get tutorialWelcomeTip1 => '설치된 확장 프로그램으로 검색하거나 지원되는 링크를 붙여넣으세요';
 
   @override
   String get tutorialWelcomeTip2 =>

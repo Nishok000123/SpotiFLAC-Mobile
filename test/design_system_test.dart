@@ -581,6 +581,42 @@ void main() {
       await tester.tap(find.byType(InkWell));
       expect(taps, 1);
     });
+
+    testWidgets('grid play action keeps a compact visual and 48dp hit box', (
+      tester,
+    ) async {
+      var taps = 0;
+      await tester.pumpWidget(
+        host(
+          Align(
+            child: TrackGridPlayButton(
+              tooltip: 'Play Song by Artist',
+              onPressed: () => taps++,
+            ),
+          ),
+        ),
+      );
+
+      final action = find.byType(TrackGridPlayButton);
+      final button = find.descendant(
+        of: action,
+        matching: find.byType(IconButton),
+      );
+      final visual = find.descendant(
+        of: action,
+        matching: find.byType(Container),
+      );
+
+      expect(tester.getSize(button), const Size.square(48));
+      expect(
+        tester.getSize(visual),
+        const Size.square(TrackGridPlayButton.visualDiameter),
+      );
+      expect(tester.getBottomRight(visual), tester.getBottomRight(button));
+
+      await tester.tap(button);
+      expect(taps, 1);
+    });
   });
 
   group('selection bar', () {

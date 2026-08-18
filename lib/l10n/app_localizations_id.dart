@@ -474,7 +474,8 @@ class AppLocalizationsId extends AppLocalizations {
       'iCloud Drive tidak didukung. Silakan gunakan folder Dokumen di aplikasi.';
 
   @override
-  String get setupDownloadInFlac => 'Unduh lagu Spotify dalam format FLAC';
+  String get setupDownloadInFlac =>
+      'Unduh musik dalam kualitas lossless dan Hi-Res';
 
   @override
   String get setupStorageGranted => 'Izin Penyimpanan Diberikan!';
@@ -2125,97 +2126,97 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get tutorialWelcomeTitle => 'Selamat Datang di SpotiFLAC!';
+  String get tutorialWelcomeTitle => 'Selamat Datang di SpotiFLAC Mobile!';
 
   @override
   String get tutorialWelcomeDesc =>
-      'Mari kita pelajari cara mengunduh musik favorit Anda dalam kualitas lossless. Tutorial singkat ini akan menunjukkan dasar-dasarnya.';
+      'Pelajari cara menemukan musik dengan extension, memilih kualitas, dan mengelola unduhan di SpotiFLAC Mobile.';
 
   @override
   String get tutorialWelcomeTip1 =>
-      'Unduh musik dari Spotify, Deezer, atau tempel URL yang didukung';
+      'Cari dengan extension terpasang atau tempel tautan musik yang didukung';
 
   @override
   String get tutorialWelcomeTip2 =>
-      'Get FLAC quality audio from installed download extensions';
+      'Pilih kualitas audio yang disediakan oleh provider unduhan';
 
   @override
   String get tutorialWelcomeTip3 =>
-      'Penyematan metadata, sampul album, dan lirik secara otomatis';
+      'Sematkan metadata, sampul, lirik, dan informasi rilisan secara otomatis';
 
   @override
   String get tutorialSearchTitle => 'Menemukan Musik';
 
   @override
   String get tutorialSearchDesc =>
-      'Ada dua cara mudah untuk menemukan musik yang ingin Anda unduh.';
+      'Cari dengan extension pilihan Anda atau tempel tautan musik yang didukung.';
 
   @override
   String get tutorialDownloadTitle => 'Mengunduh Musik';
 
   @override
   String get tutorialDownloadDesc =>
-      'Mengunduh musik itu mudah dan cepat. Begini cara kerjanya.';
+      'Pilih kualitas yang tersedia, mulai unduhan, lalu pantau progresnya dalam antrean.';
 
   @override
   String get tutorialLibraryTitle => 'Perpustakaan Anda';
 
   @override
   String get tutorialLibraryDesc =>
-      'Semua musik yang Anda unduh tersusun rapi di tab Perpustakaan.';
+      'Musik yang diunduh dan dipindai dari perangkat tersusun rapi di Perpustakaan.';
 
   @override
   String get tutorialLibraryTip1 =>
-      'View download progress and queue in the Library tab';
+      'Kelola unduhan aktif, tertunda, dan selesai dari antrean Perpustakaan';
 
   @override
   String get tutorialLibraryTip2 =>
-      'Tap any track to play it with your music player';
+      'Ketuk lagu untuk memutarnya dengan pemutar bawaan';
 
   @override
   String get tutorialLibraryTip3 =>
-      'Switch between list and grid view for better browsing';
+      'Telusuri lagu, album, dan playlist dalam tampilan daftar atau grid';
 
   @override
   String get tutorialExtensionsTitle => 'Extensions';
 
   @override
   String get tutorialExtensionsDesc =>
-      'Extend the app\'s capabilities with community extensions.';
+      'Extension menambahkan pencarian, unduhan, metadata, lirik, dan integrasi lainnya.';
 
   @override
   String get tutorialExtensionsTip1 =>
-      'Browse the Repo tab to discover useful extensions';
+      'Telusuri tab Repo untuk menemukan extension yang berguna';
 
   @override
   String get tutorialExtensionsTip2 =>
-      'Add new download providers or search sources';
+      'Pilih provider untuk pencarian, unduhan, metadata, dan fallback';
 
   @override
   String get tutorialExtensionsTip3 =>
-      'Get lyrics, enhanced metadata, and more features';
+      'Hubungkan akun jika diperlukan dan selalu perbarui extension';
 
   @override
   String get tutorialSettingsTitle => 'Customize Your Experience';
 
   @override
   String get tutorialSettingsDesc =>
-      'Personalize the app in Settings to match your preferences.';
+      'Sesuaikan unduhan, pemutaran, perilaku Perpustakaan, tampilan, dan penyimpanan.';
 
   @override
   String get tutorialSettingsTip1 =>
-      'Change download location and folder organization';
+      'Ubah lokasi unduhan dan pengaturan folder';
 
   @override
   String get tutorialSettingsTip2 =>
-      'Set default audio quality and format preferences';
+      'Atur kualitas, unduhan bersamaan, nama berkas, dan konversi';
 
   @override
-  String get tutorialSettingsTip3 => 'Customize app theme and appearance';
+  String get tutorialSettingsTip3 => 'Sesuaikan tema dan tampilan aplikasi';
 
   @override
   String get tutorialReadyMessage =>
-      'You\'re all set! Start downloading your favorite music now.';
+      'Semua siap. Pilih extension, lalu cari musik atau tempel tautan yang didukung.';
 
   @override
   String get libraryForceFullScan => 'Force Full Scan';

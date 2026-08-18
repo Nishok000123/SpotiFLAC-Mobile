@@ -3948,7 +3948,7 @@
   "@errorRateLimited": {
     "description": "Error title - too many requests"
   },
-  "setupDownloadInFlac": "Завантажити треки Spotify у форматі FLAC",
+  "setupDownloadInFlac": "Завантажуйте музику в якості Lossless та Hi-Res",
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
@@ -5082,7 +5082,7 @@
   "@setupStorageGranted": {
     "description": "Success message for storage permission"
   },
-  "tutorialWelcomeTitle": "Ласкаво просимо до SpotiFLAC!",
+  "tutorialWelcomeTitle": "Ласкаво просимо до SpotiFLAC Mobile!",
   "a11ySelectAlbum": "Select album {albumName}",
   "@a11ySelectAlbum": {
     "description": "Accessibility label for selecting an album",
@@ -5396,7 +5396,7 @@
   "@downloadAppleQqMultiPerson": {
     "description": "Setting for word-by-word multi-person lyrics from Apple Music and QQ Music"
   },
-  "tutorialWelcomeTip1": "Завантажуйте музику зі Spotify, Deezer або вставляйте будь-яку підтримувану URL-адресу",
+  "tutorialWelcomeTip1": "Шукайте за допомогою встановленого розширення або вставте підтримуване посилання",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },

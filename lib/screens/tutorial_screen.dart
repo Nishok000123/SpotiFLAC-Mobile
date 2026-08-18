@@ -146,9 +146,9 @@ class _TutorialScreenState extends ConsumerState<TutorialScreen> {
                     title: l10n.tutorialWelcomeTitle,
                     description: l10n.tutorialWelcomeDesc,
                     content: _buildFeatureList(context, [
-                      (Icons.music_note_rounded, l10n.tutorialWelcomeTip1),
+                      (Icons.travel_explore_rounded, l10n.tutorialWelcomeTip1),
                       (Icons.high_quality_rounded, l10n.tutorialWelcomeTip2),
-                      (Icons.download_rounded, l10n.tutorialWelcomeTip3),
+                      (Icons.auto_awesome_rounded, l10n.tutorialWelcomeTip3),
                     ]),
                   ),
                   _TutorialPage(
@@ -174,7 +174,7 @@ class _TutorialScreenState extends ConsumerState<TutorialScreen> {
                     title: l10n.tutorialLibraryTitle,
                     description: l10n.tutorialLibraryDesc,
                     content: _buildFeatureList(context, [
-                      (Icons.offline_pin_rounded, l10n.tutorialLibraryTip1),
+                      (Icons.downloading_rounded, l10n.tutorialLibraryTip1),
                       (Icons.play_circle_fill, l10n.tutorialLibraryTip2),
                       (Icons.grid_view_rounded, l10n.tutorialLibraryTip3),
                     ]),
@@ -191,7 +191,7 @@ class _TutorialScreenState extends ConsumerState<TutorialScreen> {
                         Icons.add_circle_outline_rounded,
                         l10n.tutorialExtensionsTip2,
                       ),
-                      (Icons.lyrics_rounded, l10n.tutorialExtensionsTip3),
+                      (Icons.sync_rounded, l10n.tutorialExtensionsTip3),
                     ]),
                   ),
                   _TutorialPage(

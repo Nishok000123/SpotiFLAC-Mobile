@@ -478,7 +478,8 @@ class AppLocalizationsTr extends AppLocalizations {
       'iCloud Drive desteklenmiyor. Lütfen uygulama Belgeler klasörünü kullanın.';
 
   @override
-  String get setupDownloadInFlac => 'Spotify şarkılarını FLAC olarak indirin';
+  String get setupDownloadInFlac =>
+      'Müziği kayıpsız ve Hi-Res kalitesinde indirin';
 
   @override
   String get setupStorageGranted => 'Depolama İzni Verildi!';
@@ -2140,7 +2141,7 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String get tutorialWelcomeTitle => 'SpotiFLAC\'e hoş geldiniz!';
+  String get tutorialWelcomeTitle => 'SpotiFLAC Mobile\'a hoş geldiniz!';
 
   @override
   String get tutorialWelcomeDesc =>
@@ -2148,7 +2149,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get tutorialWelcomeTip1 =>
-      'Spotify, Deezer\'dan müzik indirin veya desteklenen herhangi bir URL\'yi yapıştırın';
+      'Yüklü bir uzantıyla arama yapın veya desteklenen bir bağlantı yapıştırın';
 
   @override
   String get tutorialWelcomeTip2 =>

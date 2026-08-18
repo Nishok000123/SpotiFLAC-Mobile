@@ -269,6 +269,50 @@ class TrackGridCard extends StatelessWidget {
   }
 }
 
+/// Compact play affordance for a track cover with a full-size touch target.
+///
+/// The visible circle intentionally stays smaller than its hit box so it does
+/// not obscure the artwork while remaining accessible to touch users.
+class TrackGridPlayButton extends StatelessWidget {
+  const TrackGridPlayButton({
+    super.key,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  static const double visualDiameter = 36;
+
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      padding: EdgeInsets.zero,
+      alignment: Alignment.bottomRight,
+      style: IconButton.styleFrom(
+        minimumSize: Size.square(tokens.minTouchTarget),
+        padding: EdgeInsets.zero,
+      ),
+      icon: Container(
+        width: visualDiameter,
+        height: visualDiameter,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: colorScheme.primary,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(Icons.play_arrow, size: 18, color: colorScheme.onPrimary),
+      ),
+    );
+  }
+}
+
 /// Square artwork placeholder shared by every track row and grid cell.
 ///
 /// The `Container` + `surfaceContainerHighest` + `music_note` combination was

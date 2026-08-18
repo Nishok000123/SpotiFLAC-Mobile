@@ -475,7 +475,8 @@ class AppLocalizationsRu extends AppLocalizations {
       'iCloud Drive не поддерживается. Пожалуйста, используйте папку Документы.';
 
   @override
-  String get setupDownloadInFlac => 'Скачать Spotify треки во FLAC';
+  String get setupDownloadInFlac =>
+      'Скачивайте музыку в качестве Lossless и Hi-Res';
 
   @override
   String get setupStorageGranted => 'Доступ к хранилищу предоставлен!';
@@ -2144,7 +2145,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get tutorialWelcomeTitle => 'Добро пожаловать в SpotiFLAC!';
+  String get tutorialWelcomeTitle => 'Добро пожаловать в SpotiFLAC Mobile!';
 
   @override
   String get tutorialWelcomeDesc =>
@@ -2152,7 +2153,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get tutorialWelcomeTip1 =>
-      'Скачивайте музыку из Spotify, Deezer, или вставьте любой поддерживаемый URL';
+      'Ищите через установленное расширение или вставьте поддерживаемую ссылку';
 
   @override
   String get tutorialWelcomeTip2 =>

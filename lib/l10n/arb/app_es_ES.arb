@@ -606,7 +606,7 @@
   "@setupIcloudNotSupported": {
     "description": "Error when user selects iCloud Drive on iOS"
   },
-  "setupDownloadInFlac": "Descargar pistas de Spotify en FLAC",
+  "setupDownloadInFlac": "Descarga música con calidad sin pérdida y Hi-Res",
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
@@ -2636,7 +2636,7 @@
       }
     }
   },
-  "tutorialWelcomeTitle": "¡Bienvenido a SpotiFLAC!",
+  "tutorialWelcomeTitle": "¡Te damos la bienvenida a SpotiFLAC Mobile!",
   "@tutorialWelcomeTitle": {
     "description": "Tutorial welcome page title"
   },
@@ -2644,7 +2644,7 @@
   "@tutorialWelcomeDesc": {
     "description": "Tutorial welcome page description"
   },
-  "tutorialWelcomeTip1": "Descarga música de Spotify, Deezer, o pega cualquier URL soportada",
+  "tutorialWelcomeTip1": "Busca con una extensión instalada o pega un enlace compatible",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },

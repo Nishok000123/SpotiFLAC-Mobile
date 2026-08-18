@@ -382,7 +382,7 @@
   "@trackReEnrichFieldCover": {
     "description": "Checkbox label for cover art field in re-enrich"
   },
-  "tutorialExtensionsTip3": "Get lyrics, enhanced metadata, and more features",
+  "tutorialExtensionsTip3": "Hubungkan akun jika diperlukan dan selalu perbarui extension",
   "@tutorialExtensionsTip3": {
     "description": "Tutorial extensions tip 3"
   },
@@ -1456,7 +1456,7 @@
   "@replayGainBatchConfirmTitle": {
     "description": "Title of the batch ReplayGain confirmation dialog"
   },
-  "tutorialExtensionsTip1": "Browse the Repo tab to discover useful extensions",
+  "tutorialExtensionsTip1": "Telusuri tab Repo untuk menemukan extension yang berguna",
   "@tutorialExtensionsTip1": {
     "description": "Tutorial extensions tip 1"
   },
@@ -1554,7 +1554,7 @@
   "@searchSortTitleZA": {
     "description": "Sort option - title descending"
   },
-  "tutorialLibraryTip2": "Tap any track to play it with your music player",
+  "tutorialLibraryTip2": "Ketuk lagu untuk memutarnya dengan pemutar bawaan",
   "@tutorialLibraryTip2": {
     "description": "Tutorial library tip 2"
   },
@@ -1933,7 +1933,7 @@
   "@dialogClearHistoryTitle": {
     "description": "Dialog title - clear download history"
   },
-  "tutorialSettingsTip1": "Change download location and folder organization",
+  "tutorialSettingsTip1": "Ubah lokasi unduhan dan pengaturan folder",
   "@tutorialSettingsTip1": {
     "description": "Tutorial settings tip 1"
   },
@@ -2294,7 +2294,7 @@
   "@nowPlayingNothingPlaying": {
     "description": "Empty state when no track is currently playing"
   },
-  "tutorialDownloadDesc": "Mengunduh musik itu mudah dan cepat. Begini cara kerjanya.",
+  "tutorialDownloadDesc": "Pilih kualitas yang tersedia, mulai unduhan, lalu pantau progresnya dalam antrean.",
   "@tutorialDownloadDesc": {
     "description": "Tutorial download page description"
   },
@@ -2934,7 +2934,7 @@
     }
   },
   "dialogDisableHistoryTitle": "Turn off download history?",
-  "tutorialWelcomeTip3": "Penyematan metadata, sampul album, dan lirik secara otomatis",
+  "tutorialWelcomeTip3": "Sematkan metadata, sampul, lirik, dan informasi rilisan secara otomatis",
   "@tutorialWelcomeTip3": {
     "description": "Tutorial welcome tip 3"
   },
@@ -3459,7 +3459,7 @@
   "@dialogDelete": {
     "description": "Dialog button - delete item"
   },
-  "tutorialLibraryDesc": "Semua musik yang Anda unduh tersusun rapi di tab Perpustakaan.",
+  "tutorialLibraryDesc": "Musik yang diunduh dan dipindai dari perangkat tersusun rapi di Perpustakaan.",
   "@tutorialLibraryDesc": {
     "description": "Tutorial library page description"
   },
@@ -3573,7 +3573,7 @@
   },
   "libraryFilterMetadataMissingAlbumArtist": "Missing album artist",
   "audioAnalysisNoClipping": "No clipping",
-  "tutorialSettingsDesc": "Personalize the app in Settings to match your preferences.",
+  "tutorialSettingsDesc": "Sesuaikan unduhan, pemutaran, perilaku Perpustakaan, tampilan, dan penyimpanan.",
   "@tutorialSettingsDesc": {
     "description": "Tutorial settings page description"
   },
@@ -3629,7 +3629,7 @@
   "@dialogClearAll": {
     "description": "Dialog title - clear all items"
   },
-  "tutorialExtensionsDesc": "Extend the app's capabilities with community extensions.",
+  "tutorialExtensionsDesc": "Extension menambahkan pencarian, unduhan, metadata, lirik, dan integrasi lainnya.",
   "@tutorialExtensionsDesc": {
     "description": "Tutorial extensions page description"
   },
@@ -3773,7 +3773,7 @@
   "@editMetadataAutoFillFetch": {
     "description": "Button label to fetch online metadata and fill selected fields"
   },
-  "tutorialSearchDesc": "Ada dua cara mudah untuk menemukan musik yang ingin Anda unduh.",
+  "tutorialSearchDesc": "Cari dengan extension pilihan Anda atau tempel tautan musik yang didukung.",
   "@sectionService": {
     "description": "Settings section header"
   },
@@ -4012,7 +4012,7 @@
   "@errorRateLimited": {
     "description": "Error title - too many requests"
   },
-  "setupDownloadInFlac": "Unduh lagu Spotify dalam format FLAC",
+  "setupDownloadInFlac": "Unduh musik dalam kualitas lossless dan Hi-Res",
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
@@ -4881,7 +4881,7 @@
   "@channelStable": {
     "description": "Update channel - stable releases"
   },
-  "tutorialSettingsTip3": "Customize app theme and appearance",
+  "tutorialSettingsTip3": "Sesuaikan tema dan tampilan aplikasi",
   "setupAppDocumentsFolderSubtitle": "Direkomendasikan - dapat diakses via aplikasi Files",
   "a11yPlayTrackByArtist": "Play {trackName} by {artistName}",
   "@a11yPlayTrackByArtist": {
@@ -5023,8 +5023,8 @@
     }
   },
   "setupStorageDescription": "SpotiFLAC membutuhkan izin penyimpanan untuk menyimpan file musik yang diunduh.",
-  "tutorialReadyMessage": "You're all set! Start downloading your favorite music now.",
-  "tutorialLibraryTip3": "Switch between list and grid view for better browsing",
+  "tutorialReadyMessage": "Semua siap. Pilih extension, lalu cari musik atau tempel tautan yang didukung.",
+  "tutorialLibraryTip3": "Telusuri lagu, album, dan playlist dalam tampilan daftar atau grid",
   "selectionDeletePlaylistsCount": "Delete {count} {count, plural, =1{playlist} other{playlists}}",
   "appearanceThemeLight": "Terang",
   "queueEmptyHistorySubtitle": "Downloaded tracks will appear here",
@@ -5184,11 +5184,11 @@
     "description": "Chip label for date field in auto-fill selector"
   },
   "downloadUsePrimaryArtistOnly": "Hanya artis utama untuk folder",
-  "tutorialExtensionsTip2": "Add new download providers or search sources",
+  "tutorialExtensionsTip2": "Pilih provider untuk pencarian, unduhan, metadata, dan fallback",
   "@setupStorageGranted": {
     "description": "Success message for storage permission"
   },
-  "tutorialWelcomeTitle": "Selamat Datang di SpotiFLAC!",
+  "tutorialWelcomeTitle": "Selamat Datang di SpotiFLAC Mobile!",
   "a11ySelectAlbum": "Select album {albumName}",
   "@a11ySelectAlbum": {
     "description": "Accessibility label for selecting an album",
@@ -5443,7 +5443,7 @@
   "actionSelectAll": "Pilih Semua",
   "settingsDownloadNetworkSubtitle": "Pilih jaringan mana yang akan digunakan untuk mengunduh. Jika diatur ke Hanya WiFi, unduhan akan berhenti sementara dan menggunakan data seluler.",
   "downloadFolderOrganization": "Organisasi Folder",
-  "tutorialWelcomeTip2": "Get FLAC quality audio from installed download extensions",
+  "tutorialWelcomeTip2": "Pilih kualitas audio yang disediakan oleh provider unduhan",
   "@tutorialWelcomeTip2": {
     "description": "Tutorial welcome tip 2"
   },
@@ -5499,7 +5499,7 @@
     "description": "Subtitle when all files access is enabled"
   },
   "extensionsSearchProvider": "Provider Pencarian",
-  "tutorialWelcomeDesc": "Mari kita pelajari cara mengunduh musik favorit Anda dalam kualitas lossless. Tutorial singkat ini akan menunjukkan dasar-dasarnya.",
+  "tutorialWelcomeDesc": "Pelajari cara menemukan musik dengan extension, memilih kualitas, dan mengelola unduhan di SpotiFLAC Mobile.",
   "selectionBatchConvertConfirmTitle": "Batch Convert",
   "extensionMetadataProvider": "Provider Metadata",
   "queueDownloadedFileMissing": "Downloaded file missing",
@@ -5507,7 +5507,7 @@
   "@downloadAppleQqMultiPerson": {
     "description": "Setting for word-by-word multi-person lyrics from Apple Music and QQ Music"
   },
-  "tutorialWelcomeTip1": "Unduh musik dari Spotify, Deezer, atau tempel URL yang didukung",
+  "tutorialWelcomeTip1": "Cari dengan extension terpasang atau tempel tautan musik yang didukung",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
@@ -5639,7 +5639,7 @@
     "description": "Snackbar - lyrics saved to file"
   },
   "editMetadataFieldDiscTotal": "Disc Total",
-  "tutorialLibraryTip1": "View download progress and queue in the Library tab",
+  "tutorialLibraryTip1": "Kelola unduhan aktif, tertunda, dan selesai dari antrean Perpustakaan",
   "playlistsCount": "{count, plural, =1{1 playlist} other{{count} playlists}}",
   "downloadCreatePlaylistSourceFolderDisabled": "All tracks saved directly to download folder",
   "@downloadFallbackExtensionsSubtitle": {
@@ -5911,7 +5911,7 @@
   "extensionServiceStatus": "Service Status",
   "dateWeeksAgo": "{count} minggu lalu",
   "historyFilterSingles": "Single",
-  "tutorialSettingsTip2": "Set default audio quality and format preferences",
+  "tutorialSettingsTip2": "Atur kualitas, unduhan bersamaan, nama berkas, dan konversi",
   "trackLyricsSaved": "Lyrics saved to {fileName}",
   "cacheClearAllConfirmTitle": "Clear all cache?",
   "noTracksFoundForAlbum": "No tracks found for this album",

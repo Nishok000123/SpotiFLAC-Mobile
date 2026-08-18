@@ -606,7 +606,7 @@
   "@setupIcloudNotSupported": {
     "description": "Error when user selects iCloud Drive on iOS"
   },
-  "setupDownloadInFlac": "Download Spotify tracks in FLAC",
+  "setupDownloadInFlac": "Download music in lossless and Hi-Res quality",
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
@@ -2799,19 +2799,19 @@
   "@tutorialWelcomeTitle": {
     "description": "Tutorial welcome page title"
   },
-  "tutorialWelcomeDesc": "Let's learn how to download your favorite music in lossless quality. This quick tutorial will show you the basics.",
+  "tutorialWelcomeDesc": "Learn how to find music with extensions, choose the quality you want, and manage downloads in SpotiFLAC Mobile.",
   "@tutorialWelcomeDesc": {
     "description": "Tutorial welcome page description"
   },
-  "tutorialWelcomeTip1": "Search music or paste a link from any source your installed extensions support",
+  "tutorialWelcomeTip1": "Search with an installed extension or paste a supported music link",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
-  "tutorialWelcomeTip2": "Get FLAC quality audio from installed download extensions",
+  "tutorialWelcomeTip2": "Choose from the audio qualities offered by your download provider",
   "@tutorialWelcomeTip2": {
     "description": "Tutorial welcome tip 2"
   },
-  "tutorialWelcomeTip3": "Automatic metadata, cover art, and lyrics embedding",
+  "tutorialWelcomeTip3": "Embed metadata, cover art, lyrics, and release information automatically",
   "@tutorialWelcomeTip3": {
     "description": "Tutorial welcome tip 3"
   },
@@ -2819,7 +2819,7 @@
   "@tutorialSearchTitle": {
     "description": "Tutorial search page title"
   },
-  "tutorialSearchDesc": "There are two easy ways to find music you want to download.",
+  "tutorialSearchDesc": "Search with your selected extension or paste a supported music link.",
   "@tutorialSearchDesc": {
     "description": "Tutorial search page description"
   },
@@ -2827,7 +2827,7 @@
   "@tutorialDownloadTitle": {
     "description": "Tutorial download page title"
   },
-  "tutorialDownloadDesc": "Downloading music is simple and fast. Here's how it works.",
+  "tutorialDownloadDesc": "Pick an available quality, start the download, and follow its progress in the queue.",
   "@tutorialDownloadDesc": {
     "description": "Tutorial download page description"
   },
@@ -2835,19 +2835,19 @@
   "@tutorialLibraryTitle": {
     "description": "Tutorial library page title"
   },
-  "tutorialLibraryDesc": "All your downloaded music is organized in the Library tab.",
+  "tutorialLibraryDesc": "Downloaded and locally scanned music is organized in your Library.",
   "@tutorialLibraryDesc": {
     "description": "Tutorial library page description"
   },
-  "tutorialLibraryTip1": "View download progress and queue in the Library tab",
+  "tutorialLibraryTip1": "Manage active, pending, and completed downloads from the Library queue",
   "@tutorialLibraryTip1": {
     "description": "Tutorial library tip 1"
   },
-  "tutorialLibraryTip2": "Tap any track to play it with your music player",
+  "tutorialLibraryTip2": "Tap a track to play it with the built-in player",
   "@tutorialLibraryTip2": {
     "description": "Tutorial library tip 2"
   },
-  "tutorialLibraryTip3": "Switch between list and grid view for better browsing",
+  "tutorialLibraryTip3": "Browse tracks, albums, and playlists in list or grid views",
   "@tutorialLibraryTip3": {
     "description": "Tutorial library tip 3"
   },
@@ -2855,7 +2855,7 @@
   "@tutorialExtensionsTitle": {
     "description": "Tutorial extensions page title"
   },
-  "tutorialExtensionsDesc": "Extend the app's capabilities with community extensions.",
+  "tutorialExtensionsDesc": "Extensions add search, download, metadata, lyrics, and other integrations.",
   "@tutorialExtensionsDesc": {
     "description": "Tutorial extensions page description"
   },
@@ -2863,11 +2863,11 @@
   "@tutorialExtensionsTip1": {
     "description": "Tutorial extensions tip 1"
   },
-  "tutorialExtensionsTip2": "Add new download providers or search sources",
+  "tutorialExtensionsTip2": "Choose providers for search, downloads, metadata, and fallbacks",
   "@tutorialExtensionsTip2": {
     "description": "Tutorial extensions tip 2"
   },
-  "tutorialExtensionsTip3": "Get lyrics, enhanced metadata, and more features",
+  "tutorialExtensionsTip3": "Connect accounts when required and keep extensions up to date",
   "@tutorialExtensionsTip3": {
     "description": "Tutorial extensions tip 3"
   },
@@ -2875,7 +2875,7 @@
   "@tutorialSettingsTitle": {
     "description": "Tutorial settings page title"
   },
-  "tutorialSettingsDesc": "Personalize the app in Settings to match your preferences.",
+  "tutorialSettingsDesc": "Fine-tune downloads, playback, Library behavior, appearance, and storage.",
   "@tutorialSettingsDesc": {
     "description": "Tutorial settings page description"
   },
@@ -2883,7 +2883,7 @@
   "@tutorialSettingsTip1": {
     "description": "Tutorial settings tip 1"
   },
-  "tutorialSettingsTip2": "Set default audio quality and format preferences",
+  "tutorialSettingsTip2": "Set quality, concurrency, filenames, and conversion preferences",
   "@tutorialSettingsTip2": {
     "description": "Tutorial settings tip 2"
   },
@@ -2891,7 +2891,7 @@
   "@tutorialSettingsTip3": {
     "description": "Tutorial settings tip 3"
   },
-  "tutorialReadyMessage": "You're all set! Start downloading your favorite music now.",
+  "tutorialReadyMessage": "You're ready. Select your extensions, then search or paste a supported link.",
   "@tutorialReadyMessage": {
     "description": "Tutorial completion message"
   },

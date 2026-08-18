@@ -472,7 +472,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'iCloud Drive is not supported. Please use the app Documents folder.';
 
   @override
-  String get setupDownloadInFlac => 'Download Spotify tracks in FLAC';
+  String get setupDownloadInFlac =>
+      'Download music in lossless and Hi-Res quality';
 
   @override
   String get setupStorageGranted => 'Storage Permission Granted!';
@@ -2120,59 +2121,59 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tutorialWelcomeDesc =>
-      'Let\'s learn how to download your favorite music in lossless quality. This quick tutorial will show you the basics.';
+      'Learn how to find music with extensions, choose the quality you want, and manage downloads in SpotiFLAC Mobile.';
 
   @override
   String get tutorialWelcomeTip1 =>
-      'Search music or paste a link from any source your installed extensions support';
+      'Search with an installed extension or paste a supported music link';
 
   @override
   String get tutorialWelcomeTip2 =>
-      'Get FLAC quality audio from installed download extensions';
+      'Choose from the audio qualities offered by your download provider';
 
   @override
   String get tutorialWelcomeTip3 =>
-      'Automatic metadata, cover art, and lyrics embedding';
+      'Embed metadata, cover art, lyrics, and release information automatically';
 
   @override
   String get tutorialSearchTitle => 'Finding Music';
 
   @override
   String get tutorialSearchDesc =>
-      'There are two easy ways to find music you want to download.';
+      'Search with your selected extension or paste a supported music link.';
 
   @override
   String get tutorialDownloadTitle => 'Downloading Music';
 
   @override
   String get tutorialDownloadDesc =>
-      'Downloading music is simple and fast. Here\'s how it works.';
+      'Pick an available quality, start the download, and follow its progress in the queue.';
 
   @override
   String get tutorialLibraryTitle => 'Your Library';
 
   @override
   String get tutorialLibraryDesc =>
-      'All your downloaded music is organized in the Library tab.';
+      'Downloaded and locally scanned music is organized in your Library.';
 
   @override
   String get tutorialLibraryTip1 =>
-      'View download progress and queue in the Library tab';
+      'Manage active, pending, and completed downloads from the Library queue';
 
   @override
   String get tutorialLibraryTip2 =>
-      'Tap any track to play it with your music player';
+      'Tap a track to play it with the built-in player';
 
   @override
   String get tutorialLibraryTip3 =>
-      'Switch between list and grid view for better browsing';
+      'Browse tracks, albums, and playlists in list or grid views';
 
   @override
   String get tutorialExtensionsTitle => 'Extensions';
 
   @override
   String get tutorialExtensionsDesc =>
-      'Extend the app\'s capabilities with community extensions.';
+      'Extensions add search, download, metadata, lyrics, and other integrations.';
 
   @override
   String get tutorialExtensionsTip1 =>
@@ -2180,18 +2181,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tutorialExtensionsTip2 =>
-      'Add new download providers or search sources';
+      'Choose providers for search, downloads, metadata, and fallbacks';
 
   @override
   String get tutorialExtensionsTip3 =>
-      'Get lyrics, enhanced metadata, and more features';
+      'Connect accounts when required and keep extensions up to date';
 
   @override
   String get tutorialSettingsTitle => 'Customize Your Experience';
 
   @override
   String get tutorialSettingsDesc =>
-      'Personalize the app in Settings to match your preferences.';
+      'Fine-tune downloads, playback, Library behavior, appearance, and storage.';
 
   @override
   String get tutorialSettingsTip1 =>
@@ -2199,14 +2200,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tutorialSettingsTip2 =>
-      'Set default audio quality and format preferences';
+      'Set quality, concurrency, filenames, and conversion preferences';
 
   @override
   String get tutorialSettingsTip3 => 'Customize app theme and appearance';
 
   @override
   String get tutorialReadyMessage =>
-      'You\'re all set! Start downloading your favorite music now.';
+      'You\'re ready. Select your extensions, then search or paste a supported link.';
 
   @override
   String get libraryForceFullScan => 'Force Full Scan';
