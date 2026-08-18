@@ -455,6 +455,9 @@ void main() {
         'copyright': 'Copyright',
         'composer': 'Composer',
         'comment': 'https://example.test/album/1',
+        'explicit': true,
+        'album_type': 'compilation',
+        'upc': '0012345678901',
       });
 
       expect(track.genre, 'Pop');
@@ -463,6 +466,10 @@ void main() {
       expect(track.composer, 'Composer');
       expect(track.comment, 'https://example.test/album/1');
       expect(track.toJson()['comment'], 'https://example.test/album/1');
+      expect(track.explicit, isTrue);
+      expect(track.albumType, 'compilation');
+      expect(track.upc, '0012345678901');
+      expect(track.toJson()['upc'], '0012345678901');
     });
 
     test('does not treat a playlist container name as a track album', () {
@@ -878,6 +885,9 @@ void main() {
         copyright: 'Copyright',
         composer: 'Composer',
         comment: 'https://example.test/album/1',
+        explicit: true,
+        albumType: 'compilation',
+        upc: '0012345678901',
         tidalId: 'tidal-1',
         qobuzId: 'qobuz-1',
         deezerId: 'deezer-1',
@@ -935,6 +945,9 @@ void main() {
         'copyright': 'Copyright',
         'composer': 'Composer',
         'comment': 'https://example.test/album/1',
+        'explicit': true,
+        'album_type': 'compilation',
+        'upc': '0012345678901',
         'tidal_id': 'tidal-1',
         'qobuz_id': 'qobuz-1',
         'deezer_id': 'deezer-1',
@@ -981,6 +994,9 @@ void main() {
       expect(updated.autoConvertDownloads, payload.autoConvertDownloads);
       expect(updated.autoConvertFormat, payload.autoConvertFormat);
       expect(updated.autoConvertBitrate, payload.autoConvertBitrate);
+      expect(updated.explicit, payload.explicit);
+      expect(updated.albumType, payload.albumType);
+      expect(updated.upc, payload.upc);
       expect(
         updated.qualityVariantCollisionOnly,
         payload.qualityVariantCollisionOnly,

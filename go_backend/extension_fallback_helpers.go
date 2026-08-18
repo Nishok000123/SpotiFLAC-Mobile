@@ -192,6 +192,9 @@ func normalizeExtensionDownloadResult(result *ExtDownloadResult) (DownloadResult
 		Copyright:                   result.Copyright,
 		Composer:                    result.Composer,
 		Comment:                     result.Comment,
+		Explicit:                    result.Explicit,
+		AlbumType:                   result.AlbumType,
+		UPC:                         result.UPC,
 		LyricsLRC:                   result.LyricsLRC,
 		DecryptionKey:               result.DecryptionKey,
 		Decryption:                  normalizeDownloadDecryptionInfo(result.Decryption, result.DecryptionKey),
@@ -263,6 +266,11 @@ func overlayExtensionDownloadMetadata(resp *DownloadResponse, result *ExtDownloa
 	overlayStrTrim(&resp.Copyright, result.Copyright)
 	overlayStrTrim(&resp.Composer, result.Composer)
 	overlayStrTrim(&resp.Comment, result.Comment)
+	overlayStrTrim(&resp.AlbumType, result.AlbumType)
+	overlayStrTrim(&resp.UPC, result.UPC)
+	if result.Explicit {
+		resp.Explicit = true
+	}
 	if result.LyricsLRC != "" {
 		resp.LyricsLRC = result.LyricsLRC
 	}
@@ -298,6 +306,11 @@ func applyExtensionRequestFallbacks(resp *DownloadResponse, req DownloadRequest)
 	overlayInt(&resp.TotalDiscs, req.TotalDiscs, "")
 	overlayStr(&resp.CoverURL, req.CoverURL, "")
 	overlayStr(&resp.Comment, req.Comment, "")
+	overlayStr(&resp.AlbumType, req.AlbumType, "")
+	overlayStr(&resp.UPC, req.UPC, "")
+	if req.Explicit {
+		resp.Explicit = true
+	}
 }
 
 func shouldStopProviderFallback(availability *ExtAvailabilityResult) bool {

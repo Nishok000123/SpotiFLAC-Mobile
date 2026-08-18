@@ -188,6 +188,9 @@ type Metadata struct {
 	Copyright     string
 	Composer      string
 	Comment       string
+	Explicit      bool
+	AlbumType     string
+	UPC           string
 
 	// ReplayGain fields (stored as Vorbis Comments in FLAC)
 	ReplayGainTrackGain string // e.g. "-6.50 dB"
@@ -438,6 +441,11 @@ func applyVorbisFieldEdits(cmt *flacvorbis.MetaDataBlockVorbisComment, fields ma
 		"copyright":             "COPYRIGHT",
 		"composer":              "COMPOSER",
 		"comment":               "COMMENT",
+		"explicit":              "ITUNESADVISORY",
+		"album_type":            "RELEASETYPE",
+		"upc":                   "BARCODE",
+		"barcode":               "BARCODE",
+		"compilation":           "COMPILATION",
 		"replaygain_track_gain": "REPLAYGAIN_TRACK_GAIN",
 		"replaygain_track_peak": "REPLAYGAIN_TRACK_PEAK",
 		"replaygain_album_gain": "REPLAYGAIN_ALBUM_GAIN",
@@ -579,6 +587,21 @@ func writeVorbisMetadata(cmt *flacvorbis.MetaDataBlockVorbisComment, metadata Me
 
 	if metadata.Comment != "" {
 		setComment(cmt, "COMMENT", metadata.Comment)
+	}
+
+	if metadata.Explicit {
+		setComment(cmt, "ITUNESADVISORY", "1")
+	}
+
+	if metadata.AlbumType != "" {
+		setComment(cmt, "RELEASETYPE", strings.ToLower(metadata.AlbumType))
+		if strings.EqualFold(metadata.AlbumType, "compilation") {
+			setComment(cmt, "COMPILATION", "1")
+		}
+	}
+
+	if metadata.UPC != "" {
+		setComment(cmt, "BARCODE", metadata.UPC)
 	}
 
 	setComment(cmt, "REPLAYGAIN_TRACK_GAIN", metadata.ReplayGainTrackGain)

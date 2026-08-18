@@ -362,7 +362,12 @@ class _DownloadRun {
               itemType: trackToDownload.itemType,
               audioQuality: trackToDownload.audioQuality,
               audioModes: trackToDownload.audioModes,
-              explicit: trackToDownload.explicit,
+              explicit:
+                  parseExplicitFlag(data['explicit']) ??
+                  trackToDownload.explicit,
+              upc:
+                  (data['upc'] ?? data['barcode'])?.toString() ??
+                  trackToDownload.upc,
             );
             _log.d(
               'Metadata enriched: Track ${trackToDownload.trackNumber}, Disc ${trackToDownload.discNumber}, ISRC ${trackToDownload.isrc}, AlbumType ${trackToDownload.albumType}',

@@ -39,6 +39,9 @@ class DownloadRequestPayload {
   final String copyright;
   final String composer;
   final String comment;
+  final bool explicit;
+  final String albumType;
+  final String upc;
   final String tidalId;
   final String qobuzId;
   final String deezerId;
@@ -98,6 +101,9 @@ class DownloadRequestPayload {
     this.copyright = '',
     this.composer = '',
     this.comment = '',
+    this.explicit = false,
+    this.albumType = '',
+    this.upc = '',
     this.tidalId = '',
     this.qobuzId = '',
     this.deezerId = '',
@@ -159,6 +165,9 @@ class DownloadRequestPayload {
       'copyright': copyright,
       'composer': composer,
       'comment': comment,
+      'explicit': explicit,
+      'album_type': albumType,
+      'upc': upc,
       'tidal_id': tidalId,
       'qobuz_id': qobuzId,
       'deezer_id': deezerId,
@@ -224,6 +233,9 @@ class DownloadRequestPayload {
       copyright: copyright,
       composer: composer,
       comment: comment,
+      explicit: explicit,
+      albumType: albumType,
+      upc: upc,
       tidalId: tidalId,
       qobuzId: qobuzId,
       deezerId: deezerId,

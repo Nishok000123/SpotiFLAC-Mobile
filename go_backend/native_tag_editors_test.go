@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/go-flac/flacvorbis/v2"
 )
 
 // --- MP3 -------------------------------------------------------------------
@@ -101,6 +103,56 @@ func TestEditMP3FieldsClearsAndWithoutTag(t *testing.T) {
 	}
 	if !bytes.HasSuffix(mustReadFile(t, bare), audio) {
 		t.Error("bare file audio modified")
+	}
+}
+
+func TestEditMP3FieldsWritesReleaseIdentityTags(t *testing.T) {
+	dir := t.TempDir()
+	path, audio := writeTestMP3(t, dir, id3TextFrame("TIT2", "Song"))
+
+	if err := EditMP3Fields(path, map[string]string{
+		"explicit":    "1",
+		"album_type":  "compilation",
+		"upc":         "0012345678901",
+		"compilation": "1",
+	}); err != nil {
+		t.Fatalf("EditMP3Fields: %v", err)
+	}
+
+	raw := mustReadFile(t, path)
+	for desc := range map[string]string{
+		"ITUNESADVISORY": "1",
+		"RELEASETYPE":    "compilation",
+		"BARCODE":        "0012345678901",
+	} {
+		if !bytes.Contains(raw, []byte(desc)) {
+			t.Errorf("missing TXXX description %s", desc)
+		}
+	}
+	if !bytes.Contains(raw, []byte("TCMP")) {
+		t.Error("missing TCMP compilation frame")
+	}
+	if !bytes.HasSuffix(raw, audio) {
+		t.Error("audio bytes were modified")
+	}
+
+	// Clearing removes the tags without touching the rest.
+	if err := EditMP3Fields(path, map[string]string{
+		"explicit":    "",
+		"album_type":  "",
+		"upc":         "",
+		"compilation": "",
+	}); err != nil {
+		t.Fatalf("clear release tags: %v", err)
+	}
+	raw = mustReadFile(t, path)
+	for _, desc := range []string{"ITUNESADVISORY", "RELEASETYPE", "BARCODE", "TCMP"} {
+		if bytes.Contains(raw, []byte(desc)) {
+			t.Errorf("cleared %s still present", desc)
+		}
+	}
+	if !bytes.Contains(raw, []byte("TIT2")) {
+		t.Error("untouched title lost")
 	}
 }
 
@@ -210,6 +262,59 @@ func TestEditM4AFieldsPreservesAtomsAndShiftsChunkOffsets(t *testing.T) {
 	}
 }
 
+func TestEditM4AFieldsWritesReleaseIdentityAtoms(t *testing.T) {
+	dir := t.TempDir()
+	file, oldOffset := buildTestM4A(t, nil, []byte("DATA"))
+	_ = oldOffset
+	path := filepath.Join(dir, "release.m4a")
+	if err := os.WriteFile(path, file, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := EditM4AFields(path, map[string]string{
+		"title":       "Song",
+		"explicit":    "1",
+		"compilation": "1",
+		"album_type":  "compilation",
+		"upc":         "0012345678901",
+	}); err != nil {
+		t.Fatalf("EditM4AFields: %v", err)
+	}
+
+	updated := mustReadFile(t, path)
+	if !bytes.Contains(updated, []byte("rtng")) {
+		t.Error("rtng advisory atom missing")
+	}
+	if !bytes.Contains(updated, []byte("cpil")) {
+		t.Error("cpil compilation atom missing")
+	}
+	if !bytes.Contains(updated, []byte("RELEASETYPE")) {
+		t.Error("RELEASETYPE freeform atom missing")
+	}
+	if !bytes.Contains(updated, []byte("0012345678901")) {
+		t.Error("BARCODE freeform atom missing")
+	}
+
+	// Clearing drops the atoms again while the title survives.
+	if err := EditM4AFields(path, map[string]string{
+		"explicit":    "",
+		"compilation": "",
+		"album_type":  "",
+		"upc":         "",
+	}); err != nil {
+		t.Fatalf("clear release atoms: %v", err)
+	}
+	updated = mustReadFile(t, path)
+	for _, atom := range []string{"rtng", "cpil", "RELEASETYPE", "BARCODE"} {
+		if bytes.Contains(updated, []byte(atom)) {
+			t.Errorf("cleared %s still present", atom)
+		}
+	}
+	if got := readTestM4ATitle(t, updated); got != "Song" {
+		t.Errorf("title = %q, want Song", got)
+	}
+}
+
 func TestEditM4AFieldsCreatesMissingChain(t *testing.T) {
 	dir := t.TempDir()
 	// moov with only a trak stub — no udta/meta/ilst.
@@ -234,6 +339,39 @@ func TestEditM4AFieldsCreatesMissingChain(t *testing.T) {
 }
 
 // --- Ogg/Opus ---------------------------------------------------------------
+
+func TestApplyVorbisFieldEditsReleaseTags(t *testing.T) {
+	cmt := flacvorbis.New()
+	applyVorbisFieldEdits(cmt, map[string]string{
+		"explicit":    "1",
+		"album_type":  "compilation",
+		"upc":         "0012345678901",
+		"compilation": "1",
+	})
+
+	for key, want := range map[string]string{
+		"ITUNESADVISORY": "1",
+		"RELEASETYPE":    "compilation",
+		"BARCODE":        "0012345678901",
+		"COMPILATION":    "1",
+	} {
+		if got := getComment(cmt, key); got != want {
+			t.Errorf("%s = %q, want %q", key, got, want)
+		}
+	}
+
+	applyVorbisFieldEdits(cmt, map[string]string{
+		"explicit":    "",
+		"album_type":  "",
+		"upc":         "",
+		"compilation": "",
+	})
+	for _, key := range []string{"ITUNESADVISORY", "RELEASETYPE", "BARCODE", "COMPILATION"} {
+		if got := getComment(cmt, key); got != "" {
+			t.Errorf("cleared %s = %q, want empty", key, got)
+		}
+	}
+}
 
 func buildTestOpus(t *testing.T, path string, comments []string, audioPages int) {
 	t.Helper()

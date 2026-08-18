@@ -60,6 +60,7 @@ func normalizeExtensionTrackMetadataMap(
 		"audio_quality":  track.AudioQuality,
 		"audio_modes":    track.AudioModes,
 		"explicit":       track.Explicit,
+		"upc":            track.UPC,
 	}
 }
 

@@ -57,6 +57,23 @@ func buildM4ACoverAtom(coverData []byte) []byte {
 	return buildM4AAtom("covr", buildM4ADataAtom(dataType, coverData))
 }
 
+// buildM4AFlagAtom writes an iTunes boolean atom (cpil-style, data type 22)
+// whose payload is 1 when set.
+func buildM4AFlagAtom(typ string, set bool) []byte {
+	payload := []byte{0}
+	if set {
+		payload[0] = 1
+	}
+	return buildM4AAtom(typ, buildM4ADataAtom(22, payload))
+}
+
+// buildM4AInt8Atom writes an iTunes 8-bit integer atom (rtng-style, data
+// type 21).
+func buildM4AInt8Atom(typ string, value int) []byte {
+	payload := []byte{byte(value)}
+	return buildM4AAtom(typ, buildM4ADataAtom(21, payload))
+}
+
 type m4aIlstLocation struct {
 	moov mp4Box
 	ilst mp4Box
@@ -190,6 +207,15 @@ func m4aIndexPairInBuf(data []byte, box mp4Box) (int, int) {
 	return 0, 0
 }
 
+// isTruthyTagValue reports whether a fields-map flag value means set/true.
+func isTruthyTagValue(v string) bool {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "true", "yes", "explicit":
+		return true
+	}
+	return false
+}
+
 // EditM4AFields updates only the ilst entries whose keys are explicitly
 // present in the fields map (set-or-clear semantics, mirroring EditFlacFields)
 // while preserving every other atom. Standard atoms, freeform ISRC/LABEL, and
@@ -248,6 +274,28 @@ func EditM4AFields(filePath string, fields map[string]string) error {
 		removeFreeform["LABEL"] = struct{}{}
 		removeFreeform["ORGANIZATION"] = struct{}{}
 		freeformTags = append(freeformTags, m4aFreeformTag{name: "LABEL", value: strings.TrimSpace(fields["label"])})
+	}
+	if v, ok := fields["album_type"]; ok {
+		removeFreeform["RELEASETYPE"] = struct{}{}
+		freeformTags = append(freeformTags, m4aFreeformTag{name: "RELEASETYPE", value: strings.TrimSpace(v)})
+	}
+	if v, ok := fields["upc"]; ok {
+		removeFreeform["BARCODE"] = struct{}{}
+		freeformTags = append(freeformTags, m4aFreeformTag{name: "BARCODE", value: strings.TrimSpace(v)})
+	}
+	// Content advisory (rtng) and compilation (cpil) are integer/boolean
+	// atoms rather than text.
+	if v, ok := fields["explicit"]; ok {
+		dropStandard["rtng"] = true
+		if isTruthyTagValue(v) {
+			appended = append(appended, buildM4AInt8Atom("rtng", 1)...)
+		}
+	}
+	if v, ok := fields["compilation"]; ok {
+		dropStandard["cpil"] = true
+		if isTruthyTagValue(v) {
+			appended = append(appended, buildM4AFlagAtom("cpil", true)...)
+		}
 	}
 	replayGain := collectM4AReplayGainFields(fields)
 	if len(replayGain) > 0 {

@@ -510,6 +510,12 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
     final sourceIsrc = normalizeOptionalString(baseTrack.isrc);
     final sourceReleaseDate = normalizeOptionalString(baseTrack.releaseDate);
     final sourceComposer = normalizeOptionalString(baseTrack.composer);
+    final sourceAlbumType = normalizeOptionalString(baseTrack.albumType);
+    final sourceGenre = normalizeOptionalString(baseTrack.genre);
+    final sourceLabel = normalizeOptionalString(baseTrack.label);
+    final sourceCopyright = normalizeOptionalString(baseTrack.copyright);
+    final sourceComment = normalizeOptionalString(baseTrack.comment);
+    final sourceUpc = normalizeOptionalString(baseTrack.upc);
     final backendGenre = normalizeOptionalString(
       backendResult['genre']?.toString(),
     );
@@ -522,6 +528,13 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
     final backendComment = normalizeOptionalString(
       backendResult['comment']?.toString(),
     );
+    final backendAlbumType = normalizeOptionalString(
+      backendResult['album_type']?.toString(),
+    );
+    final backendUpc = normalizeOptionalString(
+      (backendResult['upc'] ?? backendResult['barcode'])?.toString(),
+    );
+    final backendExplicit = backendResult['explicit'] == true;
     final resolvedTotalTracks = _resolvePositiveMetadataInt(
       baseTrack.totalTracks,
       backendTotalTracks,
@@ -554,7 +567,14 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
         (sourceAlbumArtist == null &&
             resolvedAlbumArtist == null &&
             backendAlbumArtist != null) ||
-        (sourceComposer == null && backendComposer != null);
+        (sourceComposer == null && backendComposer != null) ||
+        (sourceAlbumType == null && backendAlbumType != null) ||
+        (sourceGenre == null && backendGenre != null) ||
+        (sourceLabel == null && backendLabel != null) ||
+        (sourceCopyright == null && backendCopyright != null) ||
+        (sourceComment == null && backendComment != null) ||
+        (baseTrack.explicit != true && backendExplicit) ||
+        (sourceUpc == null && backendUpc != null);
 
     if (!hasOverrides) {
       return baseTrack;
@@ -578,18 +598,21 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
       releaseDate: sourceReleaseDate ?? backendYear,
       deezerId: baseTrack.deezerId,
       availability: baseTrack.availability,
-      albumType: baseTrack.albumType,
+      albumType: sourceAlbumType ?? backendAlbumType,
       totalTracks: resolvedTotalTracks,
       composer: sourceComposer ?? backendComposer,
-      genre: baseTrack.genre ?? backendGenre,
-      label: baseTrack.label ?? backendLabel,
-      copyright: baseTrack.copyright ?? backendCopyright,
-      comment: baseTrack.comment ?? backendComment,
+      genre: sourceGenre ?? backendGenre,
+      label: sourceLabel ?? backendLabel,
+      copyright: sourceCopyright ?? backendCopyright,
+      comment: sourceComment ?? backendComment,
       source: baseTrack.source,
       itemType: baseTrack.itemType,
       audioQuality: baseTrack.audioQuality,
       audioModes: baseTrack.audioModes,
-      explicit: baseTrack.explicit,
+      explicit: baseTrack.explicit == true || backendExplicit
+          ? true
+          : baseTrack.explicit,
+      upc: sourceUpc ?? backendUpc,
     );
   }
 
@@ -689,6 +712,19 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
       }
       if (track.composer != null && track.composer!.isNotEmpty) {
         metadata['COMPOSER'] = track.composer!;
+      }
+      if (track.isExplicit) {
+        metadata['ITUNESADVISORY'] = '1';
+      }
+      final resolvedAlbumType = track.albumType;
+      if (resolvedAlbumType != null && resolvedAlbumType.isNotEmpty) {
+        metadata['RELEASETYPE'] = resolvedAlbumType.toLowerCase();
+        if (resolvedAlbumType.toLowerCase() == 'compilation') {
+          metadata['COMPILATION'] = '1';
+        }
+      }
+      if (track.upc != null && track.upc!.isNotEmpty) {
+        metadata['BARCODE'] = track.upc!;
       }
 
       final lyricsMode = settings.lyricsMode;
@@ -857,6 +893,12 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
               'disc_number': track.discNumber!.toString(),
             if (track.totalDiscs != null && track.totalDiscs! > 0)
               'disc_total': track.totalDiscs!.toString(),
+            if (track.isExplicit) 'explicit': '1',
+            if (track.albumType != null && track.albumType!.isNotEmpty)
+              'album_type': track.albumType!,
+            if (track.upc != null && track.upc!.isNotEmpty) 'upc': track.upc!,
+            if (track.albumType?.toLowerCase() == 'compilation')
+              'compilation': '1',
             'cover_path': ?validCover,
             if (shouldEmbedLyrics && lrcContent != null) ...{
               'lyrics': lrcContent,

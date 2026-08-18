@@ -46,6 +46,9 @@ type DownloadRequest struct {
 	Copyright                   string `json:"copyright,omitempty"`
 	Composer                    string `json:"composer,omitempty"`
 	Comment                     string `json:"comment,omitempty"`
+	Explicit                    bool   `json:"explicit,omitempty"`
+	AlbumType                   string `json:"album_type,omitempty"`
+	UPC                         string `json:"upc,omitempty"`
 	TidalID                     string `json:"tidal_id,omitempty"`
 	QobuzID                     string `json:"qobuz_id,omitempty"`
 	DeezerID                    string `json:"deezer_id,omitempty"`
@@ -91,6 +94,9 @@ type DownloadResponse struct {
 	Copyright                   string                  `json:"copyright,omitempty"`
 	Composer                    string                  `json:"composer,omitempty"`
 	Comment                     string                  `json:"comment,omitempty"`
+	Explicit                    bool                    `json:"explicit,omitempty"`
+	AlbumType                   string                  `json:"album_type,omitempty"`
+	UPC                         string                  `json:"upc,omitempty"`
 	SkipMetadataEnrichment      bool                    `json:"skip_metadata_enrichment,omitempty"`
 	LyricsLRC                   string                  `json:"lyrics_lrc,omitempty"`
 	DecryptionKey               string                  `json:"decryption_key,omitempty"`
@@ -117,6 +123,9 @@ type DownloadResult struct {
 	Copyright                   string
 	Composer                    string
 	Comment                     string
+	Explicit                    bool
+	AlbumType                   string
+	UPC                         string
 	LyricsLRC                   string
 	DecryptionKey               string
 	Decryption                  *DownloadDecryptionInfo
@@ -183,6 +192,16 @@ func buildDownloadSuccessResponse(
 		comment = req.Comment
 	}
 
+	albumType := result.AlbumType
+	if albumType == "" {
+		albumType = req.AlbumType
+	}
+
+	upc := result.UPC
+	if upc == "" {
+		upc = req.UPC
+	}
+
 	coverURL := strings.TrimSpace(result.CoverURL)
 	if coverURL == "" {
 		coverURL = strings.TrimSpace(req.CoverURL)
@@ -218,6 +237,9 @@ func buildDownloadSuccessResponse(
 		Copyright:                   copyright,
 		Composer:                    composer,
 		Comment:                     comment,
+		Explicit:                    result.Explicit || req.Explicit,
+		AlbumType:                   albumType,
+		UPC:                         upc,
 		LyricsLRC:                   result.LyricsLRC,
 		DecryptionKey:               result.DecryptionKey,
 		Decryption:                  normalizeDownloadDecryptionInfo(result.Decryption, result.DecryptionKey),

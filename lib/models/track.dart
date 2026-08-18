@@ -35,6 +35,7 @@ class Track {
   final String? audioQuality;
   final String? audioModes;
   final bool? explicit;
+  final String? upc;
 
   const Track({
     required this.id,
@@ -66,6 +67,7 @@ class Track {
     this.audioQuality,
     this.audioModes,
     this.explicit,
+    this.upc,
   });
 
   bool get isSingle {
@@ -145,6 +147,9 @@ class Track {
       audioModes: data['audio_modes']?.toString(),
       previewUrl: data['preview_url']?.toString(),
       explicit: parseExplicitFlag(data['explicit']),
+      upc: normalizeOptionalString(
+        (data['upc'] ?? data['barcode'])?.toString(),
+      ),
     );
   }
 
@@ -178,6 +183,7 @@ class Track {
     String? audioQuality,
     String? audioModes,
     bool? explicit,
+    String? upc,
   }) {
     return Track(
       id: id ?? this.id,
@@ -209,6 +215,7 @@ class Track {
       audioQuality: audioQuality ?? this.audioQuality,
       audioModes: audioModes ?? this.audioModes,
       explicit: explicit ?? this.explicit,
+      upc: upc ?? this.upc,
     );
   }
 

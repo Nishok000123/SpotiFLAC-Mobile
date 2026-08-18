@@ -286,6 +286,16 @@ internal fun NativeDownloadFinalizer.embedBasicMetadata(context: Context, path: 
     val comment = resultString(input, "comment").ifBlank {
         trackString(input, "comment", requestString(input, "comment"))
     }
+    val albumType = resultString(input, "album_type").ifBlank {
+        trackString(input, "albumType", requestString(input, "album_type"))
+    }
+    val upc = resultString(input, "upc").ifBlank {
+        trackString(input, "upc", requestString(input, "upc"))
+    }
+    val isExplicit = input.result.optBoolean("explicit", false) ||
+        input.track.optBoolean("explicit", false) ||
+        input.request.optBoolean("explicit", false)
+    val isCompilation = albumType.equals("compilation", ignoreCase = true)
     val lyricsMode = input.request.optString("lyrics_mode", "embed")
     val shouldResolveLyrics = input.request.optBoolean("embed_lyrics", false) &&
         (lyricsMode == "embed" || lyricsMode == "both")
@@ -316,6 +326,10 @@ internal fun NativeDownloadFinalizer.embedBasicMetadata(context: Context, path: 
             if (totalTracksValue > 0) fields.put("track_total", totalTracksValue.toString())
             if (discNumberValue > 0) fields.put("disc_number", discNumberValue.toString())
             if (totalDiscsValue > 0) fields.put("disc_total", totalDiscsValue.toString())
+            if (isExplicit) fields.put("explicit", "1")
+            if (albumType.isNotBlank()) fields.put("album_type", albumType)
+            if (upc.isNotBlank()) fields.put("upc", upc)
+            if (isCompilation) fields.put("compilation", "1")
             if (nativeCover != null) fields.put("cover_path", nativeCover.absolutePath)
             if (shouldEmbedLyrics) {
                 fields.put("lyrics", lyrics)
@@ -361,9 +375,17 @@ internal fun NativeDownloadFinalizer.embedBasicMetadata(context: Context, path: 
         labelKey to label,
         "copyright" to copyright,
         "comment" to comment,
+        "ITUNESADVISORY" to if (isExplicit) "1" else "",
+        "RELEASETYPE" to albumType.lowercase(),
+        "BARCODE" to upc,
+        "COMPILATION" to if (isCompilation) "1" else "",
         "lyrics" to if (shouldEmbedLyrics) lyrics else "",
         "unsyncedlyrics" to if (shouldEmbedLyrics) lyrics else "",
     )
+    if (isM4a) {
+        metadataPairs.add("rtng" to if (isExplicit) "1" else "")
+        metadataPairs.add("cpil" to if (isCompilation) "1" else "")
+    }
     if (isOpus && coverFile != null) {
         createMetadataBlockPicture(coverFile)?.let {
             metadataPairs.add("METADATA_BLOCK_PICTURE" to it)

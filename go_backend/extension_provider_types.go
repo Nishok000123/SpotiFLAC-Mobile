@@ -27,6 +27,7 @@ type ExtTrackMetadata struct {
 	ItemType    string `json:"item_type,omitempty"`
 	AlbumType   string `json:"album_type,omitempty"`
 	Explicit    bool   `json:"explicit,omitempty"`
+	UPC         string `json:"upc,omitempty"`
 
 	TidalID       string            `json:"tidal_id,omitempty"`
 	QobuzID       string            `json:"qobuz_id,omitempty"`
@@ -129,6 +130,9 @@ type ExtDownloadResult struct {
 	Copyright                   string                  `json:"copyright,omitempty"`
 	Composer                    string                  `json:"composer,omitempty"`
 	Comment                     string                  `json:"comment,omitempty"`
+	Explicit                    bool                    `json:"explicit,omitempty"`
+	AlbumType                   string                  `json:"album_type,omitempty"`
+	UPC                         string                  `json:"upc,omitempty"`
 	LyricsLRC                   string                  `json:"lyrics_lrc,omitempty"`
 	DecryptionKey               string                  `json:"decryption_key,omitempty"`
 	Decryption                  *DownloadDecryptionInfo `json:"decryption,omitempty"`

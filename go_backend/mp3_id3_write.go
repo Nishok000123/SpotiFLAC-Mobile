@@ -322,6 +322,25 @@ func EditMP3Fields(filePath string, fields map[string]string) error {
 		}
 	}
 
+	// Release identity (advisory/type/barcode) also lives in TXXX frames so
+	// any tagger can read it back; compilation uses the iTunes TCMP frame.
+	txxxDescriptions := map[string]string{
+		"explicit":   "ITUNESADVISORY",
+		"album_type": "RELEASETYPE",
+		"upc":        "BARCODE",
+	}
+	for fieldKey, desc := range txxxDescriptions {
+		if v, ok := fields[fieldKey]; ok {
+			dropTXXXDesc[desc] = true
+			if strings.TrimSpace(v) != "" {
+				added = append(added, id3RawFrame{id: "TXXX", payload: id3TXXXPayload(desc, v)})
+			}
+		}
+	}
+	if v, ok := fields["compilation"]; ok {
+		setOrClear("TCMP", v)
+	}
+
 	coverPath := strings.TrimSpace(fields["cover_path"])
 	if coverPath != "" {
 		if coverData, err := os.ReadFile(coverPath); err == nil && len(coverData) > 0 {

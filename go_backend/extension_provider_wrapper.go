@@ -261,6 +261,7 @@ func extensionTrackInput(track *ExtTrackMetadata) map[string]any {
 		"composer":       track.Composer,
 		"audio_quality":  track.AudioQuality,
 		"audio_modes":    track.AudioModes,
+		"upc":            track.UPC,
 	}
 }
 
