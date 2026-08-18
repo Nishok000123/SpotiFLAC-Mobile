@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spotiflac_android/utils/extension_auth_launcher.dart';
 
@@ -20,5 +22,20 @@ void main() {
       ),
       'qobuz-web',
     );
+  });
+
+  test('verification wait can be cancelled before foreground resume', () async {
+    final foreground = Completer<void>();
+    final cancellation = Completer<void>();
+    final result = openVerificationAndAwaitGrant(
+      'tidal-web',
+      browserMode: 'in_app_first',
+      awaitForeground: (_) => foreground.future,
+      cancellationSignal: cancellation.future,
+    );
+
+    cancellation.complete();
+
+    expect(await result.timeout(const Duration(seconds: 1)), isFalse);
   });
 }

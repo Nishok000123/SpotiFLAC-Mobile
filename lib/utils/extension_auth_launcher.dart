@@ -69,22 +69,30 @@ Future<bool> openPendingExtensionVerification(
   String extensionId, {
   String browserMode = 'in_app_first',
   void Function(Uri authUri)? onAuthUri,
+  Future<void>? cancellationSignal,
 }) async {
   final normalizedExtensionId = extensionId.trim();
   if (normalizedExtensionId.isEmpty) return false;
 
   try {
-    final pending = await PlatformBridge.getExtensionPendingAuth(
-      normalizedExtensionId,
+    final pending = await _awaitVerificationStepOrCancellation(
+      PlatformBridge.getExtensionPendingAuth(normalizedExtensionId),
+      cancellationSignal,
     );
-    final authUrl = pending?['auth_url']?.toString().trim() ?? '';
+    if (pending == null) return false;
+    final authUrl = pending['auth_url']?.toString().trim() ?? '';
     if (authUrl.isEmpty) return false;
 
     final uri = Uri.tryParse(authUrl);
     if (uri == null) return false;
     onAuthUri?.call(uri);
 
-    final launched = await _launchVerificationUrl(uri, browserMode);
+    final launched = await _awaitVerificationStepOrCancellation(
+      _launchVerificationUrl(uri, browserMode),
+      cancellationSignal,
+    );
+
+    if (launched == null) return false;
 
     if (launched) {
       _log.i('Opened verification challenge for $normalizedExtensionId');
@@ -129,7 +137,9 @@ Timer? scheduleExtensionVerificationHelpDialog(
 }
 
 /// Opens a pending extension verification challenge and waits (up to 5
-/// minutes) for its grant result, returning whether it succeeded.
+/// minutes) for its grant result, returning whether it succeeded. When
+/// [cancellationSignal] completes, all local waiting resources are released
+/// and the method returns false without waiting for the timeout.
 ///
 /// [awaitForeground], if given, is awaited first — passed the trimmed
 /// [extensionId] — before opening the challenge; used by callers that must
@@ -139,12 +149,17 @@ Future<bool> openVerificationAndAwaitGrant(
   String extensionId, {
   required String browserMode,
   Future<void> Function(String extensionId)? awaitForeground,
+  Future<void>? cancellationSignal,
 }) async {
   final normalizedExtensionId = extensionId.trim();
   if (normalizedExtensionId.isEmpty) return false;
 
   if (awaitForeground != null) {
-    await awaitForeground(normalizedExtensionId);
+    final reachedForeground = await _awaitVerificationStepOrCancellation(
+      awaitForeground(normalizedExtensionId).then((_) => true),
+      cancellationSignal,
+    );
+    if (reachedForeground != true) return false;
   }
 
   final grantCompleter = Completer<ExtensionSessionGrantEvent>();
@@ -161,12 +176,16 @@ Future<bool> openVerificationAndAwaitGrant(
   Timer? helpDialogTimer;
 
   try {
-    final opened = await openPendingExtensionVerification(
-      normalizedExtensionId,
-      browserMode: browserMode,
-      onAuthUri: (uri) => authUri = uri,
+    final opened = await _awaitVerificationStepOrCancellation(
+      openPendingExtensionVerification(
+        normalizedExtensionId,
+        browserMode: browserMode,
+        onAuthUri: (uri) => authUri = uri,
+        cancellationSignal: cancellationSignal,
+      ),
+      cancellationSignal,
     );
-    if (!opened) return false;
+    if (opened != true) return false;
 
     helpDialogTimer = scheduleExtensionVerificationHelpDialog(
       normalizedExtensionId,
@@ -174,9 +193,14 @@ Future<bool> openVerificationAndAwaitGrant(
       browserMode: browserMode,
     );
 
-    final event = await grantCompleter.future.timeout(
-      const Duration(minutes: 5),
-    );
+    final event = await _awaitVerificationStepOrCancellation(
+      grantCompleter.future,
+      cancellationSignal,
+    ).timeout(const Duration(minutes: 5));
+    if (event == null) {
+      _log.i('Stopped waiting for verification grant: $normalizedExtensionId');
+      return false;
+    }
     return event.success;
   } on TimeoutException {
     _log.w('Timed out waiting for verification grant: $normalizedExtensionId');
@@ -185,6 +209,19 @@ Future<bool> openVerificationAndAwaitGrant(
     helpDialogTimer?.cancel();
     await grantSub.cancel();
   }
+}
+
+Future<T?> _awaitVerificationStepOrCancellation<T>(
+  Future<T> operation,
+  Future<void>? cancellationSignal,
+) {
+  if (cancellationSignal == null) {
+    return operation.then<T?>((value) => value);
+  }
+  return Future.any<T?>([
+    operation.then<T?>((value) => value),
+    cancellationSignal.then<T?>((_) => null),
+  ]);
 }
 
 Future<bool> showExtensionVerificationHelpDialog(

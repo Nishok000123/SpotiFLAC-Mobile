@@ -5,9 +5,9 @@ extension _DownloadQueueVerificationGate on DownloadQueueNotifier {
   /// Completes when the app is in the foreground. Verification challenges
   /// can only be handled there: launching a browser from the background is
   /// blocked by the OS and the challenge would expire unseen.
-  Future<void> _waitForForeground() async {
+  Future<bool> _waitForForeground(Future<void> cancellationSignal) async {
     if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
-      return;
+      return true;
     }
     final completer = Completer<void>();
     final listener = AppLifecycleListener(
@@ -16,48 +16,53 @@ extension _DownloadQueueVerificationGate on DownloadQueueNotifier {
       },
     );
     try {
-      await completer.future;
+      return await Future.any<bool>([
+        completer.future.then((_) => true),
+        cancellationSignal.then((_) => false),
+      ]);
     } finally {
       listener.dispose();
     }
   }
 
-  Future<bool> _openVerificationAndWait(String extensionId) {
-    final key = extensionId.trim().toLowerCase();
-    final activeFlow = _verificationFlowsByExtension[key];
-    if (activeFlow != null) {
+  Future<bool> _openVerificationAndWait(String itemId, String extensionId) {
+    if (_verificationWaitCoordinator.hasActiveFlow(extensionId)) {
       _log.i(
         'Joining active verification flow for $extensionId instead of opening another challenge',
       );
-      return activeFlow;
     }
 
-    final flow = _runVerificationFlow(extensionId, key);
-    _verificationFlowsByExtension[key] = flow;
-    return flow;
+    return _verificationWaitCoordinator.waitForGrant(
+      itemId: itemId,
+      service: extensionId,
+      startFlow: (cancellationSignal) =>
+          _runVerificationFlow(extensionId, cancellationSignal),
+    );
   }
 
-  Future<bool> _runVerificationFlow(String extensionId, String key) async {
-    try {
-      return await openVerificationAndAwaitGrant(
-        extensionId,
-        browserMode: ref
-            .read(settingsProvider)
-            .extensionVerificationBrowserMode,
-        awaitForeground: (normalizedExtensionId) async {
-          if (WidgetsBinding.instance.lifecycleState !=
-              AppLifecycleState.resumed) {
-            _log.i(
-              'Verification required for $normalizedExtensionId while app is in '
-              'background; deferring challenge until the app is foregrounded',
-            );
-            await _waitForForeground();
-          }
-        },
+  Future<bool> _runVerificationFlow(
+    String extensionId,
+    Future<void> cancellationSignal,
+  ) async {
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      _log.i(
+        'Verification required for $extensionId while app is in background; '
+        'deferring challenge until the app is foregrounded',
       );
-    } finally {
-      _verificationFlowsByExtension.remove(key);
+      final reachedForeground = await _waitForForeground(cancellationSignal);
+      if (!reachedForeground) {
+        _log.i(
+          'Verification wait for $extensionId was cancelled before the app returned to the foreground',
+        );
+        return false;
+      }
     }
+
+    return openVerificationAndAwaitGrant(
+      extensionId,
+      browserMode: ref.read(settingsProvider).extensionVerificationBrowserMode,
+      cancellationSignal: cancellationSignal,
+    );
   }
 
   Future<bool> _handleVerificationRequiredDownload(
@@ -99,7 +104,7 @@ extension _DownloadQueueVerificationGate on DownloadQueueNotifier {
 
     late final bool verified;
     try {
-      verified = await _openVerificationAndWait(targetService);
+      verified = await _openVerificationAndWait(item.id, targetService);
     } finally {
       try {
         await _notificationService.cancelVerificationRequired();
@@ -111,7 +116,13 @@ extension _DownloadQueueVerificationGate on DownloadQueueNotifier {
     }
     final current = _findItemById(item.id);
     if (current == null || _isLocallyCancelled(item.id, item: current)) {
-      _log.i('Verification completed after item was removed or cancelled');
+      _log.i('Verification wait stopped after item was removed or cancelled');
+      return true;
+    }
+    if (_isPausePending(item.id)) {
+      _requeueItemForPause(item.id);
+      _pausePendingItemIds.remove(item.id);
+      _log.i('Verification wait stopped because the queue was paused');
       return true;
     }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spotiflac_android/providers/download_verification_retry_guard.dart';
 
@@ -44,5 +46,99 @@ void main() {
       expect(guard.hasRetriedAfterGrant('removed', 'tidal-web'), isFalse);
       expect(guard.hasRetriedAfterGrant('remaining', 'tidal-web'), isTrue);
     });
+  });
+
+  group('DownloadVerificationWaitCoordinator', () {
+    test(
+      'cancelling an item releases its verification wait immediately',
+      () async {
+        final coordinator = DownloadVerificationWaitCoordinator();
+        final flowStarted = Completer<void>();
+        final flowCancelled = Completer<void>();
+
+        final result = coordinator.waitForGrant(
+          itemId: 'item-1',
+          service: 'tidal-web',
+          startFlow: (cancellationSignal) async {
+            flowStarted.complete();
+            await cancellationSignal;
+            flowCancelled.complete();
+            return false;
+          },
+        );
+        await flowStarted.future;
+
+        coordinator.cancelItem('item-1');
+
+        expect(await result.timeout(const Duration(seconds: 1)), isFalse);
+        await flowCancelled.future.timeout(const Duration(seconds: 1));
+      },
+    );
+
+    test('a new item does not join an abandoned verification flow', () async {
+      final coordinator = DownloadVerificationWaitCoordinator();
+      var starts = 0;
+
+      final first = coordinator.waitForGrant(
+        itemId: 'item-1',
+        service: 'tidal-web',
+        startFlow: (cancellationSignal) async {
+          starts++;
+          await cancellationSignal;
+          return false;
+        },
+      );
+      coordinator.cancelItem('item-1');
+      expect(await first, isFalse);
+
+      final second = coordinator.waitForGrant(
+        itemId: 'item-2',
+        service: 'tidal-web',
+        startFlow: (_) async {
+          starts++;
+          return true;
+        },
+      );
+
+      expect(await second, isTrue);
+      expect(starts, 2);
+    });
+
+    test(
+      'cancelling one waiter keeps a shared flow alive for another',
+      () async {
+        final coordinator = DownloadVerificationWaitCoordinator();
+        final grant = Completer<bool>();
+        final flowCancelled = Completer<void>();
+        var starts = 0;
+
+        Future<bool> startFlow(Future<void> cancellationSignal) async {
+          starts++;
+          cancellationSignal.then((_) {
+            if (!flowCancelled.isCompleted) flowCancelled.complete();
+          });
+          return grant.future;
+        }
+
+        final first = coordinator.waitForGrant(
+          itemId: 'item-1',
+          service: ' TIDAL-WEB ',
+          startFlow: startFlow,
+        );
+        final second = coordinator.waitForGrant(
+          itemId: 'item-2',
+          service: 'tidal-web',
+          startFlow: startFlow,
+        );
+
+        coordinator.cancelItem('item-1');
+        expect(await first, isFalse);
+        expect(flowCancelled.isCompleted, isFalse);
+
+        grant.complete(true);
+        expect(await second, isTrue);
+        expect(starts, 1);
+      },
+    );
   });
 }

@@ -358,7 +358,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   final Set<String> _pausePendingItemIds = {};
   final DownloadVerificationRetryGuard _verificationRetryGuard =
       DownloadVerificationRetryGuard();
-  final Map<String, Future<bool>> _verificationFlowsByExtension = {};
+  final DownloadVerificationWaitCoordinator _verificationWaitCoordinator =
+      DownloadVerificationWaitCoordinator();
   final Set<String> _rateLimitRetriedItemIds = {};
   String? _activeNativeWorkerRunId;
   bool get _hasActiveAndroidNativeWorker =>
@@ -379,6 +380,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     });
 
     ref.onDispose(() {
+      _verificationWaitCoordinator.cancelAll();
       _progressPoller.stop();
       _connectivitySub?.cancel();
       _connectivitySub = null;
@@ -1015,6 +1017,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   }
 
   void _requestNativeCancel(String id) {
+    _verificationWaitCoordinator.cancelItem(id);
     PlatformBridge.cancelDownload(id).catchError((_) {});
     PlatformBridge.clearItemProgress(id).catchError((_) {});
   }
