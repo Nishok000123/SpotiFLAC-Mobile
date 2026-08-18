@@ -428,7 +428,9 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 					Name:        req.TrackName,
 					Artists:     req.ArtistName,
 					AlbumName:   req.AlbumName,
+					AlbumArtist: req.AlbumArtist,
 					DurationMS:  req.DurationMS,
+					CoverURL:    req.CoverURL,
 					ISRC:        req.ISRC,
 					ReleaseDate: req.ReleaseDate,
 					TrackNumber: req.TrackNumber,
@@ -436,7 +438,14 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 					DiscNumber:  req.DiscNumber,
 					TotalDiscs:  req.TotalDiscs,
 					ProviderID:  req.Source,
+					AlbumType:   req.AlbumType,
+					Explicit:    req.Explicit,
+					UPC:         req.UPC,
+					Label:       req.Label,
+					Copyright:   req.Copyright,
+					Genre:       req.Genre,
 					Composer:    req.Composer,
+					Comment:     req.Comment,
 				}
 
 				enrichedTrack, err := provider.EnrichTrackForItemID(trackMeta, req.ItemID)
@@ -480,6 +489,7 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 					overlayInt(&req.DiscNumber, enrichedTrack.DiscNumber, "DiscNumber")
 					overlayInt(&req.TotalDiscs, enrichedTrack.TotalDiscs, "TotalDiscs")
 					overlayStr(&req.Composer, enrichedTrack.Composer, "Composer")
+					overlayExtensionReleaseMetadata(&req, *enrichedTrack)
 				}
 			}
 		}
@@ -516,6 +526,7 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 				overlayStr(&req.Genre, track.Genre, "")
 				overlayStr(&req.Label, track.Label, "")
 				overlayStr(&req.Copyright, track.Copyright, "")
+				overlayExtensionReleaseMetadata(&req, track)
 			} else if searchErr != nil {
 				GoLog("[DownloadWithExtensionFallback] Metadata provider search failed (non-fatal): %v\n", searchErr)
 			}

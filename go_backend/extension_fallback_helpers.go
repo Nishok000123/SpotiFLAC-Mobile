@@ -225,6 +225,22 @@ func overlayStr(dst *string, src, field string) {
 	}
 }
 
+// overlayExtensionReleaseMetadata carries release-level metadata discovered by
+// the source catalog into a provider-agnostic download request. Existing
+// source values always win; enrichment only fills fields that were missing.
+func overlayExtensionReleaseMetadata(req *DownloadRequest, track ExtTrackMetadata) {
+	if req == nil {
+		return
+	}
+	overlayStr(&req.AlbumType, track.AlbumType, "AlbumType")
+	overlayStr(&req.UPC, track.UPC, "UPC")
+	overlayStr(&req.Comment, track.Comment, "Comment")
+	if !req.Explicit && track.Explicit {
+		req.Explicit = true
+		GoLog("[DownloadWithExtensionFallback] Explicit flag from enrichment\n")
+	}
+}
+
 // overlayStrTrim is overlayStr but treats a whitespace-only dst as empty too.
 func overlayStrTrim(dst *string, src string) {
 	if src == "" || strings.TrimSpace(*dst) != "" {

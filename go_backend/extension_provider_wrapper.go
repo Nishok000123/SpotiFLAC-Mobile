@@ -259,6 +259,7 @@ func extensionTrackInput(track *ExtTrackMetadata) map[string]any {
 		"copyright":      track.Copyright,
 		"genre":          track.Genre,
 		"composer":       track.Composer,
+		"comment":        track.Comment,
 		"audio_quality":  track.AudioQuality,
 		"audio_modes":    track.AudioModes,
 		"upc":            track.UPC,
