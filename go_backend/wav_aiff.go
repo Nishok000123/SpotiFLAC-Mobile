@@ -606,6 +606,14 @@ func buildID3v24Tag(meta *AudioMetadata, coverData []byte, coverMIME string) []b
 	writeTXXX("REPLAYGAIN_TRACK_PEAK", meta.ReplayGainTrackPeak)
 	writeTXXX("REPLAYGAIN_ALBUM_GAIN", meta.ReplayGainAlbumGain)
 	writeTXXX("REPLAYGAIN_ALBUM_PEAK", meta.ReplayGainAlbumPeak)
+	if meta.Explicit {
+		writeTXXX("ITUNESADVISORY", "1")
+	}
+	writeTXXX("RELEASETYPE", meta.AlbumType)
+	writeTXXX("BARCODE", meta.UPC)
+	if strings.EqualFold(strings.TrimSpace(meta.AlbumType), "compilation") {
+		writeText("TCMP", "1")
+	}
 
 	if len(coverData) > 0 {
 		if strings.TrimSpace(coverMIME) == "" {
@@ -802,6 +810,9 @@ func audioMetadataFromEditFields(fields map[string]string) *AudioMetadata {
 		Copyright:           fields["copyright"],
 		Composer:            fields["composer"],
 		Comment:             fields["comment"],
+		AlbumType:           fields["album_type"],
+		Explicit:            isTruthyTagValue(fields["explicit"]),
+		UPC:                 fields["upc"],
 		ReplayGainTrackGain: fields["replaygain_track_gain"],
 		ReplayGainTrackPeak: fields["replaygain_track_peak"],
 		ReplayGainAlbumGain: fields["replaygain_album_gain"],
@@ -835,6 +846,11 @@ func mergeEditFieldsOntoExisting(existing *AudioMetadata, fields map[string]stri
 	meta.ISRC = keep("isrc", meta.ISRC, existing.ISRC)
 	meta.Lyrics = keep("lyrics", meta.Lyrics, existing.Lyrics)
 	meta.Comment = keep("comment", meta.Comment, existing.Comment)
+	meta.AlbumType = keep("album_type", meta.AlbumType, existing.AlbumType)
+	meta.UPC = keep("upc", meta.UPC, existing.UPC)
+	if _, ok := fields["explicit"]; !ok {
+		meta.Explicit = existing.Explicit
+	}
 	meta.Date = keep("date", meta.Date, existing.Date)
 	if _, ok := fields["track_number"]; !ok {
 		meta.TrackNumber = existing.TrackNumber
@@ -957,6 +973,10 @@ func applyAudioMetadataToScan(metadata *AudioMetadata, result *LibraryScanResult
 	result.Composer = metadata.Composer
 	result.Label = metadata.Label
 	result.Copyright = metadata.Copyright
+	result.Comment = metadata.Comment
+	result.AlbumType = metadata.AlbumType
+	result.Explicit = metadata.Explicit
+	result.UPC = metadata.UPC
 }
 
 // extractWAVAIFFCover returns embedded cover art (from the ID3 chunk) for a

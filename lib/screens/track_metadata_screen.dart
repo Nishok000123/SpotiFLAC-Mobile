@@ -45,6 +45,7 @@ import 'package:spotiflac_android/widgets/audio_analysis_widget.dart';
 import 'package:spotiflac_android/widgets/batch_convert_sheet.dart';
 import 'package:spotiflac_android/widgets/cached_cover_image.dart';
 import 'package:spotiflac_android/widgets/open_on_platform_sheet.dart';
+import 'package:spotiflac_android/widgets/metadata_barcode.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/constants/music_services.dart';
 import 'package:spotiflac_android/screens/collapsing_header_scroll_mixin.dart';
@@ -354,6 +355,10 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
       final resolvedLabel = metadata['label']?.toString();
       final resolvedCopyright = metadata['copyright']?.toString();
       final resolvedISRC = metadata['isrc']?.toString();
+      final resolvedAlbumType = metadata['album_type']?.toString();
+      final resolvedUPC = (metadata['upc'] ?? metadata['barcode'])?.toString();
+      final resolvedComment = metadata['comment']?.toString();
+      final resolvedExplicit = parseExplicitFlag(metadata['explicit']);
       final needsTrackNumber =
           resolvedTrackNumber != null &&
           resolvedTrackNumber > 0 &&
@@ -390,6 +395,10 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
       final fileHasCopyright = present(resolvedCopyright);
       final fileHasISRC = present(resolvedISRC);
       final fileHasLabel = present(resolvedLabel);
+      final fileHasAlbumType = present(resolvedAlbumType);
+      final fileHasUPC = present(resolvedUPC);
+      final fileHasComment = present(resolvedComment);
+      final fileHasExplicit = resolvedExplicit == true;
       final fileHasTrackNumber =
           resolvedTrackNumber != null && resolvedTrackNumber > 0;
       final fileHasTotalTracks =
@@ -442,6 +451,10 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
               fileHasISRC ||
               fileHasLabel ||
               fileHasCopyright ||
+              fileHasAlbumType ||
+              fileHasUPC ||
+              fileHasComment ||
+              fileHasExplicit ||
               isPlaceholderQualityLabel(_quality)) &&
           mounted) {
         setState(() {
@@ -467,6 +480,10 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
             if (fileHasISRC) 'isrc': resolvedISRC,
             if (fileHasLabel) 'label': resolvedLabel,
             if (fileHasCopyright) 'copyright': resolvedCopyright,
+            if (fileHasAlbumType) 'album_type': resolvedAlbumType,
+            if (fileHasUPC) 'upc': resolvedUPC,
+            if (fileHasComment) 'comment': resolvedComment,
+            'explicit': ?resolvedExplicit,
           };
         });
       }

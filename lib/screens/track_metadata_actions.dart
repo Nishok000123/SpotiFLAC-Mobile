@@ -41,6 +41,11 @@ extension _TrackMetadataFileActions on _TrackMetadataScreenState {
       'copyright': val('copyright', copyright),
       'composer': val('composer', composer),
       'comment': fileMetadata?['comment']?.toString() ?? '',
+      'album_type': val('album_type', albumType),
+      'explicit': (parseExplicitFlag(fileMetadata?['explicit']) ?? isExplicit)
+          ? '1'
+          : '0',
+      'upc': val('upc', upc),
       'lyrics': fileMetadata?['lyrics']?.toString() ?? '',
     };
 

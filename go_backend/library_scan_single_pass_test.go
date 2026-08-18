@@ -30,6 +30,9 @@ func writeSinglePassTestFlac(t testing.TB, path string, cover []byte) {
 	comments := flacvorbis.New()
 	setComment(comments, "TITLE", "Single Pass")
 	setComment(comments, "ARTIST", "Artist")
+	setComment(comments, "ITUNESADVISORY", "1")
+	setComment(comments, "RELEASETYPE", "album")
+	setComment(comments, "BARCODE", "4006381333931")
 	commentBlock := comments.Marshal()
 	pictureBlock := (&flacpicture.MetadataBlockPicture{
 		PictureType: flacpicture.PictureTypeFrontCover,
@@ -62,6 +65,9 @@ func TestScanFLACSinglePassReadsMetadataQualityAndCover(t *testing.T) {
 	}
 	if result.TrackName != "Single Pass" || result.ArtistName != "Artist" || result.SampleRate != 44100 || result.BitDepth != 16 || result.Duration != 10 {
 		t.Fatalf("scan result = %#v", result)
+	}
+	if !result.Explicit || result.AlbumType != "album" || result.UPC != "4006381333931" {
+		t.Fatalf("release identity = %#v", result)
 	}
 	if result.CoverPath == "" {
 		t.Fatal("cover was not cached")

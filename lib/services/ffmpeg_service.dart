@@ -2040,6 +2040,7 @@ class FFmpegService {
       // touched (an empty value clears the tag).
       if (metadata != null) {
         await _writeM4AFreeformTags(m4aPath, metadata);
+        await _writeM4AReleaseIdentityTags(m4aPath, metadata);
       }
 
       _log.d('M4A metadata embedded successfully');
@@ -2558,6 +2559,42 @@ class FFmpegService {
       await PlatformBridge.writeM4AFreeformTags(m4aPath, fields);
     } catch (e) {
       _log.w('writeM4AFreeformTags failed for $m4aPath: $e');
+    }
+  }
+
+  /// Restores the iTunes atoms that FFmpeg does not reliably map from generic
+  /// metadata keys. This runs after a successful remux, when the container is
+  /// canonical enough for the native editor even if the original was not.
+  static Future<void> _writeM4AReleaseIdentityTags(
+    String m4aPath,
+    Map<String, String> metadata,
+  ) async {
+    final fields = <String, String>{};
+    for (final entry in metadata.entries) {
+      final key = entry.key.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+      switch (key) {
+        case 'ITUNESADVISORY':
+          fields['explicit'] = entry.value;
+        case 'RELEASETYPE':
+          fields['album_type'] = entry.value;
+        case 'BARCODE':
+        case 'UPC':
+          fields['upc'] = entry.value;
+        case 'COMPILATION':
+          fields['compilation'] = entry.value;
+      }
+    }
+    if (fields.isEmpty) return;
+
+    try {
+      final result = await PlatformBridge.editFileMetadata(m4aPath, fields);
+      if (result['error'] != null || result['method'] != 'native_m4a') {
+        _log.w(
+          'Native M4A release identity write was not completed for $m4aPath',
+        );
+      }
+    } catch (e) {
+      _log.w('M4A release identity write failed for $m4aPath: $e');
     }
   }
 

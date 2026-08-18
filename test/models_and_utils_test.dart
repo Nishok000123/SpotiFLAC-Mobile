@@ -1036,6 +1036,10 @@ void main() {
         'bitDepth': 24,
         'sampleRate': 96000,
         'bitrate': 1840,
+        'albumType': 'album',
+        'explicit': true,
+        'upc': '4006381333931',
+        'comment': 'https://listen.tidal.com/album/1',
         'format': 'flac',
       });
 
@@ -1051,6 +1055,10 @@ void main() {
       expect(normalized['bit_depth'], 24);
       expect(normalized['sample_rate'], 96000);
       expect(normalized['bitrate'], 1840);
+      expect(normalized['album_type'], 'album');
+      expect(normalized['explicit'], isTrue);
+      expect(normalized['upc'], '4006381333931');
+      expect(normalized['comment'], 'https://listen.tidal.com/album/1');
       expect(normalized['audio_codec'], 'flac');
     });
 

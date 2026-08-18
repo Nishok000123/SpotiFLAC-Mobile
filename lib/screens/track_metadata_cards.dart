@@ -302,6 +302,15 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
 
             _buildMetadataGrid(context, colorScheme),
 
+            if (upc case final barcodeValue?) ...[
+              const SizedBox(height: 16),
+              MetadataBarcode(
+                value: barcodeValue,
+                label: context.l10n.editMetadataFieldUpc,
+                onCopy: () => _copyToClipboard(context, barcodeValue),
+              ),
+            ],
+
             if (_spotifyId != null && _spotifyId!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Builder(
@@ -455,6 +464,15 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
         _MetadataItem(context.l10n.trackCopyright, copyright!),
       if (composer != null && composer!.isNotEmpty)
         _MetadataItem(context.l10n.editMetadataFieldComposer, composer!),
+      if (albumType != null)
+        _MetadataItem(context.l10n.trackAlbumType, albumType!),
+      if (isExplicit)
+        _MetadataItem(
+          context.l10n.editMetadataFieldExplicit,
+          context.l10n.metadataExplicitValue,
+        ),
+      if (comment != null)
+        _MetadataItem(context.l10n.editMetadataFieldComment, comment!),
       if (isrc != null && isrc!.isNotEmpty) _MetadataItem('ISRC', isrc!),
     ];
 

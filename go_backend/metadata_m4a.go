@@ -73,6 +73,14 @@ func readM4ATagsFromIlst(f *os.File, fileSize int64, ilst atomHeader) (*AudioMet
 			metadata.TrackNumber, metadata.TotalTracks, _ = readM4AIndexPair(f, header, fileSize)
 		case "disk":
 			metadata.DiscNumber, metadata.TotalDiscs, _ = readM4AIndexPair(f, header, fileSize)
+		case "rtng":
+			if value, valueErr := readM4AByteValue(f, header, fileSize); valueErr == nil {
+				metadata.Explicit = value == 1
+			}
+		case "cpil":
+			if value, valueErr := readM4AByteValue(f, header, fileSize); valueErr == nil && value != 0 && metadata.AlbumType == "" {
+				metadata.AlbumType = "compilation"
+			}
 		case "----":
 			name, value, freeformErr := readM4AFreeformValue(f, header, fileSize)
 			if freeformErr == nil {
@@ -105,6 +113,12 @@ func readM4ATagsFromIlst(f *os.File, fileSize int64, ilst atomHeader) (*AudioMet
 					metadata.ReplayGainAlbumGain = value
 				case "REPLAYGAIN_ALBUM_PEAK":
 					metadata.ReplayGainAlbumPeak = value
+				case "ITUNESADVISORY":
+					metadata.Explicit = isTruthyTagValue(value)
+				case "RELEASETYPE":
+					metadata.AlbumType = value
+				case "BARCODE", "UPC":
+					metadata.UPC = value
 				}
 			}
 		}
@@ -284,6 +298,17 @@ func readM4AIndexPair(f *os.File, parent atomHeader, fileSize int64) (int, int, 
 		return 0, 0, fmt.Errorf("index payload too short in %s", parent.typ)
 	}
 	return int(binary.BigEndian.Uint16(payload[2:4])), int(binary.BigEndian.Uint16(payload[4:6])), nil
+}
+
+func readM4AByteValue(f *os.File, parent atomHeader, fileSize int64) (byte, error) {
+	payload, err := readM4ADataPayload(f, parent, fileSize)
+	if err != nil {
+		return 0, err
+	}
+	if len(payload) == 0 {
+		return 0, fmt.Errorf("integer payload is empty in %s", parent.typ)
+	}
+	return payload[len(payload)-1], nil
 }
 
 func parsePositiveInt(value string) int {

@@ -141,6 +141,10 @@ func scanFLACFileWithCoverCache(filePath string, result *LibraryScanResult, disp
 	result.Composer = metadata.Composer
 	result.Label = metadata.Label
 	result.Copyright = metadata.Copyright
+	result.Comment = metadata.Comment
+	result.AlbumType = metadata.AlbumType
+	result.Explicit = metadata.Explicit
+	result.UPC = metadata.UPC
 
 	quality, err := audioQualityFromParsedFlac(f)
 	if err == nil {
@@ -289,20 +293,7 @@ func scanOggFile(filePath string, result *LibraryScanResult, displayNameHint str
 		return scanFromFilename(filePath, displayNameHint, result)
 	}
 
-	result.TrackName = metadata.Title
-	result.ArtistName = metadata.Artist
-	result.AlbumName = metadata.Album
-	result.AlbumArtist = metadata.AlbumArtist
-	result.ISRC = metadata.ISRC
-	result.TrackNumber = metadata.TrackNumber
-	result.TotalTracks = metadata.TotalTracks
-	result.DiscNumber = metadata.DiscNumber
-	result.TotalDiscs = metadata.TotalDiscs
-	result.Genre = metadata.Genre
-	result.ReleaseDate = metadata.Date
-	result.Composer = metadata.Composer
-	result.Label = metadata.Label
-	result.Copyright = metadata.Copyright
+	applyAudioMetadataToScan(metadata, result)
 
 	quality, err := GetOggQuality(filePath)
 	if err == nil {

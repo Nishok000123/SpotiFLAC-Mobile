@@ -31,6 +31,10 @@ Map<String, dynamic> normalizeScannedAudioMetadata(
   normalized['total_discs'] = firstValue('total_discs', 'totalDiscs');
   normalized['bit_depth'] = firstValue('bit_depth', 'bitDepth');
   normalized['sample_rate'] = firstValue('sample_rate', 'sampleRate');
+  normalized['album_type'] = firstValue('album_type', 'albumType');
+  normalized['upc'] = firstValue('upc', 'barcode');
+  normalized['comment'] = metadata['comment'];
+  normalized['explicit'] = metadata['explicit'];
   normalized['audio_codec'] =
       firstValue('audio_codec', 'audioCodec') ?? metadata['format'];
   return normalized;

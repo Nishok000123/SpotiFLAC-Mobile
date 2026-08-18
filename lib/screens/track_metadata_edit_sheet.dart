@@ -504,6 +504,10 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     'label': 'label',
     'copyright': 'copyright',
     'composer': 'composer',
+    'comment': 'comment',
+    'album_type': 'album_type',
+    'explicit': 'explicit',
+    'upc': 'upc',
     'cover': 'cover',
   };
 
@@ -523,6 +527,9 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
   late final TextEditingController _copyrightCtrl;
   late final TextEditingController _composerCtrl;
   late final TextEditingController _commentCtrl;
+  late final TextEditingController _albumTypeCtrl;
+  late final TextEditingController _upcCtrl;
+  bool _explicit = false;
   bool _fetchingMusicBrainz = false;
 
   bool _hasValue(String? value) => value != null && value.trim().isNotEmpty;
@@ -815,6 +822,14 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         return l10n.editMetadataFieldCopyright;
       case 'composer':
         return l10n.editMetadataFieldComposer;
+      case 'comment':
+        return l10n.editMetadataFieldComment;
+      case 'album_type':
+        return l10n.trackAlbumType;
+      case 'explicit':
+        return l10n.editMetadataFieldExplicit;
+      case 'upc':
+        return l10n.editMetadataFieldUpc;
       case 'cover':
         return l10n.editMetadataFieldCover;
       default:
@@ -854,6 +869,12 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         return _copyrightCtrl;
       case 'composer':
         return _composerCtrl;
+      case 'comment':
+        return _commentCtrl;
+      case 'album_type':
+        return _albumTypeCtrl;
+      case 'upc':
+        return _upcCtrl;
       default:
         return null;
     }
@@ -871,6 +892,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       _invalidateAutoFillPreview();
       _autoFillFields.clear();
       for (final key in _fieldDefs.keys) {
+        if (key == 'explicit') continue;
         if (key == 'cover') {
           if (!_hasValue(_currentCoverPath) && !_hasValue(_selectedCoverPath)) {
             _autoFillFields.add(key);
@@ -1036,6 +1058,10 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     put('label', track['label']);
     put('copyright', track['copyright']);
     put('composer', track['composer']);
+    put('comment', track['comment']);
+    put('album_type', track['album_type'] ?? track['albumType']);
+    put('explicit', track['explicit'] ?? track['is_explicit']);
+    put('upc', track['upc'] ?? track['barcode']);
   }
 
   int _metadataMatchScore(
@@ -1627,7 +1653,10 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       final availableValues = <String, String>{};
       for (final entry in enriched.entries) {
         final value = entry.value.trim();
-        if (value.isNotEmpty && value != '0' && value != 'null') {
+        final isExplicitValue = entry.key == 'explicit';
+        if (value.isNotEmpty &&
+            (isExplicitValue || value != '0') &&
+            value != 'null') {
           availableValues[entry.key] = value;
         }
       }
@@ -1699,6 +1728,14 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       for (final key in _autoFillFields) {
         if (key == 'cover') continue;
         final value = preview.values[key];
+        if (key == 'explicit' && value != null) {
+          final parsed = parseExplicitFlag(value);
+          if (parsed != null) {
+            _explicit = parsed;
+            filledCount++;
+          }
+          continue;
+        }
         final ctrl = _controllerForKey(key);
         if (value != null && ctrl != null) {
           ctrl.text = value;
@@ -1788,6 +1825,9 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     _copyrightCtrl = TextEditingController(text: v['copyright'] ?? '');
     _composerCtrl = TextEditingController(text: v['composer'] ?? '');
     _commentCtrl = TextEditingController(text: v['comment'] ?? '');
+    _albumTypeCtrl = TextEditingController(text: v['album_type'] ?? '');
+    _upcCtrl = TextEditingController(text: v['upc'] ?? '');
+    _explicit = parseExplicitFlag(v['explicit']) == true;
     _loadCurrentCoverPreview();
   }
 
@@ -1812,6 +1852,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     _copyrightCtrl.dispose();
     _composerCtrl.dispose();
     _commentCtrl.dispose();
+    _albumTypeCtrl.dispose();
+    _upcCtrl.dispose();
     super.dispose();
   }
 
@@ -1862,6 +1904,12 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         'copyright': _copyrightCtrl.text,
         'composer': _composerCtrl.text,
         'comment': _commentCtrl.text,
+        'album_type': _albumTypeCtrl.text,
+        'explicit': _explicit ? '1' : '0',
+        'upc': _upcCtrl.text,
+        'compilation': _albumTypeCtrl.text.trim().toLowerCase() == 'compilation'
+            ? '1'
+            : '0',
         'cover_path': coverPathForSave ?? '',
         'artist_tag_mode': widget.artistTagMode,
       };
@@ -1929,6 +1977,10 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           'COPYRIGHT': metadata['copyright'] ?? '',
           'COMPOSER': metadata['composer'] ?? '',
           'COMMENT': metadata['comment'] ?? '',
+          'ITUNESADVISORY': metadata['explicit'] ?? '',
+          'RELEASETYPE': metadata['album_type'] ?? '',
+          'BARCODE': metadata['upc'] ?? '',
+          'COMPILATION': metadata['compilation'] ?? '',
         };
         try {
           final existingMetadata = await PlatformBridge.readFileMetadata(
@@ -2228,6 +2280,29 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
                             _field(
                               context.l10n.editMetadataFieldComposer,
                               _composerCtrl,
+                            ),
+                            _field(
+                              context.l10n.trackAlbumType,
+                              _albumTypeCtrl,
+                              hint: context.l10n.editMetadataFieldAlbumTypeHint,
+                            ),
+                            _switchField(
+                              label: context.l10n.editMetadataFieldExplicit,
+                              subtitle:
+                                  context.l10n.editMetadataFieldExplicitHint,
+                              value: _explicit,
+                              onChanged: (value) =>
+                                  setState(() => _explicit = value),
+                            ),
+                            _field(
+                              context.l10n.editMetadataFieldUpc,
+                              _upcCtrl,
+                              hint: context.l10n.editMetadataFieldUpcHint,
+                              keyboard: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(18),
+                              ],
                             ),
                             _field(
                               context.l10n.editMetadataFieldComment,
@@ -2788,6 +2863,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     String? hint,
     TextInputType? keyboard,
     int maxLines = 1,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     final cs = widget.colorScheme;
     final radius = BorderRadius.circular(14);
@@ -2810,6 +2886,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           TextField(
             controller: controller,
             keyboardType: keyboard,
+            inputFormatters: inputFormatters,
             maxLines: maxLines,
             cursorColor: cs.primary,
             style: Theme.of(context).textTheme.bodyLarge,
@@ -2837,6 +2914,35 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _switchField({
+    required String label,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    final cs = widget.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Material(
+        color: _fieldFill(cs),
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: SwitchListTile.adaptive(
+          value: value,
+          onChanged: onChanged,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          title: Text(label, style: Theme.of(context).textTheme.bodyLarge),
+          subtitle: Text(
+            subtitle,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ),
       ),
     );
   }

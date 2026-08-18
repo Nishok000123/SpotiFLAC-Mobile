@@ -30,6 +30,9 @@ func TestAudioMetadataID3ParsingBranches(t *testing.T) {
 		id3CommentFrame("USLT", "Lyrics"),
 		id3UserTextFrame("TXXX", "REPLAYGAIN_TRACK_GAIN", "-6.50 dB"),
 		id3UserTextFrame("TXXX", "REPLAYGAIN_TRACK_PEAK", "0.98"),
+		id3UserTextFrame("TXXX", "ITUNESADVISORY", "1"),
+		id3UserTextFrame("TXXX", "RELEASETYPE", "album"),
+		id3UserTextFrame("TXXX", "BARCODE", "4006381333931"),
 	)
 	if err := os.WriteFile(path, append(tag, []byte("audio")...), 0600); err != nil {
 		t.Fatalf("write ID3v2: %v", err)
@@ -44,6 +47,9 @@ func TestAudioMetadataID3ParsingBranches(t *testing.T) {
 	}
 	if meta.Comment != "Comment" || meta.Lyrics != "Lyrics" || meta.ReplayGainTrackGain == "" {
 		t.Fatalf("metadata comments/lyrics/replaygain = %#v", meta)
+	}
+	if !meta.Explicit || meta.AlbumType != "album" || meta.UPC != "4006381333931" {
+		t.Fatalf("metadata release identity = %#v", meta)
 	}
 
 	id3v1Path := filepath.Join(dir, "id3v1.mp3")
@@ -201,6 +207,9 @@ func TestM4AMetadataAtomHelpers(t *testing.T) {
 	ilstPayload = append(ilstPayload, buildM4AIndexTag("disk", 1, 2)...)
 	ilstPayload = append(ilstPayload, buildM4AFreeformAtom("ISRC", "USRC17607839")...)
 	ilstPayload = append(ilstPayload, buildM4AFreeformAtom("LABEL", "Label")...)
+	ilstPayload = append(ilstPayload, buildM4AFreeformAtom("RELEASETYPE", "single")...)
+	ilstPayload = append(ilstPayload, buildM4AFreeformAtom("BARCODE", "4006381333931")...)
+	ilstPayload = append(ilstPayload, buildM4AInt8Atom("rtng", 1)...)
 	ilstPayload = append(ilstPayload, buildM4AFreeformAtom("REPLAYGAIN_TRACK_GAIN", "-6.50 dB")...)
 	ilstPayload = append(ilstPayload, buildM4AAtom("covr", buildM4AAtom("data", append([]byte{0, 0, 0, 13, 0, 0, 0, 0}, cover...)))...)
 	fileData := buildM4AFileWithIlst(ilstPayload, true)
@@ -214,6 +223,9 @@ func TestM4AMetadataAtomHelpers(t *testing.T) {
 	}
 	if meta.Title != "M4A Title" || meta.Artist != "M4A Artist" || meta.TrackNumber != 3 || meta.TotalTracks != 12 || meta.ISRC != "USRC17607839" {
 		t.Fatalf("M4A metadata = %#v", meta)
+	}
+	if !meta.Explicit || meta.AlbumType != "single" || meta.UPC != "4006381333931" {
+		t.Fatalf("M4A release identity = %#v", meta)
 	}
 	if lyrics, err := extractLyricsFromM4A(path); err != nil || !strings.Contains(lyrics, "M4A Lyrics") {
 		t.Fatalf("extractLyricsFromM4A = %q/%v", lyrics, err)
@@ -381,6 +393,9 @@ func TestOggMetadataQualityAndCoverHelpers(t *testing.T) {
 		"TRACKNUMBER=2/9",
 		"DISCNUMBER=1/2",
 		"LYRICS=[00:00.00]Ogg Lyrics",
+		"ITUNESADVISORY=1",
+		"RELEASETYPE=ep",
+		"BARCODE=4006381333931",
 	}
 	binary.Write(&comments, binary.LittleEndian, uint32(len(entries)))
 	for _, entry := range entries {
@@ -400,6 +415,9 @@ func TestOggMetadataQualityAndCoverHelpers(t *testing.T) {
 	meta, err := ReadOggVorbisComments(oggPath)
 	if err != nil || meta.Title != "Ogg Title" || meta.TrackNumber != 2 || meta.TotalTracks != 9 {
 		t.Fatalf("ReadOggVorbisComments = %#v/%v", meta, err)
+	}
+	if !meta.Explicit || meta.AlbumType != "ep" || meta.UPC != "4006381333931" {
+		t.Fatalf("Ogg release identity = %#v", meta)
 	}
 
 	picture := buildTestFLACPictureBlock([]byte{0x89, 0x50, 0x4E, 0x47}, "image/png")

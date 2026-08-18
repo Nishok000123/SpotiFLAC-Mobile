@@ -379,6 +379,16 @@ func APETagToAudioMetadata(tag *APETag) *AudioMetadata {
 			metadata.Composer = value
 		case "COMMENT":
 			metadata.Comment = value
+		case "ITUNESADVISORY":
+			metadata.Explicit = isTruthyTagValue(value)
+		case "RELEASETYPE":
+			metadata.AlbumType = value
+		case "BARCODE", "UPC":
+			metadata.UPC = value
+		case "COMPILATION":
+			if isTruthyTagValue(value) && metadata.AlbumType == "" {
+				metadata.AlbumType = "compilation"
+			}
 		case "REPLAYGAIN_TRACK_GAIN":
 			metadata.ReplayGainTrackGain = value
 		case "REPLAYGAIN_TRACK_PEAK":
@@ -428,6 +438,14 @@ func AudioMetadataToAPEItems(metadata *AudioMetadata) []APETagItem {
 	addItem("Copyright", metadata.Copyright)
 	addItem("Composer", metadata.Composer)
 	addItem("Comment", metadata.Comment)
+	if metadata.Explicit {
+		addItem("ITUNESADVISORY", "1")
+	}
+	addItem("RELEASETYPE", metadata.AlbumType)
+	addItem("BARCODE", metadata.UPC)
+	if strings.EqualFold(strings.TrimSpace(metadata.AlbumType), "compilation") {
+		addItem("COMPILATION", "1")
+	}
 	addItem("REPLAYGAIN_TRACK_GAIN", metadata.ReplayGainTrackGain)
 	addItem("REPLAYGAIN_TRACK_PEAK", metadata.ReplayGainTrackPeak)
 	addItem("REPLAYGAIN_ALBUM_GAIN", metadata.ReplayGainAlbumGain)
@@ -455,6 +473,10 @@ func apeKeysFromFields(fields map[string]string) map[string]struct{} {
 		"copyright":             "COPYRIGHT",
 		"composer":              "COMPOSER",
 		"comment":               "COMMENT",
+		"explicit":              "ITUNESADVISORY",
+		"album_type":            "RELEASETYPE",
+		"upc":                   "BARCODE",
+		"compilation":           "COMPILATION",
 		"replaygain_track_gain": "REPLAYGAIN_TRACK_GAIN",
 		"replaygain_track_peak": "REPLAYGAIN_TRACK_PEAK",
 		"replaygain_album_gain": "REPLAYGAIN_ALBUM_GAIN",

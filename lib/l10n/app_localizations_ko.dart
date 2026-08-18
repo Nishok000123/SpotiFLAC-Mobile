@@ -4088,6 +4088,29 @@ class AppLocalizationsKo extends AppLocalizations {
   String get editMetadataFieldComment => '주석';
 
   @override
+  String get trackAlbumType => 'Release Type';
+
+  @override
+  String get editMetadataFieldAlbumTypeHint =>
+      'Album, single, EP, compilation...';
+
+  @override
+  String get editMetadataFieldExplicit => 'Explicit';
+
+  @override
+  String get editMetadataFieldExplicitHint =>
+      'Mark this track as containing explicit content';
+
+  @override
+  String get metadataExplicitValue => 'Explicit';
+
+  @override
+  String get editMetadataFieldUpc => 'UPC / Barcode';
+
+  @override
+  String get editMetadataFieldUpcHint => 'Numeric UPC, EAN, or GTIN';
+
+  @override
   String get editMetadataAdvanced => '고급';
 
   @override

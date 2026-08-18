@@ -268,6 +268,16 @@ func parseVorbisComments(data []byte, metadata *AudioMetadata) {
 			metadata.Label = value
 		case "COPYRIGHT":
 			metadata.Copyright = value
+		case "ITUNESADVISORY":
+			metadata.Explicit = isTruthyTagValue(value)
+		case "RELEASETYPE":
+			metadata.AlbumType = value
+		case "BARCODE", "UPC":
+			metadata.UPC = value
+		case "COMPILATION":
+			if isTruthyTagValue(value) && metadata.AlbumType == "" {
+				metadata.AlbumType = "compilation"
+			}
 		case "REPLAYGAIN_TRACK_GAIN":
 			metadata.ReplayGainTrackGain = value
 		case "REPLAYGAIN_TRACK_PEAK":

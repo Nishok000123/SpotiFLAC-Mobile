@@ -28,6 +28,9 @@ type AudioMetadata struct {
 	Copyright   string
 	Composer    string
 	Comment     string
+	AlbumType   string
+	Explicit    bool
+	UPC         string
 	// ReplayGain fields (text values, e.g. "-6.50 dB", "0.988831")
 	ReplayGainTrackGain string
 	ReplayGainTrackPeak string
@@ -191,6 +194,14 @@ func parseID3v22Frames(data []byte, metadata *AudioMetadata, tagUnsync bool) {
 			if isLyricsDescription(desc) && userValue != "" && metadata.Lyrics == "" {
 				metadata.Lyrics = userValue
 			}
+			switch strings.ToUpper(strings.TrimSpace(desc)) {
+			case "ITUNESADVISORY":
+				metadata.Explicit = isTruthyTagValue(userValue)
+			case "RELEASETYPE":
+				metadata.AlbumType = userValue
+			case "BARCODE", "UPC":
+				metadata.UPC = userValue
+			}
 		}
 
 		pos += 6 + frameSize
@@ -303,6 +314,10 @@ func parseID3v23Frames(data []byte, metadata *AudioMetadata, version byte, tagUn
 			metadata.Label = value
 		case "TCOP":
 			metadata.Copyright = value
+		case "TCMP":
+			if isTruthyTagValue(value) && metadata.AlbumType == "" {
+				metadata.AlbumType = "compilation"
+			}
 		case "COMM":
 			if v := extractLangTextFrame(frameData); v != "" {
 				metadata.Comment = v
@@ -326,6 +341,12 @@ func parseID3v23Frames(data []byte, metadata *AudioMetadata, version byte, tagUn
 				metadata.ReplayGainAlbumGain = userValue
 			case "REPLAYGAIN_ALBUM_PEAK":
 				metadata.ReplayGainAlbumPeak = userValue
+			case "ITUNESADVISORY":
+				metadata.Explicit = isTruthyTagValue(userValue)
+			case "RELEASETYPE":
+				metadata.AlbumType = userValue
+			case "BARCODE", "UPC":
+				metadata.UPC = userValue
 			}
 		}
 

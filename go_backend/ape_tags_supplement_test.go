@@ -31,6 +31,9 @@ func TestAPETagReadWriteMergeAndMetadataConversion(t *testing.T) {
 		Copyright:           "Copyright",
 		Composer:            "Composer",
 		Comment:             "Comment",
+		AlbumType:           "compilation",
+		Explicit:            true,
+		UPC:                 "4006381333931",
 		ReplayGainTrackGain: "-6.50 dB",
 		ReplayGainTrackPeak: "0.98",
 		ReplayGainAlbumGain: "-5.00 dB",
@@ -56,6 +59,9 @@ func TestAPETagReadWriteMergeAndMetadataConversion(t *testing.T) {
 	readMetadata := APETagToAudioMetadata(readTag)
 	if readMetadata.Title != "Song" || readMetadata.TrackNumber != 3 || readMetadata.TotalTracks != 12 {
 		t.Fatalf("metadata = %#v", readMetadata)
+	}
+	if !readMetadata.Explicit || readMetadata.AlbumType != "compilation" || readMetadata.UPC != "4006381333931" {
+		t.Fatalf("release identity = %#v", readMetadata)
 	}
 
 	readerTag, err := ReadAPETagsFromReader(bytes.NewReader(mustReadFile(t, path)), int64(len(mustReadFile(t, path))))

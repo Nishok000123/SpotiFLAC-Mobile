@@ -6976,6 +6976,48 @@ abstract class AppLocalizations {
   /// **'Comment'**
   String get editMetadataFieldComment;
 
+  /// Label for an album or release type metadata value
+  ///
+  /// In en, this message translates to:
+  /// **'Release Type'**
+  String get trackAlbumType;
+
+  /// Hint for the release type metadata field
+  ///
+  /// In en, this message translates to:
+  /// **'Album, single, EP, compilation...'**
+  String get editMetadataFieldAlbumTypeHint;
+
+  /// Label for the explicit content metadata field
+  ///
+  /// In en, this message translates to:
+  /// **'Explicit'**
+  String get editMetadataFieldExplicit;
+
+  /// Description for the explicit content metadata switch
+  ///
+  /// In en, this message translates to:
+  /// **'Mark this track as containing explicit content'**
+  String get editMetadataFieldExplicitHint;
+
+  /// Displayed value when a track is marked explicit
+  ///
+  /// In en, this message translates to:
+  /// **'Explicit'**
+  String get metadataExplicitValue;
+
+  /// Label for the release barcode metadata field
+  ///
+  /// In en, this message translates to:
+  /// **'UPC / Barcode'**
+  String get editMetadataFieldUpc;
+
+  /// Hint for the release barcode metadata field
+  ///
+  /// In en, this message translates to:
+  /// **'Numeric UPC, EAN, or GTIN'**
+  String get editMetadataFieldUpcHint;
+
   /// Expandable section label for advanced metadata fields
   ///
   /// In en, this message translates to:

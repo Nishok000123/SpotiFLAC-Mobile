@@ -297,6 +297,15 @@ extension _TrackMetadataCover on _TrackMetadataScreenState {
   String? get composer =>
       _editedMetadata?['composer']?.toString() ??
       (_isLocalItem ? _localLibraryItem!.composer : null);
+  String? get albumType =>
+      normalizeOptionalString(_editedMetadata?['album_type']?.toString());
+  String? get upc => normalizeOptionalString(
+    (_editedMetadata?['upc'] ?? _editedMetadata?['barcode'])?.toString(),
+  );
+  String? get comment =>
+      normalizeOptionalString(_editedMetadata?['comment']?.toString());
+  bool get isExplicit =>
+      parseExplicitFlag(_editedMetadata?['explicit']) == true;
   int? get duration =>
       readPositiveInt(_editedMetadata?['duration']) ??
       (_isLocalItem ? _localLibraryItem!.duration : _downloadItem!.duration);

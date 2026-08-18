@@ -391,6 +391,15 @@ func metadataFromParsedFlac(f *flac.File) *Metadata {
 			metadata.Copyright = getComment(cmt, "COPYRIGHT")
 			metadata.Composer = getComment(cmt, "COMPOSER")
 			metadata.Comment = getComment(cmt, "COMMENT")
+			metadata.Explicit = isTruthyTagValue(getComment(cmt, "ITUNESADVISORY"))
+			metadata.AlbumType = getComment(cmt, "RELEASETYPE")
+			if metadata.AlbumType == "" && isTruthyTagValue(getComment(cmt, "COMPILATION")) {
+				metadata.AlbumType = "compilation"
+			}
+			metadata.UPC = getComment(cmt, "BARCODE")
+			if metadata.UPC == "" {
+				metadata.UPC = getComment(cmt, "UPC")
+			}
 
 			metadata.ReplayGainTrackGain = getComment(cmt, "REPLAYGAIN_TRACK_GAIN")
 			metadata.ReplayGainTrackPeak = getComment(cmt, "REPLAYGAIN_TRACK_PEAK")

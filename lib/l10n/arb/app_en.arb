@@ -5464,6 +5464,34 @@
   "@editMetadataFieldComment": {
     "description": "Label for comment field in the edit metadata sheet"
   },
+  "trackAlbumType": "Release Type",
+  "@trackAlbumType": {
+    "description": "Label for an album or release type metadata value"
+  },
+  "editMetadataFieldAlbumTypeHint": "Album, single, EP, compilation...",
+  "@editMetadataFieldAlbumTypeHint": {
+    "description": "Hint for the release type metadata field"
+  },
+  "editMetadataFieldExplicit": "Explicit",
+  "@editMetadataFieldExplicit": {
+    "description": "Label for the explicit content metadata field"
+  },
+  "editMetadataFieldExplicitHint": "Mark this track as containing explicit content",
+  "@editMetadataFieldExplicitHint": {
+    "description": "Description for the explicit content metadata switch"
+  },
+  "metadataExplicitValue": "Explicit",
+  "@metadataExplicitValue": {
+    "description": "Displayed value when a track is marked explicit"
+  },
+  "editMetadataFieldUpc": "UPC / Barcode",
+  "@editMetadataFieldUpc": {
+    "description": "Label for the release barcode metadata field"
+  },
+  "editMetadataFieldUpcHint": "Numeric UPC, EAN, or GTIN",
+  "@editMetadataFieldUpcHint": {
+    "description": "Hint for the release barcode metadata field"
+  },
   "editMetadataAdvanced": "Advanced",
   "@editMetadataAdvanced": {
     "description": "Expandable section label for advanced metadata fields"

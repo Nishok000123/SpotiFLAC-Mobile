@@ -4207,6 +4207,29 @@ class AppLocalizationsId extends AppLocalizations {
   String get editMetadataFieldComment => 'Comment';
 
   @override
+  String get trackAlbumType => 'Jenis Rilisan';
+
+  @override
+  String get editMetadataFieldAlbumTypeHint =>
+      'Album, singel, EP, kompilasi...';
+
+  @override
+  String get editMetadataFieldExplicit => 'Eksplisit';
+
+  @override
+  String get editMetadataFieldExplicitHint =>
+      'Tandai lagu ini sebagai konten eksplisit';
+
+  @override
+  String get metadataExplicitValue => 'Eksplisit';
+
+  @override
+  String get editMetadataFieldUpc => 'UPC / Barcode';
+
+  @override
+  String get editMetadataFieldUpcHint => 'UPC, EAN, atau GTIN numerik';
+
+  @override
   String get editMetadataAdvanced => 'Advanced';
 
   @override
