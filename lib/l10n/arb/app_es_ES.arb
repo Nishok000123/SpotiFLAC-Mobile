@@ -4045,19 +4045,19 @@
   "@downloadFolderAccessLostTitle": {
     "description": "Title of the warning banner shown in Files settings when the saved SAF folder grant is no longer valid"
   },
-  "downloadFolderAccessLostSubtitle": "Downloads will fail until you re-select the folder",
+  "downloadFolderAccessLostSubtitle": "Las descargas fallarán hasta que vuelvas a seleccionar la carpeta",
   "@downloadFolderAccessLostSubtitle": {
     "description": "Subtitle of the warning banner shown when the saved SAF folder grant is no longer valid"
   },
-  "downloadFolderReselect": "Re-select folder",
+  "downloadFolderReselect": "Volver a seleccionar carpeta",
   "@downloadFolderReselect": {
     "description": "Button that reopens the folder picker to restore download folder access"
   },
-  "downloadErrorSafPermissionLost": "SAF permission invalid or revoked. Please reconfigure download location in Settings.",
+  "downloadErrorSafPermissionLost": "Permiso SAF inválido o revocado. Por favor, reconfigura la ubicación de descarga en Configuración.",
   "@downloadErrorSafPermissionLost": {
     "description": "Error shown on downloads that failed because the persisted Android SAF folder grant is no longer valid"
   },
-  "downloadErrorFolderAccessLost": "Download folder access lost. Please re-select your download folder in Settings.",
+  "downloadErrorFolderAccessLost": "Se ha perdido el acceso a la carpeta de descarga. Por favor, vuelve a seleccionar tu carpeta de descargas en Configuración.",
   "@downloadErrorFolderAccessLost": {
     "description": "Error shown on downloads that failed because the iOS download folder bookmark could not be opened"
   },
@@ -4081,19 +4081,19 @@
   "@downloadArtistNameFilters": {
     "description": "Setting title for artist folder filter options"
   },
-  "downloadCreatePlaylistSourceFolder": "Playlist Source Folder",
+  "downloadCreatePlaylistSourceFolder": "Carpeta de Código Fuente de Listas",
   "@downloadCreatePlaylistSourceFolder": {
     "description": "Setting to create a subfolder per playlist source"
   },
-  "downloadCreatePlaylistSourceFolderEnabled": "A subfolder is created for each playlist",
+  "downloadCreatePlaylistSourceFolderEnabled": "Se crea una subcarpeta para cada lista de reproducción",
   "@downloadCreatePlaylistSourceFolderEnabled": {
     "description": "Subtitle when playlist folder is enabled"
   },
-  "downloadCreatePlaylistSourceFolderDisabled": "All tracks saved directly to download folder",
+  "downloadCreatePlaylistSourceFolderDisabled": "Todas las pistas guardadas directamente en la carpeta de descargas",
   "@downloadCreatePlaylistSourceFolderDisabled": {
     "description": "Subtitle when playlist folder is disabled"
   },
-  "downloadCreatePlaylistSourceFolderRedundant": "Handled by folder organization setting",
+  "downloadCreatePlaylistSourceFolderRedundant": "Gestionado por la configuración de organización de carpetas",
   "@downloadCreatePlaylistSourceFolderRedundant": {
     "description": "Subtitle when folder organization is already set to playlist"
   },
@@ -4105,7 +4105,7 @@
   "@downloadNetworkCompatibilityMode": {
     "description": "Setting for legacy TLS/network handling"
   },
-  "downloadNetworkCompatibilityModeEnabled": "Using legacy TLS settings for older networks",
+  "downloadNetworkCompatibilityModeEnabled": "Uso de ajustes TLS heredados para redes antiguas",
   "@downloadNetworkCompatibilityModeEnabled": {
     "description": "Subtitle when network compatibility mode is on"
   },
@@ -4113,31 +4113,31 @@
   "@downloadNetworkCompatibilityModeDisabled": {
     "description": "Subtitle when network compatibility mode is off"
   },
-  "downloadAllowLocalNetwork": "Allow Local Network Access",
+  "downloadAllowLocalNetwork": "Permitir el acceso a la red local",
   "@downloadAllowLocalNetwork": {
     "description": "Setting title for allowing requests to private/local network targets"
   },
-  "downloadAllowLocalNetworkEnabled": "Requests to local/private addresses are allowed (for local proxy or custom DNS)",
+  "downloadAllowLocalNetworkEnabled": "Se permiten solicitudes a direcciones locales/privadas (para proxy local o DNS personalizado)",
   "@downloadAllowLocalNetworkEnabled": {
     "description": "Subtitle when allow local network access is on"
   },
-  "downloadAllowLocalNetworkDisabled": "Local/private addresses are blocked for security",
+  "downloadAllowLocalNetworkDisabled": "Las direcciones locales/privadas están bloqueadas por seguridad",
   "@downloadAllowLocalNetworkDisabled": {
     "description": "Subtitle when allow local network access is off"
   },
-  "downloadSelectServiceToEnable": "Select a provider with quality options to enable this option",
+  "downloadSelectServiceToEnable": "Selecciona un proveedor con opciones de calidad para habilitar esta opción",
   "@downloadSelectServiceToEnable": {
     "description": "Subtitle when quality picker is disabled due to extension service"
   },
-  "downloadEmbedLyricsDisabled": "Enable metadata embedding first",
+  "downloadEmbedLyricsDisabled": "Activar primero la incrustación de metadatos",
   "@downloadEmbedLyricsDisabled": {
     "description": "Subtitle when lyrics embedding is blocked by metadata toggle"
   },
-  "downloadNeteaseIncludeTranslation": "Netease: Include Translation",
+  "downloadNeteaseIncludeTranslation": "Netease: Incluir traducción",
   "@downloadNeteaseIncludeTranslation": {
     "description": "Setting to include translated lyrics from Netease"
   },
-  "downloadNeteaseIncludeTranslationEnabled": "Chinese translation lines included",
+  "downloadNeteaseIncludeTranslationEnabled": "Líneas de traducción chinas incluyeron",
   "@downloadNeteaseIncludeTranslationEnabled": {
     "description": "Subtitle when Netease translation is on"
   },
@@ -4145,27 +4145,27 @@
   "@downloadNeteaseIncludeTranslationDisabled": {
     "description": "Subtitle when Netease translation is off"
   },
-  "downloadNeteaseIncludeRomanization": "Netease: Include Romanization",
+  "downloadNeteaseIncludeRomanization": "Netease: Incluir la romanización",
   "@downloadNeteaseIncludeRomanization": {
     "description": "Setting to include romanized lyrics from Netease"
   },
-  "downloadNeteaseIncludeRomanizationEnabled": "Romanization lines included",
+  "downloadNeteaseIncludeRomanizationEnabled": "Las líneas de romanización incluían",
   "@downloadNeteaseIncludeRomanizationEnabled": {
     "description": "Subtitle when Netease romanization is on"
   },
-  "downloadNeteaseIncludeRomanizationDisabled": "No romanization",
+  "downloadNeteaseIncludeRomanizationDisabled": "Sin romanización",
   "@downloadNeteaseIncludeRomanizationDisabled": {
     "description": "Subtitle when Netease romanization is off"
   },
-  "downloadAppleQqMultiPerson": "Apple / QQ: Multi-Person Lyrics",
+  "downloadAppleQqMultiPerson": "Apple / QQ: Letras de varias personas",
   "@downloadAppleQqMultiPerson": {
     "description": "Setting for word-by-word multi-person lyrics from Apple Music and QQ Music"
   },
-  "downloadAppleQqMultiPersonEnabled": "Speaker labels included for duets and group tracks",
+  "downloadAppleQqMultiPersonEnabled": "Etiquetas de altavoces incluidas para duetos y temas grupales",
   "@downloadAppleQqMultiPersonEnabled": {
     "description": "Subtitle when multi-person lyrics is on"
   },
-  "downloadAppleQqMultiPersonDisabled": "Standard lyrics without speaker labels",
+  "downloadAppleQqMultiPersonDisabled": "Letras estándar sin etiquetas de altavoz",
   "@downloadAppleQqMultiPersonDisabled": {
     "description": "Subtitle when multi-person lyrics is off"
   },
@@ -4173,7 +4173,7 @@
   "@downloadAppleElrcWordSync": {
     "description": "Setting for preserving Apple Music word-by-word eLRC timestamps"
   },
-  "downloadAppleElrcWordSyncEnabled": "Raw word-by-word timestamps preserved",
+  "downloadAppleElrcWordSyncEnabled": "Marcas temporales brutas palabra por palabra conservadas",
   "@downloadAppleElrcWordSyncEnabled": {
     "description": "Subtitle when Apple Music eLRC word sync is enabled"
   },
