@@ -320,32 +320,25 @@ class _TrackItemWithStatus extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Flexible(
-                            child: ClickableArtistName(
-                              artistName: track.artistName,
-                              artistId: track.artistId,
-                              coverUrl: track.coverUrl,
-                              extensionId: extensionId,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
+                      TrackMetadataBadgesLine(
+                        primary: ClickableArtistName(
+                          artistName: track.artistName,
+                          artistId: track.artistId,
+                          coverUrl: track.coverUrl,
+                          extensionId: extensionId,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        badges: [
                           ...buildQualityBadges(
                             audioQuality: track.audioQuality,
                             audioModes: track.audioModes,
                             colorScheme: colorScheme,
                             explicit: track.isExplicit,
                           ),
-                          if (isInLocalLibrary) ...[
-                            const SizedBox(width: 6),
-                            const InLibraryBadge(),
-                          ],
+                          if (isInLocalLibrary) const InLibraryBadge(),
                         ],
                       ),
                     ],

@@ -56,5 +56,14 @@ void main() {
       separators.every((text) => text.style?.color == Colors.white70),
       isTrue,
     );
+
+    final durationLabel = find.text('Duration');
+    final metadataRow = find
+        .ancestor(of: durationLabel, matching: find.byType(Row))
+        .first;
+    final row = tester.widget<Row>(metadataRow);
+
+    expect(row.crossAxisAlignment, CrossAxisAlignment.baseline);
+    expect(row.textBaseline, TextBaseline.alphabetic);
   });
 }

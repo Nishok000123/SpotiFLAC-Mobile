@@ -144,8 +144,44 @@ class DolbyLogoPainter extends CustomPainter {
       color != oldDelegate.color;
 }
 
-/// Convenience builder: returns a list of quality badge widgets for a track.
-/// Pass the result into a Row using spread operator.
+/// Keeps artist text and optional track badges responsive on narrow rows.
+///
+/// A [Row] with a flexible artist still overflows when the badges themselves
+/// need more room than remains. [Wrap] moves whole badges to another run while
+/// keeping the artist constrained and ellipsized when it alone is too long.
+class TrackMetadataBadgesLine extends StatelessWidget {
+  const TrackMetadataBadgesLine({
+    super.key,
+    required this.primary,
+    this.badges = const [],
+  });
+
+  final Widget primary;
+  final List<Widget> badges;
+
+  @override
+  Widget build(BuildContext context) {
+    if (badges.isEmpty) return primary;
+
+    return LayoutBuilder(
+      builder: (context, constraints) => Wrap(
+        spacing: 6,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+            child: primary,
+          ),
+          ...badges,
+        ],
+      ),
+    );
+  }
+}
+
+/// Returns the quality-related badge widgets for a track. Spacing and wrapping
+/// belong to [TrackMetadataBadgesLine] so the group stays responsive.
 List<Widget> buildQualityBadges({
   required String? audioQuality,
   required String? audioModes,
@@ -154,17 +190,14 @@ List<Widget> buildQualityBadges({
 }) {
   final badges = <Widget>[];
   if (explicit) {
-    badges.add(const SizedBox(width: 6));
     badges.add(ExplicitBadge(colorScheme: colorScheme));
   }
   if (audioQuality != null && audioQuality.isNotEmpty) {
-    badges.add(const SizedBox(width: 6));
     badges.add(
       AudioQualityBadge(label: audioQuality, colorScheme: colorScheme),
     );
   }
   if (audioModes != null && audioModes.contains('DOLBY_ATMOS')) {
-    badges.add(const SizedBox(width: 4));
     badges.add(DolbyAtmosBadge(colorScheme: colorScheme));
   }
   return badges;

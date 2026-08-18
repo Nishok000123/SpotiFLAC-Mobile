@@ -76,36 +76,31 @@ class TrackListTile extends ConsumerWidget {
       isSelected: isSelected,
       leading: leading,
       title: track.name,
-      subtitle: Row(
-        children: [
-          Flexible(
-            child: clickableArtist && !isSelectionMode
-                ? ClickableArtistName(
-                    artistName: track.artistName,
-                    artistId: track.artistId,
-                    coverUrl: track.coverUrl,
-                    extensionId: track.source,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: colorScheme.onSurfaceVariant),
-                  )
-                : Text(
-                    track.artistName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: colorScheme.onSurfaceVariant),
-                  ),
-          ),
+      subtitle: TrackMetadataBadgesLine(
+        primary: clickableArtist && !isSelectionMode
+            ? ClickableArtistName(
+                artistName: track.artistName,
+                artistId: track.artistId,
+                coverUrl: track.coverUrl,
+                extensionId: track.source,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: colorScheme.onSurfaceVariant),
+              )
+            : Text(
+                track.artistName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: colorScheme.onSurfaceVariant),
+              ),
+        badges: [
           ...buildQualityBadges(
             audioQuality: track.audioQuality,
             audioModes: track.audioModes,
             colorScheme: colorScheme,
             explicit: track.isExplicit,
           ),
-          if (isInLocalLibrary || isInHistory) ...[
-            const SizedBox(width: 6),
-            const InLibraryBadge(),
-          ],
+          if (isInLocalLibrary || isInHistory) const InLibraryBadge(),
         ],
       ),
       trailing: Row(
