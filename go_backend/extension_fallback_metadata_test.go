@@ -34,8 +34,9 @@ func TestOverlayExtensionReleaseMetadataFillsMissingRequestFields(t *testing.T) 
 		"song.m4a",
 		false,
 	)
+	expectedComment := track.Comment + "\n" + downloadCommentCredit
 	if response.UPC != track.UPC || response.AlbumType != "single" ||
-		!response.Explicit || response.Comment != track.Comment {
+		!response.Explicit || response.Comment != expectedComment {
 		t.Fatalf("enriched metadata was lost in download response: %#v", response)
 	}
 }

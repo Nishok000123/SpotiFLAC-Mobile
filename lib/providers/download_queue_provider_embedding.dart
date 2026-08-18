@@ -528,6 +528,7 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
     final backendComment = normalizeOptionalString(
       backendResult['comment']?.toString(),
     );
+    final resolvedComment = backendComment ?? sourceComment;
     final backendAlbumType = normalizeOptionalString(
       backendResult['album_type']?.toString(),
     );
@@ -572,7 +573,7 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
         (sourceGenre == null && backendGenre != null) ||
         (sourceLabel == null && backendLabel != null) ||
         (sourceCopyright == null && backendCopyright != null) ||
-        (sourceComment == null && backendComment != null) ||
+        resolvedComment != sourceComment ||
         (baseTrack.explicit != true && backendExplicit) ||
         (sourceUpc == null && backendUpc != null);
 
@@ -604,7 +605,7 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
       genre: sourceGenre ?? backendGenre,
       label: sourceLabel ?? backendLabel,
       copyright: sourceCopyright ?? backendCopyright,
-      comment: sourceComment ?? backendComment,
+      comment: resolvedComment,
       source: baseTrack.source,
       itemType: baseTrack.itemType,
       audioQuality: baseTrack.audioQuality,
