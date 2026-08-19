@@ -23,6 +23,8 @@ const int audioSpectrogramWidth = 1600;
 const int audioSpectrogramHeight = 800;
 const int audioSpectralAnalysisWidth = 400;
 const double audioSpectrogramDynamicRangeDb = 120;
+const int audioSpectrogramSampleWindowCount = 300;
+const int audioSpectrogramMaxSelectedChannelSamples = 8 * 1024 * 1024;
 
 String formatAudioAnalysisSpectralCutoff(
   double? cutoffHz, {
@@ -71,9 +73,19 @@ String _buildShowspectrumOptions({required int width, required String color}) {
 String buildAudioSpectrogramFilter({
   int channel = -1,
   bool includeCutoffPlane = false,
+  double? durationSeconds,
+  int? sampleRate,
+  int? channels,
 }) {
   final channelFilter = channel >= 0 ? 'pan=mono|c0=c$channel,' : '';
-  final input = '[0:a:0]${channelFilter}aformat=sample_fmts=fltp';
+  final samplingFilter = _buildAudioSpectrogramSamplingFilter(
+    channel: channel,
+    durationSeconds: durationSeconds,
+    sampleRate: sampleRate,
+    channels: channels,
+  );
+  final input =
+      '[0:a:0]$channelFilter${samplingFilter}aformat=sample_fmts=fltp';
   final display = _buildShowspectrumOptions(
     width: audioSpectrogramWidth,
     color: 'intensity',
@@ -100,6 +112,9 @@ List<String> buildAudioSpectrogramArguments({
   required String outputPath,
   String? cutoffOutputPath,
   int channel = -1,
+  double? durationSeconds,
+  int? sampleRate,
+  int? channels,
 }) {
   final arguments = <String>[
     '-hide_banner',
@@ -110,6 +125,9 @@ List<String> buildAudioSpectrogramArguments({
     buildAudioSpectrogramFilter(
       channel: channel,
       includeCutoffPlane: cutoffOutputPath != null,
+      durationSeconds: durationSeconds,
+      sampleRate: sampleRate,
+      channels: channels,
     ),
     '-map',
     '[spectrum]',
@@ -135,6 +153,32 @@ List<String> buildAudioSpectrogramArguments({
     ]);
   }
   return arguments;
+}
+
+String _buildAudioSpectrogramSamplingFilter({
+  required int channel,
+  required double? durationSeconds,
+  required int? sampleRate,
+  required int? channels,
+}) {
+  final duration = durationSeconds ?? 0;
+  final rate = sampleRate ?? 0;
+  if (!duration.isFinite || duration <= 0 || rate <= 0) return '';
+
+  final selectedChannels = channel >= 0
+      ? 1
+      : ((channels ?? 0) > 0 ? channels! : 2);
+  final maxSelectedDuration =
+      audioSpectrogramMaxSelectedChannelSamples / (rate * selectedChannels);
+  if (duration <= maxSelectedDuration) return '';
+
+  // showspectrumpic retains its complete input until it can render the final
+  // frame. Feed it equal windows spread across the whole track so memory is
+  // bounded without biasing the image or cutoff estimate toward the intro.
+  final interval = duration / audioSpectrogramSampleWindowCount;
+  final window = maxSelectedDuration / audioSpectrogramSampleWindowCount;
+  return "aselect='lt(mod(t,${interval.toStringAsFixed(9)}),"
+      "${window.toStringAsFixed(9)})',asetpts=N/SR/TB,";
 }
 
 class AudioAstatsSummary {
@@ -583,7 +627,10 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
           expectedPath,
           channel: _spectrogramChannel,
         );
-        image ??= await _generateAndCacheSpectrogram(filePath: expectedPath);
+        image ??= await _generateAndCacheSpectrogram(
+          filePath: expectedPath,
+          analysisData: cached,
+        );
         if (isCurrentRequest()) {
           setState(() {
             _spectrogramImage?.dispose();
@@ -600,11 +647,18 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
     }
   }
 
-  Future<ui.Image> _generateAndCacheSpectrogram({String? filePath}) async {
+  Future<ui.Image> _generateAndCacheSpectrogram({
+    String? filePath,
+    AudioAnalysisData? analysisData,
+  }) async {
     final sourcePath = filePath ?? widget.filePath;
+    final data = analysisData ?? _data;
     final artifact = await _generateSpectrogramForFile(
       sourcePath,
       channel: _spectrogramChannel,
+      durationSeconds: data?.duration,
+      sampleRate: data?.sampleRate,
+      channels: data?.channels,
     );
     await _saveSpectrogramToCache(
       sourcePath,
@@ -662,7 +716,7 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
         );
       }
 
-      image ??= await _generateAndCacheSpectrogram();
+      image ??= await _generateAndCacheSpectrogram(analysisData: data);
 
       if (mounted) {
         setState(() {
@@ -833,10 +887,16 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
       }
       _GeneratedSpectrogram? spectrogram;
       try {
+        final effectiveDuration = info.totalSamples > 0 && info.sampleRate > 0
+            ? info.totalSamples / info.sampleRate
+            : info.duration;
         spectrogram = await _generateSpectrogram(
           workingPath,
           channel: -1,
           includeCutoffPlane: true,
+          durationSeconds: effectiveDuration,
+          sampleRate: info.sampleRate,
+          channels: info.channels,
         );
         final cutoffIntensity = spectrogram.cutoffIntensity;
         if (cutoffIntensity == null) {
@@ -851,9 +911,6 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
             maxFrequencyHz: info.sampleRate / 2,
           ),
         );
-        final effectiveDuration = info.totalSamples > 0 && info.sampleRate > 0
-            ? info.totalSamples / info.sampleRate
-            : info.duration;
         final levelMetrics = await _runFullStreamLevelAnalysis(
           workingPath,
           durationSeconds: effectiveDuration,
@@ -909,6 +966,9 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
   Future<_GeneratedSpectrogram> _generateSpectrogramForFile(
     String filePath, {
     required int channel,
+    double? durationSeconds,
+    int? sampleRate,
+    int? channels,
   }) async {
     String workingPath = filePath;
     String? tempCopy;
@@ -921,7 +981,13 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
     }
 
     try {
-      return await _generateSpectrogram(workingPath, channel: channel);
+      return await _generateSpectrogram(
+        workingPath,
+        channel: channel,
+        durationSeconds: durationSeconds,
+        sampleRate: sampleRate,
+        channels: channels,
+      );
     } finally {
       if (tempCopy != null) {
         try {
@@ -935,6 +1001,9 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
     String inputPath, {
     required int channel,
     bool includeCutoffPlane = false,
+    double? durationSeconds,
+    int? sampleRate,
+    int? channels,
   }) async {
     final tempDir = await getTemporaryDirectory();
     final rawPath =
@@ -949,6 +1018,9 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
           outputPath: rawPath,
           cutoffOutputPath: cutoffPath,
           channel: channel,
+          durationSeconds: durationSeconds,
+          sampleRate: sampleRate,
+          channels: channels,
         ),
       );
 
@@ -1035,6 +1107,9 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
         final artifact = await _generateSpectrogramForFile(
           widget.filePath,
           channel: channel,
+          durationSeconds: data.duration,
+          sampleRate: data.sampleRate,
+          channels: data.channels,
         );
         image = artifact.image;
         await _saveSpectrogramToCache(widget.filePath, image, channel: channel);

@@ -136,6 +136,49 @@ lavfi.r128.true_peak=0.907
       expect(arguments, isNot(contains('-loglevel')));
     });
 
+    test('bounds retained audio for long high-rate files', () {
+      final filter = buildAudioSpectrogramFilter(
+        durationSeconds: 600,
+        sampleRate: 192000,
+        channels: 2,
+      );
+
+      expect(filter, contains("aselect='lt(mod(t,2.000000000),"));
+      expect(filter, contains('asetpts=N/SR/TB'));
+      expect(filter, contains('aformat=sample_fmts=fltp'));
+      expect(filter, isNot(contains('aresample')));
+    });
+
+    test('keeps short files continuous', () {
+      final filter = buildAudioSpectrogramFilter(
+        durationSeconds: 60,
+        sampleRate: 44100,
+        channels: 2,
+      );
+
+      expect(filter, isNot(contains('aselect=')));
+      expect(filter, isNot(contains('asetpts=')));
+    });
+
+    test('accounts for a selected mono channel in the memory bound', () {
+      final combined = buildAudioSpectrogramFilter(
+        durationSeconds: 60,
+        sampleRate: 192000,
+        channels: 8,
+      );
+      final mono = buildAudioSpectrogramFilter(
+        channel: 3,
+        durationSeconds: 60,
+        sampleRate: 192000,
+        channels: 8,
+      );
+
+      expect(combined, contains('aselect='));
+      expect(mono, contains('pan=mono|c0=c3'));
+      expect(mono, contains('aselect='));
+      expect(combined, isNot(equals(mono)));
+    });
+
     test('renders a monotonic cutoff plane beside the display image', () {
       final arguments = buildAudioSpectrogramArguments(
         inputPath: 'source.flac',
