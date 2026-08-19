@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:spotiflac_android/models/track.dart';
@@ -14,15 +14,14 @@ class CsvImportService {
     void Function(int current, int total)? onProgress,
   }) async {
     try {
-      final FilePickerResult? result = await FilePicker.pickFiles(
+      final picked = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['csv', 'm3u', 'm3u8'],
       );
 
-      if (result != null && result.files.single.path != null) {
-        final file = File(result.files.single.path!);
-        final content = await file.readAsString();
-        final extension = p.extension(file.path).toLowerCase();
+      if (picked != null) {
+        final content = utf8.decode(await picked.readAsBytes());
+        final extension = p.extension(picked.name).toLowerCase();
         final tracks = (extension == '.m3u' || extension == '.m3u8')
             ? M3uPlaylistService.parseM3u(content)
             : _parseCsv(content);

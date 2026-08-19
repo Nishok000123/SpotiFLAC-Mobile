@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:spotiflac_android/widgets/extension_row.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/settings.dart';
@@ -217,26 +218,45 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   }
 
   Future<void> _installExtension() async {
-    final result = await FilePicker.pickFiles(type: FileType.any);
+    final selectedFiles = await FilePicker.pickFiles(type: FileType.any);
+    if (selectedFiles.isEmpty) return;
 
-    if (result != null && result.files.isNotEmpty) {
-      final selectedPaths = result.files
-          .map((file) => file.path)
-          .whereType<String>()
-          .toList();
-      final extensionPaths = selectedPaths.where((path) {
-        final lowerPath = path.toLowerCase();
-        return lowerPath.endsWith('.spotiflac-ext') ||
-            lowerPath.endsWith('.sflx');
-      }).toList();
+    final hasInvalidFile = selectedFiles.any((file) {
+      final lowerName = file.name.toLowerCase();
+      return !lowerName.endsWith('.spotiflac-ext') &&
+          !lowerName.endsWith('.sflx');
+    });
+    if (hasInvalidFile) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.snackbarSelectExtFile)),
+        );
+      }
+      return;
+    }
 
-      if (extensionPaths.length != selectedPaths.length) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.snackbarSelectExtFile)),
-          );
+    Directory? materializedDir;
+    try {
+      final extensionPaths = <String>[];
+      for (final selectedFile in selectedFiles) {
+        final localPath = selectedFile.path;
+        if (localPath != null && localPath.isNotEmpty) {
+          extensionPaths.add(localPath);
+          continue;
         }
-        return;
+
+        materializedDir ??= await Directory.systemTemp.createTemp(
+          'spotiflac_extension_import_',
+        );
+        final safeName = p.basename(selectedFile.name);
+        final materializedFile = File(
+          p.join(materializedDir.path, '${extensionPaths.length}_$safeName'),
+        );
+        await materializedFile.writeAsBytes(
+          await selectedFile.readAsBytes(),
+          flush: true,
+        );
+        extensionPaths.add(materializedFile.path);
       }
 
       final installResult = await ref
@@ -250,6 +270,14 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } finally {
+      try {
+        if (materializedDir != null && await materializedDir.exists()) {
+          await materializedDir.delete(recursive: true);
+        }
+      } catch (_) {
+        // The extension has already been copied into app storage.
       }
     }
   }

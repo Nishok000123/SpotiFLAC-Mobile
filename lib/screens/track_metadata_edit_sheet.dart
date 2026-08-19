@@ -746,13 +746,13 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
       if (picked == null) return;
 
       final sourcePath = picked.path;
+      final pickedExtension = p.extension(picked.name).replaceFirst('.', '');
       Uint8List? bytes;
-      final needsByteFallback =
-          !_hasValue(sourcePath) && !_hasValue(picked.extension);
+      final needsByteFallback = !_hasValue(sourcePath);
       if (needsByteFallback) {
         bytes = await picked.readAsBytes();
       }
-      final extension = _resolveImageExtension(picked.extension, bytes);
+      final extension = _resolveImageExtension(pickedExtension, bytes);
 
       final tempDir = await Directory.systemTemp.createTemp('edit_cover_');
       final tempPath =

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import 'package:spotiflac_android/widgets/collection_scaffold.dart';
 import 'package:spotiflac_android/theme/app_tokens.dart';
 import 'package:spotiflac_android/widgets/track_card.dart';
@@ -463,12 +464,39 @@ class _LibraryTracksFolderScreenState
     final picked = await FilePicker.pickFile(type: FileType.image);
     if (picked == null) return;
 
-    final path = picked.path;
-    if (path == null || path.isEmpty) return;
+    Directory? materializedDir;
+    try {
+      var sourcePath = picked.path;
+      if (sourcePath == null || sourcePath.isEmpty) {
+        materializedDir = await Directory.systemTemp.createTemp(
+          'spotiflac_playlist_cover_',
+        );
+        final pickedExtension = p.extension(picked.name);
+        final materializedFile = File(
+          p.join(
+            materializedDir.path,
+            'selected_cover${pickedExtension.isEmpty ? '.img' : pickedExtension}',
+          ),
+        );
+        await materializedFile.writeAsBytes(
+          await picked.readAsBytes(),
+          flush: true,
+        );
+        sourcePath = materializedFile.path;
+      }
 
-    await ref
-        .read(libraryCollectionsProvider.notifier)
-        .setPlaylistCover(playlistId, path);
+      await ref
+          .read(libraryCollectionsProvider.notifier)
+          .setPlaylistCover(playlistId, sourcePath);
+    } finally {
+      try {
+        if (materializedDir != null && await materializedDir.exists()) {
+          await materializedDir.delete(recursive: true);
+        }
+      } catch (_) {
+        // The cover has already been normalized into app storage.
+      }
+    }
   }
 
   Future<void> _removeCoverImage() async {

@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -76,13 +76,12 @@ class _BackupRestorePageState extends ConsumerState<BackupRestorePage> {
 
     String? content;
     try {
-      final result = await FilePicker.pickFiles(
+      final picked = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['json', BackupService.fileExtension],
       );
-      final path = result?.files.single.path;
-      if (path == null) return;
-      content = await File(path).readAsString();
+      if (picked == null) return;
+      content = utf8.decode(await picked.readAsBytes());
     } catch (e) {
       _log.e('Failed to read backup file: $e');
       messenger.showSnackBar(SnackBar(content: Text(l10n.backupInvalidFile)));
