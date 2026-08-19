@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -205,6 +206,145 @@ func TestWAVAIFFTagWriteRejectsMissingRequestedCover(t *testing.T) {
 	}
 	if !bytes.Equal(before, after) {
 		t.Fatal("WAV changed even though requested cover could not be read")
+	}
+}
+
+func TestWAVAIFFRemainExternallyDecodableAfterTagging(t *testing.T) {
+	ffprobePath, err := exec.LookPath("ffprobe")
+	if err != nil {
+		t.Skip("ffprobe not available")
+	}
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg not available")
+	}
+
+	dir := t.TempDir()
+	coverPath := filepath.Join(dir, "cover.png")
+	runFFmpegTestCommand(
+		t,
+		"-y",
+		"-f",
+		"lavfi",
+		"-i",
+		"color=c=blue:s=64x64:d=1",
+		"-frames:v",
+		"1",
+		coverPath,
+	)
+
+	formats := []struct {
+		name       string
+		extension  string
+		codec      string
+		writeTags  func(string, map[string]string) error
+		littleSize bool
+	}{
+		{name: "WAV16", extension: ".wav", codec: "pcm_s16le", writeTags: WriteWAVTags, littleSize: true},
+		{name: "WAV24", extension: ".wav", codec: "pcm_s24le", writeTags: WriteWAVTags, littleSize: true},
+		{name: "AIFF16", extension: ".aiff", codec: "pcm_s16be", writeTags: WriteAIFFTags},
+		{name: "AIFF24", extension: ".aiff", codec: "pcm_s24be", writeTags: WriteAIFFTags},
+	}
+
+	for _, format := range formats {
+		format := format
+		t.Run(format.name, func(t *testing.T) {
+			path := filepath.Join(dir, format.name+format.extension)
+			runFFmpegTestCommand(
+				t,
+				"-y",
+				"-f",
+				"lavfi",
+				"-i",
+				"sine=frequency=440:sample_rate=48000:duration=1",
+				"-ac",
+				"2",
+				"-c:a",
+				format.codec,
+				"-metadata",
+				"title=Container fallback",
+				path,
+			)
+
+			if err := format.writeTags(path, map[string]string{
+				"title":        "Externally decodable",
+				"artist":       "SpotiFLAC Mobile",
+				"track_number": "1",
+				"track_total":  "1",
+				"cover_path":   coverPath,
+			}); err != nil {
+				t.Fatalf("write native tags: %v", err)
+			}
+
+			contents, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(contents) < 12 {
+				t.Fatalf("container is too small: %d bytes", len(contents))
+			}
+			var declaredSize uint32
+			if format.littleSize {
+				declaredSize = binary.LittleEndian.Uint32(contents[4:8])
+			} else {
+				declaredSize = binary.BigEndian.Uint32(contents[4:8])
+			}
+			if int64(declaredSize)+8 != int64(len(contents)) {
+				t.Fatalf(
+					"container size = %d, file size = %d",
+					int64(declaredSize)+8,
+					len(contents),
+				)
+			}
+
+			probe := exec.Command(
+				ffprobePath,
+				"-v",
+				"error",
+				"-select_streams",
+				"a:0",
+				"-show_entries",
+				"stream=codec_name,sample_rate,channels",
+				"-of",
+				"json",
+				path,
+			)
+			probeOutput, err := probe.CombinedOutput()
+			if err != nil {
+				t.Fatalf("ffprobe rejected tagged file: %v\n%s", err, probeOutput)
+			}
+			var probeResult struct {
+				Streams []struct {
+					CodecName  string `json:"codec_name"`
+					SampleRate string `json:"sample_rate"`
+					Channels   int    `json:"channels"`
+				} `json:"streams"`
+			}
+			if err := json.Unmarshal(probeOutput, &probeResult); err != nil {
+				t.Fatalf("decode ffprobe output: %v\n%s", err, probeOutput)
+			}
+			if len(probeResult.Streams) != 1 {
+				t.Fatalf("ffprobe streams = %v", probeResult.Streams)
+			}
+			stream := probeResult.Streams[0]
+			if stream.CodecName != format.codec || stream.SampleRate != "48000" || stream.Channels != 2 {
+				t.Fatalf("ffprobe stream = %+v, want %s/48000 Hz/stereo", stream, format.codec)
+			}
+
+			decode := ffmpegCommand(
+				"-v",
+				"error",
+				"-i",
+				path,
+				"-map",
+				"0:a:0",
+				"-f",
+				"null",
+				"-",
+			)
+			if output, err := decode.CombinedOutput(); err != nil {
+				t.Fatalf("ffmpeg could not decode tagged file: %v\n%s", err, output)
+			}
+		})
 	}
 }
 
