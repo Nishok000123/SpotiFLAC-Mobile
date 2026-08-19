@@ -1393,10 +1393,9 @@ class MainActivity: FlutterFragmentActivity() {
                         "downloadCoverToFile" -> {
                             val coverUrl = call.argument<String>("cover_url") ?: ""
                             val outputPath = call.argument<String>("output_path") ?: ""
-                            val maxQuality = call.argument<Boolean>("max_quality") ?: true
                             val response = withContext(Dispatchers.IO) {
                                 try {
-                                    Gobackend.downloadCoverToFile(coverUrl, outputPath, maxQuality)
+                                    Gobackend.downloadCoverToFile(coverUrl, outputPath, false)
                                     """{"success":true}"""
                                 } catch (e: Exception) {
                                     """{"success":false,"error":"${e.message?.replace("\"", "'")}"}"""

@@ -37,7 +37,6 @@ class CoverDownloadService {
       final download = await PlatformBridge.downloadCoverToFile(
         normalizedUrl,
         tempPath,
-        maxQuality: true,
       );
       final error = download['error']?.toString().trim() ?? '';
       if (error.isNotEmpty) throw StateError(error);

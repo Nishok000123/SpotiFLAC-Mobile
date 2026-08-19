@@ -527,12 +527,15 @@ func RewriteSplitArtistTagsExport(filePath, artist, albumArtist string) (string,
 	return s, nil
 }
 
-func DownloadCoverToFile(coverURL string, outputPath string, maxQuality bool) error {
+// The final bool is retained for gomobile ABI compatibility with existing
+// native shells. Resolution selection is extension-owned and the value is
+// intentionally ignored.
+func DownloadCoverToFile(coverURL string, outputPath string, _ bool) error {
 	if coverURL == "" {
 		return fmt.Errorf("no cover URL provided")
 	}
 
-	data, err := downloadCoverToMemory(coverURL, maxQuality)
+	data, err := downloadCoverToMemory(coverURL)
 	if err != nil {
 		return fmt.Errorf("failed to download cover: %w", err)
 	}

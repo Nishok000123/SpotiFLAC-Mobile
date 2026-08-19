@@ -152,13 +152,6 @@ class AppLocalizationsId extends AppLocalizations {
       'Simpan lirik yang disinkronkan bersama dengan lagu yang Anda unduh';
 
   @override
-  String get optionsMaxQualityCover => 'Cover Kualitas Maksimal';
-
-  @override
-  String get optionsMaxQualityCoverSubtitle =>
-      'Unduh cover art resolusi tertinggi';
-
-  @override
   String get optionsReplayGain => 'ReplayGain';
 
   @override

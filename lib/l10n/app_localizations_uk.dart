@@ -152,13 +152,6 @@ class AppLocalizationsUk extends AppLocalizations {
       'Save synced lyrics alongside your downloaded tracks';
 
   @override
-  String get optionsMaxQualityCover => 'Максимальна якість обкладинки';
-
-  @override
-  String get optionsMaxQualityCoverSubtitle =>
-      'Завантажити обкладинку з найвищою роздільною здатністю';
-
-  @override
   String get optionsReplayGain => 'Нормалізація звуку';
 
   @override

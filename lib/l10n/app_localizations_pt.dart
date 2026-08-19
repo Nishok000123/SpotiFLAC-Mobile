@@ -149,13 +149,6 @@ class AppLocalizationsPt extends AppLocalizations {
       'Embed synced lyrics into FLAC files';
 
   @override
-  String get optionsMaxQualityCover => 'Max Quality Cover';
-
-  @override
-  String get optionsMaxQualityCoverSubtitle =>
-      'Download highest resolution cover art';
-
-  @override
   String get optionsReplayGain => 'ReplayGain';
 
   @override
@@ -5088,13 +5081,6 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
   @override
   String get optionsEmbedLyricsSubtitle =>
       'Salve letras sincronizadas ao lado das suas faixas baixadas';
-
-  @override
-  String get optionsMaxQualityCover => 'Capa de Qualidade Máxima';
-
-  @override
-  String get optionsMaxQualityCoverSubtitle =>
-      'Baixar capa do álbum com a mais alta resolução';
 
   @override
   String get optionsReplayGain => 'ReplayGain';

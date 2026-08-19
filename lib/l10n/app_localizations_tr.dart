@@ -152,13 +152,6 @@ class AppLocalizationsTr extends AppLocalizations {
       'İndirdiğiniz parçaların yanına senkronize edilmiş şarkı sözlerini kaydedin';
 
   @override
-  String get optionsMaxQualityCover => 'En Yüksek Kapak Kalitesi';
-
-  @override
-  String get optionsMaxQualityCoverSubtitle =>
-      'En yüksek kalitedeki albüm kapaklarını indir';
-
-  @override
   String get optionsReplayGain => 'ReplayGain';
 
   @override

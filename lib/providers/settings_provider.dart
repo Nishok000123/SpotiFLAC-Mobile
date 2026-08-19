@@ -576,11 +576,6 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _syncLyricsSettingsToBackend();
   }
 
-  void setMaxQualityCover(bool enabled) {
-    state = state.copyWith(maxQualityCover: enabled);
-    _saveSettings();
-  }
-
   void setFirstLaunchComplete() {
     state = state.copyWith(isFirstLaunch: false);
     _saveSettings();

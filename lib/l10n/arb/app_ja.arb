@@ -922,9 +922,6 @@
   "@audioAnalysisMono": {
     "description": "Audio channel layout label - mono"
   },
-  "@optionsMaxQualityCoverSubtitle": {
-    "description": "Subtitle for max quality cover"
-  },
   "@audioAnalysisNyquist": {
     "description": "Nyquist frequency metric label"
   },
@@ -3249,7 +3246,6 @@
     "description": "Tutorial extensions tip 2"
   },
   "libraryFolder": "ライブラリのフォルダ",
-  "optionsMaxQualityCoverSubtitle": "最高解像度のカバーアートをダウンロード",
   "@metadataProviderPriorityTitle": {
     "description": "Metadata priority page title"
   },
@@ -5476,9 +5472,6 @@
   "nowPlayingDetails": "Details",
   "collectionWishlistEmptyTitle": "Wishlist is empty",
   "downloadAppleQqMultiPersonEnabled": "Speaker labels included for duets and group tracks",
-  "@optionsMaxQualityCover": {
-    "description": "Download highest quality album art"
-  },
   "@snackbarExtensionUpdatedVersion": {
     "description": "Snackbar after updating an extension from the repo tab",
     "placeholders": {
@@ -5822,7 +5815,6 @@
   "downloadFrom": "ダウンロード元",
   "collectionWishlistEmptySubtitle": "Tap + on tracks to save what you want to download later",
   "cueSplitSplitting": "Splitting CUE sheet... ({current}/{total})",
-  "optionsMaxQualityCover": "最大品質のカバー",
   "trackOptionAddToWishlist": "ウィッシュリストに追加",
   "settingsBackup": "Backup & Restore",
   "aboutPaxsenixSubtitle": "Lyrics proxy for Musixmatch, Netease, Apple Music, QQ Music, Spotify, Deezer, YouTube, Kugou, and Genius",

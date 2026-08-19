@@ -53,15 +53,6 @@ class MetadataSettingsPage extends ConsumerWidget {
                       ),
                     ),
                     SettingsSwitchItem(
-                      icon: Icons.image,
-                      title: context.l10n.optionsMaxQualityCover,
-                      subtitle: context.l10n.optionsMaxQualityCoverSubtitle,
-                      value: settings.maxQualityCover,
-                      onChanged: (v) => ref
-                          .read(settingsProvider.notifier)
-                          .setMaxQualityCover(v),
-                    ),
-                    SettingsSwitchItem(
                       icon: Icons.graphic_eq,
                       title: context.l10n.optionsReplayGain,
                       subtitle: settings.embedReplayGain

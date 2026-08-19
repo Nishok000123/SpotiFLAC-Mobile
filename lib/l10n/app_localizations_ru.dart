@@ -151,13 +151,6 @@ class AppLocalizationsRu extends AppLocalizations {
       'Сохранять синхронизированный текст песни рядом с загруженным треком';
 
   @override
-  String get optionsMaxQualityCover => 'Максимальное качество обложки';
-
-  @override
-  String get optionsMaxQualityCoverSubtitle =>
-      'Скачивать обложку в макс. разрешении';
-
-  @override
   String get optionsReplayGain => 'ReplayGain';
 
   @override

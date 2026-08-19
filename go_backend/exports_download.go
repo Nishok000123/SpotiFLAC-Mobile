@@ -28,7 +28,6 @@ type DownloadRequest struct {
 	EmbedMetadata               bool   `json:"embed_metadata"`
 	ArtistTagMode               string `json:"artist_tag_mode,omitempty"`
 	EmbedLyrics                 bool   `json:"embed_lyrics"`
-	EmbedMaxQualityCover        bool   `json:"embed_max_quality_cover"`
 	EmbedReplayGain             bool   `json:"embed_replaygain,omitempty"`
 	PostProcessingEnabled       bool   `json:"post_processing_enabled,omitempty"`
 	TidalHighFormat             string `json:"tidal_high_format,omitempty"`

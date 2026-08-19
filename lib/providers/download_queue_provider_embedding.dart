@@ -657,10 +657,7 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
       // Started here, awaited only after the lyrics fetch below so the two
       // network round trips overlap. Errors are handled inside the fetch
       // (it resolves to null), never as an unhandled rejection.
-      coverFuture = _sharedEmbedCover(
-        coverUrl,
-        maxQuality: settings.maxQualityCover,
-      );
+      coverFuture = _sharedEmbedCover(coverUrl);
     }
 
     String? lrcContent;
@@ -1021,33 +1018,24 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
   static const _embedCoverCacheMax = 8;
 
   /// One cover fetch per URL, shared by every track in the batch.
-  Future<String?> _sharedEmbedCover(
-    String coverUrl, {
-    required bool maxQuality,
-  }) {
-    final cacheKey = '${maxQuality ? 'max' : 'original'}|$coverUrl';
-    final existing = _embedCoverCache.remove(cacheKey);
+  Future<String?> _sharedEmbedCover(String coverUrl) {
+    final existing = _embedCoverCache.remove(coverUrl);
     if (existing != null) {
-      _embedCoverCache[cacheKey] = existing; // LRU touch
+      _embedCoverCache[coverUrl] = existing; // LRU touch
       return existing;
     }
-    final fetch = _downloadEmbedCover(coverUrl, maxQuality: maxQuality).then((
-      path,
-    ) {
-      if (path == null) _embedCoverCache.remove(cacheKey); // allow retry
+    final fetch = _downloadEmbedCover(coverUrl).then((path) {
+      if (path == null) _embedCoverCache.remove(coverUrl); // allow retry
       return path;
     });
-    _embedCoverCache[cacheKey] = fetch;
+    _embedCoverCache[coverUrl] = fetch;
     while (_embedCoverCache.length > _embedCoverCacheMax) {
       _evictEmbedCover(_embedCoverCache.keys.first);
     }
     return fetch;
   }
 
-  Future<String?> _downloadEmbedCover(
-    String coverUrl, {
-    required bool maxQuality,
-  }) async {
+  Future<String?> _downloadEmbedCover(String coverUrl) async {
     try {
       final tempDir = await getTemporaryDirectory();
       final uniqueId =
@@ -1058,7 +1046,6 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
       final result = await PlatformBridge.downloadCoverToFile(
         coverUrl,
         coverPath,
-        maxQuality: maxQuality,
       );
       if (result['error'] != null) {
         _log.w('Failed to download cover: ${result['error']}');

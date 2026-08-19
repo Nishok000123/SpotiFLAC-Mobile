@@ -144,12 +144,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get optionsEmbedLyricsSubtitle => '다운로드된 트랙과 함께 동기화된 가사를 저장합니다';
 
   @override
-  String get optionsMaxQualityCover => '고품질 표지 이미지';
-
-  @override
-  String get optionsMaxQualityCoverSubtitle => '최고 해상도의 표지 이미지를 다운로드';
-
-  @override
   String get optionsReplayGain => '리플레이게인';
 
   @override

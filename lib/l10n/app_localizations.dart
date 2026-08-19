@@ -382,18 +382,6 @@ abstract class AppLocalizations {
   /// **'Save synced lyrics alongside your downloaded tracks'**
   String get optionsEmbedLyricsSubtitle;
 
-  /// Download highest quality album art
-  ///
-  /// In en, this message translates to:
-  /// **'Max Quality Cover'**
-  String get optionsMaxQualityCover;
-
-  /// Subtitle for max quality cover
-  ///
-  /// In en, this message translates to:
-  /// **'Download highest resolution cover art'**
-  String get optionsMaxQualityCoverSubtitle;
-
   /// Title for ReplayGain setting toggle
   ///
   /// In en, this message translates to:

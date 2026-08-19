@@ -503,7 +503,7 @@ internal fun NativeDownloadFinalizer.downloadCoverForMetadata(context: Context, 
         Gobackend.downloadCoverToFile(
             coverUrl,
             output.absolutePath,
-            input.request.optBoolean("embed_max_quality_cover", true)
+            false
         )
         if (output.exists() && output.length() > 0L) {
             output

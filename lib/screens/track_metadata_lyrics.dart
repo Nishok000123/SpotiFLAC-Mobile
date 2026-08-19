@@ -685,14 +685,12 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
             result = await PlatformBridge.downloadCoverToFile(
               _coverUrl!,
               tempOutput,
-              maxQuality: true,
             );
           }
         } else if (_coverUrl != null && _coverUrl!.isNotEmpty) {
           result = await PlatformBridge.downloadCoverToFile(
             _coverUrl!,
             tempOutput,
-            maxQuality: true,
           );
         } else {
           if (mounted) {
@@ -781,14 +779,12 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
           result = await PlatformBridge.downloadCoverToFile(
             _coverUrl!,
             outputPath,
-            maxQuality: true,
           );
         }
       } else if (_coverUrl != null && _coverUrl!.isNotEmpty) {
         result = await PlatformBridge.downloadCoverToFile(
           _coverUrl!,
           outputPath,
-          maxQuality: true,
         );
       } else {
         if (mounted) {
@@ -996,7 +992,6 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
       final request = <String, dynamic>{
         'file_path': cleanFilePath,
         'cover_url': _coverUrl ?? '',
-        'max_quality': true,
         'embed_lyrics': settings.embedLyrics,
         'lyrics_mode': settings.lyricsMode,
         'artist_tag_mode': artistTagMode,

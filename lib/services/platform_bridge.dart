@@ -899,13 +899,11 @@ class PlatformBridge {
 
   static Future<Map<String, dynamic>> downloadCoverToFile(
     String coverUrl,
-    String outputPath, {
-    bool maxQuality = true,
-  }) {
+    String outputPath,
+  ) {
     return _invokeMap('downloadCoverToFile', {
       'cover_url': coverUrl,
       'output_path': outputPath,
-      'max_quality': maxQuality,
     });
   }
 

@@ -21,7 +21,6 @@ var fetchMusicBrainzAlbumArtistByISRC = FetchMusicBrainzAlbumArtistByISRC
 type reEnrichRequest struct {
 	FilePath      string   `json:"file_path"`
 	CoverURL      string   `json:"cover_url"`
-	MaxQuality    bool     `json:"max_quality"`
 	EmbedLyrics   bool     `json:"embed_lyrics"`
 	LyricsMode    string   `json:"lyrics_mode,omitempty"`
 	ArtistTagMode string   `json:"artist_tag_mode,omitempty"`
@@ -727,7 +726,7 @@ func ReEnrichFile(requestJSON string) (string, error) {
 	var coverTempPath string
 	var coverDataBytes []byte
 	if req.CoverURL != "" && req.shouldUpdateTag("cover", "cover") {
-		coverData, err := downloadCoverToMemory(req.CoverURL, req.MaxQuality)
+		coverData, err := downloadCoverToMemory(req.CoverURL)
 		if err != nil {
 			GoLog("[ReEnrich] Failed to download cover: %v\n", err)
 		} else {

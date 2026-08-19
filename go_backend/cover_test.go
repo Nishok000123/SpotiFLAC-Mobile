@@ -1,32 +1,11 @@
 package gobackend
 
 import (
-	"bytes"
-	"errors"
-	"image"
-	"image/color"
-	"image/png"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
-
-func testPNG(t *testing.T, width, height int) []byte {
-	t.Helper()
-	img := image.NewRGBA(image.Rect(0, 0, width, height))
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			img.Set(x, y, color.RGBA{R: uint8(x), G: uint8(y), B: 100, A: 255})
-		}
-	}
-	var buffer bytes.Buffer
-	if err := png.Encode(&buffer, img); err != nil {
-		t.Fatalf("encode test cover: %v", err)
-	}
-	return buffer.Bytes()
-}
 
 func resetCoverCache() {
 	coverMu.Lock()
@@ -116,72 +95,26 @@ func TestFetchCoverCachedTTLExpiry(t *testing.T) {
 	}
 }
 
-func TestMaxQualityCoverCandidatesProbe1900And1500(t *testing.T) {
-	url := "https://cdn-images.dzcdn.net/images/cover/abc/1000x1000-000000-80-0-0.jpg"
-	candidates := maxQualityCoverCandidateURLs(url)
-	if len(candidates) != 2 {
-		t.Fatalf("expected two candidates, got %#v", candidates)
-	}
-	if !strings.Contains(candidates[0], "1900x1900") {
-		t.Fatalf("first candidate = %q", candidates[0])
-	}
-	if !strings.Contains(candidates[1], "1500x1500") {
-		t.Fatalf("second candidate = %q", candidates[1])
-	}
-}
-
-func TestDownloadCoverSelectsDecodedDimensionsBeforeByteSize(t *testing.T) {
+func TestDownloadCoverUsesProviderURLUnchanged(t *testing.T) {
 	orig := coverFetch
 	defer func() { coverFetch = orig }()
 	resetCoverCache()
 
-	advertised1900ButSmaller := append(testPNG(t, 12, 12), bytes.Repeat([]byte{0}, 4096)...)
-	actualLargerDimensions := testPNG(t, 15, 15)
+	const providerURL = "https://i.scdn.co/image/ab67616d00001e02example"
+	var requestedURL string
 	coverFetch = func(url string) ([]byte, error) {
-		switch {
-		case strings.Contains(url, "1900x1900"):
-			return advertised1900ButSmaller, nil
-		case strings.Contains(url, "1500x1500"):
-			return actualLargerDimensions, nil
-		default:
-			return nil, errors.New("unexpected URL")
-		}
+		requestedURL = url
+		return []byte("provider-cover"), nil
 	}
 
-	url := "https://cdn-images.dzcdn.net/images/cover/abc/1000x1000-000000-80-0-0.jpg"
-	got, err := downloadCoverToMemory(url, true)
+	got, err := downloadCoverToMemory(providerURL)
 	if err != nil {
-		t.Fatalf("download max cover: %v", err)
+		t.Fatalf("download provider cover: %v", err)
 	}
-	if !bytes.Equal(got, actualLargerDimensions) {
-		t.Fatal("expected decoded 15x15 candidate instead of larger-byte 12x12 candidate")
+	if requestedURL != providerURL {
+		t.Fatalf("requested URL = %q, want provider URL %q", requestedURL, providerURL)
 	}
-}
-
-func TestBestCoverCandidateUsesByteSizeAsDimensionTiebreaker(t *testing.T) {
-	orig := coverFetch
-	defer func() { coverFetch = orig }()
-	resetCoverCache()
-
-	base := testPNG(t, 10, 10)
-	largerFile := append(append([]byte(nil), base...), bytes.Repeat([]byte{0}, 512)...)
-	coverFetch = func(url string) ([]byte, error) {
-		if strings.Contains(url, "large") {
-			return largerFile, nil
-		}
-		return base, nil
-	}
-
-	got, selected, width, height, err := fetchBestCoverCandidate(
-		[]string{"https://covers.test/small", "https://covers.test/large"},
-	)
-	if err != nil {
-		t.Fatalf("select cover: %v", err)
-	}
-	if selected != "https://covers.test/large" || width != 10 || height != 10 {
-		t.Fatalf("selected=%q dimensions=%dx%d", selected, width, height)
-	}
-	if !bytes.Equal(got, largerFile) {
-		t.Fatal("expected larger file when decoded dimensions are equal")
+	if string(got) != "provider-cover" {
+		t.Fatalf("downloaded cover = %q", got)
 	}
 }

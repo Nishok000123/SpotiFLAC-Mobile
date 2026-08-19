@@ -37,11 +37,11 @@ class _MetadataCandidateArtworkState extends State<_MetadataCandidateArtwork> {
   void initState() {
     super.initState();
     if (widget.coverUrl?.isNotEmpty == true) {
-      unawaited(_loadMaxQualityCover());
+      unawaited(_loadCover());
     }
   }
 
-  Future<void> _loadMaxQualityCover() async {
+  Future<void> _loadCover() async {
     final tempDir = await Directory.systemTemp.createTemp(
       'metadata_candidate_cover_',
     );
@@ -50,7 +50,6 @@ class _MetadataCandidateArtworkState extends State<_MetadataCandidateArtwork> {
       final result = await PlatformBridge.downloadCoverToFile(
         widget.coverUrl!,
         path,
-        maxQuality: true,
       );
       if (result['error'] != null || !await File(path).exists()) {
         await tempDir.delete(recursive: true);
@@ -588,11 +587,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     );
     final coverPath = '${tempDir.path}${Platform.pathSeparator}cover.jpg';
     try {
-      await PlatformBridge.downloadCoverToFile(
-        coverUrl,
-        coverPath,
-        maxQuality: true,
-      );
+      await PlatformBridge.downloadCoverToFile(coverUrl, coverPath);
       final file = File(coverPath);
       if (!await file.exists() || await file.length() <= 0) {
         await tempDir.delete(recursive: true);

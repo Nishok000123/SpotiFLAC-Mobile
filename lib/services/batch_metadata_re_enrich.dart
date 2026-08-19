@@ -81,7 +81,6 @@ Map<String, dynamic> buildBatchReEnrichRequest({
   final request = <String, dynamic>{
     'file_path': item.filePath,
     'cover_url': '',
-    'max_quality': true,
     'embed_lyrics': settings.embedLyrics,
     'lyrics_mode': settings.lyricsMode,
     'artist_tag_mode': settings.artistTagMode,

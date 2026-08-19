@@ -18,7 +18,6 @@ class DownloadRequestPayload {
   final bool embedMetadata;
   final String artistTagMode;
   final bool embedLyrics;
-  final bool embedMaxQualityCover;
   final bool embedReplayGain;
   final bool postProcessingEnabled;
   final String tidalHighFormat;
@@ -80,7 +79,6 @@ class DownloadRequestPayload {
     this.embedMetadata = true,
     this.artistTagMode = 'joined',
     this.embedLyrics = true,
-    this.embedMaxQualityCover = true,
     this.embedReplayGain = false,
     this.postProcessingEnabled = false,
     this.tidalHighFormat = 'mp3_320',
@@ -144,7 +142,6 @@ class DownloadRequestPayload {
       'embed_metadata': embedMetadata,
       'artist_tag_mode': artistTagMode,
       'embed_lyrics': embedLyrics,
-      'embed_max_quality_cover': embedMaxQualityCover,
       'embed_replaygain': embedReplayGain,
       'post_processing_enabled': postProcessingEnabled,
       'tidal_high_format': tidalHighFormat,
@@ -212,7 +209,6 @@ class DownloadRequestPayload {
       embedMetadata: embedMetadata,
       artistTagMode: artistTagMode,
       embedLyrics: embedLyrics,
-      embedMaxQualityCover: embedMaxQualityCover,
       embedReplayGain: embedReplayGain,
       postProcessingEnabled: postProcessingEnabled,
       tidalHighFormat: tidalHighFormat,

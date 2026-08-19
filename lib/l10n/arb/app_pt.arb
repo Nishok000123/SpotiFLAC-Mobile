@@ -150,14 +150,6 @@
   "@optionsEmbedLyricsSubtitle": {
     "description": "Subtitle for embed lyrics"
   },
-  "optionsMaxQualityCover": "Max Quality Cover",
-  "@optionsMaxQualityCover": {
-    "description": "Download highest quality album art"
-  },
-  "optionsMaxQualityCoverSubtitle": "Download highest resolution cover art",
-  "@optionsMaxQualityCoverSubtitle": {
-    "description": "Subtitle for max quality cover"
-  },
   "optionsExtensionStore": "Extension Repo",
   "@optionsExtensionStore": {
     "description": "Show/hide store tab"

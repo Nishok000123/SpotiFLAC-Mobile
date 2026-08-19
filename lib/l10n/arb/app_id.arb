@@ -941,9 +941,6 @@
   "@audioAnalysisMono": {
     "description": "Audio channel layout label - mono"
   },
-  "@optionsMaxQualityCoverSubtitle": {
-    "description": "Subtitle for max quality cover"
-  },
   "@audioAnalysisNyquist": {
     "description": "Nyquist frequency metric label"
   },
@@ -3312,7 +3309,6 @@
     "description": "Tutorial extensions tip 2"
   },
   "libraryFolder": "Library Folder",
-  "optionsMaxQualityCoverSubtitle": "Unduh cover art resolusi tertinggi",
   "@metadataProviderPriorityTitle": {
     "description": "Metadata priority page title"
   },
@@ -5587,9 +5583,6 @@
   "nowPlayingDetails": "Details",
   "collectionWishlistEmptyTitle": "Wishlist is empty",
   "downloadAppleQqMultiPersonEnabled": "Speaker labels included for duets and group tracks",
-  "@optionsMaxQualityCover": {
-    "description": "Download highest quality album art"
-  },
   "@snackbarExtensionUpdatedVersion": {
     "description": "Snackbar after updating an extension from the repo tab",
     "placeholders": {
@@ -5933,7 +5926,6 @@
   "downloadFrom": "Unduh Dari",
   "collectionWishlistEmptySubtitle": "Tap + on tracks to save what you want to download later",
   "cueSplitSplitting": "Splitting CUE sheet... ({current}/{total})",
-  "optionsMaxQualityCover": "Cover Kualitas Maksimal",
   "trackOptionAddToWishlist": "Add to Wishlist",
   "settingsBackup": "Backup & Restore",
   "aboutPaxsenixSubtitle": "Lyrics proxy for Musixmatch, Netease, Apple Music, QQ Music, Spotify, Deezer, YouTube, Kugou, and Genius",

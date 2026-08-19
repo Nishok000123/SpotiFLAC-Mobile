@@ -922,9 +922,6 @@
   "@audioAnalysisMono": {
     "description": "Audio channel layout label - mono"
   },
-  "@optionsMaxQualityCoverSubtitle": {
-    "description": "Subtitle for max quality cover"
-  },
   "@audioAnalysisNyquist": {
     "description": "Nyquist frequency metric label"
   },
@@ -3249,7 +3246,6 @@
     "description": "Tutorial extensions tip 2"
   },
   "libraryFolder": "Bibliotheksordner",
-  "optionsMaxQualityCoverSubtitle": "Cover in höchster Auflösung herunterladen",
   "@metadataProviderPriorityTitle": {
     "description": "Metadata priority page title"
   },
@@ -5476,9 +5472,6 @@
   "nowPlayingDetails": "Details",
   "collectionWishlistEmptyTitle": "Wunschliste ist leer",
   "downloadAppleQqMultiPersonEnabled": "Sängerlabel für Duette und Gruppentitel enthalten",
-  "@optionsMaxQualityCover": {
-    "description": "Download highest quality album art"
-  },
   "@snackbarExtensionUpdatedVersion": {
     "description": "Snackbar after updating an extension from the repo tab",
     "placeholders": {
@@ -5822,7 +5815,6 @@
   "downloadFrom": "Herunterladen von",
   "collectionWishlistEmptySubtitle": "Tippe auf das + bei den Titeln, um sie zum späteren Herunterladen zu speichern",
   "cueSplitSplitting": "CUE-Sheet wird geteilt... ({current}/{total})",
-  "optionsMaxQualityCover": "Maximale Cover-Qualität",
   "trackOptionAddToWishlist": "Zur Wunschliste hinzufügen",
   "settingsBackup": "Backup & Restore",
   "aboutPaxsenixSubtitle": "Lyrics proxy for Musixmatch, Netease, Apple Music, QQ Music, Spotify, Deezer, YouTube, Kugou, and Genius",

@@ -705,7 +705,6 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
           settings.embedMetadata &&
           settings.embedLyrics &&
           !_shouldSkipLyrics(extensionState, track.source, item.service),
-      embedMaxQualityCover: settings.embedMetadata && settings.maxQualityCover,
       embedReplayGain: settings.embedReplayGain,
       postProcessingEnabled: postProcessingEnabled,
       tidalHighFormat: settings.tidalHighFormat,

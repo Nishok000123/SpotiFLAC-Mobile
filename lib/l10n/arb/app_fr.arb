@@ -922,9 +922,6 @@
   "@audioAnalysisMono": {
     "description": "Audio channel layout label - mono"
   },
-  "@optionsMaxQualityCoverSubtitle": {
-    "description": "Subtitle for max quality cover"
-  },
   "@audioAnalysisNyquist": {
     "description": "Nyquist frequency metric label"
   },
@@ -3249,7 +3246,6 @@
     "description": "Tutorial extensions tip 2"
   },
   "libraryFolder": "Dossier de bibliothèque",
-  "optionsMaxQualityCoverSubtitle": "Télécharger la pochette en haute résolution",
   "@metadataProviderPriorityTitle": {
     "description": "Metadata priority page title"
   },
@@ -5476,9 +5472,6 @@
   "nowPlayingDetails": "Détails",
   "collectionWishlistEmptyTitle": "La liste de souhaits est vide",
   "downloadAppleQqMultiPersonEnabled": "Étiquettes d'intervenants incluses pour les duos et les morceaux en groupe",
-  "@optionsMaxQualityCover": {
-    "description": "Download highest quality album art"
-  },
   "@snackbarExtensionUpdatedVersion": {
     "description": "Snackbar after updating an extension from the repo tab",
     "placeholders": {
@@ -5822,7 +5815,6 @@
   "downloadFrom": "Télécharger depuis",
   "collectionWishlistEmptySubtitle": "Appuyez sur le signe « + » à côté des morceaux pour enregistrer ceux que vous souhaitez télécharger plus tard",
   "cueSplitSplitting": "Fractionnement de la liste CUE... ({current}/{total})",
-  "optionsMaxQualityCover": "Pochette de qualité supérieure",
   "trackOptionAddToWishlist": "Ajouter à la liste de souhaits",
   "settingsBackup": "Sauvegarde & Restauration",
   "aboutPaxsenixSubtitle": "Proxy de paroles pour Musixmatch, Netease, Apple Music, QQ Music, Spotify, Deezer, YouTube, Kugou et Genius",

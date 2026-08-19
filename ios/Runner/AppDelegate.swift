@@ -564,8 +564,7 @@ import Gobackend
             let args = call.arguments as! [String: Any]
             let coverURL = args["cover_url"] as! String
             let outputPath = args["output_path"] as! String
-            let maxQuality = args["max_quality"] as? Bool ?? true
-            GobackendDownloadCoverToFile(coverURL, outputPath, maxQuality, &error)
+            GobackendDownloadCoverToFile(coverURL, outputPath, false, &error)
             if let error = error { throw error }
             return "{\"success\":true}"
 

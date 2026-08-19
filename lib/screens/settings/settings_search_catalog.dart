@@ -234,12 +234,6 @@ class SettingsSearchCatalog {
           keywords: const ['artist separator', 'multiple artists'],
         ),
         SettingsSearchEntry(
-          icon: Icons.image,
-          title: l10n.optionsMaxQualityCover,
-          subtitle: l10n.optionsMaxQualityCoverSubtitle,
-          keywords: const ['artwork', 'album art', 'cover size'],
-        ),
-        SettingsSearchEntry(
           icon: Icons.graphic_eq,
           title: l10n.optionsReplayGain,
           keywords: const ['volume normalization', 'loudness'],

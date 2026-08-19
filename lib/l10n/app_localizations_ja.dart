@@ -149,12 +149,6 @@ class AppLocalizationsJa extends AppLocalizations {
       'Save synced lyrics alongside your downloaded tracks';
 
   @override
-  String get optionsMaxQualityCover => '最大品質のカバー';
-
-  @override
-  String get optionsMaxQualityCoverSubtitle => '最高解像度のカバーアートをダウンロード';
-
-  @override
   String get optionsReplayGain => 'ReplayGain';
 
   @override

@@ -152,13 +152,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Speichere synchronisierte Liedtexte zusammen mit heruntergeladenen Titeln';
 
   @override
-  String get optionsMaxQualityCover => 'Maximale Cover-Qualität';
-
-  @override
-  String get optionsMaxQualityCoverSubtitle =>
-      'Cover in höchster Auflösung herunterladen';
-
-  @override
   String get optionsReplayGain => 'ReplayGain';
 
   @override

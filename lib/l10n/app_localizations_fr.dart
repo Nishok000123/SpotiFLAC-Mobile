@@ -152,13 +152,6 @@ class AppLocalizationsFr extends AppLocalizations {
       'Enregistrez les paroles synchronisées avec vos morceaux téléchargés';
 
   @override
-  String get optionsMaxQualityCover => 'Pochette de qualité supérieure';
-
-  @override
-  String get optionsMaxQualityCoverSubtitle =>
-      'Télécharger la pochette en haute résolution';
-
-  @override
   String get optionsReplayGain => 'ReplayGain';
 
   @override

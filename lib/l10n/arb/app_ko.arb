@@ -182,14 +182,6 @@
   "@optionsEmbedLyricsSubtitle": {
     "description": "Subtitle for embed lyrics"
   },
-  "optionsMaxQualityCover": "고품질 표지 이미지",
-  "@optionsMaxQualityCover": {
-    "description": "Download highest quality album art"
-  },
-  "optionsMaxQualityCoverSubtitle": "최고 해상도의 표지 이미지를 다운로드",
-  "@optionsMaxQualityCoverSubtitle": {
-    "description": "Subtitle for max quality cover"
-  },
   "optionsReplayGain": "리플레이게인",
   "@optionsReplayGain": {
     "description": "Title for ReplayGain setting toggle"
