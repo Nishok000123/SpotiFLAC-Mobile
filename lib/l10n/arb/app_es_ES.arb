@@ -4295,7 +4295,7 @@
   "@editMetadataAutoFillSourceAutomatic": {
     "description": "Automatic source option that follows configured metadata provider priority"
   },
-  "editMetadataAutoFillFind": "Find metadata",
+  "editMetadataAutoFillFind": "Buscar metadatos",
   "@editMetadataAutoFillFind": {
     "description": "Button label for finding an online metadata candidate"
   },
