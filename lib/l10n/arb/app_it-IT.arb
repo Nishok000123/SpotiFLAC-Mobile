@@ -89,15 +89,15 @@
   "@downloadAskQualitySubtitle": {
     "description": "Subtitle for ask quality toggle"
   },
-  "downloadFilenameFormat": "Filename Format",
+  "downloadFilenameFormat": "Formato nome file",
   "@downloadFilenameFormat": {
     "description": "Setting for output filename pattern"
   },
-  "downloadSingleFilenameFormat": "Single Filename Format",
+  "downloadSingleFilenameFormat": "Formato nome file singolo",
   "@downloadSingleFilenameFormat": {
     "description": "Setting for output filename pattern for singles/EPs"
   },
-  "downloadSingleFilenameFormatDescription": "Filename pattern for singles and EPs. Uses the same tags as the album format.",
+  "downloadSingleFilenameFormatDescription": "Modello di nome file per singoli ed EP. Utilizza gli stessi tag del formato album.",
   "@downloadSingleFilenameFormatDescription": {
     "description": "Subtitle description for single filename format setting"
   },
@@ -174,11 +174,11 @@
   "@optionsAutoFallbackSubtitle": {
     "description": "Subtitle for auto fallback"
   },
-  "optionsEmbedLyrics": "Embed Lyrics",
+  "optionsEmbedLyrics": "Incorpora Testo",
   "@optionsEmbedLyrics": {
     "description": "Embed lyrics in audio files"
   },
-  "optionsEmbedLyricsSubtitle": "Save synced lyrics alongside your downloaded tracks",
+  "optionsEmbedLyricsSubtitle": "Salva i testi sincronizzati accanto alle tracce scaricate",
   "@optionsEmbedLyricsSubtitle": {
     "description": "Subtitle for embed lyrics"
   },
@@ -186,7 +186,7 @@
   "@optionsMaxQualityCover": {
     "description": "Download highest quality album art"
   },
-  "optionsMaxQualityCoverSubtitle": "Download highest resolution cover art",
+  "optionsMaxQualityCoverSubtitle": "Scarica copertine con risoluzione più alta",
   "@optionsMaxQualityCoverSubtitle": {
     "description": "Subtitle for max quality cover"
   },
@@ -300,27 +300,27 @@
   "@optionsUpdateChannel": {
     "description": "Stable vs preview releases"
   },
-  "optionsUpdateChannelStable": "Stable releases only",
+  "optionsUpdateChannelStable": "Solo versioni stabili",
   "@optionsUpdateChannelStable": {
     "description": "Only stable updates"
   },
-  "optionsUpdateChannelPreview": "Get preview releases",
+  "optionsUpdateChannelPreview": "Ottieni le versioni in anteprima",
   "@optionsUpdateChannelPreview": {
     "description": "Include beta/preview updates"
   },
-  "optionsUpdateChannelWarning": "Preview may contain bugs or incomplete features",
+  "optionsUpdateChannelWarning": "L'anteprima può contenere bug o funzionalità incomplete",
   "@optionsUpdateChannelWarning": {
     "description": "Warning about preview channel"
   },
-  "optionsClearHistory": "Clear Download History",
+  "optionsClearHistory": "Svuota la cronologia dei download",
   "@optionsClearHistory": {
     "description": "Delete all download history"
   },
-  "optionsClearHistorySubtitle": "Remove all downloaded tracks from history",
+  "optionsClearHistorySubtitle": "Rimuovi tutte le tracce scaricate dalla cronologia",
   "@optionsClearHistorySubtitle": {
     "description": "Subtitle for clear history"
   },
-  "optionsDetailedLogging": "Detailed Logging",
+  "optionsDetailedLogging": "Log dettagliato",
   "@optionsDetailedLogging": {
     "description": "Enable verbose logs for debugging"
   },
@@ -425,11 +425,11 @@
   "@aboutReportIssueSubtitle": {
     "description": "Subtitle for report issue"
   },
-  "aboutFeatureRequest": "Feature request",
+  "aboutFeatureRequest": "Richiesta di nuove funzionalità",
   "@aboutFeatureRequest": {
     "description": "Link to suggest features"
   },
-  "aboutFeatureRequestSubtitle": "Suggest new features for the app",
+  "aboutFeatureRequestSubtitle": "Suggerisci nuove funzionalità per l'applicazione",
   "@aboutFeatureRequestSubtitle": {
     "description": "Subtitle for feature request"
   },
@@ -485,7 +485,7 @@
   "@artistSingles": {
     "description": "Section header for singles/EPs"
   },
-  "artistCompilations": "Compilations",
+  "artistCompilations": "Compilation",
   "@artistCompilations": {
     "description": "Section header for compilations"
   },
@@ -598,43 +598,43 @@
   "@setupChooseFromFilesSubtitle": {
     "description": "Subtitle for file picker"
   },
-  "setupIosEmptyFolderWarning": "iOS limitation: Empty folders cannot be selected. Choose a folder with at least one file.",
+  "setupIosEmptyFolderWarning": "Limitazione iOS: Le cartelle vuote non possono essere selezionate. Scegli una cartella con almeno un file.",
   "@setupIosEmptyFolderWarning": {
     "description": "iOS folder selection warning"
   },
-  "setupIcloudNotSupported": "iCloud Drive is not supported. Please use the app Documents folder.",
+  "setupIcloudNotSupported": "iCloud Drive non è supportato. Per favore, usa la cartella Documenti dell'app",
   "@setupIcloudNotSupported": {
     "description": "Error when user selects iCloud Drive on iOS"
   },
-  "setupDownloadInFlac": "Download Spotify tracks in FLAC",
+  "setupDownloadInFlac": "Scarica le tracce Spotify in FLAC",
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
-  "setupStorageGranted": "Storage Permission Granted!",
+  "setupStorageGranted": "Permesso di archiviazione concesso!",
   "@setupStorageGranted": {
     "description": "Success message for storage permission"
   },
-  "setupStorageRequired": "Storage Permission Required",
+  "setupStorageRequired": "Permesso di archiviazione richiesto",
   "@setupStorageRequired": {
     "description": "Title when storage permission needed"
   },
-  "setupStorageDescription": "SpotiFLAC needs storage permission to save your downloaded music files.",
+  "setupStorageDescription": "SpotiFLAC ha bisogno del permesso di archiviazione per salvare i file musicali scaricati.",
   "@setupStorageDescription": {
     "description": "Explanation for storage permission"
   },
-  "setupNotificationGranted": "Notification Permission Granted!",
+  "setupNotificationGranted": "Permesso di notifica concesso!",
   "@setupNotificationGranted": {
     "description": "Success message for notification permission"
   },
-  "setupNotificationEnable": "Enable Notifications",
+  "setupNotificationEnable": "Attiva notifiche",
   "@setupNotificationEnable": {
     "description": "Button to enable notifications"
   },
-  "setupFolderChoose": "Choose Download Folder",
+  "setupFolderChoose": "Scegli la cartella di download",
   "@setupFolderChoose": {
     "description": "Button to choose folder"
   },
-  "setupFolderDescription": "Select a folder where your downloaded music will be saved.",
+  "setupFolderDescription": "Seleziona una cartella dove la musica scaricata verrà salvata.",
   "@setupFolderDescription": {
     "description": "Explanation for folder selection"
   },
