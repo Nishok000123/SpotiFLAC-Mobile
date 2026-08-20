@@ -230,6 +230,11 @@ class PlatformBridge {
     return InstallationState.fromMap(result);
   }
 
+  static Future<void> prepareRuntimeState(String dataDir) async {
+    if (!Platform.isAndroid) return;
+    await _invokeMap('prepareRuntimeState', {'data_dir': dataDir});
+  }
+
   static Future<Map<String, dynamic>> _cachedInvoke(
     String cacheKey,
     Map<String, _BridgeCacheEntry> cache,

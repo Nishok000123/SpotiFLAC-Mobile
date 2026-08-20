@@ -9,6 +9,10 @@ import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
+import com.google.android.gms.auth.blockstore.Blockstore
+import com.google.android.gms.auth.blockstore.RetrieveBytesRequest
+import com.google.android.gms.auth.blockstore.StoreBytesData
+import com.google.android.gms.tasks.Tasks
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.android.FlutterActivityLaunchConfigs.BackgroundMode
 import io.flutter.embedding.android.FlutterFragment
@@ -35,6 +39,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.MessageDigest
+import java.security.SecureRandom
 import java.util.Locale
 
 class MainActivity: FlutterFragmentActivity() {
@@ -578,6 +583,104 @@ class MainActivity: FlutterFragmentActivity() {
         )
     }
 
+    private fun prepareRuntimeState(extensionDataDir: String): String {
+        val storeKey = "com.zarz.spotiflac.rs.v1"
+        val pattern = Regex("^[0-9a-f]{32}$")
+        fun normalize(value: String?): String? {
+            val normalized = value?.trim()?.lowercase().orEmpty()
+            return normalized.takeIf(pattern::matches)
+        }
+        fun ByteArray.hex(): String = buildString(size * 2) {
+            for (byte in this@hex) {
+                append(((byte.toInt() ushr 4) and 0x0f).toString(16))
+                append((byte.toInt() and 0x0f).toString(16))
+            }
+        }
+
+        val client = Blockstore.getClient(this)
+        val restored = try {
+            val request = RetrieveBytesRequest.Builder()
+                .setKeys(listOf(storeKey))
+                .build()
+            val response = Tasks.await(client.retrieveBytes(request))
+            val bytes = response.blockstoreDataMap[storeKey]?.bytes
+            if (bytes == null || bytes.isEmpty()) {
+                null
+            } else {
+                JSONObject(bytes.toString(Charsets.UTF_8))
+            }
+        } catch (error: Exception) {
+            android.util.Log.w("SpotiFLAC", "Runtime restore unavailable: ${error.message}")
+            null
+        }
+
+        val values = LinkedHashMap<String, String>()
+        restored?.optJSONObject("s")?.let { entries ->
+            val keys = entries.keys()
+            while (keys.hasNext()) {
+                val rawKey = keys.next()
+                val key = File(rawKey).name
+                val value = normalize(entries.optString(rawKey)) ?: continue
+                if (key.isNotBlank()) values[key] = value
+            }
+        }
+        File(extensionDataDir, "signed_sessions")
+            .listFiles { file -> file.isFile && file.name.endsWith(".json") }
+            ?.forEach { record ->
+                try {
+                    if (record.length() <= 64 * 1024L) {
+                        normalize(
+                            JSONObject(record.readText()).optString("install_id"),
+                        )?.let { values[record.name] = it }
+                    }
+                } catch (_: Exception) {
+                    // Invalid records are handled by the normal session loader.
+                }
+            }
+
+        val defaultValue = normalize(restored?.optString("d")) ?: run {
+            val androidID = android.provider.Settings.Secure.getString(
+                contentResolver,
+                android.provider.Settings.Secure.ANDROID_ID,
+            )?.trim().orEmpty()
+            val domain = "com.zarz.spotiflac/runtime/v1:"
+            val source = if (androidID.isNotEmpty()) {
+                domain + androidID
+            } else {
+                val bytes = ByteArray(16)
+                SecureRandom().nextBytes(bytes)
+                domain + bytes.hex()
+            }
+            MessageDigest.getInstance("SHA-256")
+                .digest(source.toByteArray(Charsets.UTF_8))
+                .copyOf(16)
+                .hex()
+        }
+        val entries = JSONObject()
+        for ((key, value) in values.toSortedMap()) entries.put(key, value)
+        val payload = JSONObject()
+            .put("v", 1)
+            .put("d", defaultValue)
+            .put("s", entries)
+            .toString()
+
+        try {
+            val builder = StoreBytesData.Builder()
+                .setBytes(payload.toByteArray(Charsets.UTF_8))
+                .setKey(storeKey)
+            val encrypted = try {
+                Tasks.await(client.isEndToEndEncryptionAvailable)
+            } catch (_: Exception) {
+                false
+            }
+            builder.setShouldBackupToCloud(encrypted)
+            Tasks.await(client.storeBytes(builder.build()))
+        } catch (error: Exception) {
+            android.util.Log.w("SpotiFLAC", "Runtime save unavailable: ${error.message}")
+        }
+        return payload
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Ensure the shared audio_service engine exists before the activity
         // delegate looks it up by cached id (see getCachedEngineId above).
@@ -770,6 +873,18 @@ class MainActivity: FlutterFragmentActivity() {
                                 ensureInstallMarker()
                             }
                             result.success(installState)
+                        }
+                        "prepareRuntimeState" -> {
+                            val dataDir = call.argument<String>("data_dir") ?: ""
+                            val runtimeState = withContext(Dispatchers.IO) {
+                                require(dataDir.isNotBlank()) {
+                                    "Extension data directory is required"
+                                }
+                                val payload = prepareRuntimeState(dataDir)
+                                Gobackend.setRuntimeState(payload)
+                                mapOf("ready" to true)
+                            }
+                            result.success(runtimeState)
                         }
                         "exitApp" -> {
                             flutterBackCallback?.isEnabled = false

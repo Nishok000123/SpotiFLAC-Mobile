@@ -182,46 +182,22 @@ extension _TrackMetadataDisplay on _TrackMetadataScreenState {
   }
 
   String _formatPathForDisplay(String pathOrUri) {
-    if (pathOrUri.isEmpty || !pathOrUri.startsWith('content://')) {
-      return pathOrUri;
+    if (_isLocalItem || !pathOrUri.startsWith('content://')) {
+      return formatSafUriForDisplay(pathOrUri);
     }
 
-    try {
-      final uri = Uri.parse(pathOrUri);
-      final segments = uri.pathSegments;
-      String? documentId;
-
-      final documentIndex = segments.indexOf('document');
-      if (documentIndex != -1 && documentIndex + 1 < segments.length) {
-        documentId = Uri.decodeComponent(segments[documentIndex + 1]);
-      }
-
-      if (documentId == null || documentId.isEmpty) {
-        final treeIndex = segments.indexOf('tree');
-        if (treeIndex != -1 && treeIndex + 1 < segments.length) {
-          documentId = Uri.decodeComponent(segments[treeIndex + 1]);
-        }
-      }
-
-      if (documentId == null || documentId.isEmpty) return pathOrUri;
-
-      final separatorIndex = documentId.indexOf(':');
-      if (separatorIndex <= 0) return documentId;
-
-      final volumeId = documentId.substring(0, separatorIndex);
-      final relativePath = documentId
-          .substring(separatorIndex + 1)
-          .replaceAll('\\', '/');
-
-      if (volumeId.toLowerCase() == 'primary') {
-        if (relativePath.isEmpty) return '/storage/emulated/0';
-        return '/storage/emulated/0/$relativePath';
-      }
-
-      if (relativePath.isEmpty) return volumeId;
-      return 'SD Card/$relativePath';
-    } catch (_) {
-      return pathOrUri;
-    }
+    final item = _downloadItem!;
+    final settings = ref.read(settingsProvider);
+    final sameSelectedTree =
+        item.downloadTreeUri != null &&
+        item.downloadTreeUri!.isNotEmpty &&
+        item.downloadTreeUri == settings.downloadTreeUri;
+    return buildSafFileDisplayPath(
+      pathOrUri: pathOrUri,
+      treeUri: item.downloadTreeUri,
+      treeDisplayPath: sameSelectedTree ? settings.downloadDirectory : null,
+      relativeDir: item.safRelativeDir,
+      fileName: item.safFileName,
+    );
   }
 }

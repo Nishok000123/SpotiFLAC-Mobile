@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -41,6 +42,59 @@ var (
 	signedSessionProviderWait    = sleepRetry
 	signedSessionRequestNow      = time.Now
 )
+
+var sessionHintPattern = regexp.MustCompile(`^[0-9a-f]{32}$`)
+
+type signedSessionHints struct {
+	Default string            `json:"d"`
+	Values  map[string]string `json:"s"`
+}
+
+var signedSessionHintState = struct {
+	sync.RWMutex
+	state signedSessionHints
+}{
+	state: signedSessionHints{Values: map[string]string{}},
+}
+
+func SetRuntimeState(raw string) {
+	next := signedSessionHints{Values: map[string]string{}}
+	if err := json.Unmarshal([]byte(raw), &next); err != nil {
+		next = signedSessionHints{Values: map[string]string{}}
+	}
+	next.Default = normalizeSessionHint(next.Default)
+	values := make(map[string]string, len(next.Values))
+	for key, value := range next.Values {
+		key = filepath.Base(strings.TrimSpace(key))
+		value = normalizeSessionHint(value)
+		if key != "" && key != "." && value != "" {
+			values[key] = value
+		}
+	}
+	next.Values = values
+
+	signedSessionHintState.Lock()
+	signedSessionHintState.state = next
+	signedSessionHintState.Unlock()
+}
+
+func normalizeSessionHint(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if !sessionHintPattern.MatchString(value) {
+		return ""
+	}
+	return value
+}
+
+func signedSessionHintFor(path string) string {
+	key := filepath.Base(strings.TrimSpace(path))
+	signedSessionHintState.RLock()
+	defer signedSessionHintState.RUnlock()
+	if value := signedSessionHintState.state.Values[key]; value != "" {
+		return value
+	}
+	return signedSessionHintState.state.Default
+}
 
 // signedSessionCoordinator serializes authentication state for every runtime
 // that shares one persisted signed-session file. Parallel downloads use
@@ -224,7 +278,10 @@ func (r *extensionRuntime) loadSignedSession(config SignedSessionConfig) (*signe
 	}
 	changed := false
 	if strings.TrimSpace(record.InstallID) == "" {
-		record.InstallID = randomHex(16)
+		record.InstallID = signedSessionHintFor(path)
+		if record.InstallID == "" {
+			record.InstallID = randomHex(16)
+		}
 		changed = true
 	}
 	if normalizeSignedSessionRecordScope(config, record) {

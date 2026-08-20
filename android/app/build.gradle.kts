@@ -126,6 +126,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
     implementation("androidx.documentfile:documentfile:1.1.0")
     implementation("androidx.activity:activity-ktx:1.13.0")
+    implementation("com.google.android.gms:play-services-auth-blockstore:16.4.0")
 
     // NativeDownloadFinalizer imports FFmpegKit APIs directly. The Flutter
     // plugin owns the runtime AAR; compileOnly avoids packaging it twice here.

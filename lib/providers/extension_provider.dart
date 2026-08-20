@@ -93,6 +93,13 @@ class ExtensionNotifier extends Notifier<ExtensionState> {
     }
 
     try {
+      if (Platform.isAndroid) {
+        try {
+          await PlatformBridge.prepareRuntimeState(dataDir);
+        } catch (e) {
+          _log.w('Runtime state restore unavailable: $e');
+        }
+      }
       await PlatformBridge.initExtensionSystem(extensionsDir, dataDir);
       await loadExtensions(extensionsDir);
       await loadProviderPriority();
