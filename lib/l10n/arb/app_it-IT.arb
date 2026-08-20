@@ -9,7 +9,7 @@
   "@navHome": {
     "description": "Bottom navigation - Home tab"
   },
-  "navLibrary": "Library",
+  "navLibrary": "Libreria",
   "@navLibrary": {
     "description": "Bottom navigation - Library tab"
   },
@@ -25,7 +25,7 @@
   "@homeTitle": {
     "description": "Home screen title"
   },
-  "homeSubtitle": "Paste a supported URL or search by name",
+  "homeSubtitle": "Incolla un URL supportato o cerca per nome",
   "@homeSubtitle": {
     "description": "Subtitle shown below search box"
   },
@@ -33,7 +33,7 @@
   "@homeEmptyTitle": {
     "description": "Title shown on home when no providers are available yet"
   },
-  "homeEmptySubtitle": "Install an extension to continue.",
+  "homeEmptySubtitle": "Installa un'estensione per continuare.",
   "@homeEmptySubtitle": {
     "description": "Subtitle shown on home when no providers are available yet"
   },
