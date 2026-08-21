@@ -2095,7 +2095,7 @@
   "@appearanceForceBlur": {
     "description": "Toggle that forces backdrop blur on even when the device profile disabled it"
   },
-  "appearanceForceBlurSubtitle": "Enable the navigation bar blur even on devices where it is off by default. May cost performance.",
+  "appearanceForceBlurSubtitle": "Aktifkan efek buram bilah navigasi bahkan pada perangkat yang dinonaktifkan secara bawaan. Dapat memengaruhi performa.",
   "@appearanceForceBlurSubtitle": {
     "description": "Subtitle for the force-blur toggle"
   },
@@ -2131,19 +2131,19 @@
   "@settingsDownloadNetworkSubtitle": {
     "description": "Subtitle explaining network preference"
   },
-  "settingsConcurrentDownloads": "Concurrent downloads",
+  "settingsConcurrentDownloads": "Unduhan bersamaan",
   "@settingsConcurrentDownloads": {
     "description": "Setting title - how many tracks download at the same time"
   },
-  "settingsConcurrentDownloadsSubtitle": "Downloading several tracks at once is faster, but some providers may rate-limit parallel requests.",
+  "settingsConcurrentDownloadsSubtitle": "Mengunduh beberapa lagu sekaligus lebih cepat, tetapi beberapa penyedia mungkin membatasi permintaan paralel.",
   "@settingsConcurrentDownloadsSubtitle": {
     "description": "Subtitle explaining the concurrent downloads picker"
   },
-  "concurrentDownloadsOne": "1 track at a time",
+  "concurrentDownloadsOne": "1 lagu dalam satu waktu",
   "@concurrentDownloadsOne": {
     "description": "Concurrent downloads option - sequential"
   },
-  "concurrentDownloadsCount": "Up to {count} tracks at once",
+  "concurrentDownloadsCount": "Hingga {count} lagu dalam satu waktu",
   "@concurrentDownloadsCount": {
     "description": "Concurrent downloads option - parallel",
     "placeholders": {
@@ -2192,11 +2192,11 @@
   "@albumFolderArtistAlbumSinglesSubtitle": {
     "description": "Folder structure example"
   },
-  "albumFolderArtistAlbumFlat": "Artist / Album (Singles flat)",
+  "albumFolderArtistAlbumFlat": "Artis / Album (Single digabung)",
   "@albumFolderArtistAlbumFlat": {
     "description": "Album folder option with singles directly in artist folder"
   },
-  "albumFolderArtistAlbumFlatSubtitle": "Artist/Album/ and Artist/song.flac",
+  "albumFolderArtistAlbumFlatSubtitle": "Artis/Album/ dan Artis/lagu.flac",
   "@albumFolderArtistAlbumFlatSubtitle": {
     "description": "Folder structure example for flat singles"
   },
