@@ -1710,6 +1710,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get recentEmpty => '최근 항목이 없음';
 
   @override
+  String get recentClearAllMessage =>
+      'Clear all recent activity? Download history and music files will not be deleted.';
+
+  @override
   String get recentShowAllDownloads => '모든 다운로드 표시';
 
   @override

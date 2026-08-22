@@ -1795,6 +1795,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get recentEmpty => 'Aucun élément récent pour le moment';
 
   @override
+  String get recentClearAllMessage =>
+      'Clear all recent activity? Download history and music files will not be deleted.';
+
+  @override
   String get recentShowAllDownloads => 'Afficher tous les téléchargements';
 
   @override

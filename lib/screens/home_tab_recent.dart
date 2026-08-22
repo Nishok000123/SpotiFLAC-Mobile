@@ -3,7 +3,6 @@ part of 'home_tab.dart';
 extension _HomeTabRecentUI on _HomeTabState {
   Widget _buildRecentAccess(_RecentAccessView view, ColorScheme colorScheme) {
     final uniqueItems = view.uniqueItems;
-    final downloadIds = view.downloadIds;
     final hasHiddenDownloads = view.hasHiddenDownloads;
 
     return Padding(
@@ -30,9 +29,7 @@ extension _HomeTabRecentUI on _HomeTabState {
                       context: context,
                       builder: (dialogContext) => AlertDialog(
                         title: Text(dialogContext.l10n.dialogClearAll),
-                        content: Text(
-                          dialogContext.l10n.dialogClearHistoryMessage,
-                        ),
+                        content: Text(dialogContext.l10n.recentClearAllMessage),
                         actions: [
                           TextButton(
                             onPressed: () =>
@@ -48,12 +45,9 @@ extension _HomeTabRecentUI on _HomeTabState {
                       ),
                     );
                     if (confirmed != true) return;
-                    for (final id in downloadIds) {
-                      ref
-                          .read(recentAccessProvider.notifier)
-                          .hideDownloadFromRecents(id);
-                    }
-                    ref.read(recentAccessProvider.notifier).clearHistory();
+                    await ref
+                        .read(recentAccessProvider.notifier)
+                        .clearHistory();
                   },
                   child: Text(
                     context.l10n.dialogClearAll,

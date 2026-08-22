@@ -3184,6 +3184,12 @@ abstract class AppLocalizations {
   /// **'No recent items yet'**
   String get recentEmpty;
 
+  /// Confirmation message before clearing all recent activity
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all recent activity? Download history and music files will not be deleted.'**
+  String get recentClearAllMessage;
+
   /// Button label to unhide hidden downloads in recent access
   ///
   /// In en, this message translates to:

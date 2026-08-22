@@ -1768,6 +1768,10 @@ class AppLocalizationsTr extends AppLocalizations {
   String get recentEmpty => 'Henüz son kullanılan öğe yok';
 
   @override
+  String get recentClearAllMessage =>
+      'Clear all recent activity? Download history and music files will not be deleted.';
+
+  @override
   String get recentShowAllDownloads => 'Tüm İndirmeleri Göster';
 
   @override

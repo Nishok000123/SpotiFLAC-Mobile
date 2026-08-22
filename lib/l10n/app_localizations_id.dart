@@ -1757,6 +1757,10 @@ class AppLocalizationsId extends AppLocalizations {
   String get recentEmpty => 'Belum ada item terbaru';
 
   @override
+  String get recentClearAllMessage =>
+      'Hapus semua aktivitas terbaru? Riwayat unduhan dan file musik tidak akan dihapus.';
+
+  @override
   String get recentShowAllDownloads => 'Tampilkan Semua Unduhan';
 
   @override

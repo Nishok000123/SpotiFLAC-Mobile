@@ -2297,6 +2297,10 @@
   "@recentEmpty": {
     "description": "Empty state text for recent access list"
   },
+  "recentClearAllMessage": "Clear all recent activity? Download history and music files will not be deleted.",
+  "@recentClearAllMessage": {
+    "description": "Confirmation message before clearing all recent activity"
+  },
   "recentShowAllDownloads": "Show All Downloads",
   "@recentShowAllDownloads": {
     "description": "Button label to unhide hidden downloads in recent access"

@@ -2,13 +2,11 @@ part of 'home_tab.dart';
 
 class _RecentAccessView {
   final List<RecentAccessItem> uniqueItems;
-  final List<String> downloadIds;
   final Map<String, String> downloadFilePathByRecentKey;
   final bool hasHiddenDownloads;
 
   const _RecentAccessView({
     required this.uniqueItems,
-    required this.downloadIds,
     required this.downloadFilePathByRecentKey,
     required this.hasHiddenDownloads,
   });
@@ -66,9 +64,13 @@ _RecentAccessView _buildRecentAccessViewData(
   List<RecentAccessItem> items,
   List<DownloadHistoryItem> historyItems,
   Set<String> hiddenIds,
+  DateTime? downloadsClearedAt,
 ) {
   final albumGroups = <String, _RecentAlbumAggregate>{};
   for (final h in historyItems) {
+    if (!isRecentDownloadAfterClear(h.downloadedAt, downloadsClearedAt)) {
+      continue;
+    }
     final artistForKey = (h.albumArtist != null && h.albumArtist!.isNotEmpty)
         ? h.albumArtist!
         : h.artistName;
@@ -84,7 +86,6 @@ _RecentAccessView _buildRecentAccessViewData(
     }
   }
 
-  final downloadIds = <String>[];
   final visibleDownloads = <RecentAccessItem>[];
   final downloadFilePathByRecentKey = <String, String>{};
   for (final aggregate in albumGroups.values) {
@@ -108,7 +109,6 @@ _RecentAccessView _buildRecentAccessViewData(
       providerId: 'download',
     );
 
-    downloadIds.add(recentId);
     downloadFilePathByRecentKey['${recent.type.name}:${recent.id}'] =
         mostRecent.filePath;
     if (!hiddenIds.contains(recentId)) {
@@ -138,7 +138,6 @@ _RecentAccessView _buildRecentAccessViewData(
 
   return _RecentAccessView(
     uniqueItems: uniqueItems,
-    downloadIds: downloadIds,
     downloadFilePathByRecentKey: downloadFilePathByRecentKey,
     hasHiddenDownloads: hiddenIds.isNotEmpty,
   );
@@ -152,9 +151,16 @@ final recentAccessViewProvider = Provider<_RecentAccessView>((ref) {
   final hiddenDownloadIds = ref.watch(
     recentAccessProvider.select((s) => s.hiddenDownloadIds),
   );
+  final downloadsClearedAt = ref.watch(
+    recentAccessProvider.select((s) => s.downloadsClearedAt),
+  );
+  final recentAccessLoaded = ref.watch(
+    recentAccessProvider.select((s) => s.isLoaded),
+  );
   return _buildRecentAccessViewData(
     recentAccessItems,
-    historyItems,
+    recentAccessLoaded ? historyItems : const [],
     hiddenDownloadIds,
+    downloadsClearedAt,
   );
 });

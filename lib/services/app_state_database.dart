@@ -8,11 +8,12 @@ import 'package:spotiflac_android/utils/logger.dart';
 final _log = AppLogger('AppStateDb');
 
 const _dbFileName = 'app_state.db';
-const _dbVersion = 2;
+const _dbVersion = 3;
 
 const _queueTable = 'download_queue_items';
 const _recentTable = 'recent_access_items';
 const _hiddenRecentTable = 'hidden_recent_downloads';
+const _recentStateTable = 'recent_access_state';
 const _playbackSessionTable = 'playback_session';
 
 const _legacyQueueKey = 'download_queue';
@@ -80,6 +81,7 @@ class AppStateDatabase {
       )
     ''');
 
+    await _createRecentStateTable(db);
     await _createPlaybackSessionTable(db);
   }
 
@@ -88,6 +90,18 @@ class AppStateDatabase {
     if (oldVersion < 2) {
       await _createPlaybackSessionTable(db);
     }
+    if (oldVersion < 3) {
+      await _createRecentStateTable(db);
+    }
+  }
+
+  static Future<void> _createRecentStateTable(Database db) {
+    return db.execute('''
+      CREATE TABLE IF NOT EXISTS $_recentStateTable (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        downloads_cleared_at TEXT
+      )
+    ''');
   }
 
   static Future<void> _createPlaybackSessionTable(Database db) {
@@ -352,9 +366,31 @@ class AppStateDatabase {
     );
   }
 
-  Future<void> clearRecentAccessRows() async {
+  Future<DateTime?> getRecentDownloadsClearedAt() async {
     final db = await database;
-    await db.delete(_recentTable);
+    final rows = await db.query(
+      _recentStateTable,
+      columns: ['downloads_cleared_at'],
+      where: 'id = 1',
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    final value = rows.first['downloads_cleared_at'] as String?;
+    return value == null ? null : DateTime.tryParse(value);
+  }
+
+  Future<DateTime> clearAllRecentAccess() async {
+    final clearedAt = DateTime.now();
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete(_recentTable);
+      await txn.delete(_hiddenRecentTable);
+      await txn.insert(_recentStateTable, {
+        'id': 1,
+        'downloads_cleared_at': clearedAt.toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    });
+    return clearedAt;
   }
 
   Future<Set<String>> getHiddenRecentDownloadIds() async {

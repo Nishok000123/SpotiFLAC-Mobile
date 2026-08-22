@@ -1774,6 +1774,10 @@ class AppLocalizationsUk extends AppLocalizations {
   String get recentEmpty => 'Поки що немає нещодавніх записів';
 
   @override
+  String get recentClearAllMessage =>
+      'Clear all recent activity? Download history and music files will not be deleted.';
+
+  @override
   String get recentShowAllDownloads => 'Показати всі завантаження';
 
   @override

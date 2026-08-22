@@ -4468,6 +4468,10 @@
     "description": "Filter option - items missing artist"
   },
   "recentShowAllDownloads": "Tampilkan Semua Unduhan",
+  "recentClearAllMessage": "Hapus semua aktivitas terbaru? Riwayat unduhan dan file musik tidak akan dihapus.",
+  "@recentClearAllMessage": {
+    "description": "Confirmation message before clearing all recent activity"
+  },
   "@appearanceThemeLight": {
     "description": "Light theme"
   },

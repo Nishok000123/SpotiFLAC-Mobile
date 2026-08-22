@@ -1765,6 +1765,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get recentEmpty => 'Нет недавних элементов';
 
   @override
+  String get recentClearAllMessage =>
+      'Clear all recent activity? Download history and music files will not be deleted.';
+
+  @override
   String get recentShowAllDownloads => 'Показать все загрузки';
 
   @override
