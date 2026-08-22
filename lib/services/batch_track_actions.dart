@@ -244,6 +244,9 @@ Future<void> _performBatchConversion(
         'TITLE': item.trackName,
         'ARTIST': item.artistName,
         'ALBUM': item.albumName,
+        if (item.historyItem?.explicit == true ||
+            item.localItem?.explicit == true)
+          'ITUNESADVISORY': '1',
       };
       try {
         final result = await PlatformBridge.readFileMetadata(item.filePath);

@@ -249,12 +249,16 @@ void main() {
         'COPYRIGHT': 'Copyright',
         'COMPOSER': 'Composer',
         'COMMENT': 'Comment',
+        'ITUNESADVISORY': '1',
         'REPLAYGAIN_TRACK_GAIN': '-5.00 dB',
         'BIT_DEPTH': '24',
       };
 
       final native = AudioMetadataMapper.vorbisToNativeChunkFields(metadata);
       final m4a = AudioMetadataMapper.convertToM4aTags(metadata);
+      final m4aIdentity = AudioMetadataMapper.m4aReleaseIdentityFields(
+        metadata,
+      );
       final id3 = AudioMetadataMapper.convertToId3Tags(metadata);
 
       expect(native['title'], 'Track');
@@ -272,9 +276,12 @@ void main() {
       expect(native['copyright'], 'Copyright');
       expect(native['composer'], 'Composer');
       expect(native['comment'], 'Comment');
+      expect(native['explicit'], '1');
       expect(m4a['isrc'], 'TEST12345678');
       expect(m4a['lyrics'], 'Lyrics');
+      expect(m4aIdentity['explicit'], '1');
       expect(id3['TSRC'], 'TEST12345678');
+      expect(id3['ITUNESADVISORY'], '1');
       expect(id3['REPLAYGAIN_TRACK_GAIN'], '-5.00 dB');
       expect(id3['title'], 'Track');
       expect(id3['artist'], 'Artist');
@@ -298,6 +305,11 @@ void main() {
         entries.where((entry) => entry.key == 'TITLE').single.value,
         'Track',
       );
+      final advisory = AudioMetadataMapper.buildVorbisMetadataEntries({
+        'EXPLICIT': 'true',
+      }).single;
+      expect(advisory.key, 'ITUNESADVISORY');
+      expect(advisory.value, '1');
     });
 
     test('writes one ID3v2.3 USLT frame and replaces it on update', () {

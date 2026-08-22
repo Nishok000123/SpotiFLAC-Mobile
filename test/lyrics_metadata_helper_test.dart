@@ -40,4 +40,28 @@ void main() {
       expect(cleanLyricsForDisplay('[instrumental:true]'), isEmpty);
     });
   });
+
+  group('metadata conversion merge', () {
+    test('preserves explicit advisory using the canonical tag', () {
+      final metadata = <String, String>{};
+
+      mergePlatformMetadataForTagEmbed(
+        target: metadata,
+        source: {'explicit': true},
+      );
+
+      expect(metadata['ITUNESADVISORY'], '1');
+    });
+
+    test('removes a stale explicit advisory for a non-explicit file', () {
+      final metadata = <String, String>{'ITUNESADVISORY': '1'};
+
+      mergePlatformMetadataForTagEmbed(
+        target: metadata,
+        source: {'explicit': false},
+      );
+
+      expect(metadata, isNot(contains('ITUNESADVISORY')));
+    });
+  });
 }

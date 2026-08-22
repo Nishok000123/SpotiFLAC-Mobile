@@ -2401,6 +2401,19 @@ class FFmpegService {
       return null;
     }
 
+    if (isAlac) {
+      await _writeM4AFreeformTags(outputPath, metadata);
+      final identityWritten = await _writeM4AReleaseIdentityTags(
+        outputPath,
+        metadata,
+      );
+      if (!identityWritten) {
+        _log.e('ALAC release identity metadata write failed');
+        await _cleanupConversionOutput(outputPlan);
+        return null;
+      }
+    }
+
     return _finalizeConversionOutput(
       plan: outputPlan,
       inputPath: inputPath,
@@ -2565,26 +2578,12 @@ class FFmpegService {
   /// Restores the iTunes atoms that FFmpeg does not reliably map from generic
   /// metadata keys. This runs after a successful remux, when the container is
   /// canonical enough for the native editor even if the original was not.
-  static Future<void> _writeM4AReleaseIdentityTags(
+  static Future<bool> _writeM4AReleaseIdentityTags(
     String m4aPath,
     Map<String, String> metadata,
   ) async {
-    final fields = <String, String>{};
-    for (final entry in metadata.entries) {
-      final key = entry.key.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-      switch (key) {
-        case 'ITUNESADVISORY':
-          fields['explicit'] = entry.value;
-        case 'RELEASETYPE':
-          fields['album_type'] = entry.value;
-        case 'BARCODE':
-        case 'UPC':
-          fields['upc'] = entry.value;
-        case 'COMPILATION':
-          fields['compilation'] = entry.value;
-      }
-    }
-    if (fields.isEmpty) return;
+    final fields = AudioMetadataMapper.m4aReleaseIdentityFields(metadata);
+    if (fields.isEmpty) return true;
 
     try {
       final result = await PlatformBridge.editFileMetadata(m4aPath, fields);
@@ -2592,9 +2591,12 @@ class FFmpegService {
         _log.w(
           'Native M4A release identity write was not completed for $m4aPath',
         );
+        return false;
       }
+      return true;
     } catch (e) {
       _log.w('M4A release identity write failed for $m4aPath: $e');
+      return false;
     }
   }
 

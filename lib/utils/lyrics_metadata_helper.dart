@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
+import 'package:spotiflac_android/utils/string_utils.dart';
 
 final RegExp _lrcDisplayTimestampPattern = RegExp(
   r'^\[\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?\]',
@@ -209,6 +210,13 @@ void mergePlatformMetadataForTagEmbed({
   put('COMMENT', source['comment']);
   put('LYRICS', source['lyrics']);
   put('UNSYNCEDLYRICS', source['lyrics']);
+
+  final explicit = parseExplicitFlag(source['explicit']);
+  if (explicit == true) {
+    target['ITUNESADVISORY'] = '1';
+  } else if (explicit == false) {
+    target.remove('ITUNESADVISORY');
+  }
 
   final trackNumber = source['track_number'];
   final totalTracks = source['total_tracks'];

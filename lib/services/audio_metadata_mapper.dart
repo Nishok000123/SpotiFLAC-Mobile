@@ -93,6 +93,10 @@ class AudioMetadataMapper {
         case 'COMMENT':
         case 'DESCRIPTION':
           fields['comment'] = value;
+        case 'ITUNESADVISORY':
+        case 'EXPLICIT':
+        case 'ISEXPLICIT':
+          fields['explicit'] = _normalizeAdvisoryValue(value);
         case 'LYRICS':
         case 'UNSYNCEDLYRICS':
           fields['lyrics'] = value;
@@ -163,6 +167,10 @@ class AudioMetadataMapper {
           vorbis['COMPOSER'] = value;
         case 'COMMENT':
           vorbis['COMMENT'] = value;
+        case 'ITUNESADVISORY':
+        case 'EXPLICIT':
+        case 'ISEXPLICIT':
+          vorbis['ITUNESADVISORY'] = _normalizeAdvisoryValue(value);
         case 'LYRICS':
         case 'UNSYNCEDLYRICS':
           vorbis['LYRICS'] = value;
@@ -294,6 +302,32 @@ class AudioMetadataMapper {
     return m4a;
   }
 
+  /// Maps content-advisory and release identity tags to fields consumed by
+  /// the native M4A editor. Content advisory is written as the integer `rtng`
+  /// atom by that editor instead of an arbitrary MP4 text tag.
+  static Map<String, String> m4aReleaseIdentityFields(
+    Map<String, String> metadata,
+  ) {
+    final fields = <String, String>{};
+    for (final entry in metadata.entries) {
+      final key = _normalizeKey(entry.key);
+      switch (key) {
+        case 'ITUNESADVISORY':
+        case 'EXPLICIT':
+        case 'ISEXPLICIT':
+          fields['explicit'] = _normalizeAdvisoryValue(entry.value);
+        case 'RELEASETYPE':
+          fields['album_type'] = entry.value;
+        case 'BARCODE':
+        case 'UPC':
+          fields['upc'] = entry.value;
+        case 'COMPILATION':
+          fields['compilation'] = entry.value;
+      }
+    }
+    return fields;
+  }
+
   /// Maps generic metadata keys to ID3 names understood by FFmpeg.
   static Map<String, String> convertToId3Tags(Map<String, String> metadata) {
     final id3 = <String, String>{};
@@ -335,6 +369,12 @@ class AudioMetadataMapper {
           id3['composer'] = value;
         case 'COMMENT':
           id3['comment'] = value;
+        case 'ITUNESADVISORY':
+        case 'EXPLICIT':
+        case 'ISEXPLICIT':
+          // ID3 has no dedicated advisory frame. FFmpeg stores this as the
+          // conventional TXXX:ITUNESADVISORY user-text frame.
+          id3['ITUNESADVISORY'] = _normalizeAdvisoryValue(value);
         case 'REPLAYGAINTRACKGAIN':
           id3['REPLAYGAIN_TRACK_GAIN'] = value;
         case 'REPLAYGAINTRACKPEAK':
@@ -377,4 +417,12 @@ class AudioMetadataMapper {
 
   static String _normalizeKey(String key) =>
       key.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+
+  static String _normalizeAdvisoryValue(String value) {
+    return switch (value.trim().toLowerCase()) {
+      'true' || 'yes' || 'explicit' => '1',
+      'false' || 'no' => '0',
+      final value => value,
+    };
+  }
 }

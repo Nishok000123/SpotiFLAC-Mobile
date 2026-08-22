@@ -100,6 +100,7 @@ extension _TrackMetadataConvertAndCueSplit on _TrackMetadataScreenState {
       if (label != null && label!.isNotEmpty) 'LABEL': label!,
       if (copyright != null && copyright!.isNotEmpty) 'COPYRIGHT': copyright!,
       if (composer != null && composer!.isNotEmpty) 'COMPOSER': composer!,
+      if (isExplicit) 'ITUNESADVISORY': '1',
     };
   }
 
@@ -125,6 +126,9 @@ extension _TrackMetadataConvertAndCueSplit on _TrackMetadataScreenState {
     put('COMMENT', source['comment']);
     put('LYRICS', source['lyrics']);
     put('UNSYNCEDLYRICS', source['lyrics']);
+    if (parseExplicitFlag(source['explicit']) == true) {
+      mapped['ITUNESADVISORY'] = '1';
+    }
 
     final trackNumber = source['track_number'];
     final totalTracks = source['total_tracks'];
