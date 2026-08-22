@@ -1945,6 +1945,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get librarySourceDisabled => 'Disabled';
 
   @override
+  String librarySourceScanCount(int scanned, int total, String progress) {
+    return '$scanned of $total files scanned ($progress%)';
+  }
+
+  @override
   String get libraryExternalStorage => 'External storage';
 
   @override

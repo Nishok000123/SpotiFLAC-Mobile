@@ -511,9 +511,6 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
     final librarySources = ref.watch(
       localLibraryProvider.select((state) => state.sources),
     );
-    final scanningSourceId = ref.watch(
-      localLibraryProvider.select((state) => state.scanningSourceId),
-    );
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -595,20 +592,40 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
                       .setLocalLibraryEnabled(value),
                 ),
                 for (final source in librarySources)
-                  _LibrarySourceSettingsItem(
-                    source: source,
-                    isScanning: scanningSourceId == source.id,
-                    enabled: settings.localLibraryEnabled,
-                    onEnabledChanged: (value) => ref
-                        .read(localLibraryProvider.notifier)
-                        .setSourceEnabled(source.id, value),
-                    onScan: () => ref
-                        .read(localLibraryProvider.notifier)
-                        .startSourceScan(source.id),
-                    onFullScan: () => ref
-                        .read(localLibraryProvider.notifier)
-                        .startSourceScan(source.id, forceFullScan: true),
-                    onRemove: () => _removeSource(source),
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final scan = ref.watch(
+                        localLibraryProvider.select((state) {
+                          final active = state.scanningSourceId == source.id;
+                          return (
+                            active: active,
+                            finalizing: active && state.scanIsFinalizing,
+                            scanned: active ? state.scannedFiles : 0,
+                            total: active ? state.scanTotalFiles : 0,
+                            progress: active ? state.scanProgress : 0.0,
+                          );
+                        }),
+                      );
+                      return _LibrarySourceSettingsItem(
+                        source: source,
+                        isScanning: scan.active,
+                        isFinalizing: scan.finalizing,
+                        scannedFiles: scan.scanned,
+                        totalFiles: scan.total,
+                        progress: scan.progress,
+                        enabled: settings.localLibraryEnabled,
+                        onEnabledChanged: (value) => ref
+                            .read(localLibraryProvider.notifier)
+                            .setSourceEnabled(source.id, value),
+                        onScan: () => ref
+                            .read(localLibraryProvider.notifier)
+                            .startSourceScan(source.id),
+                        onFullScan: () => ref
+                            .read(localLibraryProvider.notifier)
+                            .startSourceScan(source.id, forceFullScan: true),
+                        onRemove: () => _removeSource(source),
+                      );
+                    },
                   ),
                 Opacity(
                   opacity: settings.localLibraryEnabled ? 1.0 : 0.5,
@@ -901,6 +918,10 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
 class _LibrarySourceSettingsItem extends StatelessWidget {
   final LocalLibrarySource source;
   final bool isScanning;
+  final bool isFinalizing;
+  final int scannedFiles;
+  final int totalFiles;
+  final double progress;
   final bool enabled;
   final ValueChanged<bool> onEnabledChanged;
   final VoidCallback onScan;
@@ -910,6 +931,10 @@ class _LibrarySourceSettingsItem extends StatelessWidget {
   const _LibrarySourceSettingsItem({
     required this.source,
     required this.isScanning,
+    required this.isFinalizing,
+    required this.scannedFiles,
+    required this.totalFiles,
+    required this.progress,
     required this.enabled,
     required this.onEnabledChanged,
     required this.onScan,
@@ -994,7 +1019,15 @@ class _LibrarySourceSettingsItem extends StatelessWidget {
         : !source.available
         ? context.l10n.librarySourceOffline
         : isScanning
-        ? context.l10n.libraryScanning
+        ? isFinalizing
+              ? context.l10n.libraryScanFinalizing
+              : totalFiles > 0
+              ? context.l10n.librarySourceScanCount(
+                  scannedFiles,
+                  totalFiles,
+                  progress.toStringAsFixed(0),
+                )
+              : context.l10n.libraryScanning
         : source.lastScanError?.trim().isNotEmpty == true
         ? context.l10n.notifLibraryScanFailed
         : context.l10n.librarySourceOnline;
@@ -1022,11 +1055,12 @@ class _LibrarySourceSettingsItem extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (isScanning)
-              const Padding(
-                padding: EdgeInsets.only(right: 8),
-                child: SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _AnimatedScanCount(
+                  count: scannedFiles,
+                  progress: progress,
+                  determinate: totalFiles > 0 && !isFinalizing,
                 ),
               ),
             Switch.adaptive(
@@ -1035,6 +1069,52 @@ class _LibrarySourceSettingsItem extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AnimatedScanCount extends StatelessWidget {
+  final int count;
+  final double progress;
+  final bool determinate;
+
+  const _AnimatedScanCount({
+    required this.count,
+    required this.progress,
+    required this.determinate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 42,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox.square(
+            dimension: 18,
+            child: CircularProgressIndicator(
+              value: determinate ? (progress / 100).clamp(0.0, 1.0) : null,
+              strokeWidth: 2,
+            ),
+          ),
+          const SizedBox(height: 2),
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: count.toDouble()),
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            builder: (context, value, _) => Text(
+              value.round().toString(),
+              maxLines: 1,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

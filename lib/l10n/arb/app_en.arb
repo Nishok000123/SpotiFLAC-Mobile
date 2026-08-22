@@ -2517,6 +2517,15 @@
   "@librarySourceDisabled": {
     "description": "Library source has been disabled by the user"
   },
+  "librarySourceScanCount": "{scanned} of {total} files scanned ({progress}%)",
+  "@librarySourceScanCount": {
+    "description": "Live progress for one library folder scan",
+    "placeholders": {
+      "scanned": {"type": "int"},
+      "total": {"type": "int"},
+      "progress": {"type": "String"}
+    }
+  },
   "libraryExternalStorage": "External storage",
   "@libraryExternalStorage": {
     "description": "Label for a removable or external library source"

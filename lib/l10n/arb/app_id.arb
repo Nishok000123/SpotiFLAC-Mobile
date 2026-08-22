@@ -3314,6 +3314,7 @@
   "librarySourceOnline": "Online",
   "librarySourceOffline": "Offline. Sambungkan kembali storage untuk memulihkan lagu",
   "librarySourceDisabled": "Dinonaktifkan",
+  "librarySourceScanCount": "{scanned} dari {total} file dipindai ({progress}%)",
   "libraryExternalStorage": "Storage eksternal",
   "libraryRemoveFolder": "Hapus folder library",
   "libraryRemoveFolderMessage": "Hapus folder ini dan indeks lagunya dari SpotiFLAC Mobile? File audio di storage tidak akan dihapus.",

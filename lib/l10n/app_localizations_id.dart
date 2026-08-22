@@ -1903,6 +1903,11 @@ class AppLocalizationsId extends AppLocalizations {
   String get librarySourceDisabled => 'Dinonaktifkan';
 
   @override
+  String librarySourceScanCount(int scanned, int total, String progress) {
+    return '$scanned dari $total file dipindai ($progress%)';
+  }
+
+  @override
   String get libraryExternalStorage => 'Storage eksternal';
 
   @override

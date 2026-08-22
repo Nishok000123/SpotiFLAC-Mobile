@@ -3430,6 +3430,12 @@ abstract class AppLocalizations {
   /// **'Disabled'**
   String get librarySourceDisabled;
 
+  /// Live progress for one library folder scan
+  ///
+  /// In en, this message translates to:
+  /// **'{scanned} of {total} files scanned ({progress}%)'**
+  String librarySourceScanCount(int scanned, int total, String progress);
+
   /// Label for a removable or external library source
   ///
   /// In en, this message translates to:
