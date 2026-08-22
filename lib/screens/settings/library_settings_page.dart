@@ -1017,6 +1017,7 @@ class _LibrarySourceSettingsItem extends StatelessWidget {
               )
             : null,
         subtitle: pathLine == null ? details : '$pathLine\n$details',
+        onTap: () => _showActions(context),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1031,11 +1032,6 @@ class _LibrarySourceSettingsItem extends StatelessWidget {
             Switch.adaptive(
               value: source.enabled,
               onChanged: enabled ? onEnabledChanged : null,
-            ),
-            IconButton(
-              tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
-              onPressed: () => _showActions(context),
-              icon: const Icon(Icons.more_vert),
             ),
           ],
         ),
