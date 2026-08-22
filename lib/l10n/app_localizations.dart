@@ -3400,6 +3400,54 @@ abstract class AppLocalizations {
   /// **'Tap to select folder'**
   String get libraryFolderHint;
 
+  /// Action to add another local library source
+  ///
+  /// In en, this message translates to:
+  /// **'Add library folder'**
+  String get libraryAddFolder;
+
+  /// Supported storage locations for local library sources
+  ///
+  /// In en, this message translates to:
+  /// **'Internal storage, SD card, SSD, or another external drive'**
+  String get libraryAddFolderSubtitle;
+
+  /// Library source is connected and accessible
+  ///
+  /// In en, this message translates to:
+  /// **'Online'**
+  String get librarySourceOnline;
+
+  /// Library source is temporarily disconnected
+  ///
+  /// In en, this message translates to:
+  /// **'Offline. Reconnect the storage to restore these tracks'**
+  String get librarySourceOffline;
+
+  /// Library source has been disabled by the user
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get librarySourceDisabled;
+
+  /// Label for a removable or external library source
+  ///
+  /// In en, this message translates to:
+  /// **'External storage'**
+  String get libraryExternalStorage;
+
+  /// Action to remove one indexed library source
+  ///
+  /// In en, this message translates to:
+  /// **'Remove library folder'**
+  String get libraryRemoveFolder;
+
+  /// Confirmation shown before removing a library source
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this folder and its indexed tracks from SpotiFLAC Mobile? Audio files on the storage will not be deleted.'**
+  String get libraryRemoveFolderMessage;
+
   /// Toggle for duplicate indicator in search
   ///
   /// In en, this message translates to:

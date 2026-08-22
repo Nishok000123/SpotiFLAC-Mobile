@@ -179,6 +179,8 @@ class PlatformBridge {
   static final StreamController<ExtensionSessionGrantEvent>
   _extensionSessionGrantEvents =
       StreamController<ExtensionSessionGrantEvent>.broadcast();
+  static final StreamController<void> _libraryStorageEvents =
+      StreamController<void>.broadcast();
   static bool _backendEventHandlerInstalled = false;
 
   static bool get supportsCoreBackend => Platform.isAndroid || Platform.isIOS;
@@ -189,6 +191,11 @@ class PlatformBridge {
   static Stream<ExtensionSessionGrantEvent> extensionSessionGrantEvents() {
     _ensureBackendEventHandler();
     return _extensionSessionGrantEvents.stream;
+  }
+
+  static Stream<void> libraryStorageEvents() {
+    _ensureBackendEventHandler();
+    return _libraryStorageEvents.stream;
   }
 
   static void _ensureBackendEventHandler() {
@@ -209,6 +216,9 @@ class PlatformBridge {
               );
             }
           }
+          return null;
+        case 'libraryStorageChanged':
+          _libraryStorageEvents.add(null);
           return null;
         default:
           return null;

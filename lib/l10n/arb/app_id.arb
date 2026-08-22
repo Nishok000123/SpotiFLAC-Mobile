@@ -3309,6 +3309,14 @@
     "description": "Tutorial extensions tip 2"
   },
   "libraryFolder": "Library Folder",
+  "libraryAddFolder": "Tambah folder library",
+  "libraryAddFolderSubtitle": "Penyimpanan internal, kartu SD, SSD, atau drive eksternal lain",
+  "librarySourceOnline": "Online",
+  "librarySourceOffline": "Offline. Sambungkan kembali storage untuk memulihkan lagu",
+  "librarySourceDisabled": "Dinonaktifkan",
+  "libraryExternalStorage": "Storage eksternal",
+  "libraryRemoveFolder": "Hapus folder library",
+  "libraryRemoveFolderMessage": "Hapus folder ini dan indeks lagunya dari SpotiFLAC Mobile? File audio di storage tidak akan dihapus.",
   "@metadataProviderPriorityTitle": {
     "description": "Metadata priority page title"
   },

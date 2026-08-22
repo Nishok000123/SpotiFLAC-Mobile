@@ -105,12 +105,12 @@ extension _LibraryDbQueueSql on LibraryDatabase {
         where.add('''
           l.album_key IN (
             SELECT album_key
-            FROM library
+            FROM ${LibraryDatabase.visibleLibraryView} candidate
             WHERE NOT EXISTS (
               SELECT 1
               FROM library_path_keys lpk
               JOIN history_db.history_path_keys hpk ON hpk.path_key = lpk.path_key
-              WHERE lpk.item_id = library.id
+              WHERE lpk.item_id = candidate.id
             )
             GROUP BY album_key
             HAVING COUNT(*) = 1
@@ -162,7 +162,7 @@ extension _LibraryDbQueueSql on LibraryDatabase {
           l.sort_genre,
           l.sort_release,
           l.sort_added
-        FROM library l
+        FROM ${LibraryDatabase.visibleLibraryView} l
         ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
         ''';
       parts.add(
@@ -306,18 +306,18 @@ extension _LibraryDbQueueSql on LibraryDatabase {
           MIN(l.album_artist_norm) AS sort_artist,
           COALESCE(MAX(l.release_date), '') AS sort_release,
           COALESCE(MAX(l.sort_genre), '') AS sort_genre
-        FROM library l
+        FROM ${LibraryDatabase.visibleLibraryView} l
         JOIN (
           SELECT
             album_key,
             COUNT(*) AS track_count,
             MAX(COALESCE(sort_added, 0)) AS latest_added
-          FROM library
+          FROM ${LibraryDatabase.visibleLibraryView} candidate
           WHERE NOT EXISTS (
             SELECT 1
             FROM library_path_keys lpk
             JOIN history_db.history_path_keys hpk ON hpk.path_key = lpk.path_key
-            WHERE lpk.item_id = library.id
+            WHERE lpk.item_id = candidate.id
           )
           GROUP BY album_key
           HAVING COUNT(*) > 1

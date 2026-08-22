@@ -325,17 +325,9 @@ extension _QueueTabBatchActions on _QueueTabState {
     if (!mounted) return;
     if (!cancelled) BatchProgressDialog.dismiss(context);
 
-    final localLibraryPath = settings.localLibraryPath.trim();
-    final iosBookmark = settings.localLibraryBookmark;
     try {
-      if (localLibraryPath.isNotEmpty &&
-          !ref.read(localLibraryProvider).isScanning) {
-        await ref
-            .read(localLibraryProvider.notifier)
-            .startScan(
-              localLibraryPath,
-              iosBookmark: iosBookmark.isNotEmpty ? iosBookmark : null,
-            );
+      if (!ref.read(localLibraryProvider).isScanning) {
+        await ref.read(localLibraryProvider.notifier).scanAllSources();
       } else {
         await ref.read(localLibraryProvider.notifier).reloadFromStorage();
       }

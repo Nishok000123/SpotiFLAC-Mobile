@@ -1886,6 +1886,33 @@ class AppLocalizationsId extends AppLocalizations {
   String get libraryFolderHint => 'Tap to select folder';
 
   @override
+  String get libraryAddFolder => 'Tambah folder library';
+
+  @override
+  String get libraryAddFolderSubtitle =>
+      'Penyimpanan internal, kartu SD, SSD, atau drive eksternal lain';
+
+  @override
+  String get librarySourceOnline => 'Online';
+
+  @override
+  String get librarySourceOffline =>
+      'Offline. Sambungkan kembali storage untuk memulihkan lagu';
+
+  @override
+  String get librarySourceDisabled => 'Dinonaktifkan';
+
+  @override
+  String get libraryExternalStorage => 'Storage eksternal';
+
+  @override
+  String get libraryRemoveFolder => 'Hapus folder library';
+
+  @override
+  String get libraryRemoveFolderMessage =>
+      'Hapus folder ini dan indeks lagunya dari SpotiFLAC Mobile? File audio di storage tidak akan dihapus.';
+
+  @override
   String get libraryShowDuplicateIndicator => 'Show Duplicate Indicator';
 
   @override

@@ -120,6 +120,7 @@ void main() {
     test('keeps a local item current after an audio metadata probe', () {
       final item = LocalLibraryItem(
         id: 'local-1',
+        sourceId: 'external-ssd',
         trackName: 'Song',
         artistName: 'Artist',
         albumName: 'Album',
@@ -136,6 +137,26 @@ void main() {
       expect(updated.sampleRate, 96000);
       expect(updated.trackName, 'Song');
       expect(updated.filePath, '/music/song.flac');
+      expect(updated.sourceId, 'external-ssd');
+      expect(
+        LocalLibraryItem.fromJson(updated.toJson()).sourceId,
+        'external-ssd',
+      );
+    });
+
+    test('recognizes a retained external source index', () {
+      final offlineSource = LocalLibrarySource(
+        id: 'external-ssd',
+        path: 'content://music/tree/SSD%3AMusic',
+        displayName: 'SSD/Music',
+        isRemovable: true,
+        available: false,
+        trackCount: 1200,
+      );
+
+      expect(offlineSource.isIndexed, isTrue);
+      expect(offlineSource.available, isFalse);
+      expect(offlineSource.copyWith(available: true).trackCount, 1200);
     });
   });
 

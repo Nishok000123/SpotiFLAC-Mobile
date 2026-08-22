@@ -1,11 +1,15 @@
 package com.zarz.spotiflac
 
 import android.app.Activity
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.storage.StorageManager
+import android.provider.DocumentsContract
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
@@ -74,6 +78,7 @@ class MainActivity: FlutterFragmentActivity() {
     private val LARGE_JSON_RESULT_FILE_THRESHOLD_BYTES = 256 * 1024
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var backendChannel: MethodChannel? = null
+    private var libraryStorageReceiver: BroadcastReceiver? = null
     private val pendingSessionGrantEvents = mutableListOf<Map<String, Any>>()
     private var pendingSafTreeResult: MethodChannel.Result? = null
     internal val safScanLock = Any()
@@ -118,7 +123,36 @@ class MainActivity: FlutterFragmentActivity() {
         val payload = JSONObject()
         payload.put("tree_uri", uri.toString())
         payload.put("display_name", resolveSafDisplayPath(uri))
+        val storageId = resolveSafStorageId(uri)
+        val volume = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            getSystemService(StorageManager::class.java).storageVolumes.firstOrNull {
+                (storageId == "primary" && it.isPrimary) ||
+                    (!it.uuid.isNullOrBlank() && it.uuid.equals(storageId, ignoreCase = true))
+            }
+        } else {
+            null
+        }
+        payload.put("volume_id", storageId ?: JSONObject.NULL)
+        payload.put(
+            "is_removable",
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                volume?.isRemovable ?: (storageId != null && storageId != "primary")
+            } else {
+                storageId != null && storageId != "primary"
+            },
+        )
         result.success(payload.toString())
+    }
+
+    private fun resolveSafStorageId(treeUri: Uri): String? {
+        return try {
+            DocumentsContract.getTreeDocumentId(treeUri)
+                ?.substringBefore(':')
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     /**
@@ -138,7 +172,14 @@ class MainActivity: FlutterFragmentActivity() {
             val prefix = if (storageId == "primary") {
                 "/storage/emulated/0"
             } else {
-                "SD Card"
+                val volumeName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    getSystemService(StorageManager::class.java).storageVolumes
+                        .firstOrNull { it.uuid.equals(storageId, ignoreCase = true) }
+                        ?.getDescription(this)
+                } else {
+                    null
+                }
+                volumeName?.takeIf { it.isNotBlank() } ?: "External storage"
             }
 
             return if (subPath.isEmpty()) prefix else "$prefix/$subPath"
@@ -791,6 +832,12 @@ class MainActivity: FlutterFragmentActivity() {
     }
 
     override fun onDestroy() {
+        libraryStorageReceiver?.let {
+            try {
+                unregisterReceiver(it)
+            } catch (_: Exception) {}
+        }
+        libraryStorageReceiver = null
         try {
             Gobackend.cleanupExtensions()
         } catch (e: Exception) {
@@ -856,6 +903,7 @@ class MainActivity: FlutterFragmentActivity() {
 
         val channel = MethodChannel(messenger, CHANNEL)
         backendChannel = channel
+        registerLibraryStorageReceiver()
         if (pendingSessionGrantEvents.isNotEmpty()) {
             val events = pendingSessionGrantEvents.toList()
             pendingSessionGrantEvents.clear()
@@ -2482,5 +2530,32 @@ class MainActivity: FlutterFragmentActivity() {
                 }
             }
         }
+    }
+
+    private fun registerLibraryStorageReceiver() {
+        if (libraryStorageReceiver != null) return
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                backendChannel?.invokeMethod(
+                    "libraryStorageChanged",
+                    mapOf("action" to (intent?.action ?: "")),
+                )
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_MEDIA_MOUNTED)
+            addAction(Intent.ACTION_MEDIA_UNMOUNTED)
+            addAction(Intent.ACTION_MEDIA_EJECT)
+            addAction(Intent.ACTION_MEDIA_REMOVED)
+            addAction(Intent.ACTION_MEDIA_BAD_REMOVAL)
+            addDataScheme("file")
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(receiver, filter)
+        }
+        libraryStorageReceiver = receiver
     }
 }

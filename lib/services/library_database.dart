@@ -16,7 +16,9 @@ final _log = AppLogger('LibraryDatabase');
 
 class LibraryDatabase {
   static final LibraryDatabase instance = LibraryDatabase._init();
-  static const int schemaVersion = 10;
+  static const int schemaVersion = 11;
+  static const String legacySourceId = LocalLibraryItem.legacySourceId;
+  static const String visibleLibraryView = 'library_visible';
   static const int audioMetadataScanVersion = 1;
   static final sqlite.SingleFlightInitializer<Database> _database =
       sqlite.SingleFlightInitializer<Database>();
@@ -58,6 +60,7 @@ class LibraryDatabase {
     await db.execute('''
       CREATE TABLE library (
         id TEXT PRIMARY KEY,
+        source_id TEXT NOT NULL DEFAULT '$legacySourceId',
         track_name TEXT NOT NULL,
         artist_name TEXT NOT NULL,
         album_name TEXT NOT NULL,
@@ -108,6 +111,7 @@ class LibraryDatabase {
     await _createNormalizedIndexes(db);
     await _createQueueIndexes(db);
     await _createPathKeyTable(db);
+    await _createLibrarySources(db);
 
     _log.i('Library database schema created with indexes');
   }
@@ -187,6 +191,52 @@ class LibraryDatabase {
       await _createQueueIndexes(db);
       _log.i('Added persisted queue sort/search columns');
     }
+    if (oldVersion < 11) {
+      await sqlite.addColumnIfMissing(
+        db,
+        'library',
+        'source_id',
+        "TEXT NOT NULL DEFAULT '$legacySourceId'",
+      );
+      await _createLibrarySources(db);
+      _log.i('Added multiple local library sources');
+    }
+  }
+
+  Future<void> _createLibrarySources(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS library_sources (
+        id TEXT PRIMARY KEY,
+        path TEXT NOT NULL UNIQUE,
+        display_name TEXT NOT NULL,
+        bookmark TEXT,
+        volume_id TEXT,
+        is_removable INTEGER NOT NULL DEFAULT 0,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        available INTEGER NOT NULL DEFAULT 1,
+        last_scanned_at TEXT,
+        last_seen_at TEXT,
+        last_scan_error TEXT
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_library_source_id ON library(source_id)',
+    );
+    await db.insert('library_sources', {
+      'id': legacySourceId,
+      'path': 'legacy://local-library',
+      'display_name': 'Music',
+      'enabled': 1,
+      'available': 1,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+    await db.execute('DROP VIEW IF EXISTS $visibleLibraryView');
+    await db.execute('''
+      CREATE VIEW $visibleLibraryView AS
+      SELECT l.*
+      FROM library l
+      JOIN library_sources s ON s.id = l.source_id
+      WHERE s.enabled = 1 AND s.available = 1
+    ''');
   }
 
   Future<void> _createPathKeyTable(DatabaseExecutor db) =>
@@ -378,11 +428,15 @@ class LibraryDatabase {
     await batch.commit(noResult: true);
   }
 
-  Map<String, dynamic> _jsonToDbRow(Map<String, dynamic> json) {
+  Map<String, dynamic> _jsonToDbRow(
+    Map<String, dynamic> json, {
+    String? sourceId,
+  }) {
     final fileModTime = (json['fileModTime'] as num?)?.toInt();
     final scannedAt = json['scannedAt'] as String?;
     final row = {
       'id': json['id'],
+      'source_id': sourceId ?? json['sourceId'] ?? legacySourceId,
       'track_name': json['trackName'],
       'artist_name': json['artistName'],
       'album_name': json['albumName'],
@@ -436,6 +490,7 @@ class LibraryDatabase {
   Map<String, dynamic> _dbRowToJson(Map<String, dynamic> row) {
     return {
       'id': row['id'],
+      'sourceId': row['source_id'] ?? legacySourceId,
       'trackName': row['track_name'],
       'artistName': row['artist_name'],
       'albumName': row['album_name'],
@@ -462,12 +517,12 @@ class LibraryDatabase {
     };
   }
 
-  Future<void> upsert(Map<String, dynamic> json) async {
+  Future<void> upsert(Map<String, dynamic> json, {String? sourceId}) async {
     final db = await database;
     await db.transaction((txn) async {
       await txn.insert(
         'library',
-        _jsonToDbRow(json),
+        _jsonToDbRow(json, sourceId: sourceId),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
       final batch = txn.batch();
@@ -480,7 +535,10 @@ class LibraryDatabase {
     });
   }
 
-  Future<void> upsertBatch(List<Map<String, dynamic>> items) async {
+  Future<void> upsertBatch(
+    List<Map<String, dynamic>> items, {
+    String? sourceId,
+  }) async {
     if (items.isEmpty) return;
     final db = await database;
     await db.transaction((txn) async {
@@ -488,7 +546,7 @@ class LibraryDatabase {
       for (final json in items) {
         batch.insert(
           'library',
-          _jsonToDbRow(json),
+          _jsonToDbRow(json, sourceId: sourceId),
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
         _putPathKeysInBatch(
@@ -575,10 +633,237 @@ class LibraryDatabase {
     return inserted;
   }
 
+  /// Atomically replaces only one source. Other folders, including temporarily
+  /// disconnected removable storage, retain their index rows.
+  Future<int> replaceSourceStream(
+    String sourceId,
+    Stream<Map<String, dynamic>> items, {
+    int batchSize = 300,
+  }) async {
+    if (batchSize <= 0) {
+      throw ArgumentError.value(batchSize, 'batchSize', 'Must be positive');
+    }
+    final db = await database;
+    var inserted = 0;
+    await db.transaction((txn) async {
+      await txn.rawDelete(
+        'DELETE FROM library_path_keys WHERE item_id IN '
+        '(SELECT id FROM library WHERE source_id = ?)',
+        [sourceId],
+      );
+      await txn.delete(
+        'library',
+        where: 'source_id = ?',
+        whereArgs: [sourceId],
+      );
+
+      var batch = txn.batch();
+      var pending = 0;
+      Future<void> flush() async {
+        if (pending == 0) return;
+        await batch.commit(noResult: true);
+        batch = txn.batch();
+        pending = 0;
+      }
+
+      await for (final json in items) {
+        final id = json['id'] as String?;
+        if (id == null || id.trim().isEmpty) {
+          throw const FormatException('Library scan row has no valid id');
+        }
+        batch.insert(
+          'library',
+          _jsonToDbRow(json, sourceId: sourceId),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        _putPathKeysInBatch(batch, id, json['filePath'] as String?);
+        inserted++;
+        pending++;
+        if (pending >= batchSize) await flush();
+      }
+      await flush();
+    });
+    _log.i('Stream-replaced library source $sourceId with $inserted items');
+    return inserted;
+  }
+
+  Future<List<LocalLibrarySource>> getSources() async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT s.*, COUNT(l.id) AS track_count
+      FROM library_sources s
+      LEFT JOIN library l ON l.source_id = s.id
+      GROUP BY s.id
+      HAVING s.path != 'legacy://local-library' OR COUNT(l.id) > 0
+      ORDER BY s.is_removable, LOWER(s.display_name), LOWER(s.path)
+    ''');
+    return rows.map(_sourceFromRow).toList(growable: false);
+  }
+
+  Future<LocalLibrarySource?> getSourceByPath(String path) async {
+    final db = await database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT s.*, COUNT(l.id) AS track_count
+      FROM library_sources s
+      LEFT JOIN library l ON l.source_id = s.id
+      WHERE s.path = ?
+      GROUP BY s.id
+      LIMIT 1
+      ''',
+      [path],
+    );
+    return rows.isEmpty ? null : _sourceFromRow(rows.first);
+  }
+
+  LocalLibrarySource _sourceFromRow(Map<String, Object?> row) {
+    DateTime? parseDate(Object? value) =>
+        value is String ? DateTime.tryParse(value) : null;
+    return LocalLibrarySource(
+      id: row['id'] as String,
+      path: row['path'] as String,
+      displayName: row['display_name'] as String,
+      bookmark: row['bookmark'] as String?,
+      volumeId: row['volume_id'] as String?,
+      isRemovable: (row['is_removable'] as num?)?.toInt() == 1,
+      enabled: (row['enabled'] as num?)?.toInt() != 0,
+      available: (row['available'] as num?)?.toInt() != 0,
+      trackCount: (row['track_count'] as num?)?.toInt() ?? 0,
+      lastScannedAt: parseDate(row['last_scanned_at']),
+      lastSeenAt: parseDate(row['last_seen_at']),
+      lastScanError: row['last_scan_error'] as String?,
+    );
+  }
+
+  Future<void> upsertSource(LocalLibrarySource source) async {
+    final db = await database;
+    final values = <String, Object?>{
+      'path': source.path,
+      'display_name': source.displayName,
+      'bookmark': source.bookmark,
+      'volume_id': source.volumeId,
+      'is_removable': source.isRemovable ? 1 : 0,
+      'enabled': source.enabled ? 1 : 0,
+      'available': source.available ? 1 : 0,
+      'last_scanned_at': source.lastScannedAt?.toIso8601String(),
+      'last_seen_at': source.lastSeenAt?.toIso8601String(),
+      'last_scan_error': source.lastScanError,
+    };
+    final updated = await db.update(
+      'library_sources',
+      values,
+      where: 'id = ?',
+      whereArgs: [source.id],
+    );
+    if (updated == 0) {
+      await db.insert('library_sources', {'id': source.id, ...values});
+    }
+  }
+
+  Future<void> updateSourceState(
+    String sourceId, {
+    bool? enabled,
+    bool? available,
+    DateTime? lastScannedAt,
+    DateTime? lastSeenAt,
+    String? lastScanError,
+    bool clearLastScanError = false,
+  }) async {
+    final values = <String, Object?>{};
+    if (enabled != null) values['enabled'] = enabled ? 1 : 0;
+    if (available != null) values['available'] = available ? 1 : 0;
+    if (lastScannedAt != null) {
+      values['last_scanned_at'] = lastScannedAt.toIso8601String();
+    }
+    if (lastSeenAt != null) {
+      values['last_seen_at'] = lastSeenAt.toIso8601String();
+    }
+    if (lastScanError != null || clearLastScanError) {
+      values['last_scan_error'] = clearLastScanError ? null : lastScanError;
+    }
+    if (values.isEmpty) return;
+    final db = await database;
+    await db.update(
+      'library_sources',
+      values,
+      where: 'id = ?',
+      whereArgs: [sourceId],
+    );
+  }
+
+  Future<void> migrateLegacySource({
+    required String path,
+    required String displayName,
+    String? bookmark,
+    String? volumeId,
+    bool isRemovable = false,
+    bool available = true,
+    DateTime? lastScannedAt,
+  }) async {
+    if (path.trim().isEmpty) return;
+    final db = await database;
+    await db.update(
+      'library_sources',
+      {
+        'path': path,
+        'display_name': displayName,
+        'bookmark': bookmark,
+        'volume_id': volumeId,
+        'is_removable': isRemovable ? 1 : 0,
+        'available': available ? 1 : 0,
+        'last_scanned_at': lastScannedAt?.toIso8601String(),
+        'last_seen_at': available ? DateTime.now().toIso8601String() : null,
+      },
+      where: 'id = ?',
+      whereArgs: [legacySourceId],
+    );
+  }
+
+  Future<void> removeSource(String sourceId) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.rawDelete(
+        'DELETE FROM library_path_keys WHERE item_id IN '
+        '(SELECT id FROM library WHERE source_id = ?)',
+        [sourceId],
+      );
+      await txn.delete(
+        'library',
+        where: 'source_id = ?',
+        whereArgs: [sourceId],
+      );
+      if (sourceId == legacySourceId) {
+        await txn.update(
+          'library_sources',
+          {
+            'path': 'legacy://local-library',
+            'display_name': 'Music',
+            'bookmark': null,
+            'volume_id': null,
+            'is_removable': 0,
+            'enabled': 1,
+            'available': 1,
+            'last_scanned_at': null,
+            'last_seen_at': null,
+            'last_scan_error': null,
+          },
+          where: 'id = ?',
+          whereArgs: [sourceId],
+        );
+      } else {
+        await txn.delete(
+          'library_sources',
+          where: 'id = ?',
+          whereArgs: [sourceId],
+        );
+      }
+    });
+  }
+
   Future<List<Map<String, dynamic>>> getAll({int? limit, int? offset}) async {
     final db = await database;
     final rows = await db.query(
-      'library',
+      visibleLibraryView,
       orderBy: 'album_artist, album_name, disc_number, track_number',
       limit: limit,
       offset: offset,
@@ -688,10 +973,10 @@ class LibraryDatabase {
           COUNT(*) AS all_count,
           COUNT(DISTINCT CASE WHEN grouped.track_count > 1 THEN l.album_key END) AS album_count,
           COALESCE(SUM(CASE WHEN grouped.track_count = 1 THEN 1 ELSE 0 END), 0) AS single_count
-        FROM library l
+        FROM $visibleLibraryView l
         JOIN (
           SELECT album_key, COUNT(*) AS track_count
-          FROM library candidate
+          FROM $visibleLibraryView candidate
           WHERE NOT EXISTS (
             SELECT 1
             FROM library_path_keys lpk
@@ -768,7 +1053,7 @@ class LibraryDatabase {
           COALESCE(SUM(CASE WHEN track_count = 1 THEN 1 ELSE 0 END), 0) AS single_count
         FROM (
           SELECT l.album_key, COUNT(*) AS track_count
-          FROM library l
+          FROM $visibleLibraryView l
           WHERE NOT EXISTS (
             SELECT 1
             FROM library_path_keys lpk
@@ -845,7 +1130,7 @@ class LibraryDatabase {
   ) async {
     final db = await database;
     final rows = await db.query(
-      'library',
+      visibleLibraryView,
       where:
           "LOWER(album_name) = ? AND LOWER(COALESCE(NULLIF(album_artist, ''), artist_name)) = ?",
       whereArgs: [albumName.toLowerCase(), artistName.toLowerCase()],
@@ -860,7 +1145,7 @@ class LibraryDatabase {
   ) async {
     final db = await database;
     final rows = await db.query(
-      'library',
+      visibleLibraryView,
       where: 'album_key = ?',
       whereArgs: [albumKey],
       orderBy:
@@ -872,7 +1157,7 @@ class LibraryDatabase {
   Future<Map<String, dynamic>?> getById(String id) async {
     final db = await database;
     final rows = await db.query(
-      'library',
+      visibleLibraryView,
       where: 'id = ?',
       whereArgs: [id],
       limit: 1,
@@ -884,7 +1169,7 @@ class LibraryDatabase {
   Future<Map<String, dynamic>?> getByIsrc(String isrc) async {
     final db = await database;
     final rows = await db.query(
-      'library',
+      visibleLibraryView,
       where: 'isrc = ?',
       whereArgs: [isrc],
       limit: 1,
@@ -899,7 +1184,7 @@ class LibraryDatabase {
   ) async {
     final db = await database;
     final rows = await db.query(
-      'library',
+      visibleLibraryView,
       where: 'match_key = ?',
       whereArgs: [matchKeyFor(trackName, artistName)],
     );
@@ -912,7 +1197,7 @@ class LibraryDatabase {
   ) async {
     final db = await database;
     final rows = await db.query(
-      'library',
+      visibleLibraryView,
       where: 'match_key = ?',
       whereArgs: [matchKeyFor(trackName, artistName)],
       orderBy: _orderByForSort(LocalLibrarySortMode.album),
@@ -958,7 +1243,7 @@ class LibraryDatabase {
     ) {
       return sqlite.loadRowsByColumn(
         db,
-        table: 'library',
+        table: visibleLibraryView,
         column: column,
         rawValues: rawValues,
         destination: destination,
@@ -991,7 +1276,9 @@ class LibraryDatabase {
 
   Future<LocalLibraryLookupIndex> getLookupIndex() async {
     final db = await database;
-    final rows = await db.rawQuery('SELECT isrc, match_key FROM library');
+    final rows = await db.rawQuery(
+      'SELECT isrc, match_key FROM $visibleLibraryView',
+    );
     final isrcs = <String>{};
     final matchKeys = <String>{};
     for (final row in rows) {
@@ -1042,7 +1329,7 @@ class LibraryDatabase {
         SELECT l.id AS id, 'local' AS source, l.track_name, l.artist_name,
                l.album_name, l.file_path, UPPER(TRIM(l.isrc)) AS isrc_key,
                l.bit_depth, l.sample_rate, l.bitrate, l.format
-        FROM library l
+        FROM $visibleLibraryView l
         WHERE l.isrc IS NOT NULL AND TRIM(l.isrc) != ''
           AND NOT EXISTS (
             SELECT 1
@@ -1224,9 +1511,14 @@ class LibraryDatabase {
     });
   }
 
-  Future<int> cleanupMissingFiles() async {
+  Future<int> cleanupMissingFiles({String? sourceId}) async {
     final db = await database;
-    final rows = await db.query('library', columns: ['id', 'file_path']);
+    final rows = await db.query(
+      'library',
+      columns: ['id', 'file_path'],
+      where: sourceId == null ? null : 'source_id = ?',
+      whereArgs: sourceId == null ? null : [sourceId],
+    );
 
     final missingIds = <String>[];
     const checkChunkSize = 16;
@@ -1282,13 +1574,28 @@ class LibraryDatabase {
     await db.transaction((txn) async {
       await txn.delete('library_path_keys');
       await txn.delete('library');
+      await txn.update('library_sources', {
+        'last_scanned_at': null,
+        'last_scan_error': null,
+      });
     });
     _log.i('Cleared all library data');
   }
 
   Future<int> getCount() async {
     final db = await database;
-    final result = await db.rawQuery('SELECT COUNT(*) as count FROM library');
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM $visibleLibraryView',
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  Future<int> getSourceCount(String sourceId) async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM library WHERE source_id = ?',
+      [sourceId],
+    );
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
@@ -1299,11 +1606,13 @@ class LibraryDatabase {
     _historyAttached = false;
   }
 
-  Future<Map<String, int>> getFileModTimes() async {
+  Future<Map<String, int>> getFileModTimes({String? sourceId}) async {
     final db = await database;
     final rows = await db.rawQuery(
       'SELECT file_path, COALESCE(file_mod_time, 0) AS file_mod_time, '
-      'audio_metadata_scan_version FROM library',
+      'audio_metadata_scan_version FROM library '
+      '${sourceId == null ? '' : 'WHERE source_id = ?'}',
+      sourceId == null ? const [] : [sourceId],
     );
     final result = <String, int>{};
     for (final row in rows) {
@@ -1321,11 +1630,13 @@ class LibraryDatabase {
     return result;
   }
 
-  Future<String> writeFileModTimesSnapshot() async {
+  Future<String> writeFileModTimesSnapshot({String? sourceId}) async {
     final db = await database;
     final rows = await db.rawQuery(
       'SELECT file_path, COALESCE(file_mod_time, 0) AS file_mod_time, '
-      'audio_metadata_scan_version FROM library',
+      'audio_metadata_scan_version FROM library '
+      '${sourceId == null ? '' : 'WHERE source_id = ?'}',
+      sourceId == null ? const [] : [sourceId],
     );
     final tempDir = await getTemporaryDirectory();
     final file = File(

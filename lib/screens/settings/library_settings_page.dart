@@ -8,9 +8,11 @@ import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
+import 'package:spotiflac_android/services/library_database.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 import 'package:spotiflac_android/widgets/duplicate_review_sheet.dart';
+import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 
@@ -115,7 +117,19 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
       if (result != null) {
         final treeUri = result['tree_uri'] as String? ?? '';
         if (treeUri.isNotEmpty) {
-          ref.read(settingsProvider.notifier).setLocalLibraryPath(treeUri);
+          final source = await ref
+              .read(localLibraryProvider.notifier)
+              .addSource(
+                path: treeUri,
+                displayName:
+                    result['display_name'] as String? ??
+                    _getDisplayPath(treeUri),
+                volumeId: result['volume_id'] as String?,
+                isRemovable: result['is_removable'] == true,
+              );
+          await ref
+              .read(localLibraryProvider.notifier)
+              .startSourceScan(source.id);
         }
       }
     } else {
@@ -143,49 +157,42 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
           return;
         }
         if (picked != null) {
-          ref
-              .read(settingsProvider.notifier)
-              .setLocalLibraryPathAndBookmark(picked.path, picked.bookmark);
+          final source = await ref
+              .read(localLibraryProvider.notifier)
+              .addSource(
+                path: picked.path,
+                displayName: picked.path,
+                bookmark: picked.bookmark,
+              );
+          await ref
+              .read(localLibraryProvider.notifier)
+              .startSourceScan(source.id);
         }
         return;
       }
       final result = await FilePicker.getDirectoryPath();
       if (result != null) {
-        ref.read(settingsProvider.notifier).setLocalLibraryPath(result);
+        final source = await ref
+            .read(localLibraryProvider.notifier)
+            .addSource(path: result, displayName: result);
+        await ref
+            .read(localLibraryProvider.notifier)
+            .startSourceScan(source.id);
       }
     }
   }
 
   Future<void> _startScan({bool forceFullScan = false}) async {
-    final settings = ref.read(settingsProvider);
-    final libraryPath = settings.localLibraryPath;
-    final iosBookmark = settings.localLibraryBookmark;
-
-    if (libraryPath.isEmpty) {
+    final sources = ref.read(localLibraryProvider).sources;
+    if (sources.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.libraryScanSelectFolderFirst)),
       );
       return;
     }
-
-    if (Platform.isIOS && iosBookmark.isNotEmpty) {
-    } else if (!libraryPath.startsWith('content://') &&
-        !await Directory(libraryPath).exists()) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.libraryFolderNotExist)),
-        );
-      }
-      return;
-    }
-
     await ref
         .read(localLibraryProvider.notifier)
-        .startScan(
-          libraryPath,
-          forceFullScan: forceFullScan,
-          iosBookmark: iosBookmark.isNotEmpty ? iosBookmark : null,
-        );
+        .scanAllSources(forceFullScan: forceFullScan);
   }
 
   Future<void> _cancelScan() async {
@@ -225,18 +232,46 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
   }
 
   Future<void> _cleanupMissingFiles() async {
-    final iosBookmark = ref.read(settingsProvider).localLibraryBookmark;
     final removed = await ref
         .read(localLibraryProvider.notifier)
-        .cleanupMissingFiles(
-          iosBookmark: iosBookmark.isNotEmpty ? iosBookmark : null,
-        );
+        .cleanupMissingFiles();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.l10n.libraryRemovedMissingFiles(removed)),
         ),
       );
+    }
+  }
+
+  Future<void> _removeSource(LocalLibrarySource source) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.libraryRemoveFolder),
+        content: Text(context.l10n.libraryRemoveFolderMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.dialogCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: Text(context.l10n.dialogRemove),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(localLibraryProvider.notifier).removeSource(source.id);
+    final settings = ref.read(settingsProvider);
+    if (settings.localLibraryPath == source.path) {
+      ref
+          .read(settingsProvider.notifier)
+          .setLocalLibraryPathAndBookmark('', '');
     }
   }
 
@@ -473,6 +508,12 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
+    final librarySources = ref.watch(
+      localLibraryProvider.select((state) => state.sources),
+    );
+    final scanningSourceId = ref.watch(
+      localLibraryProvider.select((state) => state.scanningSourceId),
+    );
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -553,14 +594,30 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
                       .read(settingsProvider.notifier)
                       .setLocalLibraryEnabled(value),
                 ),
+                for (final source in librarySources)
+                  _LibrarySourceSettingsItem(
+                    source: source,
+                    isScanning: scanningSourceId == source.id,
+                    enabled: settings.localLibraryEnabled,
+                    onEnabledChanged: (value) => ref
+                        .read(localLibraryProvider.notifier)
+                        .setSourceEnabled(source.id, value),
+                    onScan: () => ref
+                        .read(localLibraryProvider.notifier)
+                        .startSourceScan(source.id),
+                    onFullScan: () => ref
+                        .read(localLibraryProvider.notifier)
+                        .startSourceScan(source.id, forceFullScan: true),
+                    onRemove: () => _removeSource(source),
+                  ),
                 Opacity(
                   opacity: settings.localLibraryEnabled ? 1.0 : 0.5,
                   child: SettingsItem(
-                    icon: Icons.folder_outlined,
-                    title: context.l10n.libraryFolder,
-                    subtitle: settings.localLibraryPath.isEmpty
+                    icon: Icons.create_new_folder_outlined,
+                    title: context.l10n.libraryAddFolder,
+                    subtitle: librarySources.isEmpty
                         ? context.l10n.libraryFolderHint
-                        : _getDisplayPath(settings.localLibraryPath),
+                        : context.l10n.libraryAddFolderSubtitle,
                     onTap: settings.localLibraryEnabled
                         ? _pickLibraryFolder
                         : null,
@@ -681,29 +738,25 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
                         )
                       else ...[
                         Opacity(
-                          opacity: settings.localLibraryPath.isNotEmpty
-                              ? 1.0
-                              : 0.5,
+                          opacity: librarySources.isNotEmpty ? 1.0 : 0.5,
                           child: SettingsItem(
                             icon: Icons.refresh,
                             title: context.l10n.libraryScan,
-                            subtitle: settings.localLibraryPath.isEmpty
+                            subtitle: librarySources.isEmpty
                                 ? context.l10n.libraryScanSelectFolderFirst
                                 : context.l10n.libraryScanSubtitle,
-                            onTap: settings.localLibraryPath.isNotEmpty
+                            onTap: librarySources.isNotEmpty
                                 ? _startScan
                                 : null,
                           ),
                         ),
                         Opacity(
-                          opacity: settings.localLibraryPath.isNotEmpty
-                              ? 1.0
-                              : 0.5,
+                          opacity: librarySources.isNotEmpty ? 1.0 : 0.5,
                           child: SettingsItem(
                             icon: Icons.sync,
                             title: context.l10n.libraryForceFullScan,
                             subtitle: context.l10n.libraryForceFullScanSubtitle,
-                            onTap: settings.localLibraryPath.isNotEmpty
+                            onTap: librarySources.isNotEmpty
                                 ? () => _startScan(forceFullScan: true)
                                 : null,
                           ),
@@ -840,6 +893,152 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
 
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
+      ),
+    );
+  }
+}
+
+class _LibrarySourceSettingsItem extends StatelessWidget {
+  final LocalLibrarySource source;
+  final bool isScanning;
+  final bool enabled;
+  final ValueChanged<bool> onEnabledChanged;
+  final VoidCallback onScan;
+  final VoidCallback onFullScan;
+  final VoidCallback onRemove;
+
+  const _LibrarySourceSettingsItem({
+    required this.source,
+    required this.isScanning,
+    required this.enabled,
+    required this.onEnabledChanged,
+    required this.onScan,
+    required this.onFullScan,
+    required this.onRemove,
+  });
+
+  String _title() {
+    final normalized = source.displayName
+        .replaceAll('\\', '/')
+        .replaceAll(RegExp(r'/+$'), '');
+    final name = normalized.split('/').last.trim();
+    return name.isEmpty ? source.displayName : name;
+  }
+
+  String _lastScanned(BuildContext context) {
+    final value = source.lastScannedAt;
+    if (value == null) return context.l10n.libraryLastScannedNever;
+    final now = DateTime.now();
+    final diff = now.difference(value);
+    if (diff.inMinutes < 1) return context.l10n.timeJustNow;
+    if (diff.inHours < 1) return context.l10n.timeMinutesAgo(diff.inMinutes);
+    if (diff.inDays < 1) return context.l10n.timeHoursAgo(diff.inHours);
+    if (diff.inDays < 7) return context.l10n.dateDaysAgo(diff.inDays);
+    return '${value.day}/${value.month}/${value.year}';
+  }
+
+  Future<void> _showActions(BuildContext context) async {
+    final canScan =
+        enabled && source.enabled && source.available && !isScanning;
+    final action = await showAppBottomSheet<String>(
+      context: context,
+      useRootNavigator: true,
+      title: _title(),
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            enabled: canScan,
+            leading: const Icon(Icons.refresh_rounded),
+            title: Text(context.l10n.libraryScan),
+            subtitle: Text(context.l10n.libraryScanSubtitle),
+            onTap: canScan ? () => Navigator.pop(context, 'scan') : null,
+          ),
+          ListTile(
+            enabled: canScan,
+            leading: const Icon(Icons.sync_rounded),
+            title: Text(context.l10n.libraryForceFullScan),
+            subtitle: Text(context.l10n.libraryForceFullScanSubtitle),
+            onTap: canScan ? () => Navigator.pop(context, 'full_scan') : null,
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.delete_outline,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            title: Text(
+              context.l10n.libraryRemoveFolder,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+            onTap: () => Navigator.pop(context, 'remove'),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+    switch (action) {
+      case 'scan':
+        onScan();
+      case 'full_scan':
+        onFullScan();
+      case 'remove':
+        onRemove();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = _title();
+    final status = !source.enabled
+        ? context.l10n.librarySourceDisabled
+        : !source.available
+        ? context.l10n.librarySourceOffline
+        : isScanning
+        ? context.l10n.libraryScanning
+        : source.lastScanError?.trim().isNotEmpty == true
+        ? context.l10n.notifLibraryScanFailed
+        : context.l10n.librarySourceOnline;
+    final pathLine = source.displayName == title ? null : source.displayName;
+    final details = [
+      status,
+      context.l10n.libraryTracksUnit(source.trackCount),
+      context.l10n.libraryLastScanned(_lastScanned(context)),
+    ].join(' · ');
+
+    return Opacity(
+      opacity: enabled ? 1 : 0.5,
+      child: SettingsItem(
+        icon: source.isRemovable ? Icons.usb_rounded : Icons.folder_outlined,
+        title: title,
+        titleTrailing: source.isRemovable
+            ? Tooltip(
+                message: context.l10n.libraryExternalStorage,
+                child: const Icon(Icons.sd_storage_outlined, size: 16),
+              )
+            : null,
+        subtitle: pathLine == null ? details : '$pathLine\n$details',
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isScanning)
+              const Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            Switch.adaptive(
+              value: source.enabled,
+              onChanged: enabled ? onEnabledChanged : null,
+            ),
+            IconButton(
+              tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+              onPressed: () => _showActions(context),
+              icon: const Icon(Icons.more_vert),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -12,7 +12,10 @@ int libraryIncrementalSnapshotModTime({
 }
 
 class LocalLibraryItem {
+  static const legacySourceId = 'legacy';
+
   final String id;
+  final String sourceId;
   final String trackName;
   final String artistName;
   final String albumName;
@@ -39,6 +42,7 @@ class LocalLibraryItem {
 
   const LocalLibraryItem({
     required this.id,
+    this.sourceId = legacySourceId,
     required this.trackName,
     required this.artistName,
     required this.albumName,
@@ -66,6 +70,7 @@ class LocalLibraryItem {
 
   Map<String, dynamic> toJson() => {
     'id': id,
+    'sourceId': sourceId,
     'trackName': trackName,
     'artistName': artistName,
     'albumName': albumName,
@@ -94,6 +99,7 @@ class LocalLibraryItem {
   factory LocalLibraryItem.fromJson(Map<String, dynamic> json) =>
       LocalLibraryItem(
         id: json['id'] as String,
+        sourceId: json['sourceId'] as String? ?? legacySourceId,
         trackName: json['trackName'] as String,
         artistName: json['artistName'] as String,
         albumName: json['albumName'] as String,
@@ -128,6 +134,7 @@ class LocalLibraryItem {
   }) {
     return LocalLibraryItem(
       id: id,
+      sourceId: sourceId,
       trackName: trackName,
       artistName: artistName,
       albumName: albumName,
@@ -158,6 +165,65 @@ class LocalLibraryItem {
       '${LibraryDatabase.normalizeLookupText(trackName)}|${LibraryDatabase.normalizeLookupText(artistName)}';
   String get albumKey =>
       '${LibraryDatabase.normalizeLookupText(albumName)}|${LibraryDatabase.normalizeLookupText(albumArtist ?? artistName)}';
+}
+
+class LocalLibrarySource {
+  final String id;
+  final String path;
+  final String displayName;
+  final String? bookmark;
+  final String? volumeId;
+  final bool isRemovable;
+  final bool enabled;
+  final bool available;
+  final int trackCount;
+  final DateTime? lastScannedAt;
+  final DateTime? lastSeenAt;
+  final String? lastScanError;
+
+  const LocalLibrarySource({
+    required this.id,
+    required this.path,
+    required this.displayName,
+    this.bookmark,
+    this.volumeId,
+    this.isRemovable = false,
+    this.enabled = true,
+    this.available = true,
+    this.trackCount = 0,
+    this.lastScannedAt,
+    this.lastSeenAt,
+    this.lastScanError,
+  });
+
+  bool get isIndexed => lastScannedAt != null || trackCount > 0;
+
+  LocalLibrarySource copyWith({
+    bool? enabled,
+    bool? available,
+    int? trackCount,
+    DateTime? lastScannedAt,
+    DateTime? lastSeenAt,
+    String? lastScanError,
+    bool clearLastScanError = false,
+  }) {
+    return LocalLibrarySource(
+      id: id,
+      path: path,
+      displayName: displayName,
+      bookmark: bookmark,
+      volumeId: volumeId,
+      isRemovable: isRemovable,
+      enabled: enabled ?? this.enabled,
+      available: available ?? this.available,
+      trackCount: trackCount ?? this.trackCount,
+      lastScannedAt: lastScannedAt ?? this.lastScannedAt,
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+      lastScanError: clearLastScanError
+          ? null
+          : lastScanError ?? this.lastScanError,
+    );
+  }
 }
 
 enum LocalLibrarySortMode { album, title, artist, latest, quality }

@@ -1897,6 +1897,33 @@ class AppLocalizationsRu extends AppLocalizations {
   String get libraryFolderHint => 'Нажмите, чтобы выбрать папку';
 
   @override
+  String get libraryAddFolder => 'Add library folder';
+
+  @override
+  String get libraryAddFolderSubtitle =>
+      'Internal storage, SD card, SSD, or another external drive';
+
+  @override
+  String get librarySourceOnline => 'Online';
+
+  @override
+  String get librarySourceOffline =>
+      'Offline. Reconnect the storage to restore these tracks';
+
+  @override
+  String get librarySourceDisabled => 'Disabled';
+
+  @override
+  String get libraryExternalStorage => 'External storage';
+
+  @override
+  String get libraryRemoveFolder => 'Remove library folder';
+
+  @override
+  String get libraryRemoveFolderMessage =>
+      'Remove this folder and its indexed tracks from SpotiFLAC Mobile? Audio files on the storage will not be deleted.';
+
+  @override
   String get libraryShowDuplicateIndicator => 'Показать индикатор дубликатов';
 
   @override

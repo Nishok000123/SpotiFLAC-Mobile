@@ -261,6 +261,13 @@ class _EagerInitializationState extends ConsumerState<_EagerInitialization>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _maybeAutoScanLocalLibrary();
+      if (ref.exists(localLibraryProvider)) {
+        unawaited(
+          ref
+              .read(localLibraryProvider.notifier)
+              .refreshSourceAvailability(scanReconnected: true),
+        );
+      }
       if (ref.exists(downloadQueueProvider)) {
         ref
             .read(downloadQueueProvider.notifier)
@@ -343,7 +350,6 @@ class _EagerInitializationState extends ConsumerState<_EagerInitialization>
 
     final settings = ref.read(settingsProvider);
     if (!settings.localLibraryEnabled) return;
-    if (settings.localLibraryPath.isEmpty) return;
     if (settings.localLibraryAutoScan == 'off') return;
 
     final libraryState = ref.read(localLibraryProvider);
@@ -371,13 +377,7 @@ class _EagerInitializationState extends ConsumerState<_EagerInitialization>
       }
     }
 
-    final iosBookmark = settings.localLibraryBookmark;
-    ref
-        .read(localLibraryProvider.notifier)
-        .startScan(
-          settings.localLibraryPath,
-          iosBookmark: iosBookmark.isNotEmpty ? iosBookmark : null,
-        );
+    await ref.read(localLibraryProvider.notifier).scanAllSources();
   }
 
   Future<void> _initializeAppServices() async {
