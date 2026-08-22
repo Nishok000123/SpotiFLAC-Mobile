@@ -44,6 +44,7 @@ void main() {
     final headerMeta = find.byType(HeaderMetaRow);
     expect(headerMeta, findsOneWidget);
     expect(find.byType(ExplicitBadge), findsNWidgets(2));
+    expect(find.text('Explicit'), findsNothing);
     for (final label in const ['16-bit/44.1kHz', '4:10', 'Tidal-web']) {
       final text = tester.widget<Text>(
         find.descendant(of: headerMeta, matching: find.text(label)),

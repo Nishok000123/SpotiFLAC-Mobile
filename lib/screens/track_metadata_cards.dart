@@ -468,11 +468,6 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
         _MetadataItem(context.l10n.editMetadataFieldComposer, composer!),
       if (albumType != null)
         _MetadataItem(context.l10n.trackAlbumType, albumType!),
-      if (isExplicit)
-        _MetadataItem(
-          context.l10n.editMetadataFieldExplicit,
-          context.l10n.metadataExplicitValue,
-        ),
       if (comment != null)
         _MetadataItem(context.l10n.editMetadataFieldComment, comment!),
       if (isrc != null && isrc!.isNotEmpty) _MetadataItem('ISRC', isrc!),
