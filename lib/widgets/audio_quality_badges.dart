@@ -99,11 +99,15 @@ class ExplicitTrackTitle extends StatelessWidget {
           TextSpan(text: title),
           if (explicit)
             WidgetSpan(
-              alignment: PlaceholderAlignment.middle,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 6),
-                child: ExplicitBadge(
-                  colorScheme: colorScheme ?? Theme.of(context).colorScheme,
+              alignment: PlaceholderAlignment.baseline,
+              baseline: TextBaseline.alphabetic,
+              child: Transform.translate(
+                offset: const Offset(0, -2),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: ExplicitBadge(
+                    colorScheme: colorScheme ?? Theme.of(context).colorScheme,
+                  ),
                 ),
               ),
             ),
