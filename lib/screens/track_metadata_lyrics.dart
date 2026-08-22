@@ -1196,7 +1196,28 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
   }
 
   Future<void> _syncDownloadHistoryMetadata() async {
-    if (_isLocalItem || _downloadItem == null) return;
+    if (_isLocalItem) {
+      final item = _localLibraryItem;
+      if (item == null) return;
+      try {
+        await LibraryDatabase.instance.updateAudioMetadata(
+          item.id,
+          explicit: isExplicit,
+        );
+        if (mounted) {
+          _setState(() {
+            _currentLocalLibraryItem = item.withAudioMetadata(
+              explicit: isExplicit,
+            );
+          });
+        }
+        await ref.read(localLibraryProvider.notifier).reloadFromStorage();
+      } catch (e) {
+        _log.w('Failed to sync local library explicit metadata: $e');
+      }
+      return;
+    }
+    if (_downloadItem == null) return;
 
     String? normalizedOrNull(String? value) {
       if (value == null) return null;
@@ -1224,6 +1245,7 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
             composer: normalizedOrNull(composer),
             label: normalizedOrNull(label),
             copyright: normalizedOrNull(copyright),
+            explicit: isExplicit,
           );
     } catch (e) {
       _log.w('Failed to sync download history metadata: $e');

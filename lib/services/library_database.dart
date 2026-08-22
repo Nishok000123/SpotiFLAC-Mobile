@@ -16,10 +16,10 @@ final _log = AppLogger('LibraryDatabase');
 
 class LibraryDatabase {
   static final LibraryDatabase instance = LibraryDatabase._init();
-  static const int schemaVersion = 11;
+  static const int schemaVersion = 12;
   static const String legacySourceId = LocalLibraryItem.legacySourceId;
   static const String visibleLibraryView = 'library_visible';
-  static const int audioMetadataScanVersion = 1;
+  static const int audioMetadataScanVersion = 2;
   static final sqlite.SingleFlightInitializer<Database> _database =
       sqlite.SingleFlightInitializer<Database>();
   bool _historyAttached = false;
@@ -83,8 +83,9 @@ class LibraryDatabase {
         composer TEXT,
         label TEXT,
         copyright TEXT,
+        explicit INTEGER NOT NULL DEFAULT 0,
         format TEXT,
-        audio_metadata_scan_version INTEGER NOT NULL DEFAULT 1,
+        audio_metadata_scan_version INTEGER NOT NULL DEFAULT 2,
         track_name_norm TEXT,
         artist_name_norm TEXT,
         album_name_norm TEXT,
@@ -200,6 +201,15 @@ class LibraryDatabase {
       );
       await _createLibrarySources(db);
       _log.i('Added multiple local library sources');
+    }
+    if (oldVersion < 12) {
+      await sqlite.addColumnIfMissing(
+        db,
+        'library',
+        'explicit',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      _log.i('Added explicit-content metadata');
     }
   }
 
@@ -459,6 +469,7 @@ class LibraryDatabase {
       'composer': json['composer'],
       'label': json['label'],
       'copyright': json['copyright'],
+      'explicit': json['explicit'] == true || json['explicit'] == 1 ? 1 : 0,
       'format': json['format'],
       'audio_metadata_scan_version':
           (json['audioMetadataScanVersion'] as num?)?.toInt() ??
@@ -513,6 +524,7 @@ class LibraryDatabase {
       'composer': row['composer'],
       'label': row['label'],
       'copyright': row['copyright'],
+      'explicit': row['explicit'] == 1 || row['explicit'] == true,
       'format': row['format'],
     };
   }
@@ -1473,6 +1485,7 @@ class LibraryDatabase {
     int? bitDepth,
     int? sampleRate,
     int? bitrate,
+    bool? explicit,
     String? format,
   }) async {
     final values = <String, dynamic>{};
@@ -1487,6 +1500,9 @@ class LibraryDatabase {
     }
     if (bitrate != null && bitrate > 0) {
       values['bitrate'] = bitrate;
+    }
+    if (explicit != null) {
+      values['explicit'] = explicit ? 1 : 0;
     }
     final normalizedFormat = normalizeAudioFormatValue(format);
     if (normalizedFormat != null) {

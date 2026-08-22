@@ -11,6 +11,7 @@ void main() {
     sampleRate: 96000,
     bitrate: 2860,
     format: 'flac',
+    explicit: true,
   );
 
   test('queue media exposes technical quality to Now Playing immediately', () {
@@ -21,6 +22,7 @@ void main() {
       'sample_rate': 96000,
       'bitrate': 2860,
       'format': 'flac',
+      'explicit': true,
     });
   });
 
@@ -32,6 +34,7 @@ void main() {
     expect(restored.sampleRate, 96000);
     expect(restored.bitrate, 2860);
     expect(restored.format, 'flac');
+    expect(restored.explicit, isTrue);
   });
 
   test('file probe cannot erase valid queue quality with empty values', () {

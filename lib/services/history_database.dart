@@ -65,7 +65,7 @@ class HistoryBatchLookupRequest {
 }
 
 class HistoryDatabase {
-  static const int schemaVersion = 11;
+  static const int schemaVersion = 12;
   static final HistoryDatabase instance = HistoryDatabase._init();
   static final sqlite.SingleFlightInitializer<Database> _database =
       sqlite.SingleFlightInitializer<Database>();
@@ -119,6 +119,7 @@ class HistoryDatabase {
         composer TEXT,
         label TEXT,
         copyright TEXT,
+        explicit INTEGER NOT NULL DEFAULT 0,
         spotify_id_norm TEXT,
         isrc_norm TEXT,
         match_key TEXT,
@@ -228,6 +229,15 @@ class HistoryDatabase {
       await _backfillQueueSortColumns(db);
       await _createQueueIndexes(db);
       _log.i('Added persisted queue sort columns');
+    }
+    if (oldVersion < 12) {
+      await sqlite.addColumnIfMissing(
+        db,
+        'history',
+        'explicit',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      _log.i('Added explicit-content metadata');
     }
   }
 
@@ -617,6 +627,7 @@ class HistoryDatabase {
       'composer': json['composer'],
       'label': json['label'],
       'copyright': json['copyright'],
+      'explicit': json['explicit'] == true ? 1 : 0,
     };
     row.addAll(
       _queueSortColumns(
@@ -675,6 +686,7 @@ class HistoryDatabase {
       'composer': row['composer'],
       'label': row['label'],
       'copyright': row['copyright'],
+      'explicit': row['explicit'] == 1 || row['explicit'] == true,
     };
   }
 

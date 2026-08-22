@@ -128,6 +128,7 @@ void main() {
         scannedAt: DateTime(2026),
         bitDepth: 24,
         sampleRate: 96000,
+        explicit: true,
       );
 
       final updated = item.withAudioMetadata(bitrate: 1840);
@@ -135,6 +136,7 @@ void main() {
       expect(updated.bitrate, 1840);
       expect(updated.bitDepth, 24);
       expect(updated.sampleRate, 96000);
+      expect(updated.explicit, isTrue);
       expect(updated.trackName, 'Song');
       expect(updated.filePath, '/music/song.flac');
       expect(updated.sourceId, 'external-ssd');
@@ -142,6 +144,7 @@ void main() {
         LocalLibraryItem.fromJson(updated.toJson()).sourceId,
         'external-ssd',
       );
+      expect(LocalLibraryItem.fromJson(updated.toJson()).explicit, isTrue);
     });
 
     test('recognizes a retained external source index', () {

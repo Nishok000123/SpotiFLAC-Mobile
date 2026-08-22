@@ -32,6 +32,7 @@ class DownloadHistoryItem {
   final String? composer;
   final String? label;
   final String? copyright;
+  final bool explicit;
 
   const DownloadHistoryItem({
     required this.id,
@@ -65,6 +66,7 @@ class DownloadHistoryItem {
     this.composer,
     this.label,
     this.copyright,
+    this.explicit = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -99,6 +101,7 @@ class DownloadHistoryItem {
     'composer': composer,
     'label': label,
     'copyright': copyright,
+    'explicit': explicit,
   };
 
   factory DownloadHistoryItem.fromJson(Map<String, dynamic> json) =>
@@ -134,6 +137,7 @@ class DownloadHistoryItem {
         composer: json['composer'] as String?,
         label: json['label'] as String?,
         copyright: json['copyright'] as String?,
+        explicit: parseExplicitFlag(json['explicit']) == true,
       );
 
   DownloadHistoryItem copyWith({
@@ -165,6 +169,7 @@ class DownloadHistoryItem {
     String? composer,
     String? label,
     String? copyright,
+    bool? explicit,
   }) {
     return DownloadHistoryItem(
       id: id,
@@ -198,6 +203,7 @@ class DownloadHistoryItem {
       composer: composer ?? this.composer,
       label: label ?? this.label,
       copyright: copyright ?? this.copyright,
+      explicit: explicit ?? this.explicit,
     );
   }
 }

@@ -340,6 +340,9 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
       composer: historyComposer,
       label: label,
       copyright: copyright,
+      explicit:
+          trackToDownload.isExplicit ||
+          parseExplicitFlag(result['explicit']) == true,
     );
   }
 

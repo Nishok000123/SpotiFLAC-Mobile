@@ -39,7 +39,7 @@ object NativeDownloadFinalizer {
     const val NATIVE_WORKER_CONTRACT_VERSION = 1
     // Native finalizer owns background-safe history writes while Flutter may be suspended.
     // Keep this schema contract in sync with Dart HistoryDatabase before bumping either side.
-    const val HISTORY_SCHEMA_VERSION = 11
+    const val HISTORY_SCHEMA_VERSION = 12
     internal val activeFFmpegSessionIds = mutableSetOf<Long>()
     internal val nativeFFmpegSessionIds = mutableSetOf<Long>()
     internal val activeFFmpegSessionLock = Any()
@@ -89,6 +89,7 @@ object NativeDownloadFinalizer {
         "composer",
         "label",
         "copyright",
+        "explicit",
         "spotify_id_norm",
         "isrc_norm",
         "match_key",
@@ -1304,6 +1305,14 @@ object NativeDownloadFinalizer {
         values.put("composer", normalizeOptional(resultString(input, "composer").ifBlank { trackString(input, "composer", requestString(input, "composer")) }))
         values.put("label", normalizeOptional(result.optString("label", "").ifBlank { input.request.optString("label", "") }))
         values.put("copyright", normalizeOptional(result.optString("copyright", "").ifBlank { input.request.optString("copyright", "") }))
+        values.put(
+            "explicit",
+            if (
+                result.optBoolean("explicit", false) ||
+                    input.track.optBoolean("explicit", false) ||
+                    input.request.optBoolean("explicit", false)
+            ) 1 else 0,
+        )
         putNormalizedHistoryColumns(values)
         return values
     }
@@ -1366,6 +1375,7 @@ object NativeDownloadFinalizer {
                       composer TEXT,
                       label TEXT,
                       copyright TEXT,
+                      explicit INTEGER NOT NULL DEFAULT 0,
                       spotify_id_norm TEXT,
                       isrc_norm TEXT,
                       match_key TEXT,
@@ -1403,6 +1413,7 @@ object NativeDownloadFinalizer {
 	                ensureHistoryColumn(db, "sort_genre", "ALTER TABLE history ADD COLUMN sort_genre TEXT")
 	                ensureHistoryColumn(db, "sort_release", "ALTER TABLE history ADD COLUMN sort_release TEXT")
 	                ensureHistoryColumn(db, "sort_added", "ALTER TABLE history ADD COLUMN sort_added INTEGER")
+	                ensureHistoryColumn(db, "explicit", "ALTER TABLE history ADD COLUMN explicit INTEGER NOT NULL DEFAULT 0")
 	                ensureHistoryPathKeyTable(db)
 	                if (needsBackfill) {
 	                    backfillNormalizedHistoryColumns(db)

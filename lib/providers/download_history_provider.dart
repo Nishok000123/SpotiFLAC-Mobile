@@ -201,6 +201,7 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
             copyright:
                 normalizeOptionalString(item.copyright) ??
                 normalizeOptionalString(existing.copyright),
+            explicit: item.explicit || existing.explicit,
           );
     return (item: mergedItem, existingId: existing?.id);
   }
@@ -477,6 +478,7 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
     int? totalDiscs,
     int? duration,
     String? composer,
+    bool? explicit,
   }) async {
     final target = await _historyItemForUpdate(id);
     if (target == null) {
@@ -499,6 +501,7 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
       totalDiscs: totalDiscs,
       duration: duration,
       composer: composer,
+      explicit: explicit,
     );
 
     if (updated.quality == current.quality &&
@@ -511,7 +514,8 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
         updated.discNumber == current.discNumber &&
         updated.totalDiscs == current.totalDiscs &&
         updated.duration == current.duration &&
-        updated.composer == current.composer) {
+        updated.composer == current.composer &&
+        updated.explicit == current.explicit) {
       return;
     }
 
@@ -545,6 +549,7 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
     String? composer,
     String? label,
     String? copyright,
+    bool? explicit,
   }) async {
     final target = await _historyItemForUpdate(id);
     if (target == null) {
@@ -568,6 +573,7 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
       composer: composer,
       label: label,
       copyright: copyright,
+      explicit: explicit,
     );
 
     final updatedItems = target.index >= 0

@@ -168,6 +168,7 @@ PlayableMedia playableFromHistory(DownloadHistoryItem item) {
     sampleRate: item.sampleRate,
     bitrate: item.bitrate,
     format: item.format,
+    explicit: item.explicit,
   );
 }
 
@@ -193,5 +194,6 @@ PlayableMedia playableFromLocal(LocalLibraryItem item) {
     sampleRate: item.sampleRate,
     bitrate: item.bitrate,
     format: item.format,
+    explicit: item.explicit,
   );
 }

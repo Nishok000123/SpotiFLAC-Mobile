@@ -19,6 +19,7 @@ import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/utils/synced_lyrics_scroll.dart';
 import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
+import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
 import 'package:spotiflac_android/widgets/player_artwork.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 
@@ -327,6 +328,14 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     return parts.join('  ·  ');
   }
 
+  bool _isExplicit(MediaItem mediaItem) {
+    final source = mediaItem.extras?['source']?.toString();
+    final loadedMetadata = source == _loadedSource ? _metadata : null;
+    return parseExplicitFlag(loadedMetadata?['explicit']) ??
+        parseExplicitFlag(mediaItem.extras?['explicit']) ??
+        false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -624,8 +633,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           child: Column(
             key: ValueKey(mediaItem.id),
             children: [
-              Text(
-                mediaItem.title,
+              ExplicitTrackTitle(
+                title: mediaItem.title,
+                explicit: _isExplicit(mediaItem),
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: colorScheme.onSurface,

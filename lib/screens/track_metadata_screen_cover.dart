@@ -305,7 +305,8 @@ extension _TrackMetadataCover on _TrackMetadataScreenState {
   String? get comment =>
       normalizeOptionalString(_editedMetadata?['comment']?.toString());
   bool get isExplicit =>
-      parseExplicitFlag(_editedMetadata?['explicit']) == true;
+      parseExplicitFlag(_editedMetadata?['explicit']) ??
+      (_isLocalItem ? _localLibraryItem!.explicit : _downloadItem!.explicit);
   int? get duration =>
       readPositiveInt(_editedMetadata?['duration']) ??
       (_isLocalItem ? _localLibraryItem!.duration : _downloadItem!.duration);

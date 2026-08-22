@@ -195,8 +195,9 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
                   ),
                 ),
                 const SizedBox(height: 20),
-                Text(
-                  trackName,
+                ExplicitTrackTitle(
+                  title: trackName,
+                  explicit: isExplicit,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -206,6 +207,7 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
                   textAlign: TextAlign.center,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
+                  colorScheme: _trackMetadataHeroScheme,
                 ),
                 const SizedBox(height: 6),
                 Text(

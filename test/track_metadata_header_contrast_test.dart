@@ -5,6 +5,7 @@ import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/providers/download_history_provider.dart';
 import 'package:spotiflac_android/screens/track_metadata_screen.dart';
 import 'package:spotiflac_android/widgets/album_detail_header.dart';
+import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
 
 void main() {
   testWidgets('metadata hero keeps technical text legible in light theme', (
@@ -25,6 +26,7 @@ void main() {
       bitDepth: 16,
       sampleRate: 44100,
       format: 'flac',
+      explicit: true,
     );
 
     await tester.pumpWidget(
@@ -41,6 +43,7 @@ void main() {
 
     final headerMeta = find.byType(HeaderMetaRow);
     expect(headerMeta, findsOneWidget);
+    expect(find.byType(ExplicitBadge), findsNWidgets(2));
     for (final label in const ['16-bit/44.1kHz', '4:10', 'Tidal-web']) {
       final text = tester.widget<Text>(
         find.descendant(of: headerMeta, matching: find.text(label)),

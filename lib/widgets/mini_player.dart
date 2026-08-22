@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
 import 'package:spotiflac_android/screens/now_playing_screen.dart';
+import 'package:spotiflac_android/utils/string_utils.dart';
+import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
 import 'package:spotiflac_android/widgets/player_artwork.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 
@@ -94,8 +96,13 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              mediaItem.title,
+                            ExplicitTrackTitle(
+                              title: mediaItem.title,
+                              explicit:
+                                  parseExplicitFlag(
+                                    mediaItem.extras?['explicit'],
+                                  ) ==
+                                  true,
                               style: Theme.of(context).textTheme.titleSmall
                                   ?.copyWith(fontWeight: FontWeight.w600),
                               maxLines: 1,

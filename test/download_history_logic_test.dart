@@ -114,6 +114,16 @@ void main() {
       expect(restored.format, 'flac');
     });
 
+    test('explicit metadata survives history serialization', () {
+      final item = _historyItem(
+        id: 'explicit',
+        filePath: '/music/Album/Explicit Song.flac',
+        downloadedAt: DateTime.utc(2026, 7, 23),
+      ).copyWith(explicit: true);
+
+      expect(DownloadHistoryItem.fromJson(item.toJson()).explicit, isTrue);
+    });
+
     test('placeholder refresh cannot erase an existing measured quality', () {
       expect(
         resolvePersistedHistoryQuality(

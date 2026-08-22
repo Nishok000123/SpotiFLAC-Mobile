@@ -217,6 +217,7 @@ extension _TrackMetadataFileActions on _TrackMetadataScreenState {
             artist: artistName,
             album: albumName,
             coverUrl: playbackCover,
+            explicit: isExplicit,
           );
     } catch (e) {
       if (context.mounted) {

@@ -44,6 +44,7 @@ class PlaybackController extends Notifier<PlaybackState> {
     String album = '',
     String coverUrl = '',
     Track? track,
+    bool? explicit,
   }) async {
     if (isCueVirtualPath(path)) {
       throw Exception(cueVirtualTrackRequiresSplitMessage);
@@ -64,6 +65,7 @@ class PlaybackController extends Notifier<PlaybackState> {
               duration: (track != null && track.duration > 0)
                   ? Duration(seconds: track.duration)
                   : null,
+              explicit: explicit ?? track?.isExplicit ?? false,
             ),
           );
       return;
@@ -168,6 +170,7 @@ class PlaybackController extends Notifier<PlaybackState> {
             duration: track.duration > 0
                 ? Duration(seconds: track.duration)
                 : null,
+            explicit: track.isExplicit,
           ),
         );
       }

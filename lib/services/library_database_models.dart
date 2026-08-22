@@ -38,6 +38,7 @@ class LocalLibraryItem {
   final String? composer;
   final String? label;
   final String? copyright;
+  final bool explicit;
   final String? format; // flac, alac, eac3, ac3, ac4, mp3, opus, m4a
 
   const LocalLibraryItem({
@@ -65,6 +66,7 @@ class LocalLibraryItem {
     this.composer,
     this.label,
     this.copyright,
+    this.explicit = false,
     this.format,
   });
 
@@ -93,6 +95,7 @@ class LocalLibraryItem {
     'composer': composer,
     'label': label,
     'copyright': copyright,
+    'explicit': explicit,
     'format': format,
   };
 
@@ -122,6 +125,7 @@ class LocalLibraryItem {
         composer: json['composer'] as String?,
         label: json['label'] as String?,
         copyright: json['copyright'] as String?,
+        explicit: json['explicit'] == true || json['explicit'] == 1,
         format: json['format'] as String?,
       );
 
@@ -130,6 +134,7 @@ class LocalLibraryItem {
     int? bitDepth,
     int? sampleRate,
     int? bitrate,
+    bool? explicit,
     String? format,
   }) {
     return LocalLibraryItem(
@@ -157,6 +162,7 @@ class LocalLibraryItem {
       composer: composer,
       label: label,
       copyright: copyright,
+      explicit: explicit ?? this.explicit,
       format: format ?? this.format,
     );
   }

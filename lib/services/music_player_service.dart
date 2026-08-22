@@ -10,6 +10,7 @@ import 'package:spotiflac_android/services/app_state_database.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/int_utils.dart';
 import 'package:spotiflac_android/utils/logger.dart';
+import 'package:spotiflac_android/utils/string_utils.dart';
 
 final _log = AppLogger('MusicPlayer');
 
@@ -56,6 +57,7 @@ class PlayableMedia {
   final int? sampleRate;
   final int? bitrate;
   final String? format;
+  final bool explicit;
 
   const PlayableMedia({
     required this.id,
@@ -69,6 +71,7 @@ class PlayableMedia {
     this.sampleRate,
     this.bitrate,
     this.format,
+    this.explicit = false,
   });
 
   bool get isContentUri => source.startsWith('content://');
@@ -85,6 +88,7 @@ class PlayableMedia {
     if (sampleRate != null && sampleRate! > 0) 'sampleRate': sampleRate,
     if (bitrate != null && bitrate! > 0) 'bitrate': bitrate,
     if (format != null && format!.trim().isNotEmpty) 'format': format,
+    if (explicit) 'explicit': true,
   };
 
   static PlayableMedia? fromJson(Map<String, dynamic> json) {
@@ -108,6 +112,7 @@ class PlayableMedia {
       sampleRate: readPositiveInt(json['sampleRate']),
       bitrate: readPositiveInt(json['bitrate']),
       format: json['format']?.toString(),
+      explicit: parseExplicitFlag(json['explicit']) == true,
     );
   }
 
@@ -130,6 +135,7 @@ class PlayableMedia {
         if (bitrate != null && bitrate! > 0) 'bitrate': bitrate,
         if (format != null && format!.trim().isNotEmpty)
           'format': format!.trim(),
+        if (explicit) 'explicit': true,
       },
     );
   }
@@ -146,10 +152,12 @@ Map<String, dynamic> playbackAudioMetadataFromMediaItem(MediaItem item) {
   final sampleRate = readPositiveInt(extras['sample_rate']);
   final bitrate = readPositiveInt(extras['bitrate']);
   final format = extras['format']?.toString().trim();
+  final explicit = parseExplicitFlag(extras['explicit']);
   if (bitDepth != null) metadata['bit_depth'] = bitDepth;
   if (sampleRate != null) metadata['sample_rate'] = sampleRate;
   if (bitrate != null) metadata['bitrate'] = bitrate;
   if (format != null && format.isNotEmpty) metadata['format'] = format;
+  if (explicit != null) metadata['explicit'] = explicit;
   return metadata;
 }
 

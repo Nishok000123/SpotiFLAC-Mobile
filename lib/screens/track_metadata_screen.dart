@@ -44,6 +44,7 @@ import 'package:spotiflac_android/theme/cover_palette.dart' show HeaderPalette;
 import 'package:spotiflac_android/widgets/album_detail_header.dart'
     show HeaderMetaRow, HeaderMetaItem;
 import 'package:spotiflac_android/widgets/audio_analysis_widget.dart';
+import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
 import 'package:spotiflac_android/widgets/batch_convert_sheet.dart';
 import 'package:spotiflac_android/widgets/cached_cover_image.dart';
 import 'package:spotiflac_android/widgets/open_on_platform_sheet.dart';
@@ -361,6 +362,8 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
       final resolvedUPC = (metadata['upc'] ?? metadata['barcode'])?.toString();
       final resolvedComment = metadata['comment']?.toString();
       final resolvedExplicit = parseExplicitFlag(metadata['explicit']);
+      final needsExplicit =
+          resolvedExplicit != null && resolvedExplicit != isExplicit;
       final needsTrackNumber =
           resolvedTrackNumber != null &&
           resolvedTrackNumber > 0 &&
@@ -400,7 +403,6 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
       final fileHasAlbumType = present(resolvedAlbumType);
       final fileHasUPC = present(resolvedUPC);
       final fileHasComment = present(resolvedComment);
-      final fileHasExplicit = resolvedExplicit == true;
       final fileHasTrackNumber =
           resolvedTrackNumber != null && resolvedTrackNumber > 0;
       final fileHasTotalTracks =
@@ -422,6 +424,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
               needsTotalDiscs ||
               needsDuration ||
               needsComposer ||
+              needsExplicit ||
               (isPlaceholderQualityLabel(_quality) && resolvedQuality != null));
       final localItem = _localLibraryItem;
       final localAudioMetadataChanged =
@@ -432,6 +435,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
                   resolvedSampleRate != localItem.sampleRate) ||
               (resolvedBitrate != null &&
                   resolvedBitrate != localItem.bitrate) ||
+              needsExplicit ||
               needsDuration ||
               formatChanged);
 
@@ -456,7 +460,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
               fileHasAlbumType ||
               fileHasUPC ||
               fileHasComment ||
-              fileHasExplicit ||
+              needsExplicit ||
               isPlaceholderQualityLabel(_quality)) &&
           mounted) {
         setState(() {
@@ -506,6 +510,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
               totalDiscs: needsTotalDiscs ? resolvedTotalDiscs : null,
               duration: needsDuration ? resolvedDuration : null,
               composer: needsComposer ? resolvedComposer : null,
+              explicit: needsExplicit ? resolvedExplicit : null,
             );
         if (mounted && _downloadItem != null) {
           setState(() {
@@ -521,6 +526,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
               totalDiscs: needsTotalDiscs ? resolvedTotalDiscs : null,
               duration: needsDuration ? resolvedDuration : null,
               composer: needsComposer ? resolvedComposer : null,
+              explicit: needsExplicit ? resolvedExplicit : null,
             );
           });
         }
@@ -531,6 +537,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
           bitDepth: resolvedBitDepth,
           sampleRate: resolvedSampleRate,
           bitrate: resolvedBitrate,
+          explicit: needsExplicit ? resolvedExplicit : null,
           format: formatChanged ? resolvedFormat : null,
         );
         if (mounted &&
@@ -542,6 +549,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
               bitDepth: resolvedBitDepth,
               sampleRate: resolvedSampleRate,
               bitrate: resolvedBitrate,
+              explicit: needsExplicit ? resolvedExplicit : null,
               format: resolvedFormat,
             );
           });
@@ -649,8 +657,9 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
               title: AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),
                 opacity: showTitleInAppBar ? 1.0 : 0.0,
-                child: Text(
-                  trackName,
+                child: ExplicitTrackTitle(
+                  title: trackName,
+                  explicit: isExplicit,
                   style: TextStyle(
                     color: colorScheme.onSurface,
                     fontWeight: FontWeight.w600,
