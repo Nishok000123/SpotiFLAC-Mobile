@@ -380,28 +380,6 @@ extension _QueueTabSelectionActions on _QueueTabState {
     );
   }
 
-  String _getQualityBadgeText(String quality) {
-    final q = quality.trim().toLowerCase();
-    if (q.contains('bit')) {
-      return quality.split('/').first;
-    }
-
-    final bitrateTextMatch = RegExp(
-      r'(\d+)\s*k(?:bps)?',
-      caseSensitive: false,
-    ).firstMatch(quality);
-    if (bitrateTextMatch != null) {
-      return '${bitrateTextMatch.group(1)}k';
-    }
-
-    final bitrateIdMatch = RegExp(r'_(\d+)$').firstMatch(q);
-    if (bitrateIdMatch != null) {
-      return '${bitrateIdMatch.group(1)}k';
-    }
-
-    return quality.split(' ').first;
-  }
-
   Future<void> _deleteSelected(List<UnifiedLibraryItem> allItems) async {
     final count = _selectedIds.length;
     final confirmed = await showDialog<bool>(

@@ -1052,8 +1052,12 @@ extension _QueueTabItemWidgets on _QueueTabState {
         if (quality != null && quality.isNotEmpty)
           Positioned(
             left: 4,
+            right: _isSelectionMode ? 4 : 28,
             top: 4,
-            child: _buildLibraryQualityBadge(context, colorScheme, quality),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildLibraryQualityBadge(context, colorScheme, quality),
+            ),
           ),
         if (!_isSelectionMode)
           Positioned(

@@ -4,6 +4,11 @@ import 'package:spotiflac_android/utils/string_utils.dart';
 
 const highQualityBadgeBitrateThresholdKbps = 900;
 
+final RegExp _bitDepthQualityPattern = RegExp(
+  r'\b\d+\s*(?:-\s*)?bit\b',
+  caseSensitive: false,
+);
+
 String normalizeLibraryQualityLabelMode(String? mode) {
   return switch (mode) {
     AppSettings.libraryQualityLabelBitDepth =>
@@ -80,6 +85,34 @@ String? _buildBitDepthBitrateLabel({int? bitDepth, int? bitrateKbps}) {
     return null;
   }
   return '$bitDepth-bit/${bitrateKbps}kbps';
+}
+
+/// Keeps detailed bit-depth labels intact in Library grid badges while
+/// shortening bitrate-only labels that already include a codec name.
+String formatLibraryGridAudioQualityLabel(String quality) {
+  final normalized = quality.trim().toLowerCase();
+  if (_bitDepthQualityPattern.hasMatch(normalized)) return quality;
+
+  final bitrateTextMatch = RegExp(
+    r'(\d+)\s*k(?:bps)?',
+    caseSensitive: false,
+  ).firstMatch(quality);
+  if (bitrateTextMatch != null) {
+    return '${bitrateTextMatch.group(1)}k';
+  }
+
+  final bitrateIdMatch = RegExp(r'_(\d+)$').firstMatch(normalized);
+  if (bitrateIdMatch != null) {
+    return '${bitrateIdMatch.group(1)}k';
+  }
+
+  return quality.split(' ').first;
+}
+
+bool isDetailedLibraryAudioQualityLabel(String quality) {
+  final normalized = quality.trim().toLowerCase();
+  return _bitDepthQualityPattern.hasMatch(normalized) &&
+      normalized.contains('/');
 }
 
 /// Preserves the highlighted color used by legacy 24-bit Library badges while

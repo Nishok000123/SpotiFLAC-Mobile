@@ -146,8 +146,12 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
         if (quality != null && quality.isNotEmpty)
           Positioned(
             left: 4,
+            right: 4,
             top: 4,
-            child: _buildLibraryQualityBadge(context, colorScheme, quality),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildLibraryQualityBadge(context, colorScheme, quality),
+            ),
           ),
       ],
       title: trackName,
@@ -242,6 +246,24 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
   }) {
     final tokens = context.tokens;
     final isHighlightedQuality = shouldHighlightAudioQualityBadge(quality);
+    final displayQuality = listStyle
+        ? quality
+        : formatLibraryGridAudioQualityLabel(quality);
+    final isDetailed = isDetailedLibraryAudioQualityLabel(displayQuality);
+    final label = Text(
+      displayQuality,
+      maxLines: 1,
+      softWrap: false,
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: isHighlightedQuality
+            ? listStyle
+                  ? colorScheme.onPrimaryContainer
+                  : colorScheme.onPrimary
+            : colorScheme.onSurfaceVariant,
+        fontSize: isDetailed ? tokens.badgeFontSize - 1 : tokens.badgeFontSize,
+        fontWeight: listStyle ? FontWeight.w500 : FontWeight.w600,
+      ),
+    );
     return Container(
       padding: tokens.badgePadding,
       decoration: BoxDecoration(
@@ -252,18 +274,13 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
             : colorScheme.surfaceContainerHighest,
         borderRadius: tokens.borderRadiusBadge,
       ),
-      child: Text(
-        listStyle ? quality : _getQualityBadgeText(quality),
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: isHighlightedQuality
-              ? listStyle
-                    ? colorScheme.onPrimaryContainer
-                    : colorScheme.onPrimary
-              : colorScheme.onSurfaceVariant,
-          fontSize: tokens.badgeFontSize,
-          fontWeight: listStyle ? FontWeight.w500 : FontWeight.w600,
-        ),
-      ),
+      child: !listStyle && isDetailed
+          ? FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: label,
+            )
+          : label,
     );
   }
 

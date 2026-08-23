@@ -136,4 +136,24 @@ void main() {
       );
     });
   });
+
+  group('Library grid audio quality label', () {
+    test('keeps both parts of detailed bit-depth labels', () {
+      expect(
+        formatLibraryGridAudioQualityLabel('16-bit/44.1kHz'),
+        '16-bit/44.1kHz',
+      );
+      expect(
+        formatLibraryGridAudioQualityLabel('16-bit/1411kbps'),
+        '16-bit/1411kbps',
+      );
+      expect(isDetailedLibraryAudioQualityLabel('16-bit/44.1kHz'), isTrue);
+    });
+
+    test('keeps bitrate-only grid labels compact', () {
+      expect(formatLibraryGridAudioQualityLabel('FLAC 1760kbps'), '1760k');
+      expect(formatLibraryGridAudioQualityLabel('Bitrate 1760kbps'), '1760k');
+      expect(isDetailedLibraryAudioQualityLabel('FLAC 1760kbps'), isFalse);
+    });
+  });
 }
