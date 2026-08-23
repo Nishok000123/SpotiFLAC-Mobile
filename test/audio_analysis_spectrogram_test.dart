@@ -275,6 +275,50 @@ lavfi.r128.true_peak=0.907
       expect(cutoff!, inInclusiveRange(15300, 16300));
     });
 
+    test('ignores a tonal drop before a gradual 22 kHz bandwidth limit', () {
+      const hiresNyquist = 48000.0;
+      final intensity = _blankIntensity(width, height, value: 46);
+      _paintFrequencyBand(
+        intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: hiresNyquist,
+        lowHz: 0,
+        highHz: 4000,
+        intensity: 120,
+      );
+      _paintFrequencySlope(
+        intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: hiresNyquist,
+        lowHz: 4000,
+        highHz: 20000,
+        lowIntensity: 115,
+        highIntensity: 75,
+      );
+      _paintFrequencySlope(
+        intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: hiresNyquist,
+        lowHz: 20000,
+        highHz: 23500,
+        lowIntensity: 75,
+        highIntensity: 46,
+      );
+
+      final cutoff = estimateEffectiveSpectralCutoffHz(
+        intensity: intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: hiresNyquist,
+      );
+
+      expect(cutoff, isNotNull);
+      expect(cutoff!, inInclusiveRange(20500, 22500));
+    });
+
     test('retains genuine broadband ultrasonic content', () {
       final intensity = _blankIntensity(width, height, value: 10);
       _paintFrequencyBand(
@@ -413,6 +457,30 @@ void _paintNaturalSpectralTilt(
                 span * normalizedFrequency * normalizedFrequency)
             .round()
             .clamp(0, 255);
+    for (var x = 0; x < width; x++) {
+      values[y * width + x] = intensity;
+    }
+  }
+}
+
+void _paintFrequencySlope(
+  Uint8List values, {
+  required int width,
+  required int height,
+  required double maxFrequencyHz,
+  required double lowHz,
+  required double highHz,
+  required int lowIntensity,
+  required int highIntensity,
+}) {
+  final frequencySpan = highHz - lowHz;
+  for (var y = 0; y < height; y++) {
+    final frequency = (height - y - 0.5) / height * maxFrequencyHz;
+    if (frequency < lowHz || frequency > highHz) continue;
+    final progress = (frequency - lowHz) / frequencySpan;
+    final intensity = (lowIntensity + (highIntensity - lowIntensity) * progress)
+        .round()
+        .clamp(0, 255);
     for (var x = 0; x < width; x++) {
       values[y * width + x] = intensity;
     }

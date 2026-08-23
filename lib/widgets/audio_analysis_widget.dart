@@ -438,13 +438,14 @@ double? estimateEffectiveSpectralCutoffHz({
   });
 
   final minimumDrop = math.max(12.0, dynamicSpan * 0.18);
+  final gapRows = math.max(1, (100 / hzPerRow).ceil());
+  final supportRows = math.max(3, (1200 / hzPerRow).ceil());
+  final stableTailSpread = math.max(4.0, dynamicSpan * 0.06);
   for (final bestStart in candidateStarts) {
     final bestLocalDrop =
         smoothed[bestStart] - smoothed[bestStart + edgeSpanRows];
     if (bestLocalDrop < minimumDrop * 0.60) break;
     final edgeIndex = (bestStart + edgeSpanRows / 2).round();
-    final gapRows = math.max(1, (100 / hzPerRow).ceil());
-    final supportRows = math.max(3, (1200 / hzPerRow).ceil());
     final belowEnd = edgeIndex - gapRows;
     final belowStart = math.max(0, belowEnd - supportRows);
     final aboveStart = edgeIndex + gapRows;
@@ -453,22 +454,55 @@ double? estimateEffectiveSpectralCutoffHz({
       final belowLevel = _spectralMedian(smoothed, belowStart, belowEnd);
       final aboveLevel = _spectralMedian(smoothed, aboveStart, aboveEnd);
       final tailLevel = _spectralMedian(smoothed, aboveStart, height);
+      final tailSpread =
+          _spectralPercentile(smoothed, aboveStart, height, 0.80) -
+          _spectralPercentile(smoothed, aboveStart, height, 0.20);
       final baseStart = math.max(0, edgeIndex - (3000 / hzPerRow).ceil());
       final baseLevel = _spectralMedian(smoothed, baseStart, belowEnd);
       if (belowLevel - aboveLevel >= minimumDrop &&
           belowLevel - tailLevel >= minimumDrop &&
-          baseLevel - tailLevel >= minimumDrop) {
+          baseLevel - tailLevel >= minimumDrop &&
+          tailSpread <= stableTailSpread) {
         final cutoff = (edgeIndex + 0.5) * hzPerRow;
         return cutoff.clamp(0.0, maxFrequencyHz).toDouble();
       }
     }
   }
 
-  // A genuinely broadband signal with no internal falling edge reaches the
-  // analysis ceiling. Natural music has a pronounced spectral tilt, so the
-  // top band does not need to be almost as loud as the baseband. It must still
-  // sit clearly above the measured low-level floor; silence or an isolated
-  // high-frequency line therefore continues to return null.
+  // Some masters roll off over several kilohertz instead of ending at one
+  // sharp edge. Find the highest sustained band that remains clearly above a
+  // stable high-frequency floor so ordinary musical spectral tilt is not
+  // mistaken for a low-pass cutoff.
+  final tailReferenceLevel = _spectralMedian(
+    smoothed,
+    (height * 0.90).floor(),
+    math.max(1, (height * 0.98).floor()),
+  );
+  final activeMargin = math.max(10.0, dynamicSpan * 0.20);
+  final activeThreshold = tailReferenceLevel + activeMargin;
+  for (var edgeIndex = searchEnd - 1; edgeIndex >= searchStart; edgeIndex--) {
+    final belowEnd = edgeIndex - gapRows;
+    final belowStart = math.max(0, belowEnd - supportRows);
+    final aboveStart = edgeIndex + gapRows;
+    if (belowEnd <= belowStart || aboveStart >= height) continue;
+    final belowLevel = _spectralMedian(smoothed, belowStart, belowEnd);
+    if (belowLevel < activeThreshold) continue;
+    final tailLevel = _spectralMedian(smoothed, aboveStart, height);
+    final tailSpread =
+        _spectralPercentile(smoothed, aboveStart, height, 0.80) -
+        _spectralPercentile(smoothed, aboveStart, height, 0.20);
+    if (belowLevel - tailLevel >= activeMargin &&
+        tailSpread <= stableTailSpread) {
+      final cutoffIndex = edgeIndex - supportRows / 2;
+      final cutoff = (cutoffIndex + 0.5) * hzPerRow;
+      return cutoff.clamp(0.0, maxFrequencyHz).toDouble();
+    }
+  }
+
+  // A genuinely broadband signal with no stable tail plateau reaches the
+  // analysis ceiling. Natural music may retain a pronounced spectral tilt,
+  // so require populated baseband and top bands instead of similar levels.
+  // Silence and isolated high-frequency lines still return null.
   final basebandLevel = _spectralMedian(
     smoothed,
     (height * 0.05).floor(),
@@ -479,8 +513,17 @@ double? estimateEffectiveSpectralCutoffHz({
     (height * 0.90).floor(),
     math.max(1, (height * 0.98).floor()),
   );
-  final populatedTopFloor = math.max(24.0, lowLevel * 0.60);
-  if (basebandLevel >= 24 && topBandLevel >= populatedTopFloor) {
+  final lowerTopBandLevel = _spectralMedian(
+    smoothed,
+    (height * 0.80).floor(),
+    math.max(1, (height * 0.90).floor()),
+  );
+  final topBandNearPeak = topBandLevel >= highLevel - minimumDrop;
+  final topBandStillSloping =
+      lowerTopBandLevel - topBandLevel > stableTailSpread;
+  if (basebandLevel >= 24 &&
+      topBandLevel >= 24 &&
+      (topBandNearPeak || topBandStillSloping)) {
     return maxFrequencyHz;
   }
   return null;
