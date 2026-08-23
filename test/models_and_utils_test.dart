@@ -767,7 +767,7 @@ void main() {
         lyricsAppleElrcWordSync: true,
         deduplicateDownloads: false,
         allowQualityVariants: true,
-        libraryQualityLabelMode: AppSettings.libraryQualityLabelBitDepthBitrate,
+        libraryQualityLabelMode: AppSettings.libraryQualityLabelBitDepthOnly,
         clearDownloadFallbackExtensionIds: true,
         clearSearchProvider: true,
         clearHomeFeedProvider: true,
@@ -781,7 +781,7 @@ void main() {
       expect(updated.allowQualityVariants, isTrue);
       expect(
         updated.libraryQualityLabelMode,
-        AppSettings.libraryQualityLabelBitDepthBitrate,
+        AppSettings.libraryQualityLabelBitDepthOnly,
       );
       expect(updated.downloadFallbackExtensionIds, isNull);
       expect(updated.searchProvider, isNull);
@@ -812,7 +812,7 @@ void main() {
         autoConvertDownloads: true,
         autoConvertFormat: 'opus',
         autoConvertBitrate: '192k',
-        libraryQualityLabelMode: AppSettings.libraryQualityLabelBitDepthBitrate,
+        libraryQualityLabelMode: AppSettings.libraryQualityLabelBitDepthOnly,
       );
 
       final decoded = AppSettings.fromJson(settings.toJson());
@@ -834,7 +834,7 @@ void main() {
       expect(decoded.lastSeenVersion, '4.5.0');
       expect(
         decoded.libraryQualityLabelMode,
-        AppSettings.libraryQualityLabelBitDepthBitrate,
+        AppSettings.libraryQualityLabelBitDepthOnly,
       );
       expect(decoded.deduplicateDownloads, isFalse);
       expect(decoded.allowQualityVariants, isTrue);

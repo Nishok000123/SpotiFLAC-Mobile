@@ -381,6 +381,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   String _normalizeLibraryQualityLabelMode(String value) {
     return switch (value) {
+      AppSettings.libraryQualityLabelBitDepthOnly =>
+        AppSettings.libraryQualityLabelBitDepthOnly,
       AppSettings.libraryQualityLabelBitDepth =>
         AppSettings.libraryQualityLabelBitDepth,
       AppSettings.libraryQualityLabelBitDepthBitrate =>

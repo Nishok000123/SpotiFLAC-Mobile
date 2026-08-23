@@ -46,6 +46,33 @@ void main() {
         ),
         AppSettings.libraryQualityLabelBitDepthBitrate,
       );
+      expect(
+        normalizeLibraryQualityLabelMode(
+          AppSettings.libraryQualityLabelBitDepthOnly,
+        ),
+        AppSettings.libraryQualityLabelBitDepthOnly,
+      );
+    });
+
+    test('shows only bit depth when requested', () {
+      expect(
+        buildLibraryAudioQualityLabel(
+          mode: AppSettings.libraryQualityLabelBitDepthOnly,
+          format: 'flac',
+          bitrateKbps: 1411,
+          bitDepth: 16,
+          sampleRate: 44100,
+        ),
+        '16-bit',
+      );
+      expect(
+        buildLibraryAudioQualityLabel(
+          mode: AppSettings.libraryQualityLabelBitDepthOnly,
+          format: 'flac',
+          storedQuality: '24-bit/96kHz',
+        ),
+        '24-bit',
+      );
     });
 
     test('restores legacy bit depth and sample rate labels', () {

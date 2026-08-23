@@ -11,6 +11,8 @@ final RegExp _bitDepthQualityPattern = RegExp(
 
 String normalizeLibraryQualityLabelMode(String? mode) {
   return switch (mode) {
+    AppSettings.libraryQualityLabelBitDepthOnly =>
+      AppSettings.libraryQualityLabelBitDepthOnly,
     AppSettings.libraryQualityLabelBitDepth =>
       AppSettings.libraryQualityLabelBitDepth,
     AppSettings.libraryQualityLabelBitDepthBitrate =>
@@ -32,15 +34,22 @@ String? buildLibraryAudioQualityLabel({
 }) {
   final stored = normalizeOptionalString(storedQuality);
   final storedBitrate = _bitrateFromStoredQuality(stored);
+  final storedBitDepth = _bitDepthFromStoredQuality(stored);
   final effectiveBitrate = bitrateKbps != null && bitrateKbps > 0
       ? bitrateKbps
       : storedBitrate;
+  final effectiveBitDepth = bitDepth != null && bitDepth > 0
+      ? bitDepth
+      : storedBitDepth;
   final bitrateLabel = effectiveBitrate != null
       ? buildDisplayAudioQuality(bitrateKbps: effectiveBitrate, format: format)
       : null;
   final bitDepthLabel =
       bitDepth != null && bitDepth > 0 && sampleRate != null && sampleRate > 0
       ? buildDisplayAudioQuality(bitDepth: bitDepth, sampleRate: sampleRate)
+      : null;
+  final bitDepthOnlyLabel = effectiveBitDepth != null
+      ? '$effectiveBitDepth-bit'
       : null;
   final normalizedMode = normalizeLibraryQualityLabelMode(mode);
 
@@ -49,11 +58,13 @@ String? buildLibraryAudioQualityLabel({
   }
 
   return switch (normalizedMode) {
+    AppSettings.libraryQualityLabelBitDepthOnly =>
+      bitDepthOnlyLabel ?? bitrateLabel ?? stored,
     AppSettings.libraryQualityLabelBitDepth =>
       bitDepthLabel ?? bitrateLabel ?? stored,
     AppSettings.libraryQualityLabelBitDepthBitrate =>
       _buildBitDepthBitrateLabel(
-            bitDepth: bitDepth,
+            bitDepth: effectiveBitDepth,
             bitrateKbps: effectiveBitrate,
           ) ??
           bitrateLabel ??
@@ -75,6 +86,15 @@ int? _bitrateFromStoredQuality(String? quality) {
   if (value == null || value <= 0) return null;
   final unit = match?.group(2)?.toLowerCase();
   return unit == 'mbps' ? (value * 1000).round() : value.round();
+}
+
+int? _bitDepthFromStoredQuality(String? quality) {
+  final match = RegExp(
+    r'\b(\d{1,3})(?:\s*[- ]?\s*bit\b|(?=/))',
+    caseSensitive: false,
+  ).firstMatch(quality ?? '');
+  final value = int.tryParse(match?.group(1) ?? '');
+  return value != null && value > 0 ? value : null;
 }
 
 String? _buildBitDepthBitrateLabel({int? bitDepth, int? bitrateKbps}) {
