@@ -1310,8 +1310,14 @@ class _SyncedLyricsView extends ConsumerStatefulWidget {
 class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   final ScrollController _scroll = ScrollController();
   ProviderSubscription<Duration>? _positionSubscription;
+  ProviderSubscription<bool>? _playingSubscription;
+  ProviderSubscription<bool>? _loadingSubscription;
+  Timer? _lineBoundaryTimer;
   late List<GlobalKey> _lineKeys;
   int _active = -1;
+  Duration _activeTransitionPosition = Duration.zero;
+  bool _playing = false;
+  bool _loading = false;
   bool _userScrolling = false;
   static const double _estimatedLyricExtent = 64;
 
@@ -1344,32 +1350,87 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
 
   void _syncPositionSubscription() {
     _positionSubscription?.close();
+    _playingSubscription?.close();
+    _loadingSubscription?.close();
+    _lineBoundaryTimer?.cancel();
     _positionSubscription = null;
+    _playingSubscription = null;
+    _loadingSubscription = null;
     if (!widget.isActive) return;
 
-    _active = LyricsParser.activeIndex(
-      widget.lyrics.lines,
-      ref.read(playbackPositionProvider),
-    );
+    final position = ref.read(playbackPositionProvider);
+    _playing = ref.read(playbackPlayingProvider);
+    _loading = ref.read(playbackLoadingProvider);
+    _active = LyricsParser.activeIndex(widget.lyrics.lines, position);
+    _activeTransitionPosition = position;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_maybeAutoScroll(_active));
     });
+    _scheduleNextLine(position);
     _positionSubscription = ref.listenManual<Duration>(
       playbackPositionProvider,
       (previous, next) {
         final active = LyricsParser.activeIndex(widget.lyrics.lines, next);
-        if (active == _active || !mounted) return;
-        setState(() => _active = active);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) unawaited(_maybeAutoScroll(active));
-        });
+        if (active != _active) _setActiveLine(active, position: next);
+        _scheduleNextLine(next);
       },
     );
+    _playingSubscription = ref.listenManual<bool>(playbackPlayingProvider, (
+      previous,
+      next,
+    ) {
+      _playing = next;
+      _scheduleNextLine(ref.read(playbackPositionProvider));
+    });
+    _loadingSubscription = ref.listenManual<bool>(playbackLoadingProvider, (
+      previous,
+      next,
+    ) {
+      _loading = next;
+      _scheduleNextLine(ref.read(playbackPositionProvider));
+    });
+  }
+
+  void _setActiveLine(int active, {required Duration position}) {
+    if (!mounted || active == _active) return;
+    setState(() {
+      _active = active;
+      _activeTransitionPosition = position;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_maybeAutoScroll(active));
+    });
+  }
+
+  void _scheduleNextLine(Duration position) {
+    _lineBoundaryTimer?.cancel();
+    if (!widget.isActive || !_playing || _loading) return;
+
+    final lines = widget.lyrics.lines;
+    final dueIndex = syncedLyricsDueLineIndex(
+      lineStarts: lines.map((line) => line.time).toList(growable: false),
+      currentIndex: _active,
+      position: position,
+    );
+    if (dueIndex != _active) {
+      _setActiveLine(dueIndex, position: position);
+    }
+
+    final nextIndex = dueIndex + 1;
+    if (nextIndex >= lines.length) return;
+    final boundary = lines[nextIndex].time;
+    _lineBoundaryTimer = Timer(boundary - position, () {
+      if (!mounted || !widget.isActive || !_playing || _loading) return;
+      _scheduleNextLine(boundary);
+    });
   }
 
   @override
   void dispose() {
     _positionSubscription?.close();
+    _playingSubscription?.close();
+    _loadingSubscription?.close();
+    _lineBoundaryTimer?.cancel();
     _scroll.dispose();
     super.dispose();
   }
@@ -1462,6 +1523,8 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                 content = _WordHighlightedLyricLine(
                   line: line,
                   colorScheme: widget.colorScheme,
+                  animate: widget.isActive,
+                  initialPosition: _activeTransitionPosition,
                 );
               } else {
                 content = Text(
@@ -1480,6 +1543,16 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                           ),
                 );
               }
+              content = AnimatedSwitcher(
+                duration: const Duration(milliseconds: 320),
+                reverseDuration: const Duration(milliseconds: 260),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: KeyedSubtree(
+                  key: ValueKey(isActive && line.hasWordTiming),
+                  child: content,
+                ),
+              );
 
               return Padding(
                 key: _lineKeys[index],
@@ -1508,42 +1581,428 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   }
 }
 
-class _WordHighlightedLyricLine extends ConsumerWidget {
+class _WordHighlightedLyricLine extends ConsumerStatefulWidget {
   final LyricLine line;
   final ColorScheme colorScheme;
+  final bool animate;
+  final Duration initialPosition;
 
   const _WordHighlightedLyricLine({
     required this.line,
     required this.colorScheme,
+    required this.animate,
+    required this.initialPosition,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final position = ref.watch(playbackPositionProvider);
-    final spans = <TextSpan>[];
-    for (final word in line.words) {
-      final sung = position >= word.time;
-      spans.add(
-        TextSpan(
-          text: word.text,
-          style: TextStyle(
-            color: sung
-                ? colorScheme.onSurface
-                : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-          ),
-        ),
-      );
+  ConsumerState<_WordHighlightedLyricLine> createState() =>
+      _WordHighlightedLyricLineState();
+}
+
+class _WordHighlightedLyricLineState
+    extends ConsumerState<_WordHighlightedLyricLine>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animationClock;
+  final Stopwatch _elapsedClock = Stopwatch();
+  ProviderSubscription<Duration>? _positionSubscription;
+  ProviderSubscription<bool>? _playingSubscription;
+  ProviderSubscription<bool>? _loadingSubscription;
+
+  late Duration _anchorPosition;
+  Duration _anchorElapsed = Duration.zero;
+  bool _playing = false;
+  bool _loading = false;
+
+  bool get _shouldAnimate => widget.animate && _playing && !_loading;
+
+  Duration _positionAt({required bool advance}) {
+    return interpolatedSyncedLyricsPosition(
+      anchorPosition: _anchorPosition,
+      elapsedSinceAnchor: _elapsedClock.elapsed - _anchorElapsed,
+      isPlaying: advance,
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _elapsedClock.start();
+    _anchorElapsed = _elapsedClock.elapsed;
+    _anchorPosition = widget.initialPosition;
+    _playing = ref.read(playbackPlayingProvider);
+    _loading = ref.read(playbackLoadingProvider);
+    _animationClock = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
+    _positionSubscription = ref.listenManual<Duration>(
+      playbackPositionProvider,
+      (previous, next) => _updateReportedPosition(next),
+    );
+    _playingSubscription = ref.listenManual<bool>(
+      playbackPlayingProvider,
+      (previous, next) => _updateTransportState(playing: next),
+    );
+    _loadingSubscription = ref.listenManual<bool>(
+      playbackLoadingProvider,
+      (previous, next) => _updateTransportState(loading: next),
+    );
+    _syncAnimationClock();
+  }
+
+  @override
+  void didUpdateWidget(covariant _WordHighlightedLyricLine oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.line != widget.line ||
+        oldWidget.initialPosition != widget.initialPosition) {
+      _anchorAt(widget.initialPosition);
     }
-    return RichText(
-      textAlign: TextAlign.center,
-      text: TextSpan(
-        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-          height: 1.4,
-          fontWeight: FontWeight.bold,
-        ),
-        children: spans,
+    if (oldWidget.animate != widget.animate) {
+      _anchorAt(
+        _positionAt(advance: oldWidget.animate && _playing && !_loading),
+      );
+      _syncAnimationClock();
+    }
+  }
+
+  Duration _currentPosition() {
+    return _positionAt(advance: _shouldAnimate);
+  }
+
+  void _anchorAt(Duration position) {
+    _anchorPosition = position;
+    _anchorElapsed = _elapsedClock.elapsed;
+  }
+
+  void _updateReportedPosition(Duration position) {
+    if (!mounted) return;
+    final predicted = _currentPosition();
+    _anchorAt(
+      reconcileSyncedLyricsPosition(
+        predictedPosition: predicted,
+        reportedPosition: position,
       ),
     );
+    setState(() {});
+  }
+
+  void _updateTransportState({bool? playing, bool? loading}) {
+    if (!mounted) return;
+    final position = _currentPosition();
+    if (playing != null) _playing = playing;
+    if (loading != null) _loading = loading;
+    _anchorAt(position);
+    _syncAnimationClock();
+    setState(() {});
+  }
+
+  void _syncAnimationClock() {
+    if (_shouldAnimate) {
+      if (!_animationClock.isAnimating) {
+        _animationClock.repeat();
+      }
+    } else {
+      _animationClock.stop();
+    }
+  }
+
+  Duration _segmentEnd(int index) {
+    final start = widget.line.words[index].time;
+    if (index + 1 < widget.line.words.length) {
+      final next = widget.line.words[index + 1].time;
+      if (next > start) return next;
+    }
+    final lineEnd = widget.line.end;
+    if (lineEnd != null && lineEnd > start) return lineEnd;
+    return start + const Duration(milliseconds: 650);
+  }
+
+  @override
+  void dispose() {
+    _positionSubscription?.close();
+    _playingSubscription?.close();
+    _loadingSubscription?.close();
+    _animationClock.dispose();
+    _elapsedClock.stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _buildHighlightedLine(context);
+  }
+
+  Widget _buildHighlightedLine(BuildContext context) {
+    final highlightedColor = widget.colorScheme.onSurface;
+    final pendingColor = widget.colorScheme.onSurfaceVariant.withValues(
+      alpha: 0.6,
+    );
+    final segments = <String>[];
+    final starts = <Duration>[];
+    final ends = <Duration>[];
+    for (var index = 0; index < widget.line.words.length; index++) {
+      final word = widget.line.words[index];
+      segments.add(word.text);
+      starts.add(word.time);
+      ends.add(_segmentEnd(index));
+    }
+
+    return _SweepingTimedLyricText(
+      segments: segments,
+      starts: starts,
+      ends: ends,
+      currentPosition: _currentPosition,
+      repaint: _animationClock,
+      style: (Theme.of(context).textTheme.headlineSmall ?? const TextStyle())
+          .copyWith(height: 1.4, fontWeight: FontWeight.bold),
+      pendingColor: pendingColor,
+      highlightedColor: highlightedColor,
+      semanticsLabel: widget.line.text,
+    );
+  }
+}
+
+class _SweepingTimedLyricText extends StatefulWidget {
+  final List<String> segments;
+  final List<Duration> starts;
+  final List<Duration> ends;
+  final Duration Function() currentPosition;
+  final Listenable repaint;
+  final TextStyle style;
+  final Color pendingColor;
+  final Color highlightedColor;
+  final String semanticsLabel;
+
+  const _SweepingTimedLyricText({
+    required this.segments,
+    required this.starts,
+    required this.ends,
+    required this.currentPosition,
+    required this.repaint,
+    required this.style,
+    required this.pendingColor,
+    required this.highlightedColor,
+    required this.semanticsLabel,
+  });
+
+  @override
+  State<_SweepingTimedLyricText> createState() =>
+      _SweepingTimedLyricTextState();
+}
+
+class _SweepingTimedLyricTextState extends State<_SweepingTimedLyricText> {
+  TextPainter? _pendingPainter;
+  TextPainter? _highlightedPainter;
+  String? _cachedText;
+  TextStyle? _cachedStyle;
+  TextDirection? _cachedDirection;
+  TextScaler? _cachedScaler;
+  Locale? _cachedLocale;
+  Color? _cachedPendingColor;
+  Color? _cachedHighlightedColor;
+
+  void _ensurePainters(
+    String text,
+    TextDirection textDirection,
+    TextScaler textScaler,
+    Locale? locale,
+  ) {
+    if (_cachedText == text &&
+        _cachedStyle == widget.style &&
+        _cachedDirection == textDirection &&
+        _cachedScaler == textScaler &&
+        _cachedLocale == locale &&
+        _cachedPendingColor == widget.pendingColor &&
+        _cachedHighlightedColor == widget.highlightedColor) {
+      return;
+    }
+
+    _pendingPainter?.dispose();
+    _highlightedPainter?.dispose();
+    _pendingPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: widget.style.copyWith(color: widget.pendingColor),
+      ),
+      textAlign: TextAlign.center,
+      textDirection: textDirection,
+      textScaler: textScaler,
+      locale: locale,
+    );
+    _highlightedPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: widget.style.copyWith(color: widget.highlightedColor),
+      ),
+      textAlign: TextAlign.center,
+      textDirection: textDirection,
+      textScaler: textScaler,
+      locale: locale,
+    );
+    _cachedText = text;
+    _cachedStyle = widget.style;
+    _cachedDirection = textDirection;
+    _cachedScaler = textScaler;
+    _cachedLocale = locale;
+    _cachedPendingColor = widget.pendingColor;
+    _cachedHighlightedColor = widget.highlightedColor;
+  }
+
+  @override
+  void dispose() {
+    _pendingPainter?.dispose();
+    _highlightedPainter?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textDirection = Directionality.of(context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final locale = Localizations.maybeLocaleOf(context);
+    final text = widget.segments.join();
+    _ensurePainters(text, textDirection, textScaler, locale);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : double.infinity;
+        final pendingPainter = _pendingPainter!
+          ..layout(
+            minWidth: constraints.hasBoundedWidth ? maxWidth : 0,
+            maxWidth: maxWidth,
+          );
+        final highlightedPainter = _highlightedPainter!
+          ..layout(
+            minWidth: constraints.hasBoundedWidth ? maxWidth : 0,
+            maxWidth: maxWidth,
+          );
+        final width = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : pendingPainter.width;
+        final height = pendingPainter.height;
+
+        return Semantics(
+          label: widget.semanticsLabel,
+          child: CustomPaint(
+            size: Size(width, height),
+            painter: _TimedLyricSweepPainter(
+              segments: widget.segments,
+              starts: widget.starts,
+              ends: widget.ends,
+              currentPosition: widget.currentPosition,
+              repaint: widget.repaint,
+              pendingPainter: pendingPainter,
+              highlightedPainter: highlightedPainter,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TimedLyricSweepPainter extends CustomPainter {
+  final List<String> segments;
+  final List<Duration> starts;
+  final List<Duration> ends;
+  final Duration Function() currentPosition;
+  final TextPainter pendingPainter;
+  final TextPainter highlightedPainter;
+
+  _TimedLyricSweepPainter({
+    required this.segments,
+    required this.starts,
+    required this.ends,
+    required this.currentPosition,
+    required Listenable repaint,
+    required this.pendingPainter,
+    required this.highlightedPainter,
+  }) : super(repaint: repaint);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    pendingPainter.paint(canvas, Offset.zero);
+
+    final completedPath = Path();
+    final partialBoxes = <(Rect, double)>[];
+    final position = currentPosition();
+    var offset = 0;
+    for (var index = 0; index < segments.length; index++) {
+      final end = offset + segments[index].length;
+      final value = index < starts.length && index < ends.length
+          ? syncedLyricSegmentProgress(
+              position: position,
+              start: starts[index],
+              end: ends[index],
+            )
+          : 0.0;
+      if (value > 0 && end > offset) {
+        final boxes = highlightedPainter.getBoxesForSelection(
+          TextSelection(baseOffset: offset, extentOffset: end),
+        );
+        for (final box in boxes) {
+          final rect = box.toRect();
+          if (value >= 1) {
+            completedPath.addRect(rect);
+          } else {
+            partialBoxes.add((rect, value));
+          }
+        }
+      }
+      offset = end;
+    }
+
+    if (!completedPath.getBounds().isEmpty) {
+      canvas.save();
+      canvas.clipPath(completedPath);
+      highlightedPainter.paint(canvas, Offset.zero);
+      canvas.restore();
+    }
+
+    for (final (box, value) in partialBoxes) {
+      final boundary = syncedLyricsLeftToRightBoundary(
+        left: box.left,
+        right: box.right,
+        progress: value,
+      );
+      final feather = (box.width * 0.18).clamp(3.0, 10.0);
+      final revealRight = (boundary + feather).clamp(box.left, box.right);
+      final revealRect = Rect.fromLTRB(
+        box.left,
+        box.top,
+        revealRight,
+        box.bottom,
+      );
+      final gradientStart = boundary.clamp(box.left, revealRight - 0.01);
+
+      canvas.save();
+      canvas.clipRect(revealRect);
+      canvas.saveLayer(revealRect, Paint());
+      highlightedPainter.paint(canvas, Offset.zero);
+      final mask = Paint()
+        ..blendMode = BlendMode.dstIn
+        ..shader =
+            LinearGradient(
+              colors: const [Colors.white, Colors.transparent],
+            ).createShader(
+              Rect.fromLTRB(gradientStart, box.top, revealRight, box.bottom),
+            );
+      canvas.drawRect(revealRect, mask);
+      canvas.restore();
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TimedLyricSweepPainter oldDelegate) {
+    return oldDelegate.segments != segments ||
+        oldDelegate.starts != starts ||
+        oldDelegate.ends != ends ||
+        oldDelegate.currentPosition != currentPosition ||
+        oldDelegate.pendingPainter != pendingPainter ||
+        oldDelegate.highlightedPainter != highlightedPainter;
   }
 }
 

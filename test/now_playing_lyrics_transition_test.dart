@@ -24,11 +24,14 @@ void main() {
           }
           final arguments = (call.arguments as Map).cast<String, dynamic>();
           final path = arguments['file_path']?.toString() ?? '';
+          final lyrics = path.endsWith('/timed.flac')
+              ? '''<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="00:00.000" end="00:02.000"><span begin="00:00.000">Short</span></p></div></body></tt>'''
+              : path.endsWith('/second.flac')
+              ? '[00:01.00]Second lyric'
+              : '[00:01.00]First lyric';
           return jsonEncode({
             'title': path.endsWith('/second.flac') ? 'Second' : 'First',
-            'lyrics': path.endsWith('/second.flac')
-                ? '[00:01.00]Second lyric'
-                : '[00:01.00]First lyric',
+            'lyrics': lyrics,
           });
         });
   });
@@ -88,6 +91,21 @@ void main() {
       expect(find.text('First lyric'), findsNothing);
     },
   );
+
+  testWidgets('short timed lyric remains horizontally centered', (
+    tester,
+  ) async {
+    await pumpNowPlaying(tester);
+
+    mediaItems.add(item('timed'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(PageView), const Offset(-700, 0));
+    await tester.pumpAndSettle();
+
+    final lyric = find.bySemanticsLabel('Short');
+    expect(lyric, findsOneWidget);
+    expect(tester.getCenter(lyric).dx, closeTo(540, 1));
+  });
 
   testWidgets('Now Playing menu exposes Go to Album when album is known', (
     tester,
