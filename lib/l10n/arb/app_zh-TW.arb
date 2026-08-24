@@ -543,7 +543,7 @@
   "@setupPermissionDeniedMessage": {
     "description": "Error when permission denied"
   },
-  "setupPermissionRequired": "{permissionType} Permission Required",
+  "setupPermissionRequired": "需要 {permissionType} 權限",
   "@setupPermissionRequired": {
     "description": "Generic permission required title",
     "placeholders": {
@@ -553,7 +553,7 @@
       }
     }
   },
-  "setupPermissionRequiredMessage": "{permissionType} permission is required for the best experience. You can change this later in Settings.",
+  "setupPermissionRequiredMessage": "需要「{permissionType}」權限以獲得最佳使用體驗。您稍後隨時可以在「設定」中進行變更。",
   "@setupPermissionRequiredMessage": {
     "description": "Generic permission required message",
     "placeholders": {
