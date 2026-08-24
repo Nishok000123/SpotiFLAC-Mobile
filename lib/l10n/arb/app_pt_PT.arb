@@ -182,14 +182,6 @@
   "@optionsEmbedLyricsSubtitle": {
     "description": "Subtitle for embed lyrics"
   },
-  "optionsMaxQualityCover": "Capa de Qualidade Máxima",
-  "@optionsMaxQualityCover": {
-    "description": "Download highest quality album art"
-  },
-  "optionsMaxQualityCoverSubtitle": "Baixar capa do álbum com a mais alta resolução",
-  "@optionsMaxQualityCoverSubtitle": {
-    "description": "Subtitle for max quality cover"
-  },
   "optionsReplayGain": "ReplayGain",
   "@optionsReplayGain": {
     "description": "Title for ReplayGain setting toggle"
@@ -606,7 +598,7 @@
   "@setupIcloudNotSupported": {
     "description": "Error when user selects iCloud Drive on iOS"
   },
-  "setupDownloadInFlac": "Baixar faixas do Spotify em FLAC",
+  "setupDownloadInFlac": "Download music in lossless and Hi-Res quality",
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
@@ -1991,6 +1983,42 @@
   "@downloadLossyFormat": {
     "description": "Setting title to pick output format for lossy downloads"
   },
+  "downloadAutoConvert": "Auto-convert after download",
+  "@downloadAutoConvert": {
+    "description": "Toggle for automatic post-download audio conversion"
+  },
+  "downloadAutoConvertSubtitle": "Convert completed downloads to a smaller lossy format. The original is replaced only after conversion succeeds.",
+  "@downloadAutoConvertSubtitle": {
+    "description": "Explanation of safe automatic post-download conversion"
+  },
+  "downloadAutoConvertFormat": "Output format",
+  "@downloadAutoConvertFormat": {
+    "description": "Automatic conversion output format setting"
+  },
+  "downloadAutoConvertFormatSubtitle": "Choose the lossy format used for newly completed downloads.",
+  "@downloadAutoConvertFormatSubtitle": {
+    "description": "Automatic conversion format picker explanation"
+  },
+  "downloadAutoConvertBitrate": "Output quality",
+  "@downloadAutoConvertBitrate": {
+    "description": "Automatic conversion bitrate setting"
+  },
+  "downloadAutoConvertBitrateSubtitle": "Higher bitrates preserve more detail but create larger files.",
+  "@downloadAutoConvertBitrateSubtitle": {
+    "description": "Automatic conversion bitrate picker explanation"
+  },
+  "downloadAutoConvertMp3Subtitle": "Best compatibility across players and devices",
+  "@downloadAutoConvertMp3Subtitle": {
+    "description": "MP3 automatic conversion option description"
+  },
+  "downloadAutoConvertM4aSubtitle": "Efficient AAC audio in an M4A container",
+  "@downloadAutoConvertM4aSubtitle": {
+    "description": "M4A AAC automatic conversion option description"
+  },
+  "downloadAutoConvertOpusSubtitle": "Best efficiency for modern players",
+  "@downloadAutoConvertOpusSubtitle": {
+    "description": "Opus automatic conversion option description"
+  },
   "downloadLossy320Format": "Lossy 320kbps Format",
   "@downloadLossy320Format": {
     "description": "Title of the lossy format picker bottom sheet"
@@ -2269,6 +2297,10 @@
   "@recentEmpty": {
     "description": "Empty state text for recent access list"
   },
+  "recentClearAllMessage": "Clear all recent activity? Download history and music files will not be deleted.",
+  "@recentClearAllMessage": {
+    "description": "Confirmation message before clearing all recent activity"
+  },
   "recentShowAllDownloads": "Show All Downloads",
   "@recentShowAllDownloads": {
     "description": "Button label to unhide hidden downloads in recent access"
@@ -2468,6 +2500,53 @@
   "libraryFolderHint": "Tap to select folder",
   "@libraryFolderHint": {
     "description": "Placeholder when no folder selected"
+  },
+  "libraryAddFolder": "Add library folder",
+  "@libraryAddFolder": {
+    "description": "Action to add another local library source"
+  },
+  "libraryAddFolderSubtitle": "Internal storage, SD card, SSD, or another external drive",
+  "@libraryAddFolderSubtitle": {
+    "description": "Supported storage locations for local library sources"
+  },
+  "librarySourceOnline": "Online",
+  "@librarySourceOnline": {
+    "description": "Library source is connected and accessible"
+  },
+  "librarySourceOffline": "Offline. Reconnect the storage to restore these tracks",
+  "@librarySourceOffline": {
+    "description": "Library source is temporarily disconnected"
+  },
+  "librarySourceDisabled": "Disabled",
+  "@librarySourceDisabled": {
+    "description": "Library source has been disabled by the user"
+  },
+  "librarySourceScanCount": "{scanned} of {total} files scanned ({progress}%)",
+  "@librarySourceScanCount": {
+    "description": "Live progress for one library folder scan",
+    "placeholders": {
+      "scanned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "progress": {
+        "type": "String"
+      }
+    }
+  },
+  "libraryExternalStorage": "External storage",
+  "@libraryExternalStorage": {
+    "description": "Label for a removable or external library source"
+  },
+  "libraryRemoveFolder": "Remove library folder",
+  "@libraryRemoveFolder": {
+    "description": "Action to remove one indexed library source"
+  },
+  "libraryRemoveFolderMessage": "Remove this folder and its indexed tracks from SpotiFLAC Mobile? Audio files on the storage will not be deleted.",
+  "@libraryRemoveFolderMessage": {
+    "description": "Confirmation shown before removing a library source"
   },
   "libraryShowDuplicateIndicator": "Show Duplicate Indicator",
   "@libraryShowDuplicateIndicator": {
@@ -2763,19 +2842,19 @@
   "@tutorialWelcomeTitle": {
     "description": "Tutorial welcome page title"
   },
-  "tutorialWelcomeDesc": "Let's learn how to download your favorite music in lossless quality. This quick tutorial will show you the basics.",
+  "tutorialWelcomeDesc": "Learn how to find music with extensions, choose the quality you want, and manage downloads in SpotiFLAC Mobile.",
   "@tutorialWelcomeDesc": {
     "description": "Tutorial welcome page description"
   },
-  "tutorialWelcomeTip1": "Search music or paste a link from any source your installed extensions support",
+  "tutorialWelcomeTip1": "Search with an installed extension or paste a supported music link",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
-  "tutorialWelcomeTip2": "Get FLAC quality audio from installed download extensions",
+  "tutorialWelcomeTip2": "Choose from the audio qualities offered by your download provider",
   "@tutorialWelcomeTip2": {
     "description": "Tutorial welcome tip 2"
   },
-  "tutorialWelcomeTip3": "Automatic metadata, cover art, and lyrics embedding",
+  "tutorialWelcomeTip3": "Embed metadata, cover art, lyrics, and release information automatically",
   "@tutorialWelcomeTip3": {
     "description": "Tutorial welcome tip 3"
   },
@@ -2783,7 +2862,7 @@
   "@tutorialSearchTitle": {
     "description": "Tutorial search page title"
   },
-  "tutorialSearchDesc": "There are two easy ways to find music you want to download.",
+  "tutorialSearchDesc": "Search with your selected extension or paste a supported music link.",
   "@tutorialSearchDesc": {
     "description": "Tutorial search page description"
   },
@@ -2791,7 +2870,7 @@
   "@tutorialDownloadTitle": {
     "description": "Tutorial download page title"
   },
-  "tutorialDownloadDesc": "Downloading music is simple and fast. Here's how it works.",
+  "tutorialDownloadDesc": "Pick an available quality, start the download, and follow its progress in the queue.",
   "@tutorialDownloadDesc": {
     "description": "Tutorial download page description"
   },
@@ -2799,19 +2878,19 @@
   "@tutorialLibraryTitle": {
     "description": "Tutorial library page title"
   },
-  "tutorialLibraryDesc": "All your downloaded music is organized in the Library tab.",
+  "tutorialLibraryDesc": "Downloaded and locally scanned music is organized in your Library.",
   "@tutorialLibraryDesc": {
     "description": "Tutorial library page description"
   },
-  "tutorialLibraryTip1": "View download progress and queue in the Library tab",
+  "tutorialLibraryTip1": "Manage active, pending, and completed downloads from the Library queue",
   "@tutorialLibraryTip1": {
     "description": "Tutorial library tip 1"
   },
-  "tutorialLibraryTip2": "Tap any track to play it with your music player",
+  "tutorialLibraryTip2": "Tap a track to play it with the built-in player",
   "@tutorialLibraryTip2": {
     "description": "Tutorial library tip 2"
   },
-  "tutorialLibraryTip3": "Switch between list and grid view for better browsing",
+  "tutorialLibraryTip3": "Browse tracks, albums, and playlists in list or grid views",
   "@tutorialLibraryTip3": {
     "description": "Tutorial library tip 3"
   },
@@ -2819,7 +2898,7 @@
   "@tutorialExtensionsTitle": {
     "description": "Tutorial extensions page title"
   },
-  "tutorialExtensionsDesc": "Extend the app's capabilities with community extensions.",
+  "tutorialExtensionsDesc": "Extensions add search, download, metadata, lyrics, and other integrations.",
   "@tutorialExtensionsDesc": {
     "description": "Tutorial extensions page description"
   },
@@ -2827,11 +2906,11 @@
   "@tutorialExtensionsTip1": {
     "description": "Tutorial extensions tip 1"
   },
-  "tutorialExtensionsTip2": "Add new download providers or search sources",
+  "tutorialExtensionsTip2": "Choose providers for search, downloads, metadata, and fallbacks",
   "@tutorialExtensionsTip2": {
     "description": "Tutorial extensions tip 2"
   },
-  "tutorialExtensionsTip3": "Get lyrics, enhanced metadata, and more features",
+  "tutorialExtensionsTip3": "Connect accounts when required and keep extensions up to date",
   "@tutorialExtensionsTip3": {
     "description": "Tutorial extensions tip 3"
   },
@@ -2839,7 +2918,7 @@
   "@tutorialSettingsTitle": {
     "description": "Tutorial settings page title"
   },
-  "tutorialSettingsDesc": "Personalize the app in Settings to match your preferences.",
+  "tutorialSettingsDesc": "Fine-tune downloads, playback, Library behavior, appearance, and storage.",
   "@tutorialSettingsDesc": {
     "description": "Tutorial settings page description"
   },
@@ -2847,7 +2926,7 @@
   "@tutorialSettingsTip1": {
     "description": "Tutorial settings tip 1"
   },
-  "tutorialSettingsTip2": "Set default audio quality and format preferences",
+  "tutorialSettingsTip2": "Set quality, concurrency, filenames, and conversion preferences",
   "@tutorialSettingsTip2": {
     "description": "Tutorial settings tip 2"
   },
@@ -2855,7 +2934,7 @@
   "@tutorialSettingsTip3": {
     "description": "Tutorial settings tip 3"
   },
-  "tutorialReadyMessage": "You're all set! Start downloading your favorite music now.",
+  "tutorialReadyMessage": "You're ready. Select your extensions, then search or paste a supported link.",
   "@tutorialReadyMessage": {
     "description": "Tutorial completion message"
   },
@@ -3124,6 +3203,66 @@
   "trackReEnrichSelectAll": "Select All",
   "@trackReEnrichSelectAll": {
     "description": "Select all fields checkbox in re-enrich"
+  },
+  "trackReEnrichModeIsrc": "ISRC only",
+  "@trackReEnrichModeIsrc": {
+    "description": "Batch metadata mode that only writes ISRC"
+  },
+  "trackReEnrichModeIsrcSubtitle": "Find and add the recording identifier without changing other tags",
+  "@trackReEnrichModeIsrcSubtitle": {
+    "description": "Explanation for the ISRC-only batch metadata mode"
+  },
+  "trackReEnrichModeMissing": "Fill missing tags",
+  "@trackReEnrichModeMissing": {
+    "description": "Batch metadata mode that fills only empty tags"
+  },
+  "trackReEnrichModeMissingSubtitle": "Keep existing values and fill only fields that are empty",
+  "@trackReEnrichModeMissingSubtitle": {
+    "description": "Explanation for the fill-missing batch metadata mode"
+  },
+  "trackReEnrichModeReplace": "Update selected tags",
+  "@trackReEnrichModeReplace": {
+    "description": "Batch metadata mode that replaces selected tag groups"
+  },
+  "trackReEnrichModeReplaceSubtitle": "Choose which existing values may be replaced by online metadata",
+  "@trackReEnrichModeReplaceSubtitle": {
+    "description": "Explanation for the selected-tag batch metadata mode"
+  },
+  "trackReEnrichFieldsTitle": "Tags to update",
+  "@trackReEnrichFieldsTitle": {
+    "description": "Heading above batch re-enrich field checkboxes"
+  },
+  "trackReEnrichReview": "Review changes",
+  "@trackReEnrichReview": {
+    "description": "Button that searches metadata and opens the batch change review"
+  },
+  "trackReEnrichReviewTitle": "Review metadata changes",
+  "@trackReEnrichReviewTitle": {
+    "description": "Title of the batch metadata review sheet"
+  },
+  "trackReEnrichReviewSubtitle": "{changeCount} proposed changes across {trackCount} tracks",
+  "@trackReEnrichReviewSubtitle": {
+    "description": "Summary shown above proposed batch metadata changes",
+    "placeholders": {
+      "changeCount": {
+        "type": "int"
+      },
+      "trackCount": {
+        "type": "int"
+      }
+    }
+  },
+  "trackReEnrichNoChanges": "No metadata changes were found for the selected tracks.",
+  "@trackReEnrichNoChanges": {
+    "description": "Message when batch metadata preview has no proposed changes"
+  },
+  "trackReEnrichApplyChanges": "Apply changes",
+  "@trackReEnrichApplyChanges": {
+    "description": "Confirmation button in the batch metadata review sheet"
+  },
+  "trackReEnrichRefreshOnline": "Refresh from online",
+  "@trackReEnrichRefreshOnline": {
+    "description": "Proposed value when lyrics will be refreshed during re-enrich"
   },
   "trackEditMetadata": "Edit Metadata",
   "@trackEditMetadata": {
@@ -5372,6 +5511,34 @@
   "@editMetadataFieldComment": {
     "description": "Label for comment field in the edit metadata sheet"
   },
+  "trackAlbumType": "Release Type",
+  "@trackAlbumType": {
+    "description": "Label for an album or release type metadata value"
+  },
+  "editMetadataFieldAlbumTypeHint": "Album, single, EP, compilation...",
+  "@editMetadataFieldAlbumTypeHint": {
+    "description": "Hint for the release type metadata field"
+  },
+  "editMetadataFieldExplicit": "Explicit",
+  "@editMetadataFieldExplicit": {
+    "description": "Label for the explicit content metadata field"
+  },
+  "editMetadataFieldExplicitHint": "Mark this track as containing explicit content",
+  "@editMetadataFieldExplicitHint": {
+    "description": "Description for the explicit content metadata switch"
+  },
+  "metadataExplicitValue": "Explicit",
+  "@metadataExplicitValue": {
+    "description": "Displayed value when a track is marked explicit"
+  },
+  "editMetadataFieldUpc": "UPC / Barcode",
+  "@editMetadataFieldUpc": {
+    "description": "Label for the release barcode metadata field"
+  },
+  "editMetadataFieldUpcHint": "Numeric UPC, EAN, or GTIN",
+  "@editMetadataFieldUpcHint": {
+    "description": "Hint for the release barcode metadata field"
+  },
   "editMetadataAdvanced": "Advanced",
   "@editMetadataAdvanced": {
     "description": "Expandable section label for advanced metadata fields"
@@ -5860,6 +6027,14 @@
   "nowPlayingUpNext": "Up next",
   "@nowPlayingUpNext": {
     "description": "Title for the playback queue sheet"
+  },
+  "nowPlayingPreviousTrack": "Previous track",
+  "@nowPlayingPreviousTrack": {
+    "description": "Tooltip for the previous-track playback control"
+  },
+  "nowPlayingNextTrack": "Next track",
+  "@nowPlayingNextTrack": {
+    "description": "Tooltip for the next-track playback control"
   },
   "nowPlayingDetails": "Details",
   "@nowPlayingDetails": {
