@@ -1084,12 +1084,21 @@ import Gobackend
             else {
                 throw invalidArgumentsError(call.method)
             }
-            let count = GobackendScanLibraryFolderToNDJSONFileJSON(
+            var count = 0
+            let succeeded = GobackendScanLibraryFolderToNDJSONFileJSON(
                 folderPath,
                 outputPath,
+                &count,
                 &error
             )
             if let error = error { throw error }
+            if !succeeded {
+                throw NSError(
+                    domain: "SpotiFLAC",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Library scan failed"]
+                )
+            }
             return ["path": outputPath, "count": count]
             
         case "scanLibraryFolderIncremental":
