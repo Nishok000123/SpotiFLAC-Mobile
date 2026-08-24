@@ -562,39 +562,39 @@
       }
     }
   },
-  "setupUseDefaultFolder": "Use Default Folder?",
+  "setupUseDefaultFolder": "是否使用預設資料夾？",
   "@setupUseDefaultFolder": {
     "description": "Dialog title for default folder"
   },
-  "setupNoFolderSelected": "No folder selected. Would you like to use the default Music folder?",
+  "setupNoFolderSelected": "尚未選擇資料夾。是否要使用預設資料夾？",
   "@setupNoFolderSelected": {
     "description": "Prompt when no folder selected"
   },
-  "setupUseDefault": "Use Default",
+  "setupUseDefault": "使用預設資料夾",
   "@setupUseDefault": {
     "description": "Button to use default folder"
   },
-  "setupDownloadLocationTitle": "Download Location",
+  "setupDownloadLocationTitle": "下載位置",
   "@setupDownloadLocationTitle": {
     "description": "Download location dialog title"
   },
-  "setupDownloadLocationIosMessage": "On iOS, downloads are saved to the app's Documents folder. You can access them via the Files app.",
+  "setupDownloadLocationIosMessage": "在 iOS 上，下載的檔案會儲存至此應用程式的「文件」資料夾。您可以透過「檔案」App 進行存取。",
   "@setupDownloadLocationIosMessage": {
     "description": "iOS-specific folder info"
   },
-  "setupAppDocumentsFolder": "App Documents Folder",
+  "setupAppDocumentsFolder": "應用程式文件資料夾",
   "@setupAppDocumentsFolder": {
     "description": "iOS documents folder option"
   },
-  "setupAppDocumentsFolderSubtitle": "Recommended - accessible via Files app",
+  "setupAppDocumentsFolderSubtitle": "推薦使用 — 可透過「檔案」存取",
   "@setupAppDocumentsFolderSubtitle": {
     "description": "Subtitle for documents folder"
   },
-  "setupChooseFromFiles": "Choose from Files",
+  "setupChooseFromFiles": "從「檔案」選擇",
   "@setupChooseFromFiles": {
     "description": "iOS file picker option"
   },
-  "setupChooseFromFilesSubtitle": "Select iCloud or other location",
+  "setupChooseFromFilesSubtitle": "選擇 iCloud 或是其他位置",
   "@setupChooseFromFilesSubtitle": {
     "description": "Subtitle for file picker"
   },
