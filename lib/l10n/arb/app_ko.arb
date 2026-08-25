@@ -6443,7 +6443,7 @@
   "@settingsGroupSystem": {
     "description": "Settings group covering app-level data, cache and logs"
   },
-  "settingsGroupHelp": "정보 & 지원",
+  "settingsGroupHelp": "정보 & 후원",
   "@settingsGroupHelp": {
     "description": "Settings group covering the about page and donations"
   }
