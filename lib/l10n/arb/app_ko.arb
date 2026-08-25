@@ -598,7 +598,7 @@
   "@setupIcloudNotSupported": {
     "description": "Error when user selects iCloud Drive on iOS"
   },
-  "setupDownloadInFlac": "무손실 및 Hi-Res 음질으로 음악 다운로드",
+  "setupDownloadInFlac": "무손실 및 Hi-Res 음질으로 음악을 다운로드하세요",
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
@@ -1923,7 +1923,7 @@
   "@extensionsMetadataPriority": {
     "description": "Setting - metadata provider order"
   },
-  "extensionsMetadataPrioritySubtitle": "검색 & 메타데이터 출처 순서 설정",
+  "extensionsMetadataPrioritySubtitle": "검색 & 메타데이터 출처 순서를 설정하세요",
   "@extensionsMetadataPrioritySubtitle": {
     "description": "Subtitle for metadata priority"
   },
@@ -2846,7 +2846,7 @@
   "@tutorialWelcomeDesc": {
     "description": "Tutorial welcome page description"
   },
-  "tutorialWelcomeTip1": "설치된 확장 기능 또는 지원되는 음악 링크로 검색할 수 있습니다",
+  "tutorialWelcomeTip1": "설치된 확장 기능으로 검색하거나 지원되는 음악 링크를 붙여넣어 검색할 수 있습니다",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
@@ -2862,7 +2862,7 @@
   "@tutorialSearchTitle": {
     "description": "Tutorial search page title"
   },
-  "tutorialSearchDesc": "선택한 확장 프로그램으로 검색하거나 지원되는 음악 링크를 붙여넣어 검색하세요",
+  "tutorialSearchDesc": "선택한 확장 기능으로 검색하거나 지원되는 음악 링크를 붙여넣어 검색하세요",
   "@tutorialSearchDesc": {
     "description": "Tutorial search page description"
   },
