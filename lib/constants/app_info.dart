@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 class AppInfo {
-  static const String version = '4.9.0';
-  static const String buildNumber = '141';
+  static const String version = '4.9.1';
+  static const String buildNumber = '142';
   static const String fullVersion = '$version+$buildNumber';
 
   static String get displayVersion => kDebugMode ? 'Internal' : version;
