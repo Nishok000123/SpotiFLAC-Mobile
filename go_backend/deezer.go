@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 const (
@@ -44,6 +46,7 @@ type DeezerClient struct {
 	artistCache          map[string]*cacheEntry
 	isrcCache            map[string]string
 	cacheMu              sync.RWMutex
+	metadataFlight       singleflight.Group
 	lastCacheCleanup     time.Time
 	cacheCleanupInterval time.Duration
 }
@@ -469,49 +472,88 @@ func (c *DeezerClient) GetAlbumExtendedMetadata(ctx context.Context, albumID str
 	}
 	c.cacheMu.RUnlock()
 
-	albumURL := fmt.Sprintf(deezerAlbumURL, albumID)
-
-	var album deezerAlbumFull
-	if err := c.getJSON(ctx, albumURL, &album); err != nil {
-		return nil, fmt.Errorf("failed to fetch album: %w", err)
-	}
-
-	var genres []string
-	for _, g := range album.Genres.Data {
-		if g.Name != "" {
-			genres = append(genres, g.Name)
+	value, err, _ := c.metadataFlight.Do(cacheKey, func() (any, error) {
+		// Re-check after joining the flight; another request may have filled
+		// the cache between the optimistic lookup above and Do acquiring it.
+		c.cacheMu.RLock()
+		if entry, ok := c.searchCache[cacheKey]; ok && !entry.isExpired() {
+			c.cacheMu.RUnlock()
+			return entry.data.(*AlbumExtendedMetadata), nil
 		}
+		c.cacheMu.RUnlock()
+
+		albumURL := fmt.Sprintf(deezerAlbumURL, albumID)
+		var album deezerAlbumFull
+		if err := c.getJSON(ctx, albumURL, &album); err != nil {
+			return nil, fmt.Errorf("failed to fetch album: %w", err)
+		}
+
+		var genres []string
+		for _, genre := range album.Genres.Data {
+			if genre.Name != "" {
+				genres = append(genres, genre.Name)
+			}
+		}
+		result := &AlbumExtendedMetadata{
+			Genre:     strings.Join(genres, ", "),
+			Label:     album.Label,
+			Copyright: album.Copyright,
+		}
+
+		c.cacheMu.Lock()
+		now := time.Now()
+		c.searchCache[cacheKey] = &cacheEntry{
+			data:      result,
+			expiresAt: now.Add(deezerCacheTTL),
+		}
+		c.maybeCleanupCachesLocked(now)
+		c.cacheMu.Unlock()
+		GoLog("[Deezer] Album metadata fetched - Genre: %s, Label: %s, Copyright: %s\n", result.Genre, result.Label, result.Copyright)
+		return result, nil
+	})
+	if err != nil {
+		return nil, err
 	}
-
-	result := &AlbumExtendedMetadata{
-		Genre:     strings.Join(genres, ", "),
-		Label:     album.Label,
-		Copyright: album.Copyright,
-	}
-
-	c.cacheMu.Lock()
-	now := time.Now()
-	c.searchCache[cacheKey] = &cacheEntry{
-		data:      result,
-		expiresAt: now.Add(deezerCacheTTL),
-	}
-	c.maybeCleanupCachesLocked(now)
-	c.cacheMu.Unlock()
-
-	GoLog("[Deezer] Album metadata fetched - Genre: %s, Label: %s, Copyright: %s\n", result.Genre, result.Label, result.Copyright)
-
-	return result, nil
+	return value.(*AlbumExtendedMetadata), nil
 }
 
 func (c *DeezerClient) GetTrackAlbumID(ctx context.Context, trackID string) (string, error) {
-	trackURL := fmt.Sprintf(deezerTrackURL, trackID)
+	cacheKey := "track_album:" + trackID
+	c.cacheMu.RLock()
+	if entry, ok := c.searchCache[cacheKey]; ok && !entry.isExpired() {
+		c.cacheMu.RUnlock()
+		return entry.data.(string), nil
+	}
+	c.cacheMu.RUnlock()
 
-	var track deezerTrack
-	if err := c.getJSON(ctx, trackURL, &track); err != nil {
+	value, err, _ := c.metadataFlight.Do(cacheKey, func() (any, error) {
+		c.cacheMu.RLock()
+		if entry, ok := c.searchCache[cacheKey]; ok && !entry.isExpired() {
+			c.cacheMu.RUnlock()
+			return entry.data.(string), nil
+		}
+		c.cacheMu.RUnlock()
+
+		trackURL := fmt.Sprintf(deezerTrackURL, trackID)
+		var track deezerTrack
+		if err := c.getJSON(ctx, trackURL, &track); err != nil {
+			return "", err
+		}
+		albumID := fmt.Sprintf("%d", track.Album.ID)
+		c.cacheMu.Lock()
+		now := time.Now()
+		c.searchCache[cacheKey] = &cacheEntry{
+			data:      albumID,
+			expiresAt: now.Add(deezerCacheTTL),
+		}
+		c.maybeCleanupCachesLocked(now)
+		c.cacheMu.Unlock()
+		return albumID, nil
+	})
+	if err != nil {
 		return "", err
 	}
-
-	return fmt.Sprintf("%d", track.Album.ID), nil
+	return value.(string), nil
 }
 
 func (c *DeezerClient) GetExtendedMetadataByTrackID(ctx context.Context, trackID string) (*AlbumExtendedMetadata, error) {
