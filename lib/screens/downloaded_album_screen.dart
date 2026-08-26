@@ -214,10 +214,12 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
   }) async {
     final navigator = Navigator.of(context);
     precacheCoverImage(context, item.coverUrl);
+    final backdropReady = precacheMetadataBackdrop(context, item.coverUrl);
     final beforeModTime =
         await DownloadedEmbeddedCoverResolver.readFileModTimeMillis(
           item.filePath,
         );
+    await backdropReady;
     if (!mounted) return;
 
     final result = await navigator.push(

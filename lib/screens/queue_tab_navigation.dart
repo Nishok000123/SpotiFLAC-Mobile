@@ -117,8 +117,13 @@ extension _QueueTabNavigation on _QueueTabState {
 
     final navigator = Navigator.of(context);
     precacheCoverImage(context, historyItem.coverUrl);
+    final backdropReady = precacheMetadataBackdrop(
+      context,
+      historyItem.coverUrl,
+    );
     _searchFocusNode.unfocus();
     final beforeModTime = await _readFileModTimeMillis(historyItem.filePath);
+    await backdropReady;
     if (!mounted) return;
     final result = await navigator.push(
       slidePageRoute<bool>(page: TrackMetadataScreen(item: historyItem)),
@@ -145,8 +150,10 @@ extension _QueueTabNavigation on _QueueTabState {
   }) async {
     final navigator = Navigator.of(context);
     precacheCoverImage(context, item.coverUrl);
+    final backdropReady = precacheMetadataBackdrop(context, item.coverUrl);
     _searchFocusNode.unfocus();
     final beforeModTime = await _readFileModTimeMillis(item.filePath);
+    await backdropReady;
     if (!mounted) return;
     final result = await navigator.push(
       slidePageRoute<bool>(
@@ -173,13 +180,15 @@ extension _QueueTabNavigation on _QueueTabState {
     );
   }
 
-  void _navigateToLocalMetadataScreen(
+  Future<void> _navigateToLocalMetadataScreen(
     LocalLibraryItem item, {
     List<LocalLibraryItem>? navigationItems,
     int? navigationIndex,
-  }) {
+  }) async {
     _searchFocusNode.unfocus();
-    Navigator.push(
+    await precacheMetadataBackdrop(context, item.coverPath);
+    if (!mounted) return;
+    await Navigator.push(
       context,
       slidePageRoute<void>(
         page: TrackMetadataScreen(
@@ -189,7 +198,8 @@ extension _QueueTabNavigation on _QueueTabState {
           coverHeroTag: 'cover_lib_local_${item.id}',
         ),
       ),
-    ).then((_) => _searchFocusNode.unfocus());
+    );
+    if (mounted) _searchFocusNode.unfocus();
   }
 
   void _navigateWithUnfocus(Route<dynamic> route) {

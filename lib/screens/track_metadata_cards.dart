@@ -5,6 +5,10 @@ const _trackMetadataHeroScheme = ColorScheme.dark(
   onSurface: Colors.white,
   onSurfaceVariant: Colors.white70,
 );
+final ImageFilter _trackMetadataBackdropBlur = ImageFilter.blur(
+  sigmaX: 32,
+  sigmaY: 32,
+);
 
 extension _TrackMetadataCards on _TrackMetadataScreenState {
   Widget _buildAnimatedTrackContent(
@@ -90,12 +94,17 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
     double expandedHeight,
     bool showContent,
   ) {
-    final cacheWidth = coverCacheWidthForViewport(context);
+    final coverCacheWidth = coverCacheWidthForViewport(context);
+    final backdropCacheWidth = metadataBackdropCacheExtent(context);
+    final backdropRemoteUrl = _isLocalItem
+        ? null
+        : normalizeRemoteHttpUrl(_downloadItem!.coverUrl);
+
     Widget coverImage() => _hasPath(_embeddedCoverPreviewPath)
         ? Image.file(
             File(_embeddedCoverPreviewPath!),
             fit: BoxFit.cover,
-            cacheWidth: cacheWidth,
+            cacheWidth: coverCacheWidth,
             gaplessPlayback: true,
             filterQuality: FilterQuality.low,
             errorBuilder: (_, _, _) => Container(color: colorScheme.surface),
@@ -104,7 +113,7 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
         ? CachedCoverImage(
             imageUrl: _coverUrl!,
             fit: BoxFit.cover,
-            memCacheWidth: cacheWidth,
+            memCacheWidth: coverCacheWidth,
             placeholder: (_, _) => Container(color: colorScheme.surface),
             errorWidget: (_, _, _) => Container(color: colorScheme.surface),
           )
@@ -112,7 +121,49 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
         ? Image.file(
             File(_localCoverPath!),
             fit: BoxFit.cover,
-            cacheWidth: cacheWidth,
+            cacheWidth: coverCacheWidth,
+            gaplessPlayback: true,
+            filterQuality: FilterQuality.low,
+            errorBuilder: (_, _, _) => Container(color: colorScheme.surface),
+          )
+        : Container(
+            color: colorScheme.surfaceContainerHighest,
+            child: Icon(
+              Icons.music_note,
+              size: 80,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          );
+
+    // Keep the backdrop on the stable Library artwork source instead of
+    // switching to the asynchronously extracted embedded preview mid-route.
+    // The smaller resize key is prewarmed before navigation and is sufficient
+    // behind a strong blur, while the foreground Hero keeps full resolution.
+    Widget backdropImage() => backdropRemoteUrl != null
+        ? CachedCoverImage(
+            imageUrl: backdropRemoteUrl,
+            fit: BoxFit.cover,
+            memCacheWidth: backdropCacheWidth,
+            memCacheHeight: backdropCacheWidth,
+            placeholder: (_, _) => Container(color: colorScheme.surface),
+            errorWidget: (_, _, _) => Container(color: colorScheme.surface),
+          )
+        : _localCoverPath != null && _localCoverPath!.isNotEmpty
+        ? Image.file(
+            File(_localCoverPath!),
+            fit: BoxFit.cover,
+            cacheWidth: backdropCacheWidth,
+            cacheHeight: backdropCacheWidth,
+            gaplessPlayback: true,
+            filterQuality: FilterQuality.low,
+            errorBuilder: (_, _, _) => Container(color: colorScheme.surface),
+          )
+        : _hasPath(_embeddedCoverPreviewPath)
+        ? Image.file(
+            File(_embeddedCoverPreviewPath!),
+            fit: BoxFit.cover,
+            cacheWidth: backdropCacheWidth,
+            cacheHeight: backdropCacheWidth,
             gaplessPlayback: true,
             filterQuality: FilterQuality.low,
             errorBuilder: (_, _, _) => Container(color: colorScheme.surface),
@@ -135,9 +186,12 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
     return Stack(
       fit: StackFit.expand,
       children: [
-        ImageFiltered(
-          imageFilter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
-          child: coverImage(),
+        RepaintBoundary(
+          key: ValueKey<String>('metadata_backdrop_$_itemId'),
+          child: ImageFiltered(
+            imageFilter: _trackMetadataBackdropBlur,
+            child: backdropImage(),
+          ),
         ),
         Container(color: Colors.black.withValues(alpha: 0.35)),
         Positioned(

@@ -180,6 +180,47 @@ CachedNetworkImageProvider cachedCoverImageProvider(String url) {
   );
 }
 
+/// Decode size shared by Track Metadata's blurred backdrop and its prewarm.
+/// The backdrop is heavily blurred, so a modest square bitmap is sufficient
+/// and avoids allocating a second full-viewport image beside the Hero cover.
+int metadataBackdropCacheExtent(BuildContext context) {
+  final dpr = MediaQuery.devicePixelRatioOf(context).clamp(1.0, 3.0);
+  final logicalWidth = MediaQuery.sizeOf(context).width;
+  return (logicalWidth * dpr * 0.35).round().clamp(192, 384).toInt();
+}
+
+/// Warms the exact resized image used by Track Metadata's blurred backdrop.
+/// Navigation waits for the common memory/disk-cache path, but a bounded budget
+/// prevents a cold network request from delaying the route for too long.
+Future<void> precacheMetadataBackdrop(
+  BuildContext context,
+  String? source,
+) async {
+  final normalized = source?.trim();
+  if (normalized == null || normalized.isEmpty) return;
+
+  final ImageProvider provider;
+  if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+    provider = cachedCoverImageProvider(normalized);
+  } else if (!normalized.startsWith('content://')) {
+    final filePath = normalized.startsWith('file://')
+        ? Uri.parse(normalized).toFilePath()
+        : normalized;
+    provider = FileImage(File(filePath));
+  } else {
+    return;
+  }
+
+  final extent = metadataBackdropCacheExtent(context);
+  try {
+    await precacheImage(
+      ResizeImage(provider, width: extent, height: extent),
+      context,
+      onError: (_, _) {},
+    ).timeout(const Duration(milliseconds: 200));
+  } catch (_) {}
+}
+
 /// Pre-warms the cover cache at the metadata-screen display size so the hero
 /// transition doesn't pop in a low-res frame. Http(s) URLs only.
 void precacheCoverImage(BuildContext context, String? url) {

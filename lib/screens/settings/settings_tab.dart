@@ -98,17 +98,6 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
       _Group(
         destinations: [
           _Destination(
-            icon: Icons.favorite_outline,
-            title: l10n.settingsDonate,
-            subtitle: l10n.settingsDonateSubtitle,
-            keywords: const ['support', 'ko-fi', 'sponsor'],
-            pageBuilder: () => const DonatePage(),
-          ),
-        ],
-      ),
-      _Group(
-        destinations: [
-          _Destination(
             icon: Icons.extension_outlined,
             title: l10n.settingsExtensions,
             subtitle: l10n.settingsExtensionsSubtitle,
@@ -243,6 +232,13 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
       ),
       _Group(
         destinations: [
+          _Destination(
+            icon: Icons.favorite_outline,
+            title: l10n.settingsDonate,
+            subtitle: l10n.settingsDonateSubtitle,
+            keywords: const ['support', 'ko-fi', 'sponsor'],
+            pageBuilder: () => const DonatePage(),
+          ),
           _Destination(
             icon: Icons.info_outline,
             title: l10n.settingsAbout,
