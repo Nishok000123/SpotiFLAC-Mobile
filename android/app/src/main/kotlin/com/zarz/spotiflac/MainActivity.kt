@@ -1755,6 +1755,28 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(null)
                         }
+                        "appendNativeDownloadWorkerRequests" -> {
+                            val requestsPath = call.argument<String>("requests_path") ?: ""
+                            val runId = call.argument<String>("run_id") ?: ""
+                            if (requestsPath.isNotBlank() && runId.isNotBlank()) {
+                                DownloadService.appendNativeQueueFromFile(
+                                    this@MainActivity,
+                                    requestsPath,
+                                    runId,
+                                )
+                            }
+                            result.success(null)
+                        }
+                        "finishNativeDownloadWorkerPreparation" -> {
+                            val runId = call.argument<String>("run_id") ?: ""
+                            if (runId.isNotBlank()) {
+                                DownloadService.finishNativeQueuePreparation(
+                                    this@MainActivity,
+                                    runId,
+                                )
+                            }
+                            result.success(null)
+                        }
                         "pauseNativeDownloadWorker" -> {
                             DownloadService.pauseNativeQueue(this@MainActivity)
                             result.success(null)

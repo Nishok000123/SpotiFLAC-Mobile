@@ -1192,6 +1192,34 @@ class PlatformBridge {
     }
   }
 
+  static Future<void> appendNativeDownloadWorkerRequests({
+    required String runId,
+    required List<Map<String, dynamic>> requests,
+  }) async {
+    if (requests.isEmpty) return;
+    final payloadDir = await _nativeWorkerPayloadDir();
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    final requestPath = '${payloadDir.path}/append_$stamp.json';
+    await File(requestPath).writeAsString(jsonEncode(requests), flush: true);
+    try {
+      await _channel.invokeMethod('appendNativeDownloadWorkerRequests', {
+        'run_id': runId,
+        'requests_path': requestPath,
+      });
+    } catch (_) {
+      unawaited(_deleteFileIfExists(requestPath));
+      rethrow;
+    }
+  }
+
+  static Future<void> finishNativeDownloadWorkerPreparation({
+    required String runId,
+  }) async {
+    await _channel.invokeMethod('finishNativeDownloadWorkerPreparation', {
+      'run_id': runId,
+    });
+  }
+
   static Future<void> _deleteFileIfExists(String path) async {
     try {
       final file = File(path);

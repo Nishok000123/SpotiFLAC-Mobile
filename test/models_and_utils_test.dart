@@ -8,6 +8,7 @@ import 'package:spotiflac_android/models/theme_settings.dart';
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/providers/library_collections_provider.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
+import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/services/app_remote_config_service.dart';
 import 'package:spotiflac_android/services/download_request_payload.dart';
 import 'package:spotiflac_android/services/history_database.dart';
@@ -927,6 +928,7 @@ void main() {
         qualityVariant: 'qv_12345678',
         qualityVariantCollisionOnly: true,
         songLinkRegion: 'ID',
+        networkConcurrencyLimit: 2,
       );
 
       expect(payload.toJson(), {
@@ -989,6 +991,7 @@ void main() {
         'quality_variant': 'qv_12345678',
         'quality_variant_collision_only': true,
         'songlink_region': 'ID',
+        'network_concurrency_limit': 2,
       });
     });
 
@@ -1023,6 +1026,44 @@ void main() {
         updated.qualityVariantCollisionOnly,
         payload.qualityVariantCollisionOnly,
       );
+    });
+  });
+
+  group('extension download transfer policy', () {
+    test('parses and bounds the generic manifest capability', () {
+      final extension = Extension.fromJson({
+        'id': 'provider',
+        'name': 'provider',
+        'capabilities': {
+          'downloadTransfer': {
+            'maxAttempts': 99,
+            'resumePolicy': 'validated',
+            'persistentCheckpoint': true,
+            'maxParallelSegments': 99,
+            'maxConcurrentDownloads': 99,
+          },
+        },
+      });
+
+      final policy = extension.downloadTransferPolicy;
+      expect(policy.maxAttempts, 8);
+      expect(policy.resumePolicy, 'validated');
+      expect(policy.persistentCheckpoint, isTrue);
+      expect(policy.maxParallelSegments, 8);
+      expect(policy.maxConcurrentDownloads, 3);
+    });
+
+    test('disables checkpoints unless validated resume is selected', () {
+      final extension = Extension.fromJson({
+        'id': 'provider',
+        'name': 'provider',
+        'capabilities': {
+          'downloadTransfer': {'persistentCheckpoint': true},
+        },
+      });
+
+      expect(extension.downloadTransferPolicy.resumePolicy, 'none');
+      expect(extension.downloadTransferPolicy.persistentCheckpoint, isFalse);
     });
   });
 

@@ -181,12 +181,6 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
     if (!Platform.isAndroid || !settings.nativeDownloadWorkerEnabled) {
       return false;
     }
-    if (settings.concurrentDownloads > 1) {
-      // The native worker downloads strictly sequentially, so
-      // prefer the Dart queue when the user enabled concurrent downloads.
-      _log.i('Concurrent downloads enabled; skipping native worker');
-      return false;
-    }
     if (!settings.useExtensionProviders) {
       return false;
     }
@@ -563,25 +557,35 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
     }
 
     final contexts = <String, _NativeWorkerRequestContext>{};
-    final requests = <Map<String, dynamic>>[];
-    for (final item in queuedItems) {
-      final context = await _buildAndroidNativeWorkerRequest(item, settings);
-      if (context == null) {
-        _log.w(
-          'Native worker gate rejected ${item.track.name}; falling back to Dart queue',
-        );
-        return false;
-      }
-      contexts[item.id] = context;
-      requests.add({
+    Map<String, dynamic> encodeRequest(
+      DownloadItem item,
+      _NativeWorkerRequestContext context,
+    ) {
+      return {
         'contract_version': DownloadRequestPayload.nativeWorkerContractVersion,
         'item_id': item.id,
         'track_name': item.track.name,
         'artist_name': item.track.artistName,
         'item_json': jsonEncode(item.toJson()),
         'request_json': context.requestJson,
-      });
+      };
     }
+
+    // Only the first request blocks startup. The rest are prepared with a
+    // small metadata pipeline and appended to the already-running native
+    // worker, reducing time-to-first-byte for large albums/playlists.
+    final firstItem = queuedItems.first;
+    final firstContext = await _buildAndroidNativeWorkerRequest(
+      firstItem,
+      settings,
+    );
+    if (firstContext == null) {
+      _log.w(
+        'Native worker gate rejected ${firstItem.track.name}; falling back to Dart queue',
+      );
+      return false;
+    }
+    contexts[firstItem.id] = firstContext;
 
     if (!canStartForegroundDownloadForLifecycle(
       WidgetsBinding.instance.lifecycleState,
@@ -601,9 +605,10 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
     final runId = _newNativeWorkerRunId();
     await _persistNativeWorkerRunId(runId);
     final reconciledIds = <String>{};
+    Future<void>? preparationFuture;
     try {
       await PlatformBridge.startNativeDownloadWorker(
-        requests: requests,
+        requests: [encodeRequest(firstItem, firstContext)],
         settings: {
           'worker': 'android_native',
           'version': 1,
@@ -613,8 +618,61 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
           'created_at': DateTime.now().toIso8601String(),
           'save_download_history': settings.saveDownloadHistory,
           'download_network_mode': settings.downloadNetworkMode,
+          'concurrent_downloads': settings.concurrentDownloads.clamp(1, 3),
+          'finalizer_concurrency': 1,
+          'preparation_streaming': true,
+          'expected_total_items': queuedItems.length,
         },
       );
+
+      preparationFuture = () async {
+        var nextIndex = 1;
+        final preparationConcurrency = min(2, queuedItems.length - 1);
+        try {
+          await Future.wait(
+            List.generate(preparationConcurrency, (_) async {
+              while (nextIndex < queuedItems.length) {
+                final index = nextIndex++;
+                final item = queuedItems[index];
+                try {
+                  final context = await _buildAndroidNativeWorkerRequest(
+                    item,
+                    settings,
+                  );
+                  if (context == null) {
+                    _log.w(
+                      'Native worker gate rejected ${item.track.name}; leaving it queued for the Dart worker',
+                    );
+                    continue;
+                  }
+                  contexts[item.id] = context;
+                  await PlatformBridge.appendNativeDownloadWorkerRequests(
+                    runId: runId,
+                    requests: [encodeRequest(item, context)],
+                  );
+                } catch (e, stack) {
+                  _log.e(
+                    'Could not prepare native request for ${item.track.name}: $e',
+                    e,
+                    stack,
+                  );
+                }
+              }
+            }),
+          );
+        } finally {
+          try {
+            await PlatformBridge.finishNativeDownloadWorkerPreparation(
+              runId: runId,
+            );
+          } catch (_) {
+            // Do not leave the foreground worker waiting forever on an open
+            // preparation channel if the final hand-off fails.
+            await PlatformBridge.cancelNativeDownloadWorker();
+            rethrow;
+          }
+        }
+      }();
 
       final runStartWait = Stopwatch()..start();
       var lastStateSerial = 0;
@@ -694,6 +752,13 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
         _failedInSession++;
       }
     } finally {
+      if (preparationFuture != null) {
+        try {
+          await preparationFuture;
+        } catch (e) {
+          _log.w('Native worker preparation pipeline stopped: $e');
+        }
+      }
       state = state.copyWith(isProcessing: false, currentDownload: null);
       _stopConnectivityMonitoring();
       try {

@@ -50,6 +50,46 @@ List<String>? _tryDecodeStringListPreference(String rawJson, String key) {
   }
 }
 
+class ExtensionDownloadTransferPolicy {
+  final int maxAttempts;
+  final String resumePolicy;
+  final bool persistentCheckpoint;
+  final int maxParallelSegments;
+  final int maxConcurrentDownloads;
+
+  const ExtensionDownloadTransferPolicy({
+    this.maxAttempts = 3,
+    this.resumePolicy = 'none',
+    this.persistentCheckpoint = false,
+    this.maxParallelSegments = 3,
+    this.maxConcurrentDownloads = 3,
+  });
+
+  factory ExtensionDownloadTransferPolicy.fromCapabilities(
+    Map<String, dynamic> capabilities,
+  ) {
+    final raw = capabilities['downloadTransfer'];
+    if (raw is! Map) return const ExtensionDownloadTransferPolicy();
+    final values = Map<String, dynamic>.from(raw);
+    int boundedInt(String key, int fallback, int min, int max) {
+      final value = values[key];
+      final parsed = value is num ? value.round() : fallback;
+      return parsed.clamp(min, max).toInt();
+    }
+
+    final requestedResume = values['resumePolicy']?.toString().trim();
+    final resumePolicy = requestedResume == 'validated' ? 'validated' : 'none';
+    return ExtensionDownloadTransferPolicy(
+      maxAttempts: boundedInt('maxAttempts', 3, 1, 8),
+      resumePolicy: resumePolicy,
+      persistentCheckpoint:
+          resumePolicy == 'validated' && values['persistentCheckpoint'] == true,
+      maxParallelSegments: boundedInt('maxParallelSegments', 3, 1, 8),
+      maxConcurrentDownloads: boundedInt('maxConcurrentDownloads', 3, 1, 3),
+    );
+  }
+}
+
 /// First enabled custom-search extension, preferring ones marked primary.
 Extension? defaultSearchExtension(List<Extension> extensions) {
   return extensions
@@ -239,6 +279,8 @@ class Extension {
   bool get hasPostProcessing => postProcessing?.enabled ?? false;
   bool get hasServiceHealth => serviceHealth.isNotEmpty;
   bool get hasHomeFeed => capabilities['homeFeed'] == true;
+  ExtensionDownloadTransferPolicy get downloadTransferPolicy =>
+      ExtensionDownloadTransferPolicy.fromCapabilities(capabilities);
   bool get requiresNativeContainerConversion =>
       capabilities['requiresContainerConversion'] == true ||
       capabilities['requiresNativeContainerConversion'] == true;

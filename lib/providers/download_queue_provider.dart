@@ -660,6 +660,14 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     final postProcessingEnabled =
         settings.useExtensionProviders &&
         extensionState.extensions.any((e) => e.enabled && e.hasPostProcessing);
+    final selectedDownloadExtension = extensionState.extensions
+        .where(
+          (extension) =>
+              extension.enabled &&
+              extension.hasDownloadProvider &&
+              extension.id.toLowerCase() == item.service.toLowerCase(),
+        )
+        .firstOrNull;
     final normalizedTrackNumber =
         (track.trackNumber != null && track.trackNumber! > 0)
         ? track.trackNumber!
@@ -752,6 +760,11 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
           : '',
       qualityVariantCollisionOnly: qualityVariantCollisionOnly,
       songLinkRegion: settings.songLinkRegion,
+      networkConcurrencyLimit:
+          selectedDownloadExtension
+              ?.downloadTransferPolicy
+              .maxConcurrentDownloads ??
+          3,
     );
   }
 

@@ -60,6 +60,7 @@ class DownloadRequestPayload {
   final String qualityVariant;
   final bool qualityVariantCollisionOnly;
   final String songLinkRegion;
+  final int networkConcurrencyLimit;
 
   const DownloadRequestPayload({
     this.contractVersion = nativeWorkerContractVersion,
@@ -121,6 +122,7 @@ class DownloadRequestPayload {
     this.qualityVariant = '',
     this.qualityVariantCollisionOnly = false,
     this.songLinkRegion = 'US',
+    this.networkConcurrencyLimit = 3,
   });
 
   Map<String, dynamic> toJson() {
@@ -184,6 +186,7 @@ class DownloadRequestPayload {
       'quality_variant': qualityVariant,
       'quality_variant_collision_only': qualityVariantCollisionOnly,
       'songlink_region': songLinkRegion,
+      'network_concurrency_limit': networkConcurrencyLimit,
     };
   }
 
@@ -251,6 +254,7 @@ class DownloadRequestPayload {
       qualityVariant: qualityVariant,
       qualityVariantCollisionOnly: qualityVariantCollisionOnly,
       songLinkRegion: songLinkRegion,
+      networkConcurrencyLimit: networkConcurrencyLimit,
     );
   }
 }

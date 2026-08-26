@@ -58,6 +58,7 @@ type DownloadRequest struct {
 	AllowQualityVariant         bool   `json:"allow_quality_variant,omitempty"`
 	QualityVariant              string `json:"quality_variant,omitempty"`
 	SongLinkRegion              string `json:"songlink_region,omitempty"`
+	NetworkConcurrencyLimit     int    `json:"network_concurrency_limit,omitempty"`
 }
 
 type DownloadResponse struct {
