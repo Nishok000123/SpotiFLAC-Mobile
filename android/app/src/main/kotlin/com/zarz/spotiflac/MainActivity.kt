@@ -13,10 +13,6 @@ import android.provider.DocumentsContract
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
-import com.google.android.gms.auth.blockstore.Blockstore
-import com.google.android.gms.auth.blockstore.RetrieveBytesRequest
-import com.google.android.gms.auth.blockstore.StoreBytesData
-import com.google.android.gms.tasks.Tasks
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.android.FlutterActivityLaunchConfigs.BackgroundMode
 import io.flutter.embedding.android.FlutterFragment
@@ -625,7 +621,6 @@ class MainActivity: FlutterFragmentActivity() {
     }
 
     private fun prepareRuntimeState(extensionDataDir: String): String {
-        val storeKey = "com.zarz.spotiflac.rs.v1"
         val pattern = Regex("^[0-9a-f]{32}$")
         fun normalize(value: String?): String? {
             val normalized = value?.trim()?.lowercase().orEmpty()
@@ -638,33 +633,7 @@ class MainActivity: FlutterFragmentActivity() {
             }
         }
 
-        val client = Blockstore.getClient(this)
-        val restored = try {
-            val request = RetrieveBytesRequest.Builder()
-                .setKeys(listOf(storeKey))
-                .build()
-            val response = Tasks.await(client.retrieveBytes(request))
-            val bytes = response.blockstoreDataMap[storeKey]?.bytes
-            if (bytes == null || bytes.isEmpty()) {
-                null
-            } else {
-                JSONObject(bytes.toString(Charsets.UTF_8))
-            }
-        } catch (error: Exception) {
-            android.util.Log.w("SpotiFLAC", "Runtime restore unavailable: ${error.message}")
-            null
-        }
-
         val values = LinkedHashMap<String, String>()
-        restored?.optJSONObject("s")?.let { entries ->
-            val keys = entries.keys()
-            while (keys.hasNext()) {
-                val rawKey = keys.next()
-                val key = File(rawKey).name
-                val value = normalize(entries.optString(rawKey)) ?: continue
-                if (key.isNotBlank()) values[key] = value
-            }
-        }
         File(extensionDataDir, "signed_sessions")
             .listFiles { file -> file.isFile && file.name.endsWith(".json") }
             ?.forEach { record ->
@@ -679,7 +648,7 @@ class MainActivity: FlutterFragmentActivity() {
                 }
             }
 
-        val defaultValue = normalize(restored?.optString("d")) ?: run {
+        val defaultValue = values.toSortedMap().values.firstOrNull() ?: run {
             val androidID = android.provider.Settings.Secure.getString(
                 contentResolver,
                 android.provider.Settings.Secure.ANDROID_ID,
@@ -688,9 +657,18 @@ class MainActivity: FlutterFragmentActivity() {
             val source = if (androidID.isNotEmpty()) {
                 domain + androidID
             } else {
-                val bytes = ByteArray(16)
-                SecureRandom().nextBytes(bytes)
-                domain + bytes.hex()
+                val fallbackFile = File(noBackupFilesDir, "rs_v1")
+                val fallback = try {
+                    normalize(fallbackFile.takeIf(File::isFile)?.readText())
+                } catch (_: Exception) {
+                    null
+                } ?: ByteArray(16).also(SecureRandom()::nextBytes).hex().also { value ->
+                    try {
+                        fallbackFile.parentFile?.mkdirs()
+                        fallbackFile.writeText(value)
+                    } catch (_: Exception) {}
+                }
+                domain + fallback
             }
             MessageDigest.getInstance("SHA-256")
                 .digest(source.toByteArray(Charsets.UTF_8))
@@ -699,27 +677,11 @@ class MainActivity: FlutterFragmentActivity() {
         }
         val entries = JSONObject()
         for ((key, value) in values.toSortedMap()) entries.put(key, value)
-        val payload = JSONObject()
+        return JSONObject()
             .put("v", 1)
             .put("d", defaultValue)
             .put("s", entries)
             .toString()
-
-        try {
-            val builder = StoreBytesData.Builder()
-                .setBytes(payload.toByteArray(Charsets.UTF_8))
-                .setKey(storeKey)
-            val encrypted = try {
-                Tasks.await(client.isEndToEndEncryptionAvailable)
-            } catch (_: Exception) {
-                false
-            }
-            builder.setShouldBackupToCloud(encrypted)
-            Tasks.await(client.storeBytes(builder.build()))
-        } catch (error: Exception) {
-            android.util.Log.w("SpotiFLAC", "Runtime save unavailable: ${error.message}")
-        }
-        return payload
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
