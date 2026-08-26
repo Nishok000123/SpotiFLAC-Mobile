@@ -29,6 +29,9 @@ type loadedExtension struct {
 
 	isolatedPoolMu sync.Mutex
 	isolatedPool   []*isolatedRuntimeHandle
+
+	quarantineMu        sync.Mutex
+	quarantinedRuntimes int
 }
 
 type isolatedRuntimeHandle struct {
@@ -53,6 +56,11 @@ func getExtensionInitSettings(extensionID string) map[string]any {
 }
 
 func ensureRuntimeReadyLocked(ext *loadedExtension, applyStoredSettings bool) error {
+	if hasQuarantinedRuntime(ext) {
+		err := fmt.Errorf("extension runtime is still stopping after an unresponsive request")
+		ext.Error = err.Error()
+		return err
+	}
 	// Gate enabling too, so a package installed with a failed gate cannot be
 	// switched on anyway.
 	if err := validateManifestGates(ext.Manifest); err != nil {
@@ -945,7 +953,7 @@ func (m *extensionManager) InvokeAction(extensionID string, actionName string) (
 	result, err := RunWithTimeoutAndRecover(vm, script, DefaultJSTimeout)
 	if err != nil {
 		if IsRuntimeUnsafeError(err) {
-			quarantineRuntimeLocked(ext, vm)
+			quarantineRuntimeLocked(ext, vm, err)
 		}
 		GoLog("[Extension] InvokeAction error for %s.%s: %v\n", extensionID, actionName, err)
 		return nil, fmt.Errorf("action failed: %v", err)

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,19 +38,21 @@ class DuplicateReviewSheet extends ConsumerStatefulWidget {
 }
 
 class _DuplicateReviewSheetState extends ConsumerState<DuplicateReviewSheet> {
+  late final LocalLibraryNotifier _localLibraryNotifier;
   late Future<List<IsrcDuplicateGroup>> _groupsFuture;
   bool _deletedLocalRows = false;
 
   @override
   void initState() {
     super.initState();
+    _localLibraryNotifier = ref.read(localLibraryProvider.notifier);
     _groupsFuture = LibraryDatabase.instance.findIsrcDuplicateGroups();
   }
 
   @override
   void dispose() {
     if (_deletedLocalRows) {
-      ref.read(localLibraryProvider.notifier).reloadFromStorage();
+      unawaited(_localLibraryNotifier.reloadFromStorage());
     }
     super.dispose();
   }

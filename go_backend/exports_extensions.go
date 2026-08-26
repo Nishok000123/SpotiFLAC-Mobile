@@ -992,7 +992,7 @@ func callExtensionFunctionJSONWithRequestID(extensionID, functionName string, ti
 	perf.recordJS(time.Since(jsStartedAt))
 	if err != nil {
 		if IsRuntimeUnsafeError(err) {
-			quarantineRuntimeLocked(ext, vm)
+			quarantineRuntimeLocked(ext, vm, err)
 		}
 		if isExtensionRequestCancelled(requestID) || errors.Is(err, ErrExtensionRequestCancelled) {
 			return "", ErrExtensionRequestCancelled

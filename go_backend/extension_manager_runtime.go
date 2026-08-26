@@ -151,6 +151,9 @@ const maxIdleIsolatedRuntimes = 1
 
 // acquireIsolatedExtensionRuntime pops an idle pooled runtime or builds one.
 func acquireIsolatedExtensionRuntime(ext *loadedExtension) (*goja.Runtime, *extensionRuntime, error) {
+	if hasQuarantinedRuntime(ext) {
+		return nil, nil, fmt.Errorf("extension runtime is still stopping after an unresponsive request")
+	}
 	ext.isolatedPoolMu.Lock()
 	if n := len(ext.isolatedPool); n > 0 {
 		handle := ext.isolatedPool[n-1]
@@ -162,13 +165,27 @@ func acquireIsolatedExtensionRuntime(ext *loadedExtension) (*goja.Runtime, *exte
 
 	ext.VMMu.Lock()
 	defer ext.VMMu.Unlock()
+	if hasQuarantinedRuntime(ext) {
+		return nil, nil, fmt.Errorf("extension runtime is still stopping after an unresponsive request")
+	}
 	return newIsolatedExtensionRuntime(ext)
 }
 
 // releaseIsolatedExtensionRuntime pools a healthy runtime for reuse or tears
 // it down. Pass healthy=false after an interrupt/timeout/script error, whose
 // VM state can't be trusted for reuse.
-func releaseIsolatedExtensionRuntime(ext *loadedExtension, vm *goja.Runtime, runtime *extensionRuntime, healthy, cleanupSafe bool) {
+func releaseIsolatedExtensionRuntime(
+	ext *loadedExtension,
+	vm *goja.Runtime,
+	runtime *extensionRuntime,
+	healthy, cleanupSafe bool,
+	unsafeDone <-chan struct{},
+) {
+	if !cleanupSafe {
+		registerQuarantinedRuntime(ext, runtime, unsafeDone)
+		return
+	}
+
 	if runtime != nil {
 		if err := runtime.flushStorageNow(); err != nil {
 			GoLog("[Extension:%s] isolated download storage flush failed: %v\n", ext.ID, err)
@@ -195,17 +212,57 @@ func releaseIsolatedExtensionRuntime(ext *loadedExtension, vm *goja.Runtime, run
 	}
 }
 
+func hasQuarantinedRuntime(ext *loadedExtension) bool {
+	if ext == nil {
+		return false
+	}
+	ext.quarantineMu.Lock()
+	defer ext.quarantineMu.Unlock()
+	return ext.quarantinedRuntimes > 0
+}
+
+// registerQuarantinedRuntime keeps the extension gated until the interrupted
+// goroutine actually exits. A Go goroutine cannot be killed safely, so allowing
+// a replacement VM immediately would let a broken extension accumulate an
+// unbounded number of runtimes. The runtime is touched only after completion.
+func registerQuarantinedRuntime(ext *loadedExtension, runtime *extensionRuntime, done <-chan struct{}) {
+	if ext == nil {
+		return
+	}
+	ext.quarantineMu.Lock()
+	ext.quarantinedRuntimes++
+	ext.quarantineMu.Unlock()
+
+	if done == nil {
+		GoLog("[Extension:%s] quarantined runtime has no completion signal; keeping extension gated\n", ext.ID)
+		return
+	}
+	go func() {
+		<-done
+		if runtime != nil {
+			runtime.closeStorageFlusher()
+		}
+		ext.quarantineMu.Lock()
+		if ext.quarantinedRuntimes > 0 {
+			ext.quarantinedRuntimes--
+		}
+		ext.quarantineMu.Unlock()
+	}()
+}
+
 // quarantineRuntimeLocked detaches a VM that remained busy after interrupt.
 // The caller holds VMMu. Touching or cleaning up that VM would race its stuck
-// goroutine; a later call will build a fresh runtime from indexProgram.
-func quarantineRuntimeLocked(ext *loadedExtension, vm *goja.Runtime) {
+// goroutine; replacement calls remain gated until that goroutine exits.
+func quarantineRuntimeLocked(ext *loadedExtension, vm *goja.Runtime, err error) {
 	if ext == nil || ext.VM != vm {
 		return
 	}
+	runtime := ext.runtime
 	ext.VM = nil
 	ext.runtime = nil
 	ext.initialized = false
 	ext.Error = "extension runtime was quarantined after an unresponsive script"
+	registerQuarantinedRuntime(ext, runtime, runtimeCompletion(err))
 }
 
 // drainIsolatedRuntimePool tears down idle isolated runtimes. Called on

@@ -107,7 +107,7 @@ func callExtension[T any](p *extensionProviderWrapper, opts extCallOpts, parse f
 	perf.recordPayload(result)
 	if err != nil {
 		if IsRuntimeUnsafeError(err) {
-			quarantineRuntimeLocked(p.extension, p.vm)
+			quarantineRuntimeLocked(p.extension, p.vm, err)
 		}
 		if opts.requestID != "" && isExtensionRequestCancelled(opts.requestID) {
 			return zero, ErrExtensionRequestCancelled
@@ -476,7 +476,7 @@ func (p *extensionProviderWrapper) EnrichTrackForItemID(track *ExtTrackMetadata,
 	perf.recordPayload(result)
 	if err != nil {
 		if IsRuntimeUnsafeError(err) {
-			quarantineRuntimeLocked(p.extension, p.vm)
+			quarantineRuntimeLocked(p.extension, p.vm, err)
 		}
 		if isDownloadCancelled(itemID) {
 			return track, ErrDownloadCancelled
@@ -605,8 +605,16 @@ func (p *extensionProviderWrapper) DownloadPrepared(
 	}
 	vmHealthy := false
 	cleanupSafe := true
+	var unsafeDone <-chan struct{}
 	defer func() {
-		releaseIsolatedExtensionRuntime(p.extension, vm, runtime, vmHealthy, cleanupSafe)
+		releaseIsolatedExtensionRuntime(
+			p.extension,
+			vm,
+			runtime,
+			vmHealthy,
+			cleanupSafe,
+			unsafeDone,
+		)
 	}()
 	if runtime != nil {
 		runtime.setActiveDownloadItemID(itemID)
@@ -660,6 +668,7 @@ func (p *extensionProviderWrapper) DownloadPrepared(
 	perf.recordPayload(result)
 	vmHealthy = err == nil
 	cleanupSafe = !IsRuntimeUnsafeError(err)
+	unsafeDone = runtimeCompletion(err)
 	if err != nil {
 		errMsg := err.Error()
 		errType := "script_error"

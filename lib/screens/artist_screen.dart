@@ -39,7 +39,10 @@ import 'package:spotiflac_android/widgets/view_queue_snackbar_action.dart';
 part 'artist_screen_widgets.dart';
 
 class _ArtistCache {
-  static final _cache = TtlCache<_CacheEntry>(const Duration(minutes: 10));
+  static final _cache = TtlCache<_CacheEntry>(
+    const Duration(minutes: 10),
+    maxEntries: 24,
+  );
 
   static _CacheEntry? get(String artistId) => _cache.get(artistId);
 

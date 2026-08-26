@@ -41,15 +41,13 @@ object NativeDownloadFinalizer {
     // Keep this schema contract in sync with Dart HistoryDatabase before bumping either side.
     const val HISTORY_SCHEMA_VERSION = 12
     internal val activeFFmpegSessionIds = mutableSetOf<Long>()
-    internal val nativeFFmpegSessionIds = mutableSetOf<Long>()
+    internal val nativeFFmpegSessionIds = BoundedRegistry<Long>(maxEntries = 256)
     internal val activeFFmpegSessionLock = Any()
     internal val ffmpegCompleteCallbackLock = Any()
-    internal val qualityVariantNameLocks = java.util.concurrent.ConcurrentHashMap<String, Any>()
+    internal val qualityVariantNameLocks = KeyedLockPool<String>()
     internal var forwardedFFmpegCompleteCallback: FFmpegSessionCompleteCallback? = null
     internal val nativeFilteringFFmpegCompleteCallback = FFmpegSessionCompleteCallback { session ->
-        val isNativeSession = synchronized(activeFFmpegSessionLock) {
-            nativeFFmpegSessionIds.contains(session.sessionId)
-        }
+        val isNativeSession = nativeFFmpegSessionIds.consume(session.sessionId)
         if (!isNativeSession) {
             val delegate = synchronized(ffmpegCompleteCallbackLock) {
                 forwardedFFmpegCompleteCallback

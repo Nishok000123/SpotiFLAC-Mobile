@@ -32,7 +32,10 @@ import 'package:spotiflac_android/widgets/selection_action_button.dart';
 import 'package:spotiflac_android/widgets/selection_bottom_bar.dart';
 
 class _AlbumCache {
-  static final _cache = TtlCache<List<Track>>(const Duration(minutes: 10));
+  static final _cache = TtlCache<List<Track>>(
+    const Duration(minutes: 10),
+    maxEntries: 40,
+  );
 
   static List<Track>? get(String albumId) => _cache.get(albumId);
 

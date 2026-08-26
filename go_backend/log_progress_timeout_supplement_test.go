@@ -163,7 +163,23 @@ func TestRunWithTimeoutQuarantinesUnresponsiveRuntime(t *testing.T) {
 		close(release)
 		t.Fatalf("expected unsafe runtime error, got %v", err)
 	}
+	done := runtimeCompletion(err)
+	if done == nil {
+		close(release)
+		t.Fatal("unsafe runtime error should expose a completion signal")
+	}
+	select {
+	case <-done:
+		close(release)
+		t.Fatal("completion signal closed while the JS goroutine was blocked")
+	default:
+	}
 	close(release)
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("completion signal did not close after the JS goroutine exited")
+	}
 }
 
 func TestRunWithTimeoutQuarantinesUnresponsiveCancelledRuntime(t *testing.T) {
@@ -193,5 +209,59 @@ func TestRunWithTimeoutQuarantinesUnresponsiveCancelledRuntime(t *testing.T) {
 		close(release)
 		t.Fatalf("expected unsafe cancellation error, got %v", err)
 	}
+	done := runtimeCompletion(err)
+	if done == nil {
+		close(release)
+		t.Fatal("unsafe cancellation should expose a completion signal")
+	}
 	close(release)
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("cancelled runtime did not report completion")
+	}
+}
+
+func TestQuarantinedRuntimeBlocksReplacementUntilExecutionStops(t *testing.T) {
+	vm := goja.New()
+	runtime := &extensionRuntime{}
+	ext := &loadedExtension{
+		ID:          "quarantine-test",
+		VM:          vm,
+		runtime:     runtime,
+		initialized: true,
+	}
+	done := make(chan struct{})
+	err := &JSExecutionError{
+		Message:       "runtime quarantined",
+		RuntimeUnsafe: true,
+		runtimeDone:   done,
+	}
+
+	quarantineRuntimeLocked(ext, vm, err)
+	if ext.VM != nil || ext.runtime != nil || ext.initialized {
+		t.Fatal("quarantine should detach the unsafe runtime")
+	}
+	if !hasQuarantinedRuntime(ext) {
+		t.Fatal("extension should remain gated while execution is still running")
+	}
+	if err := ensureRuntimeReadyLocked(ext, false); err == nil ||
+		!strings.Contains(err.Error(), "still stopping") {
+		t.Fatalf("replacement runtime should be blocked, got %v", err)
+	}
+
+	close(done)
+	deadline := time.Now().Add(time.Second)
+	for hasQuarantinedRuntime(ext) && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if hasQuarantinedRuntime(ext) {
+		t.Fatal("extension remained gated after the old execution stopped")
+	}
+	runtime.storageMu.RLock()
+	closed := runtime.storageClosed
+	runtime.storageMu.RUnlock()
+	if !closed {
+		t.Fatal("quarantined runtime resources were not closed after completion")
+	}
 }

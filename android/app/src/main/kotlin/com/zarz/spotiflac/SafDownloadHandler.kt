@@ -24,7 +24,7 @@ object SafDownloadHandler {
     // cannot interleave writes into one document. Different names keep
     // downloading in parallel; the second same-name caller blocks, then hits
     // the exists check and reports already_exists.
-    private val safNameLocks = java.util.concurrent.ConcurrentHashMap<String, Any>()
+    private val safNameLocks = KeyedLockPool<String>()
 
     data class UniqueWriteResult(val uri: String, val fileName: String)
     data class ExistingAwareWriteResult(
@@ -40,8 +40,7 @@ object SafDownloadHandler {
         block: () -> T
     ): T {
         val key = "$treeUriStr|$relativeDir|${fileName.lowercase(Locale.ROOT)}"
-        val lock = safNameLocks.computeIfAbsent(key) { Any() }
-        return synchronized(lock) { block() }
+        return safNameLocks.withLock(key, block)
     }
 
     /**

@@ -21,13 +21,14 @@ class _EmbeddedCoverCacheEntry {
 /// when the source file changed.
 class DownloadedEmbeddedCoverResolver {
   static const int _maxCacheEntries = 180;
+  static const int _maxFailedExtractEntries = 360;
 
   static final LinkedHashMap<String, _EmbeddedCoverCacheEntry> _cache =
       LinkedHashMap<String, _EmbeddedCoverCacheEntry>();
   static final Set<String> _pendingExtract = <String>{};
   static final Set<String> _pendingRefresh = <String>{};
   static final Set<String> _pendingPreviewValidation = <String>{};
-  static final Set<String> _failedExtract = <String>{};
+  static final LinkedHashSet<String> _failedExtract = LinkedHashSet<String>();
 
   static String cleanFilePath(String? filePath) {
     if (filePath == null) return '';
@@ -132,6 +133,15 @@ class DownloadedEmbeddedCoverResolver {
     }
   }
 
+  static void _rememberFailedExtract(String cleanPath) {
+    _failedExtract
+      ..remove(cleanPath)
+      ..add(cleanPath);
+    while (_failedExtract.length > _maxFailedExtractEntries) {
+      _failedExtract.remove(_failedExtract.first);
+    }
+  }
+
   static void _validateCachedPreviewAsync(
     String cleanPath,
     _EmbeddedCoverCacheEntry entry, {
@@ -186,7 +196,7 @@ class DownloadedEmbeddedCoverResolver {
         final hasCover =
             result['error'] == null && await File(outputPath).exists();
         if (!hasCover) {
-          _failedExtract.add(cleanPath);
+          _rememberFailedExtract(cleanPath);
           _scheduleTempCoverCleanup(outputPath);
           return;
         }
@@ -205,7 +215,7 @@ class DownloadedEmbeddedCoverResolver {
         }
         onChanged?.call();
       } catch (_) {
-        _failedExtract.add(cleanPath);
+        _rememberFailedExtract(cleanPath);
         _scheduleTempCoverCleanup(outputPath);
       } finally {
         _pendingExtract.remove(cleanPath);

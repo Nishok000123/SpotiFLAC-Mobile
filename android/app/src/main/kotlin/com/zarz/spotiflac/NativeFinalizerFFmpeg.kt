@@ -104,8 +104,8 @@ internal fun NativeDownloadFinalizer.runFFmpeg(command: String, shouldCancel: ()
     val sessionId = session.sessionId
     synchronized(activeFFmpegSessionLock) {
         activeFFmpegSessionIds.add(sessionId)
-        nativeFFmpegSessionIds.add(sessionId)
     }
+    nativeFFmpegSessionIds.add(sessionId)
     FFmpegKitConfig.asyncFFmpegExecute(session)
     try {
         var cancelRequested = false
