@@ -2128,7 +2128,7 @@ class PlatformBridge {
       try {
         final contents = await file.readAsString();
         if (contents.isEmpty) return null;
-        return _decodeJsonStringAsync(contents);
+        return await _decodeJsonStringAsync(contents);
       } finally {
         try {
           await file.delete();

@@ -100,7 +100,7 @@ Future<bool> openPendingExtensionVerification(
       _log.w(
         'Could not open verification challenge for $normalizedExtensionId',
       );
-      return showExtensionVerificationHelpDialog(
+      return await showExtensionVerificationHelpDialog(
         normalizedExtensionId,
         uri,
         browserMode: browserMode,

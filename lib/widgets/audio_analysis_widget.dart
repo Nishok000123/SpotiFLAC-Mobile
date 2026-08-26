@@ -905,7 +905,7 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
       final bytes = await file.readAsBytes();
       final completer = Completer<ui.Image>();
       ui.decodeImageFromList(bytes, completer.complete);
-      return completer.future;
+      return await completer.future;
     } catch (_) {
       return null;
     }
