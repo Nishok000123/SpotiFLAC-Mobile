@@ -133,22 +133,12 @@ type DownloadResult struct {
 	RequiresContainerConversion bool
 }
 
-const downloadCommentCredit = "Downloaded with SpotiFLAC Mobile. Enjoy your music!"
-
 func buildDownloadedFileComment(sourceComment, providerComment string) string {
 	comment := strings.TrimSpace(sourceComment)
-	if comment == "" {
-		comment = strings.TrimSpace(providerComment)
+	if comment != "" {
+		return comment
 	}
-	for _, line := range strings.Split(strings.ReplaceAll(comment, "\r\n", "\n"), "\n") {
-		if strings.EqualFold(strings.TrimSpace(line), downloadCommentCredit) {
-			return comment
-		}
-	}
-	if comment == "" {
-		return downloadCommentCredit
-	}
-	return comment + "\n" + downloadCommentCredit
+	return strings.TrimSpace(providerComment)
 }
 
 func buildDownloadSuccessResponse(

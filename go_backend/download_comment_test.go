@@ -2,33 +2,31 @@ package gobackend
 
 import "testing"
 
-func TestBuildDownloadedFileCommentKeepsSourceLinkAndAddsCredit(t *testing.T) {
+func TestBuildDownloadedFileCommentKeepsSourceComment(t *testing.T) {
 	const source = "https://music.apple.com/us/album/example/123"
 	got := buildDownloadedFileComment(source, "https://music.amazon.com/albums/example")
-	want := source + "\n" + downloadCommentCredit
-	if got != want {
-		t.Fatalf("comment = %q, want %q", got, want)
+	if got != source {
+		t.Fatalf("comment = %q, want %q", got, source)
 	}
 }
 
 func TestBuildDownloadedFileCommentUsesProviderCommentWhenSourceIsEmpty(t *testing.T) {
 	const provider = "https://music.amazon.com/albums/example"
 	got := buildDownloadedFileComment("", provider)
-	want := provider + "\n" + downloadCommentCredit
-	if got != want {
-		t.Fatalf("comment = %q, want %q", got, want)
+	if got != provider {
+		t.Fatalf("comment = %q, want %q", got, provider)
 	}
 }
 
-func TestBuildDownloadedFileCommentAddsCreditWithoutLink(t *testing.T) {
-	if got := buildDownloadedFileComment("", ""); got != downloadCommentCredit {
-		t.Fatalf("comment = %q, want credit only", got)
+func TestBuildDownloadedFileCommentStaysEmptyWithoutProviderComment(t *testing.T) {
+	if got := buildDownloadedFileComment("", ""); got != "" {
+		t.Fatalf("comment = %q, want empty", got)
 	}
 }
 
-func TestBuildDownloadedFileCommentDoesNotDuplicateCredit(t *testing.T) {
-	original := "https://example.test/album/1\n" + downloadCommentCredit
-	if got := buildDownloadedFileComment(original, ""); got != original {
-		t.Fatalf("credit was duplicated: %q", got)
+func TestBuildDownloadedFileCommentTrimsWhitespace(t *testing.T) {
+	const original = "https://example.test/album/1"
+	if got := buildDownloadedFileComment("  "+original+"\r\n", ""); got != original {
+		t.Fatalf("comment = %q, want %q", got, original)
 	}
 }
