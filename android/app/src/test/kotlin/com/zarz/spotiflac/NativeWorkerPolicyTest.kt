@@ -160,4 +160,14 @@ class NativeWorkerPolicyTest {
         assertEquals("failed", NativeWorkerPolicy.statusAfterWorkerStop("failed"))
         assertEquals("skipped", NativeWorkerPolicy.statusAfterWorkerStop("skipped"))
     }
+
+    @Test
+    fun acknowledgedPayloadsAreReleasedOnlyForTerminalItems() {
+        listOf("completed", "failed", "skipped").forEach { status ->
+            assertTrue(NativeWorkerPolicy.isTerminalStatus(status))
+        }
+        listOf("queued", "preparing", "downloading", "finalizing").forEach { status ->
+            assertFalse(NativeWorkerPolicy.isTerminalStatus(status))
+        }
+    }
 }

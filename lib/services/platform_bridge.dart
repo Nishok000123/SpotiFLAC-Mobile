@@ -1220,6 +1220,17 @@ class PlatformBridge {
     });
   }
 
+  static Future<void> acknowledgeNativeDownloadWorkerItems({
+    required String runId,
+    required List<String> itemIds,
+  }) async {
+    if (runId.isEmpty || itemIds.isEmpty) return;
+    await _channel.invokeMethod('acknowledgeNativeDownloadWorkerItems', {
+      'run_id': runId,
+      'item_ids_json': jsonEncode(itemIds),
+    });
+  }
+
   static Future<void> _deleteFileIfExists(String path) async {
     try {
       final file = File(path);

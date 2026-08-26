@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -687,6 +688,45 @@ void main() {
       expect(item.toJson()['status'], 'failed');
       expect(item.toJson()['errorType'], 'network');
       expect(item.toJson()['preparationStage'], isEmpty);
+    });
+
+    test('persists restart-safe state without transient transfer progress', () {
+      final item = DownloadItem(
+        id: 'download-active',
+        track: sampleTrack(),
+        service: 'tidal',
+        createdAt: DateTime.utc(2026),
+        status: DownloadStatus.finalizing,
+        progress: 0.97,
+        speedMBps: 3.5,
+        bytesReceived: 970,
+        bytesTotal: 1000,
+        preparationStage: 'embedding_metadata',
+      );
+
+      final persisted =
+          jsonDecode(encodeDownloadQueueItemForPersistence(item))
+              as Map<String, dynamic>;
+
+      expect(persisted['id'], item.id);
+      expect(persisted['status'], DownloadStatus.queued.name);
+      expect(persisted['progress'], 0.0);
+      expect(persisted['speedMBps'], 0.0);
+      expect(persisted['bytesReceived'], 0);
+      expect(persisted['bytesTotal'], 0);
+      expect(persisted['preparationStage'], isEmpty);
+    });
+  });
+
+  group('Download queue processing gate', () {
+    test('allows only one asynchronous startup at a time', () {
+      final gate = QueueProcessingGate();
+
+      expect(gate.tryEnter(), isTrue);
+      expect(gate.tryEnter(), isFalse);
+      expect(gate.leave(), isTrue);
+      expect(gate.tryEnter(), isTrue);
+      expect(gate.leave(), isFalse);
     });
   });
 

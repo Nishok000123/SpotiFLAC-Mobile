@@ -53,6 +53,52 @@ part 'download_queue_provider_single_item.dart';
 
 final _log = AppLogger('DownloadQueue');
 
+typedef _PersistedQueueItemCache = Map<String, DownloadItem?>;
+
+/// Prevents asynchronous queue startup checks from overlapping before
+/// [DownloadQueueState.isProcessing] can be published.
+class QueueProcessingGate {
+  bool _active = false;
+  bool _pending = false;
+
+  bool tryEnter() {
+    if (_active) {
+      _pending = true;
+      return false;
+    }
+    _active = true;
+    return true;
+  }
+
+  bool leave() {
+    _active = false;
+    final shouldRunAgain = _pending;
+    _pending = false;
+    return shouldRunAgain;
+  }
+}
+
+/// Encodes only restart-relevant queue state. Transfer progress is delivered
+/// by the native progress stream and must not rewrite SQLite every few seconds.
+String encodeDownloadQueueItemForPersistence(DownloadItem item) {
+  final persistedStatus = downloadQueuePersistenceStatus(item.status);
+  final json = item.toJson()
+    ..['status'] = persistedStatus.name
+    ..['progress'] = 0.0
+    ..['speedMBps'] = 0.0
+    ..['bytesReceived'] = 0
+    ..['bytesTotal'] = 0
+    ..['preparationStage'] = '';
+  return jsonEncode(json);
+}
+
+DownloadStatus downloadQueuePersistenceStatus(DownloadStatus status) =>
+    switch (status) {
+      DownloadStatus.downloading ||
+      DownloadStatus.finalizing => DownloadStatus.queued,
+      _ => status,
+    };
+
 /// Set on queued items when the persisted Android SAF grant fails validation.
 /// The queue UI matches on this to offer re-selecting the download folder.
 const String safPermissionLostErrorMessage =
@@ -264,7 +310,9 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   Timer? _queuePersistDebounce;
   Future<void> _queuePersistenceWrite = Future<void>.value();
   Future<void> _queuePausePersistenceWrite = Future<void>.value();
-  final Map<String, String> _persistedQueueJsonById = {};
+  final _PersistedQueueItemCache _persistedQueueItemById = {};
+  final Set<String> _nonCanonicalPersistedQueueIds = {};
+  final QueueProcessingGate _queueProcessingGate = QueueProcessingGate();
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   int _downloadCount = 0;
   static const _cleanupInterval = 50;
@@ -273,6 +321,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   static const _progressStreamBootstrapTimeout = Duration(seconds: 3);
   static const _queueSchedulingInterval = Duration(milliseconds: 250);
   static const _queuePersistDebounceDuration = Duration(milliseconds: 350);
+  static const _nativePreparationBatchSize = 32;
+  static const _nativePreparationWindowSize = 128;
   static const _nativeWorkerRunIdPrefsKey =
       'download_queue_native_worker_run_id';
   static const _userPausedQueuePrefsKey = 'download_queue_user_paused_v1';
@@ -461,18 +511,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       await _appStateDb.migrateQueueFromSharedPreferences();
       final restorePaused = await _loadUserPausedQueue();
       final rows = await _appStateDb.getPendingDownloadQueueRows();
-      _persistedQueueJsonById
-        ..clear()
-        ..addEntries(
-          rows
-              .map(
-                (row) => MapEntry(
-                  row['id']?.toString() ?? '',
-                  row['item_json']?.toString() ?? '',
-                ),
-              )
-              .where((entry) => entry.key.isNotEmpty),
-        );
+      _persistedQueueItemById.clear();
+      _nonCanonicalPersistedQueueIds.clear();
       if (rows.isEmpty) {
         if (restorePaused) _persistUserPausedQueue(false);
         _log.d('No queue found in storage');
@@ -481,13 +521,31 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
 
       final pendingItems = <DownloadItem>[];
       for (final row in rows) {
+        final rowId = row['id']?.toString() ?? '';
+        if (rowId.isEmpty) continue;
+        // Keep a null sentinel until the payload has been decoded. If the row
+        // is corrupt, the next flush still knows that its database ID must be
+        // deleted instead of silently leaving it behind forever.
+        _persistedQueueItemById[rowId] = null;
         final itemJson = row['item_json'] as String?;
         if (itemJson == null || itemJson.isEmpty) continue;
 
         try {
           final decoded = jsonDecode(itemJson);
           if (decoded is! Map) continue;
-          var item = DownloadItem.fromJson(Map<String, dynamic>.from(decoded));
+          final persistedItem = DownloadItem.fromJson(
+            Map<String, dynamic>.from(decoded),
+          );
+          _persistedQueueItemById[rowId] = persistedItem;
+          final canonicalStatus = downloadQueuePersistenceStatus(
+            persistedItem.status,
+          ).name;
+          if (itemJson !=
+                  encodeDownloadQueueItemForPersistence(persistedItem) ||
+              row['status']?.toString() != canonicalStatus) {
+            _nonCanonicalPersistedQueueIds.add(rowId);
+          }
+          var item = persistedItem;
           final normalizedService = _normalizeQueuedService(item.service);
           if (normalizedService != item.service) {
             item = item.copyWith(service: normalizedService);
@@ -509,7 +567,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         if (restorePaused) _persistUserPausedQueue(false);
         _log.d('No pending items to restore');
         await _appStateDb.replacePendingDownloadQueueRows(const []);
-        _persistedQueueJsonById.clear();
+        _persistedQueueItemById.clear();
+        _nonCanonicalPersistedQueueIds.clear();
         return;
       }
 
@@ -552,42 +611,54 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     try {
       // skipped (user-cancelled) rows persist too, so a cancelled download can
       // still be retried after an app restart instead of being re-searched.
-      final pendingItems = state.items
-          .where(
-            (item) =>
-                item.status == DownloadStatus.queued ||
-                item.status == DownloadStatus.downloading ||
-                item.status == DownloadStatus.finalizing ||
-                item.status == DownloadStatus.skipped,
-          )
-          .toList(growable: false);
       final nowIso = DateTime.now().toIso8601String();
-      final currentJsonById = <String, String>{};
+      final currentItemsById = <String, DownloadItem?>{};
       final upserts = <Map<String, dynamic>>[];
-      for (final item in pendingItems) {
-        final itemJson = jsonEncode(item.toJson());
-        currentJsonById[item.id] = itemJson;
-        if (_persistedQueueJsonById[item.id] == itemJson) continue;
+      for (final item in state.items) {
+        if (item.status != DownloadStatus.queued &&
+            item.status != DownloadStatus.downloading &&
+            item.status != DownloadStatus.finalizing &&
+            item.status != DownloadStatus.skipped) {
+          continue;
+        }
+        currentItemsById[item.id] = item;
+        final previous = _persistedQueueItemById[item.id];
+        final mustRewrite = _nonCanonicalPersistedQueueIds.contains(item.id);
+        if (!mustRewrite && identical(previous, item)) continue;
+
+        final itemJson = encodeDownloadQueueItemForPersistence(item);
+        if (!mustRewrite &&
+            previous != null &&
+            encodeDownloadQueueItemForPersistence(previous) == itemJson) {
+          continue;
+        }
         upserts.add({
           'id': item.id,
           'item_json': itemJson,
-          'status': item.status.name,
+          'status': downloadQueuePersistenceStatus(item.status).name,
           'created_at': item.createdAt.toIso8601String(),
           'updated_at': nowIso,
         });
       }
-      final deletedIds = _persistedQueueJsonById.keys
-          .where((id) => !currentJsonById.containsKey(id))
+      final deletedIds = _persistedQueueItemById.keys
+          .where((id) => !currentItemsById.containsKey(id))
           .toList(growable: false);
-      if (upserts.isEmpty && deletedIds.isEmpty) return;
+      if (upserts.isEmpty && deletedIds.isEmpty) {
+        _persistedQueueItemById
+          ..clear()
+          ..addAll(currentItemsById);
+        _nonCanonicalPersistedQueueIds.clear();
+        return;
+      }
 
       await _appStateDb.applyPendingDownloadQueueChanges(
         upserts: upserts,
         deletedIds: deletedIds,
       );
-      _persistedQueueJsonById
+      _persistedQueueItemById
         ..clear()
-        ..addAll(currentJsonById);
+        ..addAll(currentItemsById);
+      _nonCanonicalPersistedQueueIds.clear();
       _log.d(
         'Persisted ${upserts.length} changed and removed '
         '${deletedIds.length} queue items',
@@ -1452,8 +1523,19 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   }
 
   Future<void> _processQueue() async {
-    if (state.isProcessing) return;
+    if (!_queueProcessingGate.tryEnter()) return;
 
+    try {
+      if (state.isProcessing) return;
+      await _processQueueSingleFlight();
+    } finally {
+      if (_queueProcessingGate.leave()) {
+        Future.microtask(_processQueue);
+      }
+    }
+  }
+
+  Future<void> _processQueueSingleFlight() async {
     if (Platform.isAndroid &&
         state.items.any((item) => item.status == DownloadStatus.queued) &&
         !canStartForegroundDownloadForLifecycle(

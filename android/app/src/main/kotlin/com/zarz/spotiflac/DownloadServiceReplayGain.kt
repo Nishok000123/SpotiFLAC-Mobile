@@ -39,9 +39,7 @@ internal fun DownloadService.writeNativeAlbumReplayGainIfComplete(): Boolean {
     }
     if (entries.size <= 1) return true
 
-    val statuses = synchronized(nativeWorkerItems) {
-        nativeWorkerItems.associate { it.itemId to it.status }
-    }
+    val statuses = nativeWorkerStatusesSnapshot()
     val requestKeys = synchronized(nativeReplayGainRequestAlbumKeys) {
         nativeReplayGainRequestAlbumKeys.toMap()
     }
@@ -93,9 +91,7 @@ internal fun DownloadService.writeNativeReplayGainJournal() {
     val entries = synchronized(nativeReplayGainEntries) {
         nativeReplayGainEntries.map { JSONObject(it.toString()) }
     }
-    val statuses = synchronized(nativeWorkerItems) {
-        nativeWorkerItems.associate { it.itemId to it.status }
-    }
+    val statuses = nativeWorkerStatusesSnapshot()
     synchronized(DownloadService.NATIVE_REPLAYGAIN_JOURNAL_FILE_LOCK) {
         val file = AtomicFile(File(filesDir, DownloadService.NATIVE_REPLAYGAIN_JOURNAL_FILE))
         val existing = readNativeReplayGainJournalLocked(file)
@@ -131,6 +127,16 @@ internal fun DownloadService.writeNativeReplayGainJournal() {
                 file.failWrite(stream)
             }
         }
+    }
+}
+
+internal fun DownloadService.nativeWorkerStatusesSnapshot(): Map<String, String> {
+    return synchronized(nativeWorkerItems) {
+        val statuses = nativeWorkerTerminalStatuses.toMutableMap()
+        for (item in nativeWorkerItems) {
+            statuses[item.itemId] = item.status
+        }
+        statuses
     }
 }
 

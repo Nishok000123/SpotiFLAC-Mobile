@@ -606,6 +606,7 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
     await _persistNativeWorkerRunId(runId);
     final reconciledIds = <String>{};
     Future<void>? preparationFuture;
+    var preparationStopRequested = false;
     try {
       await PlatformBridge.startNativeDownloadWorker(
         requests: [encodeRequest(firstItem, firstContext)],
@@ -627,39 +628,90 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
 
       preparationFuture = () async {
         var nextIndex = 1;
-        final preparationConcurrency = min(2, queuedItems.length - 1);
         try {
-          await Future.wait(
-            List.generate(preparationConcurrency, (_) async {
-              while (nextIndex < queuedItems.length) {
-                final index = nextIndex++;
-                final item = queuedItems[index];
-                try {
-                  final context = await _buildAndroidNativeWorkerRequest(
-                    item,
-                    settings,
-                  );
-                  if (context == null) {
-                    _log.w(
-                      'Native worker gate rejected ${item.track.name}; leaving it queued for the Dart worker',
+          while (nextIndex < queuedItems.length && !preparationStopRequested) {
+            while (contexts.length >=
+                    DownloadQueueNotifier._nativePreparationWindowSize &&
+                !preparationStopRequested) {
+              await Future<void>.delayed(const Duration(milliseconds: 250));
+            }
+            if (preparationStopRequested) break;
+
+            final capacity =
+                DownloadQueueNotifier._nativePreparationWindowSize -
+                contexts.length;
+            final batchLength = min(
+              DownloadQueueNotifier._nativePreparationBatchSize,
+              min(capacity, queuedItems.length - nextIndex),
+            );
+            if (batchLength <= 0) continue;
+
+            final batchItems = queuedItems.sublist(
+              nextIndex,
+              nextIndex + batchLength,
+            );
+            nextIndex += batchLength;
+            final prepared = List<_NativeWorkerRequestContext?>.filled(
+              batchItems.length,
+              null,
+            );
+            var preparationIndex = 0;
+            final preparationConcurrency = min(2, batchItems.length);
+            await Future.wait(
+              List.generate(preparationConcurrency, (_) async {
+                while (true) {
+                  final index = preparationIndex++;
+                  if (index >= batchItems.length) return;
+                  final item = batchItems[index];
+                  try {
+                    prepared[index] = await _buildAndroidNativeWorkerRequest(
+                      item,
+                      settings,
                     );
-                    continue;
+                  } catch (e, stack) {
+                    _log.e(
+                      'Could not prepare native request for ${item.track.name}: $e',
+                      e,
+                      stack,
+                    );
                   }
-                  contexts[item.id] = context;
-                  await PlatformBridge.appendNativeDownloadWorkerRequests(
-                    runId: runId,
-                    requests: [encodeRequest(item, context)],
-                  );
-                } catch (e, stack) {
-                  _log.e(
-                    'Could not prepare native request for ${item.track.name}: $e',
-                    e,
-                    stack,
-                  );
                 }
+              }),
+            );
+
+            final appendRequests = <Map<String, dynamic>>[];
+            final appendedIds = <String>[];
+            for (var index = 0; index < batchItems.length; index++) {
+              final item = batchItems[index];
+              final context = prepared[index];
+              if (context == null) {
+                _log.w(
+                  'Native worker gate rejected ${item.track.name}; leaving it queued for the Dart worker',
+                );
+                continue;
               }
-            }),
-          );
+              contexts[item.id] = context;
+              appendedIds.add(item.id);
+              appendRequests.add(encodeRequest(item, context));
+            }
+            if (appendRequests.isEmpty) continue;
+
+            try {
+              await PlatformBridge.appendNativeDownloadWorkerRequests(
+                runId: runId,
+                requests: appendRequests,
+              );
+            } catch (e, stack) {
+              for (final id in appendedIds) {
+                contexts.remove(id);
+              }
+              _log.e(
+                'Could not append ${appendRequests.length} prepared native requests: $e',
+                e,
+                stack,
+              );
+            }
+          }
         } finally {
           try {
             await PlatformBridge.finishNativeDownloadWorkerPreparation(
@@ -696,12 +748,14 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
         );
         lastStateSerial = _snapshotStateSerial(snapshot, lastStateSerial);
         if (snapshot['is_running'] != true) {
+          preparationStopRequested = true;
           await _clearNativeWorkerRunId(runId);
           break;
         }
         await Future<void>.delayed(const Duration(seconds: 1));
       }
     } catch (e, stack) {
+      preparationStopRequested = true;
       if (isForegroundServiceStartNotAllowed(e)) {
         _log.w(
           'Android rejected the native worker start while backgrounded; keeping the queue pending',
@@ -752,6 +806,7 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
         _failedInSession++;
       }
     } finally {
+      preparationStopRequested = true;
       if (preparationFuture != null) {
         try {
           await preparationFuture;
@@ -1105,6 +1160,38 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
           _failedInSession++;
         }
       }
+    }
+
+    final releasableIds = contexts.keys
+        .where(reconciledIds.contains)
+        .toList(growable: false);
+    if (releasableIds.isEmpty) return;
+
+    await flushQueuePersistence();
+    if (!workerRunning) {
+      for (final itemId in releasableIds) {
+        contexts.remove(itemId);
+        reconciledIds.remove(itemId);
+      }
+      return;
+    }
+
+    final runId = _snapshotRunId(snapshot);
+    if (runId.isEmpty) return;
+    try {
+      await PlatformBridge.acknowledgeNativeDownloadWorkerItems(
+        runId: runId,
+        itemIds: releasableIds,
+      );
+      for (final itemId in releasableIds) {
+        contexts.remove(itemId);
+        reconciledIds.remove(itemId);
+      }
+    } catch (e) {
+      // Keep contexts so the acknowledgement is retried on the next poll.
+      // This also keeps the preparation window bounded while native results
+      // are still retained by the service.
+      _log.w('Could not release reconciled native queue items: $e');
     }
   }
 

@@ -1777,6 +1777,18 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(null)
                         }
+                        "acknowledgeNativeDownloadWorkerItems" -> {
+                            val runId = call.argument<String>("run_id") ?: ""
+                            val itemIdsJson = call.argument<String>("item_ids_json") ?: "[]"
+                            if (runId.isNotBlank()) {
+                                DownloadService.acknowledgeNativeQueueItems(
+                                    this@MainActivity,
+                                    runId,
+                                    itemIdsJson,
+                                )
+                            }
+                            result.success(null)
+                        }
                         "pauseNativeDownloadWorker" -> {
                             DownloadService.pauseNativeQueue(this@MainActivity)
                             result.success(null)

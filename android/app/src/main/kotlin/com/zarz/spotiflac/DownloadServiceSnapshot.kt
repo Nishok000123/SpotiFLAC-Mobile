@@ -144,6 +144,47 @@ internal fun DownloadService.writeNativeWorkerSnapshotAsync(
     }
 }
 
+internal fun DownloadService.scheduleNativeWorkerItemsSnapshot(
+    isRunning: Boolean,
+    isPaused: Boolean,
+    currentItemId: String,
+    message: String,
+) {
+    pendingNativeItemsSnapshotJob?.cancel()
+    pendingNativeItemsSnapshotJob = serviceScope.launch {
+        delay(250)
+        writeNativeWorkerSnapshot(
+            isRunning = isRunning,
+            isPaused = isPaused,
+            currentItemId = currentItemId,
+            message = message,
+            includeItems = true,
+        )
+    }
+}
+
+internal fun DownloadService.flushScheduledNativeWorkerItemsSnapshot(
+    isRunning: Boolean,
+    isPaused: Boolean,
+    currentItemId: String,
+    message: String,
+) {
+    pendingNativeItemsSnapshotJob?.cancel()
+    pendingNativeItemsSnapshotJob = null
+    writeNativeWorkerSnapshotAsync(
+        isRunning = isRunning,
+        isPaused = isPaused,
+        currentItemId = currentItemId,
+        message = message,
+        includeItems = true,
+    )
+}
+
+internal fun DownloadService.cancelScheduledNativeWorkerItemsSnapshot() {
+    pendingNativeItemsSnapshotJob?.cancel()
+    pendingNativeItemsSnapshotJob = null
+}
+
 internal fun DownloadService.readNativeWorkerRunIdFromSnapshotFile(): String {
     return try {
         synchronized(DownloadService.NATIVE_WORKER_STATE_FILE_LOCK) {
@@ -231,7 +272,14 @@ internal fun DownloadService.nativeWorkerCounts(): DownloadService.NativeWorkerC
     var failed = 0
     var skipped = 0
     synchronized(nativeWorkerItems) {
-        total = nativeWorkerItems.size
+        total = nativeWorkerTerminalStatuses.size + nativeWorkerItems.size
+        for (status in nativeWorkerTerminalStatuses.values) {
+            when (status) {
+                "completed" -> completed++
+                "failed" -> failed++
+                "skipped" -> skipped++
+            }
+        }
         for (item in nativeWorkerItems) {
             when (item.status) {
                 "completed" -> completed++
@@ -241,7 +289,7 @@ internal fun DownloadService.nativeWorkerCounts(): DownloadService.NativeWorkerC
         }
     }
     return DownloadService.NativeWorkerCounts(
-        total = total,
+        total = maxOf(queueCount, total),
         completed = completed,
         failed = failed,
         skipped = skipped
@@ -286,7 +334,6 @@ internal fun DownloadService.nativeWorkerItemSnapshotLocked(item: DownloadServic
     if (includeStatic) {
         json.put("track_name", item.trackName)
             .put("artist_name", item.artistName)
-            .put("item_json", item.itemJson)
     }
     if (item.error.isNotBlank()) {
         json.put("error", item.error)
@@ -294,4 +341,3 @@ internal fun DownloadService.nativeWorkerItemSnapshotLocked(item: DownloadServic
     item.resultJson?.let { json.put("result", it) }
     return json
 }
-

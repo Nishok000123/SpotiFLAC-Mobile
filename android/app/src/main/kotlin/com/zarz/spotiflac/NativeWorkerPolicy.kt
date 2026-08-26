@@ -69,6 +69,9 @@ internal object NativeWorkerPolicy {
         failed: Int,
     ): Boolean = !cancelRequested && completed + failed > 0
 
+    fun isTerminalStatus(status: String): Boolean =
+        status == "completed" || status == "failed" || status == "skipped"
+
     fun statusAfterWorkerStop(status: String): String = when (status) {
         "preparing", "downloading", "finalizing" -> "queued"
         else -> status

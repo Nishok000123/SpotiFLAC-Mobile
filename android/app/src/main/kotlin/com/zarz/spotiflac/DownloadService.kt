@@ -64,6 +64,8 @@ class DownloadService : Service() {
         const val ACTION_APPEND_NATIVE_QUEUE = "com.zarz.spotiflac.action.APPEND_NATIVE_QUEUE"
         const val ACTION_FINISH_NATIVE_QUEUE_PREPARATION =
             "com.zarz.spotiflac.action.FINISH_NATIVE_QUEUE_PREPARATION"
+        const val ACTION_ACKNOWLEDGE_NATIVE_QUEUE_ITEMS =
+            "com.zarz.spotiflac.action.ACKNOWLEDGE_NATIVE_QUEUE_ITEMS"
         const val ACTION_PAUSE_NATIVE_QUEUE = "com.zarz.spotiflac.action.PAUSE_NATIVE_QUEUE"
         const val ACTION_RESUME_NATIVE_QUEUE = "com.zarz.spotiflac.action.RESUME_NATIVE_QUEUE"
         const val ACTION_CANCEL_NATIVE_QUEUE = "com.zarz.spotiflac.action.CANCEL_NATIVE_QUEUE"
@@ -79,6 +81,7 @@ class DownloadService : Service() {
         const val EXTRA_REQUESTS_PATH = "requests_path"
         const val EXTRA_SETTINGS_PATH = "settings_path"
         const val EXTRA_RUN_ID = "run_id"
+        const val EXTRA_ITEM_IDS_JSON = "item_ids_json"
         internal const val NATIVE_WORKER_STATE_FILE = "native_download_worker_state.json"
         internal const val NATIVE_WORKER_PROGRESS_FILE = "native_download_worker_progress.json"
         internal const val NATIVE_REPLAYGAIN_JOURNAL_FILE = "native_replaygain_journal.json"
@@ -164,6 +167,19 @@ class DownloadService : Service() {
             val intent = Intent(context, DownloadService::class.java).apply {
                 action = ACTION_FINISH_NATIVE_QUEUE_PREPARATION
                 putExtra(EXTRA_RUN_ID, runId)
+            }
+            context.startService(intent)
+        }
+
+        fun acknowledgeNativeQueueItems(
+            context: Context,
+            runId: String,
+            itemIdsJson: String,
+        ) {
+            val intent = Intent(context, DownloadService::class.java).apply {
+                action = ACTION_ACKNOWLEDGE_NATIVE_QUEUE_ITEMS
+                putExtra(EXTRA_RUN_ID, runId)
+                putExtra(EXTRA_ITEM_IDS_JSON, itemIdsJson)
             }
             context.startService(intent)
         }
@@ -294,7 +310,6 @@ class DownloadService : Service() {
         val itemId: String,
         val trackName: String,
         val artistName: String,
-        val itemJson: String = "",
         var status: String = "queued",
         var progress: Double = 0.0,
         var bytesReceived: Long = 0L,
@@ -312,13 +327,14 @@ class DownloadService : Service() {
 
     internal val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     internal var nativeWorkerJob: Job? = null
+    @Volatile internal var pendingNativeItemsSnapshotJob: Job? = null
     private var nativeWorkerRequestChannel: Channel<NativeDownloadRequest>? = null
     @Volatile private var nativeWorkerPreparationComplete = true
     private var wakeLock: PowerManager.WakeLock? = null
     private var currentTrackName = ""
     private var currentArtistName = ""
     internal var currentStatus = "preparing"
-    private var queueCount = 0
+    internal var queueCount = 0
     // Signature of the last home-screen widget push; keeps widget updates
     // event-driven (track/status/queue changes, 25% steps), never per byte.
     private var widgetSignature = ""
@@ -327,6 +343,7 @@ class DownloadService : Service() {
     internal var nativeWorkerRunId = ""
     @Volatile private var nativeWorkerCurrentItemId = ""
     internal val nativeWorkerItems = mutableListOf<NativeWorkerItem>()
+    internal val nativeWorkerTerminalStatuses = mutableMapOf<String, String>()
     internal val nativeReplayGainEntries = mutableListOf<JSONObject>()
     internal val nativeReplayGainRequestAlbumKeys = mutableMapOf<String, String>()
     internal val snapshotWriteLock = Any()
@@ -411,6 +428,12 @@ class DownloadService : Service() {
                     intent.getStringExtra(EXTRA_RUN_ID).orEmpty(),
                 )
             }
+            ACTION_ACKNOWLEDGE_NATIVE_QUEUE_ITEMS -> {
+                acknowledgeNativeWorkerItems(
+                    intent.getStringExtra(EXTRA_RUN_ID).orEmpty(),
+                    intent.getStringExtra(EXTRA_ITEM_IDS_JSON).orEmpty(),
+                )
+            }
             ACTION_PAUSE_NATIVE_QUEUE -> {
                 nativeWorkerPaused = true
                 cancelActiveNativeItemForPause()
@@ -438,6 +461,7 @@ class DownloadService : Service() {
                 nativeWorkerVerificationPaused = false
                 nativeWorkerPreparationComplete = true
                 nativeWorkerRequestChannel?.close()
+                cancelScheduledNativeWorkerItemsSnapshot()
                 cancelNativeVerificationNotification()
                 synchronized(nativeWorkerItems) {
                     for (item in nativeWorkerItems) {
@@ -529,6 +553,8 @@ class DownloadService : Service() {
         nativeWorkerCancelRequested = true
         nativeWorkerPreparationComplete = true
         nativeWorkerRequestChannel?.close()
+        pendingNativeItemsSnapshotJob?.cancel()
+        pendingNativeItemsSnapshotJob = null
         // Supersede the coroutine before cancelling it. Its catch/finally
         // blocks must not publish a skipped/finished state over the recovery
         // snapshot written below.
@@ -655,6 +681,8 @@ class DownloadService : Service() {
         }
         NativeDownloadFinalizer.cancelActiveWork()
         nativeWorkerRequestChannel?.close()
+        pendingNativeItemsSnapshotJob?.cancel()
+        pendingNativeItemsSnapshotJob = null
         nativeWorkerGeneration++
         val generation = nativeWorkerGeneration
         nativeWorkerJob?.cancel(CancellationException("Native queue replaced"))
@@ -696,13 +724,13 @@ class DownloadService : Service() {
         }
         synchronized(nativeWorkerItems) {
             nativeWorkerItems.clear()
+            nativeWorkerTerminalStatuses.clear()
             nativeWorkerItems.addAll(
                 requests.map {
                     NativeWorkerItem(
                         itemId = it.itemId,
                         trackName = it.trackName,
                         artistName = it.artistName,
-                        itemJson = it.itemJson
                     )
                 }
             )
@@ -762,7 +790,9 @@ class DownloadService : Service() {
         if (requests.isEmpty()) return
 
         val knownIds = synchronized(nativeWorkerItems) {
-            nativeWorkerItems.mapTo(mutableSetOf()) { it.itemId }
+            nativeWorkerItems.mapTo(mutableSetOf()) { it.itemId }.apply {
+                addAll(nativeWorkerTerminalStatuses.keys)
+            }
         }
         val additions = requests.filter { knownIds.add(it.itemId) }
         if (additions.isEmpty()) return
@@ -788,7 +818,6 @@ class DownloadService : Service() {
                         itemId = it.itemId,
                         trackName = it.trackName,
                         artistName = it.artistName,
-                        itemJson = it.itemJson,
                     )
                 },
             )
@@ -798,12 +827,11 @@ class DownloadService : Service() {
             channel.trySend(request)
         }
         writeNativeReplayGainJournal()
-        writeNativeWorkerSnapshotAsync(
+        scheduleNativeWorkerItemsSnapshot(
             isRunning = nativeWorkerJob?.isActive == true,
             isPaused = isNativeWorkerPaused(),
             currentItemId = nativeWorkerCurrentItemId,
             message = "Preparing queue",
-            includeItems = true,
         )
     }
 
@@ -811,7 +839,52 @@ class DownloadService : Service() {
         if (runId.isBlank() || runId != nativeWorkerRunId) return
         nativeWorkerPreparationComplete = true
         nativeWorkerRequestChannel?.close()
+        flushScheduledNativeWorkerItemsSnapshot(
+            isRunning = nativeWorkerJob?.isActive == true,
+            isPaused = isNativeWorkerPaused(),
+            currentItemId = nativeWorkerCurrentItemId,
+            message = "Queue prepared",
+        )
         writeNativeAlbumReplayGainIfComplete()
+    }
+
+    private fun acknowledgeNativeWorkerItems(runId: String, itemIdsJson: String) {
+        if (runId.isBlank() || runId != nativeWorkerRunId || itemIdsJson.isBlank()) return
+        val itemIds = try {
+            val array = JSONArray(itemIdsJson)
+            mutableSetOf<String>().apply {
+                for (index in 0 until array.length()) {
+                    val itemId = array.optString(index, "").trim()
+                    if (itemId.isNotEmpty()) {
+                        add(itemId)
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            return
+        }
+        if (itemIds.isEmpty()) return
+
+        var releasedAny = false
+        synchronized(nativeWorkerItems) {
+            val iterator = nativeWorkerItems.iterator()
+            while (iterator.hasNext()) {
+                val item = iterator.next()
+                if (item.itemId !in itemIds || !NativeWorkerPolicy.isTerminalStatus(item.status)) {
+                    continue
+                }
+                nativeWorkerTerminalStatuses[item.itemId] = item.status
+                iterator.remove()
+                releasedAny = true
+            }
+        }
+        if (!releasedAny) return
+        scheduleNativeWorkerItemsSnapshot(
+            isRunning = nativeWorkerJob?.isActive == true,
+            isPaused = isNativeWorkerPaused(),
+            currentItemId = nativeWorkerCurrentItemId,
+            message = "Queue updated",
+        )
     }
 
     internal fun isNativeWorkerPaused(): Boolean =
@@ -1278,39 +1351,41 @@ class DownloadService : Service() {
 
         try {
             supervisorScope {
-                val itemJobs = mutableListOf<Job>()
-                for (request in requests) {
-                    if (nativeWorkerCancelRequested ||
-                        generation != nativeWorkerGeneration
-                    ) {
-                        break
-                    }
-                    itemJobs += launch {
-                        val providerKey = nativeRequestProviderKey(request)
-                        val providerLimit = minOf(
-                            concurrency,
-                            nativeRequestProviderConcurrency(request),
-                        )
-                        val providerSemaphore = providerSemaphores.computeIfAbsent(
-                            providerKey,
-                        ) {
-                            Semaphore(providerLimit)
+                val workers = List(concurrency) {
+                    launch {
+                        for (request in requests) {
+                            if (nativeWorkerCancelRequested ||
+                                generation != nativeWorkerGeneration
+                            ) {
+                                break
+                            }
+                            val providerKey = nativeRequestProviderKey(request)
+                            val providerLimit = minOf(
+                                concurrency,
+                                nativeRequestProviderConcurrency(request),
+                            )
+                            val providerSemaphore = providerSemaphores.computeIfAbsent(
+                                providerKey,
+                            ) {
+                                Semaphore(providerLimit)
+                            }
+                            processConcurrentNativeRequest(
+                                request = request,
+                                settingsJson = settingsJson,
+                                generation = generation,
+                                networkSemaphore = networkSemaphore,
+                                providerSemaphore = providerSemaphore,
+                                finalizerMutex = finalizerMutex,
+                                rateLimitAttempts = rateLimitAttempts,
+                            )
                         }
-                        processConcurrentNativeRequest(
-                            request = request,
-                            settingsJson = settingsJson,
-                            generation = generation,
-                            networkSemaphore = networkSemaphore,
-                            providerSemaphore = providerSemaphore,
-                            finalizerMutex = finalizerMutex,
-                            rateLimitAttempts = rateLimitAttempts,
-                        )
                     }
                 }
-                itemJobs.joinAll()
+                workers.joinAll()
             }
         } finally {
             if (generation == nativeWorkerGeneration) {
+                cancelScheduledNativeWorkerItemsSnapshot()
                 nativeWorkerRequestChannel = null
                 nativeWorkerPreparationComplete = true
                 if (!nativeWorkerCancelRequested) {
@@ -1647,6 +1722,7 @@ class DownloadService : Service() {
             }
         } finally {
             if (generation == nativeWorkerGeneration) {
+                cancelScheduledNativeWorkerItemsSnapshot()
                 if (!nativeWorkerCancelRequested) {
                     flushNativeAlbumReplayGainJournalIfComplete()
                 }
@@ -1709,6 +1785,7 @@ class DownloadService : Service() {
 
     @Synchronized
     private fun stopForegroundService(cancelNativeWorker: Boolean = true) {
+        cancelScheduledNativeWorkerItemsSnapshot()
         if (cancelNativeWorker) {
             nativeWorkerCancelRequested = true
             nativeWorkerPreparationComplete = true
@@ -1939,6 +2016,7 @@ class DownloadService : Service() {
     }
     
     override fun onDestroy() {
+        cancelScheduledNativeWorkerItemsSnapshot()
         unregisterNativeWorkerNetworkCallback()
         nativeWorkerCancelRequested = true
         nativeWorkerPreparationComplete = true
