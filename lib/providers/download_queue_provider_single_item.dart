@@ -128,6 +128,7 @@ class _DownloadRun {
   /// Filled by the SAF embed op from the local temp so the final quality
   /// probe doesn't have to copy the published file back out of SAF.
   Map<String, dynamic>? probedFinalMetadata;
+  bool externalLrcWritten = false;
 
   Future<void> _run() async {
     final normalizedService = n._normalizeQueuedService(item.service);
@@ -802,7 +803,7 @@ class _DownloadRun {
 
     final lrcTarget = filePath;
     if (effectiveSafMode && lrcTarget != null && isContentUri(lrcTarget)) {
-      await n._saveExternalLrc(
+      externalLrcWritten = await n._saveExternalLrc(
         result: result,
         settings: settings,
         extensionState: extensionState,
@@ -1609,7 +1610,7 @@ class _DownloadRun {
     required String format,
     bool writeExternalLrc = true,
     bool rebuildTrack = true,
-  }) {
+  }) async {
     final track = rebuildTrack
         ? n._buildTrackForMetadataEmbedding(
             trackToDownload,
@@ -1617,7 +1618,7 @@ class _DownloadRun {
             resolvedAlbumArtist,
           )
         : trackToDownload;
-    return n._embedMetadataToFile(
+    final lrcContent = await n._embedMetadataToFile(
       path,
       track,
       format: format,
@@ -1628,6 +1629,10 @@ class _DownloadRun {
       downloadService: item.service,
       writeExternalLrc: writeExternalLrc,
     );
+    if (lrcContent != null && lrcContent.isNotEmpty) {
+      result['lyrics_lrc'] = lrcContent;
+    }
+    return lrcContent;
   }
 
   Future<void> _recoverSafUriIfNeeded() async {
@@ -1735,6 +1740,7 @@ class _DownloadRun {
               ? probed
               : await PlatformBridge.readFileMetadata(path);
           if (metadata['error'] == null) {
+            probedFinalMetadata = metadata;
             final probedBitDepth = metadata['bit_depth'] is num
                 ? (metadata['bit_depth'] as num).toInt()
                 : int.tryParse(metadata['bit_depth']?.toString() ?? '');
@@ -1790,6 +1796,11 @@ class _DownloadRun {
       final historyBitDepth = isLossyOutput ? null : finalBitDepth;
       final historySampleRate = isLossyOutput ? null : finalSampleRate;
       final historyBitrate = finalBitrateKbps;
+      final lyricsAvailability = await n._resolveFinalLyricsAvailability(
+        filePath: historyFilePath,
+        probedMetadata: probedFinalMetadata,
+        externalLrcWritten: externalLrcWritten,
+      );
 
       await persistBeforePublishingDownloadCompletion(
         persist: () async {
@@ -1814,6 +1825,8 @@ class _DownloadRun {
                   genre: effectiveGenre,
                   label: effectiveLabel,
                   copyright: effectiveCopyright,
+                  hasLyrics: lyricsAvailability.hasLyrics,
+                  lyricsMetadataScanVersion: lyricsAvailability.scanVersion,
                 ),
                 preserveTrackVariant: item.preserveQualityVariant,
               );

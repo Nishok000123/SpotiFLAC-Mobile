@@ -16,10 +16,10 @@ final _log = AppLogger('LibraryDatabase');
 
 class LibraryDatabase {
   static final LibraryDatabase instance = LibraryDatabase._init();
-  static const int schemaVersion = 12;
+  static const int schemaVersion = 13;
   static const String legacySourceId = LocalLibraryItem.legacySourceId;
   static const String visibleLibraryView = 'library_visible';
-  static const int audioMetadataScanVersion = 2;
+  static const int audioMetadataScanVersion = 3;
   static final sqlite.SingleFlightInitializer<Database> _database =
       sqlite.SingleFlightInitializer<Database>();
   bool _historyAttached = false;
@@ -84,8 +84,9 @@ class LibraryDatabase {
         label TEXT,
         copyright TEXT,
         explicit INTEGER NOT NULL DEFAULT 0,
+        has_lyrics INTEGER NOT NULL DEFAULT 0,
         format TEXT,
-        audio_metadata_scan_version INTEGER NOT NULL DEFAULT 2,
+        audio_metadata_scan_version INTEGER NOT NULL DEFAULT 3,
         track_name_norm TEXT,
         artist_name_norm TEXT,
         album_name_norm TEXT,
@@ -210,6 +211,15 @@ class LibraryDatabase {
         'INTEGER NOT NULL DEFAULT 0',
       );
       _log.i('Added explicit-content metadata');
+    }
+    if (oldVersion < 13) {
+      await sqlite.addColumnIfMissing(
+        db,
+        'library',
+        'has_lyrics',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      _log.i('Added indexed lyrics availability metadata');
     }
   }
 
@@ -470,6 +480,7 @@ class LibraryDatabase {
       'label': json['label'],
       'copyright': json['copyright'],
       'explicit': json['explicit'] == true || json['explicit'] == 1 ? 1 : 0,
+      'has_lyrics': json['hasLyrics'] == true || json['hasLyrics'] == 1 ? 1 : 0,
       'format': json['format'],
       'audio_metadata_scan_version':
           (json['audioMetadataScanVersion'] as num?)?.toInt() ??
@@ -525,6 +536,7 @@ class LibraryDatabase {
       'label': row['label'],
       'copyright': row['copyright'],
       'explicit': row['explicit'] == 1 || row['explicit'] == true,
+      'hasLyrics': row['has_lyrics'] == 1 || row['has_lyrics'] == true,
       'format': row['format'],
     };
   }
@@ -1486,6 +1498,7 @@ class LibraryDatabase {
     int? sampleRate,
     int? bitrate,
     bool? explicit,
+    bool? hasLyrics,
     String? format,
   }) async {
     final values = <String, dynamic>{};
@@ -1503,6 +1516,9 @@ class LibraryDatabase {
     }
     if (explicit != null) {
       values['explicit'] = explicit ? 1 : 0;
+    }
+    if (hasLyrics != null) {
+      values['has_lyrics'] = hasLyrics ? 1 : 0;
     }
     final normalizedFormat = normalizeAudioFormatValue(format);
     if (normalizedFormat != null) {

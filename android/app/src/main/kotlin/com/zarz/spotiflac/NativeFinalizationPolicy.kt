@@ -11,6 +11,51 @@ import kotlin.math.roundToInt
  * finalizer's I/O-heavy orchestration.
  */
 internal object NativeFinalizationPolicy {
+    private val lyricsMetadataLinePattern = Regex(
+        "^\\[[a-z][a-z0-9_]*:.*]$",
+        RegexOption.IGNORE_CASE,
+    )
+    private val lyricsBackgroundPattern = Regex(
+        "^\\[bg:(.*)]$",
+        RegexOption.IGNORE_CASE,
+    )
+    private val lyricsTimestampPattern = Regex(
+        "^\\[\\d{1,3}:\\d{1,2}(?:[.:]\\d{1,3})?]",
+    )
+    private val lyricsInlineTimestampPattern = Regex(
+        "<\\d{1,3}:\\d{1,2}(?:[.:]\\d{1,3})?>",
+    )
+
+    fun hasUsableLyricsContent(raw: String?): Boolean {
+        val lyrics = raw.orEmpty().trim()
+        if (lyrics.equals("[instrumental:true]", ignoreCase = true)) return true
+
+        for (line in lyrics.lineSequence()) {
+            var cleaned = line.trim()
+            if (cleaned.isEmpty()) continue
+
+            val background = lyricsBackgroundPattern.matchEntire(cleaned)
+            if (background != null) {
+                cleaned = background.groupValues[1].trim()
+            } else if (lyricsMetadataLinePattern.matches(cleaned)) {
+                continue
+            }
+
+            while (lyricsTimestampPattern.containsMatchIn(cleaned)) {
+                cleaned = lyricsTimestampPattern.replaceFirst(cleaned, "").trim()
+            }
+            cleaned = lyricsInlineTimestampPattern.replace(cleaned, "").trim()
+            if (
+                cleaned.startsWith("v1:", ignoreCase = true) ||
+                cleaned.startsWith("v2:", ignoreCase = true)
+            ) {
+                cleaned = cleaned.drop(3).trim()
+            }
+            if (cleaned.isNotEmpty()) return true
+        }
+        return false
+    }
+
     data class AutoConversionTarget(
         val codec: String,
         val extension: String,

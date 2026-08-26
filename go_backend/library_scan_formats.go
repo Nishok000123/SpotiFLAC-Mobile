@@ -30,38 +30,49 @@ func scanAudioFileWithKnownModTimeAndDisplayNameAndCoverCacheKey(filePath, displ
 	libraryCoverCacheMu.RLock()
 	coverCacheDir := libraryCoverCacheDir
 	libraryCoverCacheMu.RUnlock()
+	var scanned *LibraryScanResult
+	var scanErr error
 	if ext == ".flac" {
-		return scanFLACFileWithCoverCache(filePath, result, displayNameHint, coverCacheDir, coverCacheKey)
-	}
-	if ext == ".m4a" || ext == ".mp4" || ext == ".aac" {
-		return scanM4AFileWithCoverCache(filePath, result, displayNameHint, coverCacheDir, coverCacheKey)
-	}
-	if coverCacheDir != "" {
-		coverPath, err := SaveCoverToCacheWithHintAndKey(
-			filePath,
-			displayNameHint,
-			coverCacheDir,
-			coverCacheKey,
-		)
-		if err == nil && coverPath != "" {
-			result.CoverPath = coverPath
+		scanned, scanErr = scanFLACFileWithCoverCache(filePath, result, displayNameHint, coverCacheDir, coverCacheKey)
+	} else if ext == ".m4a" || ext == ".mp4" || ext == ".aac" {
+		scanned, scanErr = scanM4AFileWithCoverCache(filePath, result, displayNameHint, coverCacheDir, coverCacheKey)
+	} else {
+		if coverCacheDir != "" {
+			coverPath, err := SaveCoverToCacheWithHintAndKey(
+				filePath,
+				displayNameHint,
+				coverCacheDir,
+				coverCacheKey,
+			)
+			if err == nil && coverPath != "" {
+				result.CoverPath = coverPath
+			}
+		}
+
+		switch ext {
+		case ".mp3":
+			scanned, scanErr = scanMP3File(filePath, result, displayNameHint)
+		case ".opus", ".ogg":
+			scanned, scanErr = scanOggFile(filePath, result, displayNameHint)
+		case ".ape", ".wv", ".mpc":
+			scanned, scanErr = scanAPEFile(filePath, result, displayNameHint)
+		case ".wav":
+			scanned, scanErr = scanWAVFile(filePath, result, displayNameHint)
+		case ".aiff", ".aif", ".aifc":
+			scanned, scanErr = scanAIFFFile(filePath, result, displayNameHint)
+		default:
+			scanned, scanErr = scanFromFilename(filePath, displayNameHint, result)
 		}
 	}
-
-	switch ext {
-	case ".mp3":
-		return scanMP3File(filePath, result, displayNameHint)
-	case ".opus", ".ogg":
-		return scanOggFile(filePath, result, displayNameHint)
-	case ".ape", ".wv", ".mpc":
-		return scanAPEFile(filePath, result, displayNameHint)
-	case ".wav":
-		return scanWAVFile(filePath, result, displayNameHint)
-	case ".aiff", ".aif", ".aifc":
-		return scanAIFFFile(filePath, result, displayNameHint)
-	default:
-		return scanFromFilename(filePath, displayNameHint, result)
+	if scanErr != nil || scanned == nil {
+		return scanned, scanErr
 	}
+	if !scanned.HasLyrics {
+		if sidecar, err := extractLyricsFromSidecarLRC(filePath); err == nil {
+			scanned.HasLyrics = rawLyricsHasUsableContent(sidecar)
+		}
+	}
+	return scanned, nil
 }
 
 func embeddedCoverMIME(data []byte) string {
@@ -144,6 +155,7 @@ func scanFLACFileWithCoverCache(filePath string, result *LibraryScanResult, disp
 	result.Comment = metadata.Comment
 	result.AlbumType = metadata.AlbumType
 	result.Explicit = metadata.Explicit
+	result.HasLyrics = rawLyricsHasUsableContent(metadata.Lyrics)
 	result.UPC = metadata.UPC
 
 	quality, err := audioQualityFromParsedFlac(f)

@@ -260,11 +260,19 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
         trimmed.endsWith('.aac') ||
         trimmed.endsWith('.mp3') ||
         trimmed.endsWith('.opus') ||
-        trimmed.endsWith('.ogg');
+        trimmed.endsWith('.ogg') ||
+        trimmed.endsWith('.ape') ||
+        trimmed.endsWith('.wv') ||
+        trimmed.endsWith('.mpc') ||
+        trimmed.endsWith('.wav') ||
+        trimmed.endsWith('.aiff') ||
+        trimmed.endsWith('.aif') ||
+        trimmed.endsWith('.aifc');
   }
 
   bool _shouldBackfillAudioMetadata(DownloadHistoryItem item) {
-    return _needsAverageBitrateBackfill(item) ||
+    return item.lyricsMetadataScanVersion < 1 ||
+        _needsAverageBitrateBackfill(item) ||
         _shouldBackfillAudioMetadataIgnoringBitrate(item);
   }
 
@@ -372,10 +380,54 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
     );
   }
 
+  Future<bool?> _probeSidecarLyrics(DownloadHistoryItem item) async {
+    final filePath = item.filePath.trim();
+    if (filePath.isEmpty) return null;
+
+    String? tempPath;
+    try {
+      if (filePath.startsWith('content://')) {
+        final treeUri = normalizeOptionalString(item.downloadTreeUri);
+        final fileName = normalizeOptionalString(item.safFileName);
+        if (treeUri == null || fileName == null) return null;
+        final replacedName = fileName.replaceFirst(RegExp(r'\.[^.]+$'), '.lrc');
+        final lrcName = replacedName == fileName
+            ? '$fileName.lrc'
+            : replacedName;
+        final resolved = await PlatformBridge.resolveSafFile(
+          treeUri: treeUri,
+          relativeDir: item.safRelativeDir ?? '',
+          fileName: lrcName,
+        );
+        final uri = normalizeOptionalString(resolved['uri']?.toString());
+        if (uri == null) return false;
+        tempPath = await PlatformBridge.copyContentUriToTemp(uri);
+        if (tempPath == null) return null;
+        return hasUsableLyricsContent(await File(tempPath).readAsString());
+      }
+
+      final lrcPath = filePath.replaceAll(RegExp(r'\.[^.]+$'), '.lrc');
+      final safeLrcPath = lrcPath == filePath ? '$filePath.lrc' : lrcPath;
+      final sidecar = File(safeLrcPath);
+      if (!await sidecar.exists()) return false;
+      return hasUsableLyricsContent(await sidecar.readAsString());
+    } catch (e) {
+      _historyLog.d('Sidecar lyrics probe failed for $filePath: $e');
+      return null;
+    } finally {
+      if (tempPath != null) {
+        try {
+          await File(tempPath).delete();
+        } catch (_) {}
+      }
+    }
+  }
+
   Future<Map<String, dynamic>?> _probeAudioMetadata(
-    String filePath, {
+    DownloadHistoryItem item, {
     String? fallbackQuality,
   }) async {
+    final filePath = item.filePath;
     if (!_supportsAudioMetadataProbe(filePath)) {
       return null;
     }
@@ -414,6 +466,13 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
       final totalTracks = readPositiveInt(result['total_tracks']);
       final discNumber = readPositiveInt(result['disc_number']);
       final totalDiscs = readPositiveInt(result['total_discs']);
+      final embeddedHasLyrics =
+          result['hasLyrics'] == true ||
+          hasUsableLyricsContent(result['lyrics']?.toString() ?? '');
+      final sidecarHasLyrics = await _probeSidecarLyrics(item);
+      final hasLyrics = embeddedHasLyrics || sidecarHasLyrics == true;
+      final lyricsMetadataScanVersion =
+          embeddedHasLyrics || sidecarHasLyrics != null ? 1 : 0;
 
       if (quality == null &&
           bitDepth == null &&
@@ -425,7 +484,10 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
           trackNumber == null &&
           totalTracks == null &&
           discNumber == null &&
-          totalDiscs == null) {
+          totalDiscs == null &&
+          result['hasLyrics'] == null &&
+          result['lyrics'] == null &&
+          sidecarHasLyrics == null) {
         return null;
       }
 
@@ -442,6 +504,8 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
         'totalTracks': totalTracks,
         'discNumber': discNumber,
         'totalDiscs': totalDiscs,
+        'hasLyrics': hasLyrics,
+        'lyricsMetadataScanVersion': lyricsMetadataScanVersion,
       };
     } catch (e) {
       _historyLog.d('Audio metadata probe failed for $filePath: $e');
@@ -497,9 +561,10 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
         final item = items[index];
 
         Map<String, dynamic>? probed;
-        if (_shouldBackfillAudioMetadataIgnoringBitrate(item)) {
+        if (item.lyricsMetadataScanVersion < 1 ||
+            _shouldBackfillAudioMetadataIgnoringBitrate(item)) {
           probed = await _probeAudioMetadata(
-            item.filePath,
+            item,
             fallbackQuality: item.quality,
           );
         } else if (_needsAverageBitrateBackfill(item)) {
@@ -541,6 +606,9 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
         final resolvedTotalTracks = probed['totalTracks'] as int?;
         final resolvedDiscNumber = probed['discNumber'] as int?;
         final resolvedTotalDiscs = probed['totalDiscs'] as int?;
+        final resolvedHasLyrics = probed['hasLyrics'] as bool?;
+        final resolvedLyricsScanVersion =
+            probed['lyricsMetadataScanVersion'] as int?;
 
         final qualityChanged =
             resolvedQuality != null && resolvedQuality != item.quality;
@@ -566,6 +634,11 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
             resolvedDiscNumber != null && resolvedDiscNumber != item.discNumber;
         final totalDiscsChanged =
             resolvedTotalDiscs != null && resolvedTotalDiscs != item.totalDiscs;
+        final hasLyricsChanged =
+            resolvedHasLyrics != null && resolvedHasLyrics != item.hasLyrics;
+        final lyricsScanVersionChanged =
+            resolvedLyricsScanVersion != null &&
+            resolvedLyricsScanVersion != item.lyricsMetadataScanVersion;
 
         if (!qualityChanged &&
             !bitDepthChanged &&
@@ -577,7 +650,9 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
             !trackNumberChanged &&
             !totalTracksChanged &&
             !discNumberChanged &&
-            !totalDiscsChanged) {
+            !totalDiscsChanged &&
+            !hasLyricsChanged &&
+            !lyricsScanVersionChanged) {
           continue;
         }
 
@@ -593,6 +668,8 @@ extension _HistoryStartupMaintenance on DownloadHistoryNotifier {
           totalTracks: resolvedTotalTracks,
           discNumber: resolvedDiscNumber,
           totalDiscs: resolvedTotalDiscs,
+          hasLyrics: resolvedHasLyrics,
+          lyricsMetadataScanVersion: resolvedLyricsScanVersion,
         );
         updatedItems ??= [...items];
         updatedItems[index] = updated;

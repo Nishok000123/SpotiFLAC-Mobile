@@ -39,7 +39,7 @@ object NativeDownloadFinalizer {
     const val NATIVE_WORKER_CONTRACT_VERSION = 1
     // Native finalizer owns background-safe history writes while Flutter may be suspended.
     // Keep this schema contract in sync with Dart HistoryDatabase before bumping either side.
-    const val HISTORY_SCHEMA_VERSION = 12
+    const val HISTORY_SCHEMA_VERSION = 13
     internal val activeFFmpegSessionIds = mutableSetOf<Long>()
     internal val nativeFFmpegSessionIds = BoundedRegistry<Long>(maxEntries = 256)
     internal val activeFFmpegSessionLock = Any()
@@ -88,6 +88,8 @@ object NativeDownloadFinalizer {
         "label",
         "copyright",
         "explicit",
+        "has_lyrics",
+        "lyrics_metadata_scan_version",
         "spotify_id_norm",
         "isrc_norm",
         "match_key",
@@ -137,6 +139,9 @@ object NativeDownloadFinalizer {
         var audioCodec: String? = null,
         var pendingExternalLrc: String? = null,
         var pendingExternalLrcFileName: String? = null,
+        var lyricsMetadataScanned: Boolean = false,
+        var hasEmbeddedLyrics: Boolean = false,
+        var externalLrcWritten: Boolean = false,
     )
 
     internal data class ReplayGainScan(
@@ -997,6 +1002,15 @@ object NativeDownloadFinalizer {
             val metadata = parseObject(Gobackend.readFileMetadata(probePath))
             if (metadata.has("error")) return
 
+            if (metadata.has("lyrics") || metadata.has("hasLyrics")) {
+                state.lyricsMetadataScanned = true
+                state.hasEmbeddedLyrics =
+                    metadata.optBoolean("hasLyrics", false) ||
+                    NativeFinalizationPolicy.hasUsableLyricsContent(
+                        metadata.optString("lyrics", ""),
+                    )
+            }
+
             val bitDepth = optPositiveInt(metadata, "bit_depth")
             val sampleRate = optPositiveInt(metadata, "sample_rate")
             val probedCodec = normalizeAudioCodec(
@@ -1311,6 +1325,18 @@ object NativeDownloadFinalizer {
                     input.request.optBoolean("explicit", false)
             ) 1 else 0,
         )
+        values.put(
+            "has_lyrics",
+            if (state.hasEmbeddedLyrics || state.externalLrcWritten) 1 else 0,
+        )
+        values.put(
+            "lyrics_metadata_scan_version",
+            if (
+                state.lyricsMetadataScanned ||
+                state.hasEmbeddedLyrics ||
+                state.externalLrcWritten
+            ) 1 else 0,
+        )
         putNormalizedHistoryColumns(values)
         return values
     }
@@ -1374,6 +1400,8 @@ object NativeDownloadFinalizer {
                       label TEXT,
                       copyright TEXT,
                       explicit INTEGER NOT NULL DEFAULT 0,
+                      has_lyrics INTEGER NOT NULL DEFAULT 0,
+                      lyrics_metadata_scan_version INTEGER NOT NULL DEFAULT 0,
                       spotify_id_norm TEXT,
                       isrc_norm TEXT,
                       match_key TEXT,
@@ -1412,6 +1440,8 @@ object NativeDownloadFinalizer {
 	                ensureHistoryColumn(db, "sort_release", "ALTER TABLE history ADD COLUMN sort_release TEXT")
 	                ensureHistoryColumn(db, "sort_added", "ALTER TABLE history ADD COLUMN sort_added INTEGER")
 	                ensureHistoryColumn(db, "explicit", "ALTER TABLE history ADD COLUMN explicit INTEGER NOT NULL DEFAULT 0")
+	                ensureHistoryColumn(db, "has_lyrics", "ALTER TABLE history ADD COLUMN has_lyrics INTEGER NOT NULL DEFAULT 0")
+	                ensureHistoryColumn(db, "lyrics_metadata_scan_version", "ALTER TABLE history ADD COLUMN lyrics_metadata_scan_version INTEGER NOT NULL DEFAULT 0")
 	                ensureHistoryPathKeyTable(db)
 	                if (needsBackfill) {
 	                    backfillNormalizedHistoryColumns(db)
@@ -1937,6 +1967,9 @@ object NativeDownloadFinalizer {
         putCamel("composer", "composer")
         putCamel("label", "label")
         putCamel("copyright", "copyright")
+        json.put("explicit", values.getAsInteger("explicit") == 1)
+        json.put("hasLyrics", values.getAsInteger("has_lyrics") == 1)
+        json.put("lyricsMetadataScanVersion", values.getAsInteger("lyrics_metadata_scan_version") ?: 0)
         return json
     }
 

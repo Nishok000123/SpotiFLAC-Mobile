@@ -37,6 +37,7 @@ import 'package:spotiflac_android/utils/extension_auth_launcher.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/utils/user_facing_error.dart';
 import 'package:spotiflac_android/utils/int_utils.dart';
+import 'package:spotiflac_android/utils/isrc_utils.dart';
 import 'package:spotiflac_android/utils/nav_bar_inset.dart';
 import 'package:spotiflac_android/utils/re_enrich_release_policy.dart';
 import 'package:spotiflac_android/utils/saf_display_path.dart';
@@ -362,8 +363,19 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
       final resolvedUPC = (metadata['upc'] ?? metadata['barcode'])?.toString();
       final resolvedComment = metadata['comment']?.toString();
       final resolvedExplicit = parseExplicitFlag(metadata['explicit']);
+      final hasResolvedLyricsValue =
+          metadata.containsKey('hasLyrics') || metadata.containsKey('lyrics');
+      final resolvedHasLyrics =
+          metadata['hasLyrics'] == true ||
+          hasUsableLyricsContent(metadata['lyrics']?.toString() ?? '');
       final needsExplicit =
           resolvedExplicit != null && resolvedExplicit != isExplicit;
+      final needsLyricsAvailability =
+          hasResolvedLyricsValue &&
+          (_isLocalItem
+              ? resolvedHasLyrics != _localLibraryItem?.hasLyrics
+              : resolvedHasLyrics != _downloadItem?.hasLyrics ||
+                    (_downloadItem?.lyricsMetadataScanVersion ?? 0) < 1);
       final needsTrackNumber =
           resolvedTrackNumber != null &&
           resolvedTrackNumber > 0 &&
@@ -425,6 +437,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
               needsDuration ||
               needsComposer ||
               needsExplicit ||
+              needsLyricsAvailability ||
               (isPlaceholderQualityLabel(_quality) && resolvedQuality != null));
       final localItem = _localLibraryItem;
       final localAudioMetadataChanged =
@@ -436,6 +449,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
               (resolvedBitrate != null &&
                   resolvedBitrate != localItem.bitrate) ||
               needsExplicit ||
+              needsLyricsAvailability ||
               needsDuration ||
               formatChanged);
 
@@ -511,6 +525,8 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
               duration: needsDuration ? resolvedDuration : null,
               composer: needsComposer ? resolvedComposer : null,
               explicit: needsExplicit ? resolvedExplicit : null,
+              hasLyrics: hasResolvedLyricsValue ? resolvedHasLyrics : null,
+              lyricsMetadataScanVersion: hasResolvedLyricsValue ? 1 : null,
             );
         if (mounted && _downloadItem != null) {
           setState(() {
@@ -527,6 +543,8 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
               duration: needsDuration ? resolvedDuration : null,
               composer: needsComposer ? resolvedComposer : null,
               explicit: needsExplicit ? resolvedExplicit : null,
+              hasLyrics: hasResolvedLyricsValue ? resolvedHasLyrics : null,
+              lyricsMetadataScanVersion: hasResolvedLyricsValue ? 1 : null,
             );
           });
         }
@@ -538,6 +556,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
           sampleRate: resolvedSampleRate,
           bitrate: resolvedBitrate,
           explicit: needsExplicit ? resolvedExplicit : null,
+          hasLyrics: hasResolvedLyricsValue ? resolvedHasLyrics : null,
           format: formatChanged ? resolvedFormat : null,
         );
         if (mounted &&
@@ -550,6 +569,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
               sampleRate: resolvedSampleRate,
               bitrate: resolvedBitrate,
               explicit: needsExplicit ? resolvedExplicit : null,
+              hasLyrics: hasResolvedLyricsValue ? resolvedHasLyrics : null,
               format: resolvedFormat,
             );
           });

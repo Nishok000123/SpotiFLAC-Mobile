@@ -181,6 +181,8 @@ internal fun NativeDownloadFinalizer.publishPendingDeferredExternalLrc(
         )
         if (newUri == null) {
             Log.w(TAG, "Failed to publish deferred external LRC: $fileName")
+        } else {
+            state.externalLrcWritten = true
         }
     } catch (e: Exception) {
         Log.w(TAG, "Failed to publish deferred external LRC: ${e.message}")

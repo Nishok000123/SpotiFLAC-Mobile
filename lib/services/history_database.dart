@@ -65,7 +65,7 @@ class HistoryBatchLookupRequest {
 }
 
 class HistoryDatabase {
-  static const int schemaVersion = 12;
+  static const int schemaVersion = 13;
   static final HistoryDatabase instance = HistoryDatabase._init();
   static final sqlite.SingleFlightInitializer<Database> _database =
       sqlite.SingleFlightInitializer<Database>();
@@ -120,6 +120,8 @@ class HistoryDatabase {
         label TEXT,
         copyright TEXT,
         explicit INTEGER NOT NULL DEFAULT 0,
+        has_lyrics INTEGER NOT NULL DEFAULT 0,
+        lyrics_metadata_scan_version INTEGER NOT NULL DEFAULT 0,
         spotify_id_norm TEXT,
         isrc_norm TEXT,
         match_key TEXT,
@@ -238,6 +240,21 @@ class HistoryDatabase {
         'INTEGER NOT NULL DEFAULT 0',
       );
       _log.i('Added explicit-content metadata');
+    }
+    if (oldVersion < 13) {
+      await sqlite.addColumnIfMissing(
+        db,
+        'history',
+        'has_lyrics',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      await sqlite.addColumnIfMissing(
+        db,
+        'history',
+        'lyrics_metadata_scan_version',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      _log.i('Added indexed lyrics availability metadata');
     }
   }
 
@@ -628,6 +645,10 @@ class HistoryDatabase {
       'label': json['label'],
       'copyright': json['copyright'],
       'explicit': json['explicit'] == true ? 1 : 0,
+      'has_lyrics': json['hasLyrics'] == true ? 1 : 0,
+      'lyrics_metadata_scan_version':
+          (json['lyricsMetadataScanVersion'] as num?)?.toInt() ??
+          (json.containsKey('hasLyrics') ? 1 : 0),
     };
     row.addAll(
       _queueSortColumns(
@@ -687,6 +708,8 @@ class HistoryDatabase {
       'label': row['label'],
       'copyright': row['copyright'],
       'explicit': row['explicit'] == 1 || row['explicit'] == true,
+      'hasLyrics': row['has_lyrics'] == 1 || row['has_lyrics'] == true,
+      'lyricsMetadataScanVersion': row['lyrics_metadata_scan_version'] ?? 0,
     };
   }
 
@@ -1089,6 +1112,8 @@ class HistoryDatabase {
     String? newQuality,
     int? newBitDepth,
     int? newSampleRate,
+    bool? hasLyrics,
+    int? lyricsMetadataScanVersion,
   }) async {
     final db = await database;
     final values = <String, dynamic>{};
@@ -1100,6 +1125,12 @@ class HistoryDatabase {
     }
     if (newSampleRate != null) {
       values['sample_rate'] = newSampleRate;
+    }
+    if (hasLyrics != null) {
+      values['has_lyrics'] = hasLyrics ? 1 : 0;
+    }
+    if (lyricsMetadataScanVersion != null) {
+      values['lyrics_metadata_scan_version'] = lyricsMetadataScanVersion;
     }
     if (values.isEmpty) {
       return;

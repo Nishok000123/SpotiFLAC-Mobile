@@ -20,6 +20,7 @@ import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/utils/ffmpeg_reenrich.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/lyrics_metadata_helper.dart';
+import 'package:spotiflac_android/utils/ordered_range_selection.dart';
 import 'package:spotiflac_android/models/download_item.dart';
 import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/models/track.dart';
@@ -233,6 +234,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
 
   bool _isSelectionMode = false;
   final Set<String> _selectedIds = {};
+  String? _selectionAnchorId;
   final SelectionOverlayController _selectionOverlay =
       SelectionOverlayController();
   List<UnifiedLibraryItem> _selectionOverlayItems = const [];
@@ -1055,6 +1057,17 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                                 selected: tempMetadata == 'missing-label',
                                 onSelected: (_) => setSheetState(
                                   () => tempMetadata = 'missing-label',
+                                ),
+                              ),
+                              FilterChip(
+                                label: Text(
+                                  context
+                                      .l10n
+                                      .libraryFilterMetadataMissingLyrics,
+                                ),
+                                selected: tempMetadata == 'missing-lyrics',
+                                onSelected: (_) => setSheetState(
+                                  () => tempMetadata = 'missing-lyrics',
                                 ),
                               ),
                             ],

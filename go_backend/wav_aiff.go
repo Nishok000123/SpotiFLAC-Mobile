@@ -976,6 +976,7 @@ func applyAudioMetadataToScan(metadata *AudioMetadata, result *LibraryScanResult
 	result.Comment = metadata.Comment
 	result.AlbumType = metadata.AlbumType
 	result.Explicit = metadata.Explicit
+	result.HasLyrics = rawLyricsHasUsableContent(metadata.Lyrics)
 	result.UPC = metadata.UPC
 }
 

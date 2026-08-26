@@ -6145,5 +6145,12 @@
   "settingsGroupContent": "Konten & metadata",
   "settingsGroupDownloads": "Unduhan & file",
   "settingsGroupSystem": "Sistem",
-  "settingsGroupHelp": "Tentang & dukungan"
+  "settingsGroupHelp": "Tentang & dukungan",
+  "libraryFilterMetadataMissingLyrics": "Lirik tidak tersedia",
+  "trackOptionCopyTrackName": "Salin judul lagu",
+  "trackOptionCopyArtist": "Salin artis",
+  "trackOptionCopyTrackAndArtist": "Salin judul dan artis",
+  "metadataCopyValue": "Salin nilai",
+  "metadataCopyField": "Salin field dan nilai",
+  "metadataCopyAll": "Salin semua metadata"
 }

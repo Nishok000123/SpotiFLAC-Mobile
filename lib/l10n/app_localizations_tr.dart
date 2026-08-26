@@ -5005,4 +5005,25 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get settingsGroupHelp => 'Hakkında ve destek';
+
+  @override
+  String get libraryFilterMetadataMissingLyrics => 'Missing lyrics';
+
+  @override
+  String get trackOptionCopyTrackName => 'Copy track name';
+
+  @override
+  String get trackOptionCopyArtist => 'Copy artist';
+
+  @override
+  String get trackOptionCopyTrackAndArtist => 'Copy track and artist';
+
+  @override
+  String get metadataCopyValue => 'Copy value';
+
+  @override
+  String get metadataCopyField => 'Copy field and value';
+
+  @override
+  String get metadataCopyAll => 'Copy all metadata';
 }

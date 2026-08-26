@@ -8,6 +8,7 @@ extension _QueueTabSelectionActions on _QueueTabState {
       _selectedPlaylistIds.clear();
       _isSelectionMode = true;
       _selectedIds.add(itemId);
+      _selectionAnchorId = itemId;
     });
     _hidePlaylistSelectionOverlay();
   }
@@ -16,6 +17,7 @@ extension _QueueTabSelectionActions on _QueueTabState {
     _setState(() {
       _isSelectionMode = false;
       _selectedIds.clear();
+      _selectionAnchorId = null;
     });
     _hideSelectionOverlay();
   }
@@ -23,14 +25,13 @@ extension _QueueTabSelectionActions on _QueueTabState {
   void _toggleSelection(String itemId) {
     var shouldHideOverlay = false;
     _setState(() {
-      if (_selectedIds.contains(itemId)) {
-        _selectedIds.remove(itemId);
-        if (_selectedIds.isEmpty) {
-          _isSelectionMode = false;
-          shouldHideOverlay = true;
-        }
-      } else {
-        _selectedIds.add(itemId);
+      _selectionAnchorId = toggleOrderedSelection(
+        selected: _selectedIds,
+        target: itemId,
+      );
+      if (_selectedIds.isEmpty) {
+        _isSelectionMode = false;
+        shouldHideOverlay = true;
       }
     });
     if (shouldHideOverlay) {
@@ -41,6 +42,22 @@ extension _QueueTabSelectionActions on _QueueTabState {
   void _selectAll(List<UnifiedLibraryItem> items) {
     _setState(() {
       _selectedIds.addAll(items.map((e) => e.id));
+      _selectionAnchorId = items.lastOrNull?.id;
+    });
+  }
+
+  void _selectRangeTo(String itemId, List<UnifiedLibraryItem> visibleItems) {
+    HapticFeedback.selectionClick();
+    _setState(() {
+      _isSelectionMode = true;
+      _selectionAnchorId = addOrderedSelectionRange(
+        selected: _selectedIds,
+        visibleItems: visibleItems
+            .map((item) => item.id)
+            .toList(growable: false),
+        target: itemId,
+        anchor: _selectionAnchorId,
+      );
     });
   }
 
@@ -107,6 +124,7 @@ extension _QueueTabSelectionActions on _QueueTabState {
     _setState(() {
       _isSelectionMode = false;
       _selectedIds.clear();
+      _selectionAnchorId = null;
       _isPlaylistSelectionMode = true;
       _selectedPlaylistIds.add(playlistId);
     });

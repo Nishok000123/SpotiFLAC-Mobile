@@ -245,7 +245,7 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
             _lyricsSource = embeddedSource.isNotEmpty
                 ? embeddedSource
                 : context.l10n.trackLyricsEmbeddedSource;
-            _lyricsEmbedded = !instrumental;
+            _lyricsEmbedded = true;
             _isInstrumental = instrumental;
             _lyricsLoading = false;
             _embeddedLyricsChecked = true;
@@ -389,7 +389,7 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
               _lyricsSource = embeddedSource.isNotEmpty
                   ? embeddedSource
                   : context.l10n.trackLyricsEmbeddedSource;
-              _lyricsEmbedded = !embeddedInstrumental;
+              _lyricsEmbedded = true;
               _isInstrumental = embeddedInstrumental;
               _lyricsLoading = false;
               _embeddedLyricsChecked = true;
@@ -1052,7 +1052,11 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
         );
         await _refreshEmbeddedCoverPreview(force: true);
         _markMetadataChanged();
-        await _syncDownloadHistoryMetadata();
+        await _syncDownloadHistoryMetadata(
+          hasLyrics: hasUsableLyricsContent(
+            (result['lyrics'] ?? result['lyrics_lrc'])?.toString() ?? '',
+          ),
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(context.l10n.trackReEnrichSuccess)),
@@ -1149,7 +1153,11 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
             );
             await _refreshEmbeddedCoverPreview(force: true);
             _markMetadataChanged();
-            await _syncDownloadHistoryMetadata();
+            await _syncDownloadHistoryMetadata(
+              hasLyrics: hasUsableLyricsContent(
+                (result['lyrics'] ?? result['lyrics_lrc'])?.toString() ?? '',
+              ),
+            );
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(context.l10n.trackReEnrichSuccess)),
@@ -1195,7 +1203,9 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
     }
   }
 
-  Future<void> _syncDownloadHistoryMetadata() async {
+  Future<void> _syncDownloadHistoryMetadata({bool? hasLyrics}) async {
+    final resolvedHasLyrics =
+        hasLyrics ?? (_embeddedLyricsChecked ? _lyricsEmbedded : null);
     if (_isLocalItem) {
       final item = _localLibraryItem;
       if (item == null) return;
@@ -1203,11 +1213,13 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
         await LibraryDatabase.instance.updateAudioMetadata(
           item.id,
           explicit: isExplicit,
+          hasLyrics: resolvedHasLyrics,
         );
         if (mounted) {
           _setState(() {
             _currentLocalLibraryItem = item.withAudioMetadata(
               explicit: isExplicit,
+              hasLyrics: resolvedHasLyrics,
             );
           });
         }
@@ -1246,6 +1258,8 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
             label: normalizedOrNull(label),
             copyright: normalizedOrNull(copyright),
             explicit: isExplicit,
+            hasLyrics: resolvedHasLyrics,
+            lyricsMetadataScanVersion: resolvedHasLyrics == null ? null : 1,
           );
     } catch (e) {
       _log.w('Failed to sync download history metadata: $e');

@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
+import 'package:spotiflac_android/utils/string_utils.dart';
 
 class SavedCoverResult {
   final String fileName;
@@ -20,9 +21,9 @@ class CoverDownloadService {
     required String baseName,
     required AppSettings settings,
   }) async {
-    final normalizedUrl = coverUrl.trim();
-    if (normalizedUrl.isEmpty) {
-      throw const FormatException('No cover art source available');
+    final normalizedUrl = normalizeRemoteHttpUrl(coverUrl);
+    if (normalizedUrl == null) {
+      throw const FormatException('No remote cover art source available');
     }
 
     final safeBaseName = await PlatformBridge.sanitizeFilename(baseName.trim());

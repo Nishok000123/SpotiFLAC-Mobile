@@ -149,6 +149,9 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
         storedQuality;
     final useSaf = context.storageMode == 'saf';
     final resultFileName = result['file_name']?.toString().trim();
+    final lyricsAvailability = await _resolveFinalLyricsAvailability(
+      filePath: filePath,
+    );
 
     await ref
         .read(downloadHistoryProvider.notifier)
@@ -172,6 +175,8 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
             genre: normalizeOptionalString(result['genre']?.toString()),
             label: normalizeOptionalString(result['label']?.toString()),
             copyright: normalizeOptionalString(result['copyright']?.toString()),
+            hasLyrics: lyricsAvailability.hasLyrics,
+            lyricsMetadataScanVersion: lyricsAvailability.scanVersion,
           ),
           preserveTrackVariant: context.item.preserveQualityVariant,
         );
@@ -1441,7 +1446,7 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
       if (finalQuality != null) actualQuality = finalQuality;
     }
 
-    await _saveExternalLrc(
+    final externalLrcWritten = await _saveExternalLrc(
       result: result,
       settings: settings,
       extensionState: ref.read(extensionProvider),
@@ -1483,6 +1488,10 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
         lowerFilePath.endsWith('.ogg');
 
     final completedFilePath = filePath;
+    final lyricsAvailability = await _resolveFinalLyricsAvailability(
+      filePath: completedFilePath,
+      externalLrcWritten: externalLrcWritten,
+    );
     await persistBeforePublishingDownloadCompletion(
       persist: () async {
         if (!settings.saveDownloadHistory) return;
@@ -1511,6 +1520,8 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
                 copyright: normalizeOptionalString(
                   result['copyright'] as String?,
                 ),
+                hasLyrics: lyricsAvailability.hasLyrics,
+                lyricsMetadataScanVersion: lyricsAvailability.scanVersion,
               ),
               preserveTrackVariant: item.preserveQualityVariant,
             );

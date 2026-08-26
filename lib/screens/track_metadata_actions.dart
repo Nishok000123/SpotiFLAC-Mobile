@@ -96,7 +96,7 @@ extension _TrackMetadataFileActions on _TrackMetadataScreenState {
             _lyrics = null;
             _rawLyrics = null;
             _lyricsSource = context.l10n.trackLyricsEmbeddedSource;
-            _lyricsEmbedded = false;
+            _lyricsEmbedded = true;
           } else {
             _lyrics = null;
             _rawLyrics = null;

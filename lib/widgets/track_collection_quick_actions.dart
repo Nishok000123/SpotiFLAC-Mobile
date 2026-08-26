@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
@@ -195,6 +196,23 @@ class _TrackOptionsSheet extends ConsumerWidget {
                 ),
 
               _OptionTile(
+                icon: Icons.content_copy_rounded,
+                title: context.l10n.trackOptionCopyTrackName,
+                onTap: () => _copyText(context, track.name),
+              ),
+              _OptionTile(
+                icon: Icons.person_outline_rounded,
+                title: context.l10n.trackOptionCopyArtist,
+                onTap: () => _copyText(context, track.artistName),
+              ),
+              _OptionTile(
+                icon: Icons.copy_all_rounded,
+                title: context.l10n.trackOptionCopyTrackAndArtist,
+                onTap: () =>
+                    _copyText(context, '${track.name} - ${track.artistName}'),
+              ),
+
+              _OptionTile(
                 icon: Icons.album_outlined,
                 title: context.l10n.homeGoToAlbum,
                 onTap: () => _goToAlbum(context),
@@ -273,6 +291,15 @@ class _TrackOptionsSheet extends ConsumerWidget {
     final rootContext = Navigator.of(context, rootNavigator: true).context;
     Navigator.pop(context);
     downloadSingleTrack(rootContext, ref, track, forceQualityPicker: true);
+  }
+
+  void _copyText(BuildContext context, String text) {
+    final rootContext = Navigator.of(context, rootNavigator: true).context;
+    Navigator.pop(context);
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(rootContext).showSnackBar(
+      SnackBar(content: Text(rootContext.l10n.trackCopiedToClipboard)),
+    );
   }
 
   Future<void> _goToAlbum(BuildContext context) async {

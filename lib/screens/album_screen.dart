@@ -30,6 +30,7 @@ import 'package:spotiflac_android/widgets/motion_header_banner.dart';
 import 'package:spotiflac_android/widgets/track_detail_actions.dart';
 import 'package:spotiflac_android/widgets/selection_action_button.dart';
 import 'package:spotiflac_android/widgets/selection_bottom_bar.dart';
+import 'package:spotiflac_android/widgets/downloadable_cover.dart';
 
 class _AlbumCache {
   static final _cache = TtlCache<List<Track>>(
@@ -437,21 +438,29 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
       blurAndScrimBackground: showSquareCover,
       coverBuilder: showSquareCover
           ? (context, coverSize) => coverThumbUrl != null
-                ? CachedNetworkImage(
-                    imageUrl: highResCoverUrl(coverThumbUrl) ?? coverThumbUrl,
-                    fit: BoxFit.cover,
-                    width: coverSize,
-                    height: coverSize,
-                    memCacheWidth: cacheWidth,
-                    cacheManager: CoverCacheManager.instance,
-                    placeholder: (_, _) =>
-                        Container(color: colorScheme.surfaceContainerHighest),
-                    errorWidget: (_, _, _) => Container(
-                      color: colorScheme.surfaceContainerHighest,
-                      child: Icon(
-                        Icons.album,
-                        size: 48,
-                        color: colorScheme.onSurfaceVariant,
+                ? DownloadableCover(
+                    coverUrl: highResCoverUrl(coverThumbUrl) ?? coverThumbUrl,
+                    baseName: [
+                      if (artistName != null && artistName.isNotEmpty)
+                        artistName,
+                      widget.albumName,
+                    ].join(' - '),
+                    child: CachedNetworkImage(
+                      imageUrl: highResCoverUrl(coverThumbUrl) ?? coverThumbUrl,
+                      fit: BoxFit.cover,
+                      width: coverSize,
+                      height: coverSize,
+                      memCacheWidth: cacheWidth,
+                      cacheManager: CoverCacheManager.instance,
+                      placeholder: (_, _) =>
+                          Container(color: colorScheme.surfaceContainerHighest),
+                      errorWidget: (_, _, _) => Container(
+                        color: colorScheme.surfaceContainerHighest,
+                        child: Icon(
+                          Icons.album,
+                          size: 48,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   )

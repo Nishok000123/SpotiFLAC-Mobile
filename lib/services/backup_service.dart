@@ -79,6 +79,9 @@ class BackupService {
   static const int formatVersion = 1;
   static const String fileExtension = 'json';
 
+  static String encode(Map<String, dynamic> envelope) =>
+      const JsonEncoder.withIndent('  ').convert(envelope);
+
   /// Builds the backup envelope written to disk.
   static Map<String, dynamic> buildEnvelope({
     required Map<String, dynamic>? settings,
@@ -119,7 +122,7 @@ class BackupService {
     final fileName = 'spotiflac_backup_$stamp.$fileExtension';
     final file = File(p.join(backupsDir.path, fileName));
 
-    await file.writeAsString(jsonEncode(envelope), flush: true);
+    await file.writeAsString(encode(envelope), flush: true);
     _log.i('Backup written to ${file.path}');
     return file;
   }

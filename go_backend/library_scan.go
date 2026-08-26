@@ -39,6 +39,7 @@ type LibraryScanResult struct {
 	Comment              string `json:"comment,omitempty"`
 	AlbumType            string `json:"albumType,omitempty"`
 	Explicit             bool   `json:"explicit,omitempty"`
+	HasLyrics            bool   `json:"hasLyrics"`
 	UPC                  string `json:"upc,omitempty"`
 	Format               string `json:"format,omitempty"`
 	MetadataFromFilename bool   `json:"metadataFromFilename,omitempty"`

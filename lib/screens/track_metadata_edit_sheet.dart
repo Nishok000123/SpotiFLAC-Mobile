@@ -1300,7 +1300,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
                       artists,
                       album,
                       if (date.isNotEmpty) date,
-                      if (isrc.isNotEmpty) 'ISRC $isrc',
+                      if (isrc.isNotEmpty) 'ISRC ${formatIsrcForDisplay(isrc)}',
                     ].where((value) => value.isNotEmpty).join('\n');
 
                     return ListTile(
@@ -3095,6 +3095,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
 class _MetadataItem {
   final String label;
   final String value;
+  final String rawValue;
 
-  _MetadataItem(this.label, this.value);
+  _MetadataItem(this.label, this.value, {String? rawValue})
+    : rawValue = rawValue ?? value;
 }

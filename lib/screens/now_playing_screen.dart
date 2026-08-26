@@ -14,6 +14,7 @@ import 'package:spotiflac_android/services/music_player_service.dart';
 import 'package:spotiflac_android/utils/clickable_metadata.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/int_utils.dart';
+import 'package:spotiflac_android/utils/isrc_utils.dart';
 import 'package:spotiflac_android/utils/lyrics_parser.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
@@ -2031,7 +2032,7 @@ class _MetadataList extends StatelessWidget {
       (l10n.editMetadataFieldDate, s(meta['date'])),
       (l10n.editMetadataFieldTrackNum, s(meta['track_number'])),
       (l10n.editMetadataFieldDiscNum, s(meta['disc_number'])),
-      (l10n.editMetadataFieldIsrc, s(meta['isrc'])),
+      (l10n.editMetadataFieldIsrc, formatIsrcForDisplay(s(meta['isrc']))),
       (l10n.editMetadataFieldLabel, s(meta['label'])),
       (l10n.editMetadataFieldCopyright, s(meta['copyright'])),
       (l10n.libraryFilterFormat, s(meta['format']).toUpperCase()),

@@ -1497,15 +1497,29 @@ class _QuickPicksPageViewState extends State<_QuickPicksPageView> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: item.coverUrl != null && item.coverUrl!.isNotEmpty
-                  ? CachedCoverImage(
-                      imageUrl: item.coverUrl!,
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.cover,
-                      errorWidget: (context, url, error) => Container(
+            DownloadableCover(
+              coverUrl: item.coverUrl,
+              baseName: '${item.artists} - ${item.name}',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: item.coverUrl != null && item.coverUrl!.isNotEmpty
+                    ? CachedCoverImage(
+                        imageUrl: item.coverUrl!,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        errorWidget: (context, url, error) => Container(
+                          width: 48,
+                          height: 48,
+                          color: widget.colorScheme.surfaceContainerHighest,
+                          child: Icon(
+                            Icons.music_note,
+                            color: widget.colorScheme.onSurfaceVariant,
+                            size: 24,
+                          ),
+                        ),
+                      )
+                    : Container(
                         width: 48,
                         height: 48,
                         color: widget.colorScheme.surfaceContainerHighest,
@@ -1515,17 +1529,7 @@ class _QuickPicksPageViewState extends State<_QuickPicksPageView> {
                           size: 24,
                         ),
                       ),
-                    )
-                  : Container(
-                      width: 48,
-                      height: 48,
-                      color: widget.colorScheme.surfaceContainerHighest,
-                      child: Icon(
-                        Icons.music_note,
-                        color: widget.colorScheme.onSurfaceVariant,
-                        size: 24,
-                      ),
-                    ),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(

@@ -178,6 +178,7 @@ extension _QueueTabBatchActions on _QueueTabState {
     _setState(() {
       _selectedIds.clear();
       _isSelectionMode = false;
+      _selectionAnchorId = null;
     });
   }
 

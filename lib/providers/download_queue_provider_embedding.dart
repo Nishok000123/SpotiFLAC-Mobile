@@ -750,10 +750,11 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
             filePath: '',
             durationMs: track.duration * 1000,
           );
-          if (fetchedLrc.isNotEmpty && fetchedLrc != '[instrumental:true]') {
+          if (hasUsableLyricsContent(fetchedLrc) &&
+              !isInstrumentalLyricsMarker(fetchedLrc)) {
             lrcContent = fetchedLrc;
             _log.d('Lyrics fetched for $format (${fetchedLrc.length} chars)');
-          } else if (fetchedLrc == '[instrumental:true]') {
+          } else if (isInstrumentalLyricsMarker(fetchedLrc)) {
             _log.d('Track is instrumental, skipping lyrics handling');
           }
         } catch (e) {

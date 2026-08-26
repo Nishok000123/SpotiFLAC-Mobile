@@ -8169,6 +8169,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'About & support'**
   String get settingsGroupHelp;
+
+  /// Filter option for tracks without embedded or sidecar lyrics
+  ///
+  /// In en, this message translates to:
+  /// **'Missing lyrics'**
+  String get libraryFilterMetadataMissingLyrics;
+
+  /// Track menu action that copies the track title
+  ///
+  /// In en, this message translates to:
+  /// **'Copy track name'**
+  String get trackOptionCopyTrackName;
+
+  /// Track menu action that copies the artist name
+  ///
+  /// In en, this message translates to:
+  /// **'Copy artist'**
+  String get trackOptionCopyArtist;
+
+  /// Track menu action that copies the track title and artist
+  ///
+  /// In en, this message translates to:
+  /// **'Copy track and artist'**
+  String get trackOptionCopyTrackAndArtist;
+
+  /// Metadata menu action that copies only the selected value
+  ///
+  /// In en, this message translates to:
+  /// **'Copy value'**
+  String get metadataCopyValue;
+
+  /// Metadata menu action that copies the selected key and value
+  ///
+  /// In en, this message translates to:
+  /// **'Copy field and value'**
+  String get metadataCopyField;
+
+  /// Metadata menu action that copies every visible key and value
+  ///
+  /// In en, this message translates to:
+  /// **'Copy all metadata'**
+  String get metadataCopyAll;
 }
 
 class _AppLocalizationsDelegate

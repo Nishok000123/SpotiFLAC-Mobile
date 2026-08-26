@@ -5,6 +5,7 @@ import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/app_sliver_header.dart';
+import 'package:spotiflac_android/utils/ordered_range_selection.dart';
 
 final RegExp _domainPattern = RegExp(
   r'domain:\s*([^\s,]+)',
@@ -26,6 +27,7 @@ class _LogScreenState extends State<LogScreen> {
   bool _autoScroll = true;
   bool _selectionMode = false;
   final Set<LogEntry> _selectedEntries = <LogEntry>{};
+  LogEntry? _selectionAnchor;
 
   final List<String> _levels = ['ALL', 'DEBUG', 'INFO', 'WARN', 'ERROR'];
 
@@ -52,7 +54,12 @@ class _LogScreenState extends State<LogScreen> {
         _selectedEntries.removeWhere(
           (entry) => !currentEntries.contains(entry),
         );
-        if (_selectedEntries.isEmpty) _selectionMode = false;
+        if (_selectedEntries.isEmpty) {
+          _selectionMode = false;
+          _selectionAnchor = null;
+        } else if (!_selectedEntries.contains(_selectionAnchor)) {
+          _selectionAnchor = _selectedEntries.last;
+        }
       }
       setState(() {});
       if (_autoScroll && _scrollController.hasClients) {
@@ -98,16 +105,31 @@ class _LogScreenState extends State<LogScreen> {
       _selectionMode = true;
       _autoScroll = false;
       _selectedEntries.add(entry);
+      _selectionAnchor = entry;
     });
   }
 
   void _toggleEntrySelection(LogEntry entry) {
     if (!_selectionMode) return;
     setState(() {
-      if (!_selectedEntries.add(entry)) {
-        _selectedEntries.remove(entry);
-      }
+      _selectionAnchor = toggleOrderedSelection(
+        selected: _selectedEntries,
+        target: entry,
+      );
       if (_selectedEntries.isEmpty) _selectionMode = false;
+    });
+  }
+
+  void _selectRangeTo(LogEntry entry) {
+    setState(() {
+      _selectionMode = true;
+      _autoScroll = false;
+      _selectionAnchor = addOrderedSelectionRange(
+        selected: _selectedEntries,
+        visibleItems: _filteredLogs,
+        target: entry,
+        anchor: _selectionAnchor,
+      );
     });
   }
 
@@ -115,6 +137,7 @@ class _LogScreenState extends State<LogScreen> {
     setState(() {
       _selectionMode = false;
       _selectedEntries.clear();
+      _selectionAnchor = null;
     });
   }
 
@@ -129,16 +152,19 @@ class _LogScreenState extends State<LogScreen> {
         _selectedEntries.addAll(visibleLogs);
       }
       _selectionMode = _selectedEntries.isNotEmpty;
+      _selectionAnchor = _selectedEntries.isEmpty
+          ? null
+          : allVisibleSelected
+          ? _selectedEntries.last
+          : visibleLogs.lastOrNull;
     });
   }
 
   Future<void> _copySelectedLogs() async {
-    final selectedInLogOrder = LogBuffer().entries
-        .where(_selectedEntries.contains)
-        .toList(growable: false);
-    if (selectedInLogOrder.isEmpty) return;
+    final selectedInUserOrder = _selectedEntries.toList(growable: false);
+    if (selectedInUserOrder.isEmpty) return;
     await Clipboard.setData(
-      ClipboardData(text: formatLogEntries(selectedInLogOrder)),
+      ClipboardData(text: formatLogEntries(selectedInUserOrder)),
     );
     if (!mounted) return;
     _exitSelectionMode();
@@ -155,7 +181,18 @@ class _LogScreenState extends State<LogScreen> {
   void _shareLogs() async {
     final logs = await LogBuffer().exportWithDeviceInfo();
     SharePlus.instance.share(
-      ShareParams(text: logs, subject: 'SpotiFLAC Logs'),
+      ShareParams(text: logs, subject: 'SpotiFLAC Mobile Logs'),
+    );
+  }
+
+  void _shareSelectedLogs() {
+    final selectedInUserOrder = _selectedEntries.toList(growable: false);
+    if (selectedInUserOrder.isEmpty) return;
+    SharePlus.instance.share(
+      ShareParams(
+        text: formatLogEntries(selectedInUserOrder),
+        subject: 'SpotiFLAC Mobile Logs',
+      ),
     );
   }
 
@@ -174,6 +211,7 @@ class _LogScreenState extends State<LogScreen> {
             onPressed: () {
               _selectionMode = false;
               _selectedEntries.clear();
+              _selectionAnchor = null;
               LogBuffer().clear();
               Navigator.pop(context);
             },
@@ -248,6 +286,13 @@ class _LogScreenState extends State<LogScreen> {
                         onPressed: _selectedEntries.isEmpty
                             ? null
                             : _copySelectedLogs,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.share),
+                        tooltip: context.l10n.logShareLogs,
+                        onPressed: _selectedEntries.isEmpty
+                            ? null
+                            : _shareSelectedLogs,
                       ),
                     ]
                   : [
@@ -488,7 +533,9 @@ class _LogScreenState extends State<LogScreen> {
                             selectionMode: _selectionMode,
                             selected: _selectedEntries.contains(log),
                             onTap: () => _toggleEntrySelection(log),
-                            onLongPress: () => _enterSelectionMode(log),
+                            onLongPress: () => _selectionMode
+                                ? _selectRangeTo(log)
+                                : _enterSelectionMode(log),
                           );
                         }),
                       ],

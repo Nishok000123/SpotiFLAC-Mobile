@@ -33,6 +33,8 @@ class DownloadHistoryItem {
   final String? label;
   final String? copyright;
   final bool explicit;
+  final bool hasLyrics;
+  final int lyricsMetadataScanVersion;
 
   const DownloadHistoryItem({
     required this.id,
@@ -67,6 +69,8 @@ class DownloadHistoryItem {
     this.label,
     this.copyright,
     this.explicit = false,
+    this.hasLyrics = false,
+    this.lyricsMetadataScanVersion = 0,
   });
 
   Map<String, dynamic> toJson() => {
@@ -102,6 +106,8 @@ class DownloadHistoryItem {
     'label': label,
     'copyright': copyright,
     'explicit': explicit,
+    'hasLyrics': hasLyrics,
+    'lyricsMetadataScanVersion': lyricsMetadataScanVersion,
   };
 
   factory DownloadHistoryItem.fromJson(Map<String, dynamic> json) =>
@@ -138,6 +144,9 @@ class DownloadHistoryItem {
         label: json['label'] as String?,
         copyright: json['copyright'] as String?,
         explicit: parseExplicitFlag(json['explicit']) == true,
+        hasLyrics: json['hasLyrics'] == true || json['hasLyrics'] == 1,
+        lyricsMetadataScanVersion:
+            (json['lyricsMetadataScanVersion'] as num?)?.toInt() ?? 0,
       );
 
   DownloadHistoryItem copyWith({
@@ -170,6 +179,8 @@ class DownloadHistoryItem {
     String? label,
     String? copyright,
     bool? explicit,
+    bool? hasLyrics,
+    int? lyricsMetadataScanVersion,
   }) {
     return DownloadHistoryItem(
       id: id,
@@ -204,6 +215,9 @@ class DownloadHistoryItem {
       label: label ?? this.label,
       copyright: copyright ?? this.copyright,
       explicit: explicit ?? this.explicit,
+      hasLyrics: hasLyrics ?? this.hasLyrics,
+      lyricsMetadataScanVersion:
+          lyricsMetadataScanVersion ?? this.lyricsMetadataScanVersion,
     );
   }
 }

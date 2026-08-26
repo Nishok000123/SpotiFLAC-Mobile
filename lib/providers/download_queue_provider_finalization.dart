@@ -259,6 +259,8 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
     String? genre,
     String? label,
     String? copyright,
+    required bool hasLyrics,
+    required int lyricsMetadataScanVersion,
   }) {
     final backendTitle = result['title'] as String?;
     final backendArtist = result['artist'] as String?;
@@ -343,6 +345,53 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
       explicit:
           trackToDownload.isExplicit ||
           parseExplicitFlag(result['explicit']) == true,
+      hasLyrics: hasLyrics,
+      lyricsMetadataScanVersion: lyricsMetadataScanVersion,
+    );
+  }
+
+  Future<({bool hasLyrics, int scanVersion})> _resolveFinalLyricsAvailability({
+    required String filePath,
+    Map<String, dynamic>? probedMetadata,
+    bool externalLrcWritten = false,
+  }) async {
+    var metadataScanned = false;
+    var hasEmbeddedLyrics = false;
+    try {
+      final metadata =
+          probedMetadata ?? await PlatformBridge.readFileMetadata(filePath);
+      if (metadata['error'] == null &&
+          (metadata.containsKey('lyrics') ||
+              metadata.containsKey('hasLyrics'))) {
+        metadataScanned = true;
+        hasEmbeddedLyrics =
+            metadata['hasLyrics'] == true ||
+            hasUsableLyricsContent(metadata['lyrics']?.toString() ?? '');
+      }
+    } catch (e) {
+      _log.d('Final lyrics metadata probe failed for $filePath: $e');
+    }
+
+    var hasSidecarLyrics = externalLrcWritten;
+    if (!isContentUri(filePath)) {
+      try {
+        final lrcPath = filePath.replaceAll(RegExp(r'\.[^.]+$'), '.lrc');
+        final safeLrcPath = lrcPath == filePath ? '$filePath.lrc' : lrcPath;
+        final sidecar = File(safeLrcPath);
+        if (await sidecar.exists()) {
+          hasSidecarLyrics = hasUsableLyricsContent(
+            await sidecar.readAsString(),
+          );
+        }
+      } catch (e) {
+        _log.d('Final sidecar lyrics probe failed for $filePath: $e');
+      }
+    }
+
+    final hasLyrics = hasEmbeddedLyrics || hasSidecarLyrics;
+    return (
+      hasLyrics: hasLyrics,
+      scanVersion: hasLyrics || metadataScanned ? 1 : 0,
     );
   }
 
@@ -462,14 +511,14 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
     }
   }
 
-  Future<void> _writeLrcToSaf({
+  Future<bool> _writeLrcToSaf({
     required String treeUri,
     required String relativeDir,
     required String baseName,
     required String lrcContent,
   }) async {
     try {
-      if (lrcContent.isEmpty) return;
+      if (!hasUsableLyricsContent(lrcContent)) return false;
       final tempDir = await getTemporaryDirectory();
       final tempPath = '${tempDir.path}/$baseName.lrc';
       await File(tempPath).writeAsString(lrcContent);
@@ -489,8 +538,10 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
       try {
         await File(tempPath).delete();
       } catch (_) {}
+      return uri != null;
     } catch (e) {
       _log.w('Failed to create external LRC in SAF: $e');
+      return false;
     }
   }
 
@@ -1230,7 +1281,7 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
   /// modes). [resolveBaseName] and [onFetchError] are each caller's own
   /// base-name fallback chain and fetch-failure log line, evaluated lazily
   /// to match the original call sites exactly.
-  Future<void> _saveExternalLrc({
+  Future<bool> _saveExternalLrc({
     required Map<String, dynamic> result,
     required AppSettings settings,
     required ExtensionState extensionState,
@@ -1250,11 +1301,11 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
         !_shouldSkipLyrics(extensionState, track.source, service) &&
         (lyricsMode == 'external' || lyricsMode == 'both');
     if (!shouldSaveExternalLrc) {
-      return;
+      return false;
     }
 
     String? lrcContent = result['lyrics_lrc'] as String?;
-    if (lrcContent == null || lrcContent.isEmpty) {
+    if (!hasUsableLyricsContent(lrcContent ?? '')) {
       try {
         lrcContent = await PlatformBridge.getLyricsLRC(
           track.id,
@@ -1266,31 +1317,37 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
         onFetchError(e);
       }
     }
-    if (lrcContent == null || lrcContent.isEmpty) {
-      return;
+    if (!hasUsableLyricsContent(lrcContent ?? '') ||
+        isInstrumentalLyricsMarker(lrcContent!)) {
+      return false;
     }
+    final resolvedLrc = lrcContent;
 
     if (storageMode == 'saf' && isContentUri(filePath)) {
       if (downloadTreeUri == null || downloadTreeUri.isEmpty) {
-        return;
+        return false;
       }
       final baseName = await resolveBaseName();
-      await _writeLrcToSaf(
+      final written = await _writeLrcToSaf(
         treeUri: downloadTreeUri,
         relativeDir: safRelativeDir,
         baseName: baseName,
-        lrcContent: lrcContent,
+        lrcContent: resolvedLrc,
       );
-      return;
+      if (written) result['lyrics_lrc'] = resolvedLrc;
+      return written;
     }
 
     try {
       final lrcPath = filePath.replaceAll(RegExp(r'\.[^.]+$'), '.lrc');
       final safeLrcPath = lrcPath == filePath ? '$filePath.lrc' : lrcPath;
-      await File(safeLrcPath).writeAsString(lrcContent);
+      await File(safeLrcPath).writeAsString(resolvedLrc);
+      result['lyrics_lrc'] = resolvedLrc;
       _log.d('Native-worker external LRC saved: $safeLrcPath');
+      return true;
     } catch (e) {
       _log.w('Failed to save native-worker external LRC: $e');
+      return false;
     }
   }
 }

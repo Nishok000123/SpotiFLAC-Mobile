@@ -174,24 +174,40 @@ extension _HomeTabExploreUI on _HomeTabState {
                   ? CrossAxisAlignment.center
                   : CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(
-                    isArtist ? cardSize / 2 : 10,
-                  ),
-                  child: item.coverUrl != null && item.coverUrl!.isNotEmpty
-                      ? CachedCoverImage(
-                          imageUrl: item.coverUrl!,
-                          width: cardSize,
-                          height: cardSize,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => ShimmerLoading(
-                            child: Container(
+                DownloadableCover(
+                  coverUrl: item.coverUrl,
+                  baseName: item.artists.isEmpty
+                      ? item.name
+                      : '${item.artists} - ${item.name}',
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(
+                      isArtist ? cardSize / 2 : 10,
+                    ),
+                    child: item.coverUrl != null && item.coverUrl!.isNotEmpty
+                        ? CachedCoverImage(
+                            imageUrl: item.coverUrl!,
+                            width: cardSize,
+                            height: cardSize,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => ShimmerLoading(
+                              child: Container(
+                                width: cardSize,
+                                height: cardSize,
+                                color: colorScheme.surfaceContainerHighest,
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
                               width: cardSize,
                               height: cardSize,
                               color: colorScheme.surfaceContainerHighest,
+                              child: Icon(
+                                _getIconForType(item.type),
+                                color: colorScheme.onSurfaceVariant,
+                                size: iconSize,
+                              ),
                             ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
+                          )
+                        : Container(
                             width: cardSize,
                             height: cardSize,
                             color: colorScheme.surfaceContainerHighest,
@@ -201,17 +217,7 @@ extension _HomeTabExploreUI on _HomeTabState {
                               size: iconSize,
                             ),
                           ),
-                        )
-                      : Container(
-                          width: cardSize,
-                          height: cardSize,
-                          color: colorScheme.surfaceContainerHighest,
-                          child: Icon(
-                            _getIconForType(item.type),
-                            color: colorScheme.onSurfaceVariant,
-                            size: iconSize,
-                          ),
-                        ),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -363,24 +369,28 @@ extension _HomeTabExploreUI on _HomeTabState {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: item.coverUrl != null && item.coverUrl!.isNotEmpty
-                        ? CachedCoverImage(
-                            imageUrl: item.coverUrl!,
-                            width: 64,
-                            height: 64,
-                            fit: BoxFit.cover,
-                          )
-                        : Container(
-                            width: 64,
-                            height: 64,
-                            color: colorScheme.surfaceContainerHighest,
-                            child: Icon(
-                              Icons.music_note,
-                              color: colorScheme.onSurfaceVariant,
+                  DownloadableCover(
+                    coverUrl: item.coverUrl,
+                    baseName: '${item.artists} - ${item.name}',
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: item.coverUrl != null && item.coverUrl!.isNotEmpty
+                          ? CachedCoverImage(
+                              imageUrl: item.coverUrl!,
+                              width: 64,
+                              height: 64,
+                              fit: BoxFit.cover,
+                            )
+                          : Container(
+                              width: 64,
+                              height: 64,
+                              color: colorScheme.surfaceContainerHighest,
+                              child: Icon(
+                                Icons.music_note,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
                             ),
-                          ),
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(

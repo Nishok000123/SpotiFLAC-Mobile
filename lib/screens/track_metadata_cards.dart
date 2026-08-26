@@ -524,7 +524,12 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
         _MetadataItem(context.l10n.trackAlbumType, albumType!),
       if (comment != null)
         _MetadataItem(context.l10n.editMetadataFieldComment, comment!),
-      if (isrc != null && isrc!.isNotEmpty) _MetadataItem('ISRC', isrc!),
+      if (isrc != null && isrc!.isNotEmpty)
+        _MetadataItem(
+          'ISRC',
+          formatIsrcForDisplay(isrc),
+          rawValue: canonicalIsrcForCopy(isrc),
+        ),
     ];
 
     if (!_isLocalItem && _spotifyId != null && _spotifyId!.isNotEmpty) {
@@ -567,8 +572,13 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
             metadata.label == 'Qobuz ID';
         return InkWell(
           onTap: isCopyable
-              ? () => _copyToClipboard(context, metadata.value)
+              ? () => _copyToClipboard(context, metadata.rawValue)
               : null,
+          onLongPress: () => _showMetadataCopySheet(
+            context,
+            metadata: metadata,
+            allMetadata: items,
+          ),
           borderRadius: BorderRadius.circular(8),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
@@ -605,6 +615,48 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
         );
       }).toList(),
     );
+  }
+
+  Future<void> _showMetadataCopySheet(
+    BuildContext context, {
+    required _MetadataItem metadata,
+    required List<_MetadataItem> allMetadata,
+  }) async {
+    final action = await showAppBottomSheet<String>(
+      context: context,
+      title: metadata.label,
+      subtitle: metadata.value,
+      maxHeightFactor: 0.58,
+      builder: (sheetContext) => ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.only(bottom: 12),
+        children: [
+          ListTile(
+            leading: const Icon(Icons.content_copy_rounded),
+            title: Text(sheetContext.l10n.metadataCopyValue),
+            onTap: () => Navigator.pop(sheetContext, 'value'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.label_outline_rounded),
+            title: Text(sheetContext.l10n.metadataCopyField),
+            onTap: () => Navigator.pop(sheetContext, 'field'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.copy_all_rounded),
+            title: Text(sheetContext.l10n.metadataCopyAll),
+            onTap: () => Navigator.pop(sheetContext, 'all'),
+          ),
+        ],
+      ),
+    );
+    if (!context.mounted || action == null) return;
+    final text = switch (action) {
+      'field' => '${metadata.label}: ${metadata.rawValue}',
+      'all' =>
+        allMetadata.map((item) => '${item.label}: ${item.rawValue}').join('\n'),
+      _ => metadata.rawValue,
+    };
+    _copyToClipboard(context, text);
   }
 
   String _formatLabelForRaw(String raw) {

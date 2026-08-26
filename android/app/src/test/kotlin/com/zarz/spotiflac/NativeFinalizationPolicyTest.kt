@@ -8,6 +8,31 @@ import org.junit.Test
 
 class NativeFinalizationPolicyTest {
     @Test
+    fun usableLyricsRejectsHeadersButKeepsRealAndInstrumentalContent() {
+        assertFalse(
+            NativeFinalizationPolicy.hasUsableLyricsContent(
+                "[ar:Artist]\n[ti:Title]\n[offset:0]",
+            ),
+        )
+        assertFalse(
+            NativeFinalizationPolicy.hasUsableLyricsContent(
+                "[00:01.00]\n<00:01.10>\nv1:",
+            ),
+        )
+        assertTrue(
+            NativeFinalizationPolicy.hasUsableLyricsContent(
+                "[00:01.00]<00:01.10>v1: First line",
+            ),
+        )
+        assertTrue(
+            NativeFinalizationPolicy.hasUsableLyricsContent("[bg:Backing vocal]"),
+        )
+        assertTrue(
+            NativeFinalizationPolicy.hasUsableLyricsContent("[instrumental:true]"),
+        )
+    }
+
+    @Test
     fun automaticConversionSettingsAreNormalizedAndComparable() {
         val target = checkNotNull(
             NativeFinalizationPolicy.autoConversionTarget(

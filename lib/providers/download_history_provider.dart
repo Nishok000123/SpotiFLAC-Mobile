@@ -11,6 +11,7 @@ import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/utils/audio_format_utils.dart';
 import 'package:spotiflac_android/utils/int_utils.dart';
+import 'package:spotiflac_android/utils/lyrics_metadata_helper.dart';
 import 'package:spotiflac_android/utils/path_match_keys.dart';
 
 part 'download_history_models.dart';
@@ -202,6 +203,15 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
                 normalizeOptionalString(item.copyright) ??
                 normalizeOptionalString(existing.copyright),
             explicit: item.explicit || existing.explicit,
+            hasLyrics:
+                item.lyricsMetadataScanVersion >=
+                    existing.lyricsMetadataScanVersion
+                ? item.hasLyrics
+                : existing.hasLyrics,
+            lyricsMetadataScanVersion: max(
+              item.lyricsMetadataScanVersion,
+              existing.lyricsMetadataScanVersion,
+            ),
           );
     return (item: mergedItem, existingId: existing?.id);
   }
@@ -479,6 +489,8 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
     int? duration,
     String? composer,
     bool? explicit,
+    bool? hasLyrics,
+    int? lyricsMetadataScanVersion,
   }) async {
     final target = await _historyItemForUpdate(id);
     if (target == null) {
@@ -502,6 +514,8 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
       duration: duration,
       composer: composer,
       explicit: explicit,
+      hasLyrics: hasLyrics,
+      lyricsMetadataScanVersion: lyricsMetadataScanVersion,
     );
 
     if (updated.quality == current.quality &&
@@ -515,7 +529,10 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
         updated.totalDiscs == current.totalDiscs &&
         updated.duration == current.duration &&
         updated.composer == current.composer &&
-        updated.explicit == current.explicit) {
+        updated.explicit == current.explicit &&
+        updated.hasLyrics == current.hasLyrics &&
+        updated.lyricsMetadataScanVersion ==
+            current.lyricsMetadataScanVersion) {
       return;
     }
 
@@ -550,6 +567,8 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
     String? label,
     String? copyright,
     bool? explicit,
+    bool? hasLyrics,
+    int? lyricsMetadataScanVersion,
   }) async {
     final target = await _historyItemForUpdate(id);
     if (target == null) {
@@ -574,6 +593,8 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
       label: label,
       copyright: copyright,
       explicit: explicit,
+      hasLyrics: hasLyrics,
+      lyricsMetadataScanVersion: lyricsMetadataScanVersion,
     );
 
     final updatedItems = target.index >= 0

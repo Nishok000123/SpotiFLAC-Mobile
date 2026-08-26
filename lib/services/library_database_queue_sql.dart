@@ -385,6 +385,7 @@ extension _LibraryDbQueueSql on LibraryDatabase {
       discNumberExpr: 'h.disc_number',
       isrcExpr: 'h.isrc',
       labelExpr: 'h.label',
+      hasLyricsExpr: 'h.has_lyrics',
     );
   }
 
@@ -415,6 +416,7 @@ extension _LibraryDbQueueSql on LibraryDatabase {
       discNumberExpr: 'l.disc_number',
       isrcExpr: 'l.isrc',
       labelExpr: 'l.label',
+      hasLyricsExpr: 'l.has_lyrics',
     );
   }
 
@@ -434,6 +436,7 @@ extension _LibraryDbQueueSql on LibraryDatabase {
     required String discNumberExpr,
     required String isrcExpr,
     required String labelExpr,
+    required String hasLyricsExpr,
   }) {
     final quality = request.quality?.trim().toLowerCase();
     if (quality != null && quality.isNotEmpty) {
@@ -517,6 +520,9 @@ extension _LibraryDbQueueSql on LibraryDatabase {
         break;
       case 'missing-label':
         where.add('NOT ($hasLabel)');
+        break;
+      case 'missing-lyrics':
+        where.add('COALESCE($hasLyricsExpr, 0) = 0');
         break;
     }
   }

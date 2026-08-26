@@ -4973,4 +4973,25 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get settingsGroupHelp => 'Tentang & dukungan';
+
+  @override
+  String get libraryFilterMetadataMissingLyrics => 'Lirik tidak tersedia';
+
+  @override
+  String get trackOptionCopyTrackName => 'Salin judul lagu';
+
+  @override
+  String get trackOptionCopyArtist => 'Salin artis';
+
+  @override
+  String get trackOptionCopyTrackAndArtist => 'Salin judul dan artis';
+
+  @override
+  String get metadataCopyValue => 'Salin nilai';
+
+  @override
+  String get metadataCopyField => 'Salin field dan nilai';
+
+  @override
+  String get metadataCopyAll => 'Salin semua metadata';
 }

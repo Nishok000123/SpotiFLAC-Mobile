@@ -110,20 +110,24 @@ extension _ArtistScreenSections on _ArtistScreenState {
               MotionHeaderBanner(
                 videoUrl: headerVideoUrl!,
                 fallback: hasValidImage
-                    ? CachedCoverImage(
-                        imageUrl: imageUrl!,
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
-                        memCacheWidth: 800,
-                        placeholder: (context, url) => Container(
-                          color: colorScheme.surfaceContainerHighest,
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: colorScheme.surfaceContainerHighest,
-                          child: Icon(
-                            Icons.person,
-                            size: 80,
-                            color: colorScheme.onSurfaceVariant,
+                    ? DownloadableCover(
+                        coverUrl: imageUrl,
+                        baseName: widget.artistName,
+                        child: CachedCoverImage(
+                          imageUrl: imageUrl!,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
+                          memCacheWidth: 800,
+                          placeholder: (context, url) => Container(
+                            color: colorScheme.surfaceContainerHighest,
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: colorScheme.surfaceContainerHighest,
+                            child: Icon(
+                              Icons.person,
+                              size: 80,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
                       )
@@ -137,19 +141,23 @@ extension _ArtistScreenSections on _ArtistScreenState {
                       ),
               )
             else if (hasValidImage)
-              CachedCoverImage(
-                imageUrl: imageUrl!,
-                fit: BoxFit.cover,
-                alignment: Alignment.topCenter,
-                memCacheWidth: 800,
-                placeholder: (context, url) =>
-                    Container(color: colorScheme.surfaceContainerHighest),
-                errorWidget: (context, url, error) => Container(
-                  color: colorScheme.surfaceContainerHighest,
-                  child: Icon(
-                    Icons.person,
-                    size: 80,
-                    color: colorScheme.onSurfaceVariant,
+              DownloadableCover(
+                coverUrl: imageUrl,
+                baseName: widget.artistName,
+                child: CachedCoverImage(
+                  imageUrl: imageUrl!,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                  memCacheWidth: 800,
+                  placeholder: (context, url) =>
+                      Container(color: colorScheme.surfaceContainerHighest),
+                  errorWidget: (context, url, error) => Container(
+                    color: colorScheme.surfaceContainerHighest,
+                    child: Icon(
+                      Icons.person,
+                      size: 80,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               )
@@ -448,26 +456,30 @@ extension _ArtistScreenSections on _ArtistScreenState {
                 ),
                 const SizedBox(width: 12),
                 track.coverUrl != null
-                    ? CachedCoverImage(
-                        imageUrl: track.coverUrl!,
-                        width: 48,
-                        height: 48,
-                        borderRadius: BorderRadius.circular(4),
-                        placeholder: (context, url) => ShimmerLoading(
-                          child: Container(
+                    ? DownloadableCover(
+                        coverUrl: track.coverUrl,
+                        baseName: '${track.artistName} - ${track.name}',
+                        child: CachedCoverImage(
+                          imageUrl: track.coverUrl!,
+                          width: 48,
+                          height: 48,
+                          borderRadius: BorderRadius.circular(4),
+                          placeholder: (context, url) => ShimmerLoading(
+                            child: Container(
+                              width: 48,
+                              height: 48,
+                              color: colorScheme.surfaceContainerHighest,
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
                             width: 48,
                             height: 48,
                             color: colorScheme.surfaceContainerHighest,
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          width: 48,
-                          height: 48,
-                          color: colorScheme.surfaceContainerHighest,
-                          child: Icon(
-                            Icons.music_note,
-                            color: colorScheme.onSurfaceVariant,
-                            size: 24,
+                            child: Icon(
+                              Icons.music_note,
+                              color: colorScheme.onSurfaceVariant,
+                              size: 24,
+                            ),
                           ),
                         ),
                       )
@@ -682,22 +694,35 @@ extension _ArtistScreenSections on _ArtistScreenState {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: album.coverUrl != null
-                          ? CachedCoverImage(
-                              imageUrl: album.coverUrl!,
-                              width: tileSize,
-                              height: tileSize,
-                              fit: BoxFit.cover,
-                              memCacheWidth: (tileSize * 2).round(),
-                              memCacheHeight: (tileSize * 2).round(),
-                              placeholder: (context, url) => ShimmerLoading(
-                                child: Container(
-                                  color: colorScheme.surfaceContainerHighest,
+                    DownloadableCover(
+                      coverUrl: album.coverUrl,
+                      baseName: '${album.artists} - ${album.name}',
+                      enabled: !isSelectionMode,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: album.coverUrl != null
+                            ? CachedCoverImage(
+                                imageUrl: album.coverUrl!,
+                                width: tileSize,
+                                height: tileSize,
+                                fit: BoxFit.cover,
+                                memCacheWidth: (tileSize * 2).round(),
+                                memCacheHeight: (tileSize * 2).round(),
+                                placeholder: (context, url) => ShimmerLoading(
+                                  child: Container(
+                                    color: colorScheme.surfaceContainerHighest,
+                                  ),
                                 ),
-                              ),
-                              errorWidget: (context, url, error) => Container(
+                                errorWidget: (context, url, error) => Container(
+                                  color: colorScheme.surfaceContainerHighest,
+                                  child: Icon(
+                                    Icons.album,
+                                    color: colorScheme.onSurfaceVariant,
+                                    size: 40,
+                                  ),
+                                ),
+                              )
+                            : Container(
                                 color: colorScheme.surfaceContainerHighest,
                                 child: Icon(
                                   Icons.album,
@@ -705,15 +730,7 @@ extension _ArtistScreenSections on _ArtistScreenState {
                                   size: 40,
                                 ),
                               ),
-                            )
-                          : Container(
-                              color: colorScheme.surfaceContainerHighest,
-                              child: Icon(
-                                Icons.album,
-                                color: colorScheme.onSurfaceVariant,
-                                size: 40,
-                              ),
-                            ),
+                      ),
                     ),
                     if (isSelectionMode)
                       Positioned.fill(

@@ -6436,5 +6436,33 @@
   "settingsGroupHelp": "About & support",
   "@settingsGroupHelp": {
     "description": "Settings group covering the about page and donations"
+  },
+  "libraryFilterMetadataMissingLyrics": "Missing lyrics",
+  "@libraryFilterMetadataMissingLyrics": {
+    "description": "Filter option for tracks without embedded or sidecar lyrics"
+  },
+  "trackOptionCopyTrackName": "Copy track name",
+  "@trackOptionCopyTrackName": {
+    "description": "Track menu action that copies the track title"
+  },
+  "trackOptionCopyArtist": "Copy artist",
+  "@trackOptionCopyArtist": {
+    "description": "Track menu action that copies the artist name"
+  },
+  "trackOptionCopyTrackAndArtist": "Copy track and artist",
+  "@trackOptionCopyTrackAndArtist": {
+    "description": "Track menu action that copies the track title and artist"
+  },
+  "metadataCopyValue": "Copy value",
+  "@metadataCopyValue": {
+    "description": "Metadata menu action that copies only the selected value"
+  },
+  "metadataCopyField": "Copy field and value",
+  "@metadataCopyField": {
+    "description": "Metadata menu action that copies the selected key and value"
+  },
+  "metadataCopyAll": "Copy all metadata",
+  "@metadataCopyAll": {
+    "description": "Metadata menu action that copies every visible key and value"
   }
 }

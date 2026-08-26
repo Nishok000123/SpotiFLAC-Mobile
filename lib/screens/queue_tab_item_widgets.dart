@@ -883,7 +883,7 @@ extension _QueueTabItemWidgets on _QueueTabState {
                 coverUrl: item.coverUrl ?? item.localCoverPath ?? '',
               ),
         onLongPress: _isSelectionMode
-            ? null
+            ? () => _selectRangeTo(item.id, libraryItems)
             : () => _enterSelectionMode(item.id),
         leading: Hero(
           tag: 'cover_lib_${item.id}',
@@ -1022,7 +1022,9 @@ extension _QueueTabItemWidgets on _QueueTabState {
               album: item.albumName,
               coverUrl: item.coverUrl ?? item.localCoverPath ?? '',
             ),
-      onLongPress: _isSelectionMode ? null : () => _enterSelectionMode(item.id),
+      onLongPress: _isSelectionMode
+          ? () => _selectRangeTo(item.id, libraryItems)
+          : () => _enterSelectionMode(item.id),
       cover: Hero(
         tag: 'cover_lib_${item.id}',
         child: _buildUnifiedCoverImage(item, colorScheme),

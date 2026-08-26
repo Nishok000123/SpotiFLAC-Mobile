@@ -26,6 +26,7 @@ import 'package:spotiflac_android/widgets/track_list_tile.dart';
 import 'package:spotiflac_android/widgets/track_detail_actions.dart';
 import 'package:spotiflac_android/screens/collapsing_header_scroll_mixin.dart';
 import 'package:spotiflac_android/widgets/error_card.dart';
+import 'package:spotiflac_android/widgets/downloadable_cover.dart';
 
 class PlaylistScreen extends ConsumerStatefulWidget {
   final String playlistName;
@@ -319,12 +320,16 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen>
       coverBuilder: hasMotion
           ? null
           : (context, coverSize) => _coverUrl != null
-                ? CachedCoverImage(
-                    imageUrl: highResCoverUrl(_coverUrl) ?? _coverUrl!,
-                    fit: BoxFit.cover,
-                    memCacheWidth: cacheWidth,
-                    placeholder: (_, _) => playlistPlaceholder(),
-                    errorWidget: (_, _, _) => playlistPlaceholder(size: 48),
+                ? DownloadableCover(
+                    coverUrl: highResCoverUrl(_coverUrl) ?? _coverUrl,
+                    baseName: _playlistName,
+                    child: CachedCoverImage(
+                      imageUrl: highResCoverUrl(_coverUrl) ?? _coverUrl!,
+                      fit: BoxFit.cover,
+                      memCacheWidth: cacheWidth,
+                      placeholder: (_, _) => playlistPlaceholder(),
+                      errorWidget: (_, _, _) => playlistPlaceholder(size: 48),
+                    ),
                   )
                 : playlistPlaceholder(size: 48),
       meta: HeaderMetaRow(
@@ -433,11 +438,16 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen>
                       forceQualityPicker: forceQualityPicker,
                     ),
                 leading: track.coverUrl != null
-                    ? CachedCoverImage(
-                        imageUrl: track.coverUrl!,
-                        width: 48,
-                        height: 48,
-                        borderRadius: BorderRadius.circular(8),
+                    ? DownloadableCover(
+                        coverUrl: track.coverUrl,
+                        baseName: '${track.artistName} - ${track.name}',
+                        enabled: !isSelectionMode,
+                        child: CachedCoverImage(
+                          imageUrl: track.coverUrl!,
+                          width: 48,
+                          height: 48,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       )
                     : Container(
                         width: 48,

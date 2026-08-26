@@ -42,6 +42,7 @@ import 'package:spotiflac_android/widgets/in_library_badge.dart';
 import 'package:spotiflac_android/widgets/preview_button.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/view_queue_snackbar_action.dart';
+import 'package:spotiflac_android/widgets/downloadable_cover.dart';
 
 part 'home_tab_helpers.dart';
 part 'home_tab_explore.dart';
@@ -1214,15 +1215,19 @@ class _HomeTabState extends ConsumerState<HomeTab>
                       margin: const EdgeInsets.only(right: 12),
                       child: Column(
                         children: [
-                          _DownloadedOrRemoteCover(
-                            downloadedFilePath: item.filePath,
-                            imageUrl: item.coverUrl,
-                            width: coverSize,
-                            height: coverSize,
-                            borderRadius: BorderRadius.circular(12),
-                            fallbackIcon: Icons.music_note,
-                            fallbackIconSize: 32,
-                            colorScheme: colorScheme,
+                          DownloadableCover(
+                            coverUrl: item.coverUrl,
+                            baseName: '${item.artistName} - ${item.trackName}',
+                            child: _DownloadedOrRemoteCover(
+                              downloadedFilePath: item.filePath,
+                              imageUrl: item.coverUrl,
+                              width: coverSize,
+                              height: coverSize,
+                              borderRadius: BorderRadius.circular(12),
+                              fallbackIcon: Icons.music_note,
+                              fallbackIconSize: 32,
+                              colorScheme: colorScheme,
+                            ),
                           ),
                           const SizedBox(height: 6),
                           Text(

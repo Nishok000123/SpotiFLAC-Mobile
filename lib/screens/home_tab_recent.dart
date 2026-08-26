@@ -144,18 +144,24 @@ extension _HomeTabRecentUI on _HomeTabState {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           child: Row(
             children: [
-              _DownloadedOrRemoteCover(
-                downloadedFilePath: isDownloaded
-                    ? downloadFilePathByRecentKey['${item.type.name}:${item.id}']
-                    : null,
-                imageUrl: item.imageUrl,
-                width: 56,
-                height: 56,
-                borderRadius: BorderRadius.circular(
-                  item.type == RecentAccessType.artist ? 28 : 4,
+              DownloadableCover(
+                coverUrl: item.imageUrl,
+                baseName: item.subtitle == null
+                    ? item.name
+                    : '${item.subtitle} - ${item.name}',
+                child: _DownloadedOrRemoteCover(
+                  downloadedFilePath: isDownloaded
+                      ? downloadFilePathByRecentKey['${item.type.name}:${item.id}']
+                      : null,
+                  imageUrl: item.imageUrl,
+                  width: 56,
+                  height: 56,
+                  borderRadius: BorderRadius.circular(
+                    item.type == RecentAccessType.artist ? 28 : 4,
+                  ),
+                  fallbackIcon: typeIcon,
+                  colorScheme: colorScheme,
                 ),
-                fallbackIcon: typeIcon,
-                colorScheme: colorScheme,
               ),
               const SizedBox(width: 12),
               Expanded(

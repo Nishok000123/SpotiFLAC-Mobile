@@ -177,7 +177,10 @@ internal fun NativeDownloadFinalizer.writeExternalLrc(context: Context, input: N
     val lyricsMode = input.request.optString("lyrics_mode", "")
     if (lyricsMode != "external" && lyricsMode != "both") return
     val lrc = resolveLyricsLrc(input)
-    if (lrc.isBlank() || lrc == "[instrumental:true]") return
+    if (
+        !NativeFinalizationPolicy.hasUsableLyricsContent(lrc) ||
+        lrc.trim().equals("[instrumental:true]", ignoreCase = true)
+    ) return
     val audioFileName = if (isDeferredSafRequest(input)) {
         desiredFileName(input, state, File(state.filePath).extension)
     } else {
@@ -195,7 +198,7 @@ internal fun NativeDownloadFinalizer.writeExternalLrc(context: Context, input: N
         val temp = File(context.cacheDir, "native_lrc_${System.nanoTime()}.lrc")
         temp.writeText(lrc)
         try {
-            SafDownloadHandler.writeFileToSaf(
+            val uri = SafDownloadHandler.writeFileToSaf(
                 context = context,
                 treeUriStr = treeUri,
                 relativeDir = relativeDir,
@@ -203,12 +206,14 @@ internal fun NativeDownloadFinalizer.writeExternalLrc(context: Context, input: N
                 mimeType = "application/octet-stream",
                 srcPath = temp.absolutePath,
             )
+            state.externalLrcWritten = uri != null
         } finally {
             temp.delete()
         }
     } else {
         val target = File(File(state.filePath).parentFile, "$baseName.lrc")
         target.writeText(lrc)
+        state.externalLrcWritten = true
     }
 }
 
@@ -300,8 +305,8 @@ internal fun NativeDownloadFinalizer.embedBasicMetadata(context: Context, path: 
         (lyricsMode == "embed" || lyricsMode == "both")
     val lyrics = if (shouldResolveLyrics) resolveLyricsLrc(input) else ""
     val shouldEmbedLyrics = shouldResolveLyrics &&
-        lyrics.isNotBlank() &&
-        lyrics != "[instrumental:true]"
+        NativeFinalizationPolicy.hasUsableLyricsContent(lyrics) &&
+        !lyrics.trim().equals("[instrumental:true]", ignoreCase = true)
     // FLAC, MP3, Opus, and M4A all have native Go tag writers that edit the
     // tag block atomically without an ffmpeg remux (which drops foreign
     // frames and rewrites the whole container). The Go side answers
