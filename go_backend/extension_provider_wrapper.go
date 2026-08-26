@@ -565,6 +565,25 @@ const ExtDownloadTimeout = DownloadTimeout
 // an isolated VM/runtime (not p.vm/p.extension.VMMu) with a progress
 // callback, which the helper's lock+perf model doesn't cover.
 func (p *extensionProviderWrapper) Download(trackID, quality, outputPath, itemID string, onProgress func(percent int)) (*ExtDownloadResult, error) {
+	return p.DownloadPrepared(
+		trackID,
+		quality,
+		outputPath,
+		itemID,
+		nil,
+		onProgress,
+	)
+}
+
+// DownloadPrepared passes the opaque context returned by checkAvailability to
+// the isolated download runtime. Existing extensions remain compatible because
+// JavaScript ignores the additional options argument; extensions that opt in
+// can reuse already-resolved metadata or stream preparation.
+func (p *extensionProviderWrapper) DownloadPrepared(
+	trackID, quality, outputPath, itemID string,
+	preparedContext map[string]any,
+	onProgress func(percent int),
+) (*ExtDownloadResult, error) {
 	if !p.extension.Manifest.IsDownloadProvider() {
 		return nil, fmt.Errorf("extension '%s' is not a download provider", p.extension.ID)
 	}
@@ -622,8 +641,20 @@ func (p *extensionProviderWrapper) Download(trackID, quality, outputPath, itemID
 	}
 
 	jsStartedAt := time.Now()
+	downloadOptions := map[string]any{}
+	if len(preparedContext) > 0 {
+		downloadOptions["preparedContext"] = preparedContext
+	}
 	result, err := runGojaCallWithTimeoutAndRecover(vm, func() (goja.Value, error) {
-		return invokeExtensionMethod(vm, "download", trackID, quality, outputPath, progressCallback)
+		return invokeExtensionMethod(
+			vm,
+			"download",
+			trackID,
+			quality,
+			outputPath,
+			progressCallback,
+			downloadOptions,
+		)
 	}, ExtDownloadTimeout)
 	perf.recordJS(time.Since(jsStartedAt))
 	perf.recordPayload(result)

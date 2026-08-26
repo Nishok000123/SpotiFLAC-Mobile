@@ -270,8 +270,10 @@ func TestFileDownloadFailureLeavesNoFinalFile(t *testing.T) {
 func TestFileDownloadDoesNotResumeMidBodyCutByDefault(t *testing.T) {
 	const full = "hello-world!"
 	var attempts int
+	var rangeSeen bool
 	runtime := newFileDownloadTestRuntime(t, func(req *http.Request) (*http.Response, error) {
 		attempts++
+		rangeSeen = rangeSeen || req.Header.Get("Range") != ""
 		h := make(http.Header)
 		h.Set("ETag", `"v1"`)
 		return &http.Response{
@@ -290,8 +292,11 @@ func TestFileDownloadDoesNotResumeMidBodyCutByDefault(t *testing.T) {
 	if result["success"] != false {
 		t.Fatalf("expected failed download, got %#v", result)
 	}
-	if attempts != 1 {
-		t.Fatalf("attempts = %d, want no automatic resume", attempts)
+	if attempts != defaultTransferMaxAttempts {
+		t.Fatalf("attempts = %d, want %d full retries", attempts, defaultTransferMaxAttempts)
+	}
+	if rangeSeen {
+		t.Fatal("default retry unexpectedly sent a Range request")
 	}
 	finalPath := filepath.Join(runtime.dataDir, "out", "track.flac")
 	if _, err := os.Stat(finalPath); !os.IsNotExist(err) {

@@ -592,6 +592,7 @@ func (r *extensionRuntime) RegisterAPIs(vm *goja.Runtime) {
 	if r.manifest != nil && r.manifest.Permissions.File {
 		fileObj := vm.NewObject()
 		fileObj.Set("download", r.fileDownload)
+		fileObj.Set("downloadSegments", r.fileDownloadSegments)
 		fileObj.Set("exists", r.fileExists)
 		fileObj.Set("delete", r.fileDelete)
 		fileObj.Set("read", r.fileRead)

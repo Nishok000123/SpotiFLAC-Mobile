@@ -293,6 +293,9 @@ func (m *ExtensionManifest) Validate() error {
 	if m.HasCapability("rawFfmpeg") && !m.Permissions.File {
 		return &ManifestValidationError{Field: "permissions.file", Message: "rawFfmpeg capability requires file permission"}
 	}
+	if err := validateDownloadTransferCapability(m.Capabilities); err != nil {
+		return &ManifestValidationError{Field: "capabilities.downloadTransfer", Message: err.Error()}
+	}
 
 	return nil
 }

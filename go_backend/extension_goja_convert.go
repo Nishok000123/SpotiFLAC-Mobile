@@ -455,6 +455,11 @@ func parseExtensionAvailabilityValue(vm *goja.Runtime, value goja.Value) ExtAvai
 		Reason:       gojaObjectString(obj, "reason"),
 		TrackID:      gojaObjectString(obj, "track_id", "trackId"),
 		SkipFallback: gojaObjectBool(obj, "skip_fallback", "skipFallback"),
+		PreparedContext: gojaObjectInterfaceMap(
+			obj,
+			"prepared_context",
+			"preparedContext",
+		),
 	}
 }
 

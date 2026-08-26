@@ -3,12 +3,10 @@ package gobackend
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/dop251/goja"
 )
@@ -130,6 +128,9 @@ func (r *extensionRuntime) fileDownload(call goja.FunctionCall) goja.Value {
 	var headers map[string]string
 	var chunkedDownload bool
 	var resumeDownload bool
+	var resumeOptionSet bool
+	var persistentCheckpointOption *bool
+	var maxAttemptsOption int
 	trackItemBytes := true
 	var chunkSize int64
 	if len(call.Arguments) > 2 && !goja.IsUndefined(call.Arguments[2]) && !goja.IsNull(call.Arguments[2]) {
@@ -174,6 +175,20 @@ func (r *extensionRuntime) fileDownload(call goja.FunctionCall) goja.Value {
 			if resume, ok := opts["resume"]; ok {
 				if v, ok := resume.(bool); ok {
 					resumeDownload = v
+					resumeOptionSet = true
+				}
+			}
+			if checkpoint, ok := opts["persistentCheckpoint"]; ok {
+				if v, ok := checkpoint.(bool); ok {
+					persistentCheckpointOption = &v
+				}
+			}
+			if attempts, ok := opts["maxAttempts"]; ok {
+				switch v := attempts.(type) {
+				case int64:
+					maxAttemptsOption = int(v)
+				case float64:
+					maxAttemptsOption = int(v)
 				}
 			}
 		}
@@ -199,503 +214,42 @@ func (r *extensionRuntime) fileDownload(call goja.FunctionCall) goja.Value {
 		ua = h
 	}
 
+	policy := r.manifest.DownloadTransferPolicy()
+	if !resumeOptionSet {
+		resumeDownload = policy.ResumePolicy == "validated"
+	}
+	persistentCheckpoint := policy.PersistentCheckpoint
+	if persistentCheckpointOption != nil {
+		persistentCheckpoint = *persistentCheckpointOption && resumeDownload
+	}
+	if maxAttemptsOption > 0 {
+		policy.MaxAttempts = clampInt(maxAttemptsOption, 1, 8)
+	}
 	if chunkedDownload {
-		return r.fileDownloadChunked(client, urlStr, fullPath, headers, ua, chunkSize, onProgress, trackItemBytes)
+		return r.fileDownloadChunked(
+			client,
+			urlStr,
+			fullPath,
+			headers,
+			ua,
+			chunkSize,
+			onProgress,
+			trackItemBytes,
+			persistentCheckpoint,
+			policy,
+		)
 	}
-
-	unlock := lockDownloadOutputPath(fullPath)
-	defer unlock()
-
-	buildReq := func(rangeFrom int64, validator string) (*http.Request, *stallWatchdog, error) {
-		req, err := http.NewRequest("GET", urlStr, nil)
-		if err != nil {
-			return nil, nil, err
-		}
-		req = r.bindDownloadCancelContext(req)
-		req, wd := bindStallWatchdog(req, downloadStallTimeout)
-		for k, v := range headers {
-			req.Header.Set(k, v)
-		}
-		if req.Header.Get("User-Agent") == "" {
-			req.Header.Set("User-Agent", appUserAgent())
-		}
-		if rangeFrom > 0 {
-			req.Header.Set("Range", fmt.Sprintf("bytes=%d-", rangeFrom))
-			req.Header.Set("If-Range", validator)
-		}
-		return req, wd, nil
-	}
-
-	req, wd, err := buildReq(0, "")
-	if err != nil {
-		return r.jsError("%s", err.Error())
-	}
-	defer func() { wd.stop() }()
-
-	resp, err := client.Do(req)
-	if err != nil {
-		if wd.stalled.Load() {
-			return r.stallError()
-		}
-		return r.jsError("%s", err.Error())
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		resp.Body.Close()
-		return r.jsError("HTTP error: %d", resp.StatusCode)
-	}
-
-	// Stream into a staged sibling and promote via rename on success so a
-	// killed process can never leave a partial file under the final name
-	// (the duplicate check would then accept it as complete forever).
-	stagedPath := stagedDownloadPath(fullPath)
-	os.Remove(stagedPath)
-	out, err := os.Create(stagedPath)
-	if err != nil {
-		resp.Body.Close()
-		return r.jsError("failed to create file: %v", err)
-	}
-	promoted := false
-	defer func() {
-		out.Close()
-		if !promoted {
-			os.Remove(stagedPath)
-		}
-	}()
-
-	activeItemID := r.getActiveDownloadItemID()
-	if activeItemID != "" {
-		SetItemDownloading(activeItemID)
-	}
-
-	contentLength := resp.ContentLength
-	shouldTrackItemBytes := activeItemID != "" && trackItemBytes
-	if shouldTrackItemBytes && contentLength > 0 {
-		SetItemBytesTotal(activeItemID, contentLength)
-	}
-
-	makeProgressWriter := func() interface{ Write([]byte) (int, error) } {
-		if shouldTrackItemBytes {
-			return NewItemProgressWriter(out, activeItemID)
-		}
-		return out
-	}
-	progressWriter := makeProgressWriter()
-
-	// resumeValidator picks a validator usable with If-Range: a strong ETag or
-	// Last-Modified. Weak ETags (W/...) are not valid for If-Range.
-	resumeValidator := func(h http.Header) string {
-		if etag := h.Get("ETag"); etag != "" && !strings.HasPrefix(etag, "W/") {
-			return etag
-		}
-		return h.Get("Last-Modified")
-	}
-
-	var written int64
-	var lastProgressNotify int64
-	buf := make([]byte, 32*1024)
-
-	// copyBody streams resp into progressWriter. fatal is a terminal JS error
-	// (write failure or user cancel); readErr is a network error eligible for
-	// a Range resume.
-	copyBody := func(resp *http.Response) (fatal goja.Value, readErr error) {
-		defer resp.Body.Close()
-		for {
-			nr, er := resp.Body.Read(buf)
-			if nr > 0 {
-				wd.reset()
-				nw, ew := progressWriter.Write(buf[0:nr])
-				if nw < 0 || nr < nw {
-					nw = 0
-					if ew == nil {
-						ew = fmt.Errorf("invalid write result")
-					}
-				}
-				written += int64(nw)
-				if ew != nil {
-					if ew == ErrDownloadCancelled {
-						return r.jsError("download cancelled"), nil
-					}
-					return r.jsError("failed to write file: %v", ew), nil
-				}
-				if nr != nw {
-					return r.jsError("short write"), nil
-				}
-
-				// Throttle the JS callback like the native progress writer:
-				// per-read invocation is interpreter work inside the copy loop.
-				if onProgress != nil && contentLength > 0 &&
-					(written-lastProgressNotify >= progressUpdateThreshold || written >= contentLength) {
-					lastProgressNotify = written
-					_, _ = onProgress(goja.Undefined(), r.vm.ToValue(written), r.vm.ToValue(contentLength))
-				}
-			}
-			if er != nil {
-				if er != io.EOF {
-					return nil, er
-				}
-				return nil, nil
-			}
-		}
-	}
-
-	// Mid-body resume is opt-in because switching networks can route a stable
-	// URL to a different CDN object even when its validator is unchanged. The
-	// safe default is to fail and delete the staged partial file. Extensions
-	// that know their origin supports byte-identical Range resumes can request
-	// it explicitly with { resume: true }.
-	validator := resumeValidator(resp.Header)
-	_, callerSetRange := headers["Range"]
-	canResume := resumeDownload && validator != "" && !callerSetRange
-
-	const maxResumes = 3
-	resumes := 0
-	for {
-		fatal, readErr := copyBody(resp)
-		if fatal != nil {
-			return fatal
-		}
-		if readErr == nil {
-			if contentLength <= 0 || written == contentLength {
-				break
-			}
-			// The body reported a clean EOF (e.g. a mid-transfer connection
-			// reset that the transport surfaced as normal end-of-stream
-			// instead of io.ErrUnexpectedEOF) but fewer bytes arrived than
-			// the server promised in Content-Length. Route it through the
-			// same resume-or-fail path as a real read error instead of
-			// silently promoting a truncated file.
-			readErr = io.ErrUnexpectedEOF
-		}
-
-		stalled := wd.stalled.Load()
-		if !canResume || resumes >= maxResumes ||
-			(activeItemID != "" && isDownloadCancelled(activeItemID)) {
-			if stalled {
-				return r.stallError()
-			}
-			return r.jsError("failed to read response: %v", readErr)
-		}
-		resumes++
-		GoLog("[Extension:%s] Download interrupted at %d bytes (%v), resuming (attempt %d/%d)\n",
-			r.extensionID, written, readErr, resumes, maxResumes)
-
-		wd.stop()
-		var resumeReq *http.Request
-		resumeReq, wd, err = buildReq(written, validator)
-		if err != nil {
-			return r.jsError("%s", err.Error())
-		}
-		resp, err = client.Do(resumeReq)
-		if err != nil {
-			if wd.stalled.Load() {
-				return r.stallError()
-			}
-			return r.jsError("resume failed at %d bytes: %v", written, err)
-		}
-
-		switch resp.StatusCode {
-		case http.StatusPartialContent:
-			if written > 0 && !strings.HasPrefix(resp.Header.Get("Content-Range"), fmt.Sprintf("bytes %d-", written)) {
-				cr := resp.Header.Get("Content-Range")
-				resp.Body.Close()
-				return r.jsError("resume failed: unexpected Content-Range %q at %d bytes", cr, written)
-			}
-		case http.StatusOK:
-			// Range ignored or file changed under If-Range: restart from zero
-			// on the same staged file.
-			if err := out.Truncate(0); err != nil {
-				resp.Body.Close()
-				return r.jsError("failed to restart download: %v", err)
-			}
-			if _, err := out.Seek(0, io.SeekStart); err != nil {
-				resp.Body.Close()
-				return r.jsError("failed to restart download: %v", err)
-			}
-			written = 0
-			progressWriter = makeProgressWriter()
-			if resp.ContentLength > 0 {
-				contentLength = resp.ContentLength
-				if shouldTrackItemBytes {
-					SetItemBytesTotal(activeItemID, contentLength)
-				}
-			}
-			validator = resumeValidator(resp.Header)
-			canResume = resumeDownload && validator != ""
-		default:
-			code := resp.StatusCode
-			resp.Body.Close()
-			return r.jsError("resume failed: HTTP %d at %d bytes", code, written)
-		}
-	}
-
-	if shouldTrackItemBytes {
-		if contentLength > 0 {
-			SetItemProgress(activeItemID, float64(written)/float64(contentLength), written, contentLength)
-		} else if written > 0 {
-			SetItemBytesReceived(activeItemID, written)
-		}
-	}
-
-	// Sync before the promote rename so a power loss right after the rename
-	// cannot leave a truncated file under the final name.
-	if err := out.Sync(); err != nil {
-		return r.jsError("failed to sync file: %v", err)
-	}
-	if err := out.Close(); err != nil {
-		return r.jsError("failed to finalize file: %v", err)
-	}
-	if err := os.Rename(stagedPath, fullPath); err != nil {
-		return r.jsError("failed to publish file: %v", err)
-	}
-	promoted = true
-	syncDir(filepath.Dir(fullPath))
-
-	GoLog("[Extension:%s] Downloaded %d bytes to %s\n", r.extensionID, written, fullPath)
-
-	return r.jsSuccess(map[string]any{
-		"path": fullPath,
-		"size": written,
-	})
-}
-
-// fileDownloadChunked downloads a URL using sequential Range requests.
-// This is needed for servers (like YouTube's googlevideo CDN) that reject
-// non-ranged or large-range requests with 403 and require small chunk downloads.
-func (r *extensionRuntime) fileDownloadChunked(client *http.Client, urlStr, fullPath string, headers map[string]string, ua string, chunkSize int64, onProgress goja.Callable, trackItemBytes bool) goja.Value {
-	unlock := lockDownloadOutputPath(fullPath)
-	defer unlock()
-
-	// First, get the total content length with a small probe request
-	probeReq, err := http.NewRequest("GET", urlStr, nil)
-	if err != nil {
-		return r.jsError("chunked: probe request error: %v", err)
-	}
-	probeReq = r.bindDownloadCancelContext(probeReq)
-	probeReq, wd := bindStallWatchdog(probeReq, downloadStallTimeout)
-	defer wd.stop()
-	stallCtx := probeReq.Context()
-	probeReq.Header.Set("User-Agent", ua)
-	for k, v := range headers {
-		if k != "Range" { // Don't copy any existing Range header
-			probeReq.Header.Set(k, v)
-		}
-	}
-	probeReq.Header.Set("Range", "bytes=0-1")
-
-	probeResp, err := client.Do(probeReq)
-	if err != nil {
-		if wd.stalled.Load() {
-			return r.stallError()
-		}
-		return r.jsError("chunked: probe error: %v", err)
-	}
-	io.Copy(io.Discard, probeResp.Body)
-	probeResp.Body.Close()
-
-	if probeResp.StatusCode != 206 && probeResp.StatusCode != 200 {
-		return r.jsError("chunked: probe HTTP %d", probeResp.StatusCode)
-	}
-
-	// Parse Content-Range to get total size: "bytes 0-1/TOTAL"
-	var totalSize int64
-	contentRange := probeResp.Header.Get("Content-Range")
-	if contentRange != "" {
-		if idx := strings.LastIndex(contentRange, "/"); idx >= 0 {
-			sizeStr := contentRange[idx+1:]
-			if sizeStr != "*" {
-				fmt.Sscanf(sizeStr, "%d", &totalSize)
-			}
-		}
-	}
-
-	if totalSize <= 0 {
-		// Fallback: try Content-Length from a HEAD-like approach
-		// If we can't determine size, download with unknown size
-		GoLog("[Extension:%s] Chunked download: unknown total size, will download until server says done\n", r.extensionID)
-	} else {
-		GoLog("[Extension:%s] Chunked download: total size %d bytes, chunk size %d\n", r.extensionID, totalSize, chunkSize)
-	}
-
-	// Same staged-write-then-promote protocol as fileDownload: never leave a
-	// partial file under the final name.
-	stagedPath := stagedDownloadPath(fullPath)
-	os.Remove(stagedPath)
-	out, err := os.Create(stagedPath)
-	if err != nil {
-		return r.jsError("failed to create file: %v", err)
-	}
-	promoted := false
-	defer func() {
-		out.Close()
-		if !promoted {
-			os.Remove(stagedPath)
-		}
-	}()
-
-	activeItemID := r.getActiveDownloadItemID()
-	if activeItemID != "" {
-		SetItemDownloading(activeItemID)
-	}
-
-	shouldTrackItemBytes := activeItemID != "" && trackItemBytes
-	if shouldTrackItemBytes && totalSize > 0 {
-		SetItemBytesTotal(activeItemID, totalSize)
-	}
-
-	var progressWriter interface{ Write([]byte) (int, error) } = out
-	if shouldTrackItemBytes {
-		progressWriter = NewItemProgressWriter(out, activeItemID)
-	}
-
-	var totalWritten int64
-	var lastProgressNotify int64
-	buf := make([]byte, 32*1024)
-	maxRetries := 3
-
-	for offset := int64(0); totalSize <= 0 || offset < totalSize; {
-		end := offset + chunkSize - 1
-		if totalSize > 0 && end >= totalSize {
-			end = totalSize - 1
-		}
-
-		var chunkResp *http.Response
-		var chunkErr error
-
-		for retry := 0; retry < maxRetries; retry++ {
-			chunkReq, err := http.NewRequest("GET", urlStr, nil)
-			if err != nil {
-				return r.jsError("chunked: request error at offset %d: %v", offset, err)
-			}
-			chunkReq = chunkReq.WithContext(stallCtx)
-			chunkReq.Header.Set("User-Agent", ua)
-			for k, v := range headers {
-				if k != "Range" {
-					chunkReq.Header.Set(k, v)
-				}
-			}
-			chunkReq.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", offset, end))
-
-			chunkResp, chunkErr = client.Do(chunkReq)
-			if chunkErr != nil {
-				if wd.stalled.Load() {
-					return r.stallError()
-				}
-				if retry < maxRetries-1 {
-					time.Sleep(time.Duration(retry+1) * time.Second)
-					continue
-				}
-				return r.jsError("chunked: error at offset %d after %d retries: %v", offset, maxRetries, chunkErr)
-			}
-
-			if chunkResp.StatusCode == 206 || chunkResp.StatusCode == 200 {
-				break // Success
-			}
-
-			io.Copy(io.Discard, chunkResp.Body)
-			chunkResp.Body.Close()
-
-			if chunkResp.StatusCode == 403 || chunkResp.StatusCode == 429 {
-				if retry < maxRetries-1 {
-					time.Sleep(time.Duration(retry+1) * 2 * time.Second)
-					continue
-				}
-			}
-
-			return r.jsError("chunked: HTTP %d at offset %d", chunkResp.StatusCode, offset)
-		}
-
-		chunkWritten := int64(0)
-		for {
-			nr, er := chunkResp.Body.Read(buf)
-			if nr > 0 {
-				wd.reset()
-				nw, ew := progressWriter.Write(buf[0:nr])
-				if nw < 0 || nr < nw {
-					nw = 0
-					if ew == nil {
-						ew = fmt.Errorf("invalid write result")
-					}
-				}
-				chunkWritten += int64(nw)
-				totalWritten += int64(nw)
-				if ew != nil {
-					chunkResp.Body.Close()
-					if ew == ErrDownloadCancelled {
-						return r.jsError("download cancelled")
-					}
-					return r.jsError("failed to write file: %v", ew)
-				}
-				if nr != nw {
-					chunkResp.Body.Close()
-					return r.jsError("short write")
-				}
-
-				if onProgress != nil && totalSize > 0 &&
-					(totalWritten-lastProgressNotify >= progressUpdateThreshold || totalWritten >= totalSize) {
-					lastProgressNotify = totalWritten
-					_, _ = onProgress(goja.Undefined(), r.vm.ToValue(totalWritten), r.vm.ToValue(totalSize))
-				}
-			}
-			if er != nil {
-				if er != io.EOF {
-					chunkResp.Body.Close()
-					if wd.stalled.Load() {
-						return r.stallError()
-					}
-					return r.jsError("failed to read chunk at offset %d: %v", offset, er)
-				}
-				break
-			}
-		}
-		chunkResp.Body.Close()
-
-		offset += chunkWritten
-
-		// If server returned 200 (full content) instead of 206, we're done
-		if chunkResp.StatusCode == 200 {
-			break
-		}
-
-		// If we got less data than expected and we know total size, check if done
-		if totalSize > 0 && offset >= totalSize {
-			break
-		}
-
-		// Unknown size: if we got less than chunk size, assume done
-		if totalSize <= 0 && chunkWritten < chunkSize {
-			break
-		}
-	}
-
-	if shouldTrackItemBytes {
-		if totalSize > 0 {
-			SetItemProgress(activeItemID, float64(totalWritten)/float64(totalSize), totalWritten, totalSize)
-		} else if totalWritten > 0 {
-			SetItemBytesReceived(activeItemID, totalWritten)
-		}
-	}
-
-	// Sync before the promote rename so a power loss right after the rename
-	// cannot leave a truncated file under the final name.
-	if err := out.Sync(); err != nil {
-		return r.jsError("failed to sync file: %v", err)
-	}
-	if err := out.Close(); err != nil {
-		return r.jsError("failed to finalize file: %v", err)
-	}
-	if err := os.Rename(stagedPath, fullPath); err != nil {
-		return r.jsError("failed to publish file: %v", err)
-	}
-	promoted = true
-	syncDir(filepath.Dir(fullPath))
-
-	GoLog("[Extension:%s] Chunked download complete: %d bytes to %s\n", r.extensionID, totalWritten, fullPath)
-
-	return r.jsSuccess(map[string]any{
-		"path": fullPath,
-		"size": totalWritten,
-	})
+	return r.reliableFileDownload(
+		client,
+		urlStr,
+		fullPath,
+		headers,
+		onProgress,
+		trackItemBytes,
+		resumeDownload,
+		persistentCheckpoint,
+		policy,
+	)
 }
 
 func (r *extensionRuntime) fileExists(call goja.FunctionCall) goja.Value {

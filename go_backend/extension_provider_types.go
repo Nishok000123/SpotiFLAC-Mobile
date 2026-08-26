@@ -87,10 +87,11 @@ type ExtSearchResult struct {
 }
 
 type ExtAvailabilityResult struct {
-	Available    bool   `json:"available"`
-	Reason       string `json:"reason,omitempty"`
-	TrackID      string `json:"track_id,omitempty"`
-	SkipFallback bool   `json:"skip_fallback,omitempty"`
+	Available       bool           `json:"available"`
+	Reason          string         `json:"reason,omitempty"`
+	TrackID         string         `json:"track_id,omitempty"`
+	SkipFallback    bool           `json:"skip_fallback,omitempty"`
+	PreparedContext map[string]any `json:"prepared_context,omitempty"`
 }
 
 type DownloadDecryptionInfo struct {

@@ -64,6 +64,9 @@ func TestExtensionProviderWrapperFullSurface(t *testing.T) {
 	if !availability.Available || availability.TrackID != "download-track" || !availability.SkipFallback {
 		t.Fatalf("availability = %#v", availability)
 	}
+	if availability.PreparedContext["token"] != "prepared" {
+		t.Fatalf("prepared context = %#v", availability.PreparedContext)
+	}
 
 	progress := []int{}
 	download, err := provider.Download("track-1", "LOSSLESS", filepath.Join(t.TempDir(), "song.flac"), "", func(percent int) {
@@ -74,6 +77,17 @@ func TestExtensionProviderWrapperFullSurface(t *testing.T) {
 	}
 	if !download.Success || download.Decryption == nil || download.DecryptionKey != "001122" || download.Comment != "https://example.test/album/1" || !download.Explicit || download.AlbumType != "compilation" || download.UPC != "0012345678901" || len(progress) != 1 || progress[0] != 100 {
 		t.Fatalf("download = %#v progress=%v", download, progress)
+	}
+	preparedDownload, err := provider.DownloadPrepared(
+		"track-1",
+		"LOSSLESS",
+		filepath.Join(t.TempDir(), "prepared.flac"),
+		"",
+		availability.PreparedContext,
+		nil,
+	)
+	if err != nil || preparedDownload == nil || preparedDownload.Title != "prepared" {
+		t.Fatalf("prepared download = %#v, err=%v", preparedDownload, err)
 	}
 
 	lyrics, err := provider.FetchLyrics("Song", "Artist", "Album", 180)

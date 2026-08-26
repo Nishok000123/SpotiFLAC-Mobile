@@ -20,6 +20,7 @@ func attemptExtensionDownload(
 	ext *loadedExtension,
 	provider *extensionProviderWrapper,
 	trackID, quality, providerLabel string,
+	preparedContext map[string]any,
 	applyTitleFallback bool,
 	lastErr *error,
 	lastErrType *string,
@@ -49,7 +50,7 @@ func attemptExtensionDownload(
 		SetItemPreparingStage(req.ItemID, "resolving_stream")
 	}
 
-	result, err := provider.Download(trackID, quality, outputPath, req.ItemID, func(percent int) {
+	result, err := provider.DownloadPrepared(trackID, quality, outputPath, req.ItemID, preparedContext, func(percent int) {
 		if req.ItemID != "" {
 			normalized := float64(percent) / 100.0
 			if normalized < 0 {
@@ -250,6 +251,12 @@ func attemptVerifiedResumeBeforeMetadata(
 		trackID,
 		req.Quality,
 		selectedProvider,
+		func() map[string]any {
+			if availability == nil {
+				return nil
+			}
+			return availability.PreparedContext
+		}(),
 		strings.EqualFold(sourceProvider, selectedProvider),
 		&lastErr,
 		&lastErrType,
@@ -555,7 +562,11 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 
 			GoLog("[DownloadWithExtensionFallback] Downloading from source extension with trackID: %s (stopProviderFallback: %v)\n", trackID, stopProviderFallback)
 
-			resp, cancelledOuter := attemptExtensionDownload(req, ext, provider, trackID, req.Quality, req.Source, true, &lastErr, &lastErrType, &lastRetryAfterSeconds)
+			var preparedContext map[string]any
+			if sourceExtensionAvailability != nil {
+				preparedContext = sourceExtensionAvailability.PreparedContext
+			}
+			resp, cancelledOuter := attemptExtensionDownload(req, ext, provider, trackID, req.Quality, req.Source, preparedContext, true, &lastErr, &lastErrType, &lastRetryAfterSeconds)
 			if cancelledOuter {
 				return nil, ErrDownloadCancelled
 			}
@@ -700,7 +711,7 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 				}
 			}
 
-			resp, cancelledOuter := attemptExtensionDownload(req, ext, provider, availability.TrackID, fallbackQuality, providerID, false, &lastErr, &lastErrType, &lastRetryAfterSeconds)
+			resp, cancelledOuter := attemptExtensionDownload(req, ext, provider, availability.TrackID, fallbackQuality, providerID, availability.PreparedContext, false, &lastErr, &lastErrType, &lastRetryAfterSeconds)
 			if cancelledOuter {
 				return nil, ErrDownloadCancelled
 			}

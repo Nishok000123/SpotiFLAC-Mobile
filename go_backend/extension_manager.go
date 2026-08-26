@@ -251,11 +251,12 @@ func (m *extensionManager) loadExtensionFromFileLocked(filePath string) (*loaded
 }
 
 var supportedRuntimeFeatures = map[string]int{
-	"signedSession":  3,
-	"sessionRefresh": 1,
-	"sessionGrant":   1,
-	"globalAction":   1,
-	"webviewAuth":    1,
+	"signedSession":    3,
+	"sessionRefresh":   1,
+	"sessionGrant":     1,
+	"globalAction":     1,
+	"webviewAuth":      1,
+	"downloadSegments": 1,
 }
 
 // validateManifestGates enforces minAppVersion and requiredRuntimeFeatures
