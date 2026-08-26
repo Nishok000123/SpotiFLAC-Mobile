@@ -376,6 +376,36 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
     }
   }
 
+  Future<({String uri, String fileName, bool alreadyExists})?>
+  _writeTempToSafIfAbsent({
+    required String treeUri,
+    required String relativeDir,
+    required String fileName,
+    required String mimeType,
+    required String srcPath,
+  }) async {
+    try {
+      final result = await PlatformBridge.createSafFileIfAbsentFromPath(
+        treeUri: treeUri,
+        relativeDir: relativeDir,
+        fileName: fileName,
+        mimeType: mimeType,
+        srcPath: srcPath,
+      );
+      final uri = (result['uri'] as String? ?? '').trim();
+      final publishedName = (result['file_name'] as String? ?? '').trim();
+      if (uri.isEmpty || publishedName.isEmpty) return null;
+      return (
+        uri: uri,
+        fileName: publishedName,
+        alreadyExists: result['already_exists'] == true,
+      );
+    } catch (e) {
+      _log.w('Failed to publish deferred SAF file: $e');
+      return null;
+    }
+  }
+
   Future<({String uri, String fileName})?> _writeTempToSafUnique({
     required String treeUri,
     required String relativeDir,
@@ -644,7 +674,7 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
 
     final stagingLabel = qualityVariantStagingLabel(item.id);
     final localPathSegments = File(filePath).uri.pathSegments;
-    final currentFileName = storageMode == 'saf' && isContentUri(filePath)
+    final currentFileName = storageMode == 'saf'
         ? (fileName ?? result['file_name']?.toString() ?? '')
         : (localPathSegments.isEmpty ? '' : localPathSegments.last);
     final variantFileName = applyQualityVariantFilenameLabel(

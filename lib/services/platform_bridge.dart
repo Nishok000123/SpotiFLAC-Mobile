@@ -801,6 +801,22 @@ class PlatformBridge {
     return result as String?;
   }
 
+  static Future<Map<String, dynamic>> createSafFileIfAbsentFromPath({
+    required String treeUri,
+    required String relativeDir,
+    required String fileName,
+    required String mimeType,
+    required String srcPath,
+  }) {
+    return _invokeMap('safCreateIfAbsentFromPath', {
+      'tree_uri': treeUri,
+      'relative_dir': relativeDir,
+      'file_name': fileName,
+      'mime_type': mimeType,
+      'src_path': srcPath,
+    });
+  }
+
   static Future<Map<String, dynamic>> createUniqueSafFileFromPath({
     required String treeUri,
     required String relativeDir,

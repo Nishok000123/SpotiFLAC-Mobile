@@ -580,6 +580,7 @@ class _DownloadRun {
       genre: genre,
       label: label,
       copyright: copyright,
+      stageSafForDeferredPublish: useSaf,
       qualityVariantCollisionOnly: qualityVariantCollisionOnly,
     );
 
@@ -726,7 +727,14 @@ class _DownloadRun {
       return false;
     }
 
-    await _recoverSafUriIfNeeded();
+    final deferredSafPublish =
+        effectiveSafMode &&
+        result['saf_deferred_publish'] == true &&
+        filePath != null &&
+        !isContentUri(filePath!);
+    if (!deferredSafPublish) {
+      await _recoverSafUriIfNeeded();
+    }
 
     final hookInput = filePath;
     if (hookInput != null) {
@@ -786,6 +794,10 @@ class _DownloadRun {
       throw StateError(
         'Download backend reported success without a final file path',
       );
+    }
+
+    if (deferredSafPublish && !await _publishDeferredSafOutputOnce()) {
+      throw StateError('Failed to publish deferred SAF output');
     }
 
     final lrcTarget = filePath;
@@ -950,12 +962,146 @@ class _DownloadRun {
       await _embedSafNonM4a(path);
     } else if (metadataEmbeddingEnabled &&
         !isContentUriPath &&
-        !effectiveSafMode &&
         isFlacFile &&
         !wasExisting &&
         decryptionDescriptor != null) {
       await _embedLocalFlacAfterDecrypt(path);
+    } else if (metadataEmbeddingEnabled &&
+        !isContentUriPath &&
+        effectiveSafMode &&
+        result['saf_deferred_publish'] == true &&
+        !isFlacFile &&
+        !isM4aFile &&
+        !wasExisting) {
+      final isOpus =
+          path.toLowerCase().endsWith('.opus') ||
+          path.toLowerCase().endsWith('.ogg') ||
+          resultOutputExt == '.opus' ||
+          resultOutputExt == '.ogg';
+      await _embedFinalMetadata(
+        path,
+        format: isOpus ? 'opus' : 'mp3',
+        writeExternalLrc: false,
+      );
     }
+  }
+
+  Future<bool> _publishDeferredSafOutputOnce() async {
+    final localPath = filePath;
+    if (localPath == null || isContentUri(localPath)) return true;
+    final localFile = File(localPath);
+    if (!await localFile.exists() || await localFile.length() <= 0) {
+      return false;
+    }
+
+    var finalName =
+        normalizeOptionalString(finalSafFileName) ??
+        normalizeOptionalString(result['file_name']?.toString()) ??
+        normalizeOptionalString(safFileName) ??
+        (localFile.uri.pathSegments.isEmpty
+            ? 'track$safOutputExt'
+            : localFile.uri.pathSegments.last);
+    final localExt = n._downloadResultOutputExt(result, filePath: localPath);
+    if (localExt != null && localExt.isNotEmpty) {
+      finalName = finalName.replaceFirst(RegExp(r'\.[^.]+$'), localExt);
+      if (!finalName.toLowerCase().endsWith(localExt.toLowerCase())) {
+        finalName = '$finalName$localExt';
+      }
+    }
+
+    final measured = probedFinalMetadata;
+    final qualityLabel = buildQualityVariantFilenameLabel(
+      detectedFormat:
+          normalizeAudioFormatValue(
+            measured?['audio_codec']?.toString() ??
+                measured?['format']?.toString(),
+          ) ??
+          normalizeAudioFormatValue(
+            result['audio_codec']?.toString() ?? result['format']?.toString(),
+          ),
+      bitDepth: readPositiveInt(
+        measured?['bit_depth'] ?? result['actual_bit_depth'],
+      ),
+      sampleRate: readPositiveInt(
+        measured?['sample_rate'] ?? result['actual_sample_rate'],
+      ),
+      bitrateKbps: readPositiveBitrateKbps(
+        measured?['bitrate'] ??
+            measured?['bit_rate'] ??
+            result['bitrate'] ??
+            result['actual_bitrate'],
+      ),
+      measuredQuality: actualQuality,
+    );
+
+    String? publishedUri;
+    String? publishedName;
+    var alreadyExists = false;
+    if (item.preserveQualityVariant && qualityVariantCollisionOnly) {
+      final logicalName = safFileName ?? finalName;
+      final stagingLabel = qualityVariantStagingLabel(item.id);
+      final cleanName = removeQualityVariantStagingLabel(
+        fileName: logicalName,
+        stagingLabel: stagingLabel,
+      );
+      final variantName = qualityLabel == null
+          ? finalName
+          : applyQualityVariantFilenameLabel(
+              fileName: logicalName,
+              stagingLabel: stagingLabel,
+              qualityLabel: qualityLabel,
+            );
+      final published = await n._writeTempToSafCollisionAware(
+        treeUri: settings.downloadTreeUri,
+        relativeDir: effectiveOutputDir,
+        cleanFileName: cleanName,
+        variantFileName: variantName,
+        mimeType: n._mimeTypeForExt(localExt ?? safOutputExt),
+        srcPath: localPath,
+        preservedSuffix: qualityLabel ?? '',
+      );
+      publishedUri = published?.uri;
+      publishedName = published?.fileName;
+    } else if (item.preserveQualityVariant) {
+      final published = await n._writeTempToSafUnique(
+        treeUri: settings.downloadTreeUri,
+        relativeDir: effectiveOutputDir,
+        fileName: finalName,
+        mimeType: n._mimeTypeForExt(localExt ?? safOutputExt),
+        srcPath: localPath,
+        preservedSuffix: qualityLabel ?? '',
+      );
+      publishedUri = published?.uri;
+      publishedName = published?.fileName;
+    } else {
+      final published = await n._writeTempToSafIfAbsent(
+        treeUri: settings.downloadTreeUri,
+        relativeDir: effectiveOutputDir,
+        fileName: finalName,
+        mimeType: n._mimeTypeForExt(localExt ?? safOutputExt),
+        srcPath: localPath,
+      );
+      publishedUri = published?.uri;
+      publishedName = published?.fileName;
+      alreadyExists = published?.alreadyExists == true;
+    }
+    if (publishedUri == null || publishedName == null) return false;
+
+    try {
+      await localFile.delete();
+    } catch (_) {}
+    filePath = publishedUri;
+    finalSafFileName = publishedName;
+    wasExisting = alreadyExists;
+    result['file_path'] = publishedUri;
+    result['file_name'] = publishedName;
+    result['saf_deferred_published'] = true;
+    if (alreadyExists) {
+      result['already_exists'] = true;
+      result['message'] = 'File already exists';
+    }
+    _log.i('Published finalized SAF output once: $publishedName');
+    return true;
   }
 
   Future<void> _convertSafM4aToLossy(String currentFilePath) async {

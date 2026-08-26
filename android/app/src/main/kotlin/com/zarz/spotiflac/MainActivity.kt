@@ -1136,6 +1136,31 @@ class MainActivity: FlutterFragmentActivity() {
                             }
                             result.success(createdUri)
                         }
+                        "safCreateIfAbsentFromPath" -> {
+                            val treeUriStr = call.argument<String>("tree_uri") ?: ""
+                            val relativeDir = call.argument<String>("relative_dir") ?: ""
+                            val fileName = call.argument<String>("file_name") ?: ""
+                            val mimeType = call.argument<String>("mime_type") ?: "application/octet-stream"
+                            val srcPath = call.argument<String>("src_path") ?: ""
+                            val response = withContext(Dispatchers.IO) {
+                                if (treeUriStr.isBlank() || fileName.isBlank()) return@withContext null
+                                SafDownloadHandler.writeFileToSafIfAbsent(
+                                    context = this@MainActivity,
+                                    treeUriStr = treeUriStr,
+                                    relativeDir = relativeDir,
+                                    fileName = fileName,
+                                    mimeType = mimeType,
+                                    srcPath = srcPath,
+                                )?.let { writeResult ->
+                                    JSONObject()
+                                        .put("uri", writeResult.uri)
+                                        .put("file_name", writeResult.fileName)
+                                        .put("already_exists", writeResult.alreadyExists)
+                                        .toString()
+                                }
+                            }
+                            result.success(response)
+                        }
                         "safCreateUniqueFromPath" -> {
                             val treeUriStr = call.argument<String>("tree_uri") ?: ""
                             val relativeDir = call.argument<String>("relative_dir") ?: ""
