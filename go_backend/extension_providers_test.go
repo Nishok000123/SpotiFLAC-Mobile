@@ -697,7 +697,7 @@ func TestParseExtensionMetadataAndDownloadResults(t *testing.T) {
 		listeners: 1234,
 		albums: [{id: "album-1", name: "Album", tracks: [{id: "track-1", name: "Song"}]}],
 		releases: [{id: "single-1", name: "Single"}],
-		topTracks: [{id: "top-1", name: "Top Song"}]
+		tracks: [{id: "top-1", name: "Top Song"}]
 	})`)
 	if err != nil {
 		t.Fatalf("build artist value: %v", err)

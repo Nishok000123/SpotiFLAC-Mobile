@@ -426,7 +426,7 @@ func parseExtensionArtistValue(vm *goja.Runtime, value goja.Value) (ExtArtistMet
 	}
 
 	topTracks := []ExtTrackMetadata{}
-	if topTracksValue := gojaObjectValue(obj, "top_tracks", "topTracks"); !gojaValueIsEmpty(topTracksValue) {
+	if topTracksValue := gojaObjectValue(obj, "top_tracks", "topTracks", "tracks"); !gojaValueIsEmpty(topTracksValue) {
 		parsedTopTracks, err := parseExtensionTrackArray(vm, topTracksValue)
 		if err != nil {
 			return ExtArtistMetadata{}, err
