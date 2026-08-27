@@ -24,7 +24,7 @@ void main() {
 
   group('audio analysis cache', () {
     test('invalidates results from the previous cutoff estimator', () {
-      expect(AudioAnalysisData.cacheVersion, 12);
+      expect(AudioAnalysisData.cacheVersion, 13);
     });
   });
 
@@ -142,14 +142,22 @@ lavfi.r128.true_peak=0.907
       expect(arguments, isNot(contains('-loglevel')));
     });
 
-    test('bounds retained audio for long high-rate files', () {
+    test('bounds retained audio without making splice noise persistent', () {
       final filter = buildAudioSpectrogramFilter(
         durationSeconds: 600,
         sampleRate: 192000,
         channels: 2,
       );
 
-      expect(filter, contains("aselect='lt(mod(t,2.000000000),"));
+      // The cutoff estimator uses temporal P90. Keep window boundaries far
+      // below ten percent of its 400 columns so seam energy remains an outlier.
+      expect(audioSpectrogramSampleWindowCount, 16);
+      expect(
+        audioSpectrogramSampleWindowCount,
+        lessThan(audioSpectralAnalysisWidth * 0.10),
+      );
+      expect(filter, contains("aselect='lt(mod(t,37.500000000),"));
+      expect(filter, contains('1.365333333'));
       expect(filter, contains('asetpts=N/SR/TB'));
       expect(filter, contains('aformat=sample_fmts=fltp'));
       expect(filter, isNot(contains('aresample')));
@@ -244,6 +252,43 @@ lavfi.r128.true_peak=0.907
 
       expect(cutoff, isNotNull);
       expect(cutoff!, inInclusiveRange(21000, 23500));
+    });
+
+    test('ignores sparse broadband seams below the temporal P90 budget', () {
+      const sourceNyquist = 24000.0;
+      final intensity = _blankIntensity(width, height, value: 12);
+      _paintFrequencyBand(
+        intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: sourceNyquist,
+        lowHz: 0,
+        highHz: 20000,
+        intensity: 100,
+      );
+      // Model discontinuities between distributed excerpts. Their columns are
+      // bright at every frequency, but occupy only six percent of the image.
+      _paintFrequencyBand(
+        intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: sourceNyquist,
+        lowHz: 0,
+        highHz: sourceNyquist,
+        intensity: 255,
+        startColumn: 0,
+        endColumn: 12,
+      );
+
+      final cutoff = estimateEffectiveSpectralCutoffHz(
+        intensity: intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: sourceNyquist,
+      );
+
+      expect(cutoff, isNotNull);
+      expect(cutoff!, inInclusiveRange(19400, 20600));
     });
 
     test('rejects a low noise floor above a 15.8 kHz bandwidth edge', () {

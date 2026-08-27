@@ -23,7 +23,12 @@ const int audioSpectrogramWidth = 1600;
 const int audioSpectrogramHeight = 800;
 const int audioSpectralAnalysisWidth = 400;
 const double audioSpectrogramDynamicRangeDb = 120;
-const int audioSpectrogramSampleWindowCount = 300;
+// Keep splice boundaries well below the cutoff estimator's top temporal
+// percentile. Too many short excerpts turn waveform discontinuities into a
+// persistent broadband floor, which can make a real low-pass edge look like
+// full-band content. Longer windows preserve the same whole-track coverage and
+// memory bound while making the small number of seams statistical outliers.
+const int audioSpectrogramSampleWindowCount = 16;
 const int audioSpectrogramMaxSelectedChannelSamples = 8 * 1024 * 1024;
 
 String formatAudioAnalysisSpectralCutoff(
