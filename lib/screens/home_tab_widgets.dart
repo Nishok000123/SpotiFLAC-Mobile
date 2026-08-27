@@ -932,10 +932,16 @@ class _ExtensionAlbumScreenState extends ConsumerState<ExtensionAlbumScreen> {
     });
 
     try {
-      final result = await PlatformBridge.getProviderMetadata(
-        widget.extensionId,
-        'album',
-        widget.albumId,
+      final result = await runExtensionOperationWithVerificationRetry(
+        extensionId: widget.extensionId,
+        browserMode: ref
+            .read(settingsProvider)
+            .extensionVerificationBrowserMode,
+        operation: () => PlatformBridge.getProviderMetadata(
+          widget.extensionId,
+          'album',
+          widget.albumId,
+        ),
       );
       if (!mounted) return;
 
@@ -1106,10 +1112,16 @@ class _ExtensionPlaylistScreenState
     });
 
     try {
-      final result = await PlatformBridge.getProviderMetadata(
-        widget.extensionId,
-        'playlist',
-        widget.playlistId,
+      final result = await runExtensionOperationWithVerificationRetry(
+        extensionId: widget.extensionId,
+        browserMode: ref
+            .read(settingsProvider)
+            .extensionVerificationBrowserMode,
+        operation: () => PlatformBridge.getProviderMetadata(
+          widget.extensionId,
+          'playlist',
+          widget.playlistId,
+        ),
       );
       if (!mounted) return;
 
@@ -1251,10 +1263,16 @@ class _ExtensionArtistScreenState extends ConsumerState<ExtensionArtistScreen>
     });
 
     try {
-      final result = await PlatformBridge.getProviderMetadata(
-        widget.extensionId,
-        'artist',
-        widget.artistId,
+      final result = await runExtensionOperationWithVerificationRetry(
+        extensionId: widget.extensionId,
+        browserMode: ref
+            .read(settingsProvider)
+            .extensionVerificationBrowserMode,
+        operation: () => PlatformBridge.getProviderMetadata(
+          widget.extensionId,
+          'artist',
+          widget.artistId,
+        ),
       );
       if (!mounted) return;
 

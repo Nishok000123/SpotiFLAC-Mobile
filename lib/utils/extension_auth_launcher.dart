@@ -25,6 +25,29 @@ bool isExtensionVerificationRequired(Object error) {
       _containsHttpStatusCode(message, '428');
 }
 
+Future<T> runExtensionOperationWithVerificationRetry<T>({
+  required String extensionId,
+  required String browserMode,
+  required Future<T> Function() operation,
+  Future<bool> Function()? verify,
+}) async {
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isExtensionVerificationRequired(error)) rethrow;
+
+    final verified =
+        await (verify ??
+            () => openVerificationAndAwaitGrant(
+              extensionId,
+              browserMode: browserMode,
+            ))();
+    if (!verified) rethrow;
+
+    return operation();
+  }
+}
+
 String? extensionIdFromVerificationError(
   Object error,
   Iterable<String> knownExtensionIds,
