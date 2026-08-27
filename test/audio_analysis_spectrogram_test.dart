@@ -22,6 +22,12 @@ void main() {
     });
   });
 
+  group('audio analysis cache', () {
+    test('invalidates results from the previous cutoff estimator', () {
+      expect(AudioAnalysisData.cacheVersion, 12);
+    });
+  });
+
   group('audio level analysis', () {
     test('reads peak and RMS from the final astats overall summary', () {
       const logs = '''
@@ -275,6 +281,66 @@ lavfi.r128.true_peak=0.907
       expect(cutoff!, inInclusiveRange(15300, 16300));
     });
 
+    test(
+      'finds a 15 kHz edge below elevated noise and a persistent 18.7 kHz line',
+      () {
+        const cdNyquist = 22050.0;
+        final intensity = _blankIntensity(width, height, value: 30);
+        _paintFrequencyBand(
+          intensity,
+          width: width,
+          height: height,
+          maxFrequencyHz: cdNyquist,
+          lowHz: 0,
+          highHz: 15000,
+          intensity: 39,
+        );
+        _paintFrequencyBand(
+          intensity,
+          width: width,
+          height: height,
+          maxFrequencyHz: cdNyquist,
+          lowHz: 18600,
+          highHz: 18800,
+          intensity: 220,
+        );
+
+        final cutoff = estimateEffectiveSpectralCutoffHz(
+          intensity: intensity,
+          width: width,
+          height: height,
+          maxFrequencyHz: cdNyquist,
+        );
+
+        expect(cutoff, isNotNull);
+        expect(cutoff!, inInclusiveRange(14500, 15500));
+      },
+    );
+
+    test('retains a genuine broadband cutoff around 18.7 kHz', () {
+      const cdNyquist = 22050.0;
+      final intensity = _blankIntensity(width, height, value: 18);
+      _paintFrequencyBand(
+        intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: cdNyquist,
+        lowHz: 0,
+        highHz: 18700,
+        intensity: 100,
+      );
+
+      final cutoff = estimateEffectiveSpectralCutoffHz(
+        intensity: intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: cdNyquist,
+      );
+
+      expect(cutoff, isNotNull);
+      expect(cutoff!, inInclusiveRange(18200, 19200));
+    });
+
     test('ignores a tonal drop before a gradual 22 kHz bandwidth limit', () {
       const hiresNyquist = 48000.0;
       final intensity = _blankIntensity(width, height, value: 46);
@@ -378,6 +444,65 @@ lavfi.r128.true_peak=0.907
         expect(cutoff, cdNyquist);
       },
     );
+
+    test('reports Nyquist for low-contrast full-band spectral tilt', () {
+      const cdNyquist = 22050.0;
+      final intensity = _blankIntensity(width, height);
+      _paintNaturalSpectralTilt(
+        intensity,
+        width: width,
+        height: height,
+        lowFrequencyIntensity: 39,
+        nyquistIntensity: 30,
+      );
+
+      final cutoff = estimateEffectiveSpectralCutoffHz(
+        intensity: intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: cdNyquist,
+      );
+
+      expect(cutoff, cdNyquist);
+    });
+
+    test('reports Nyquist for an extended gentle high-frequency rolloff', () {
+      const cdNyquist = 22050.0;
+      final intensity = _blankIntensity(width, height);
+      const segments = <(double, double, int, int)>[
+        (0, 4000, 113, 104),
+        (4000, 6000, 104, 96),
+        (6000, 15000, 96, 91),
+        (15000, 16000, 91, 87),
+        (16000, 17000, 87, 84),
+        (17000, 18500, 84, 82),
+        (18500, 19000, 82, 78),
+        (19000, 20000, 78, 73),
+        (20000, 21000, 73, 70),
+        (21000, cdNyquist, 70, 69),
+      ];
+      for (final segment in segments) {
+        _paintFrequencySlope(
+          intensity,
+          width: width,
+          height: height,
+          maxFrequencyHz: cdNyquist,
+          lowHz: segment.$1,
+          highHz: segment.$2,
+          lowIntensity: segment.$3,
+          highIntensity: segment.$4,
+        );
+      }
+
+      final cutoff = estimateEffectiveSpectralCutoffHz(
+        intensity: intensity,
+        width: width,
+        height: height,
+        maxFrequencyHz: cdNyquist,
+      );
+
+      expect(cutoff, cdNyquist);
+    });
 
     test('does not report an isolated line as a broadband cutoff', () {
       final intensity = _blankIntensity(width, height);

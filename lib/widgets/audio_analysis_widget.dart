@@ -381,6 +381,24 @@ double? estimateEffectiveSpectralCutoffHz({
   }
 
   final hzPerRow = maxFrequencyHz / height;
+
+  // Reject narrow horizontal lines before looking for a bandwidth edge. A
+  // median over roughly 500 Hz preserves a broadband step while removing
+  // pilots, tones, and isolated noisy bins that occupy only a small fraction
+  // of the surrounding band.
+  final lineRejectionRadius = math.max(1, (250 / hzPerRow).ceil());
+  final broadbandProfile = Float64List(height);
+  for (var index = 0; index < height; index++) {
+    broadbandProfile[index] = _spectralMedian(
+      profile,
+      index - lineRejectionRadius,
+      index + lineRejectionRadius + 1,
+    );
+  }
+
+  // Apply only light smoothing after the robust frequency aggregation. This
+  // reduces row quantization without letting a high-amplitude line smear into
+  // enough adjacent bins to resemble broadband support.
   final smoothingRadius = math.max(1, (50 / hzPerRow).ceil());
   final smoothed = Float64List(height);
   var running = 0.0;
@@ -391,10 +409,10 @@ double? estimateEffectiveSpectralCutoffHz({
     final desiredEnd = math.min(height - 1, index + smoothingRadius);
     while (windowEnd < desiredEnd) {
       windowEnd++;
-      running += profile[windowEnd];
+      running += broadbandProfile[windowEnd];
     }
     while (windowStart < desiredStart) {
-      running -= profile[windowStart];
+      running -= broadbandProfile[windowStart];
       windowStart++;
     }
     smoothed[index] = running / (windowEnd - windowStart + 1);
@@ -437,7 +455,11 @@ double? estimateEffectiveSpectralCutoffHz({
     return bDrop.compareTo(aDrop);
   });
 
-  final minimumDrop = math.max(12.0, dynamicSpan * 0.18);
+  // A sharp, frequency-contiguous edge remains meaningful at lower contrast
+  // than an arbitrary bright bin. Keep the threshold relative to the measured
+  // spectral span, but do not require the old fixed 12-byte difference that
+  // caused elevated noise floors to be classified as full-band.
+  final minimumDrop = math.max(6.0, dynamicSpan * 0.18);
   final gapRows = math.max(1, (100 / hzPerRow).ceil());
   final supportRows = math.max(3, (1200 / hzPerRow).ceil());
   final stableTailSpread = math.max(4.0, dynamicSpan * 0.06);
@@ -478,7 +500,11 @@ double? estimateEffectiveSpectralCutoffHz({
     (height * 0.90).floor(),
     math.max(1, (height * 0.98).floor()),
   );
-  final activeMargin = math.max(10.0, dynamicSpan * 0.20);
+  // A gradual cutoff needs stronger contrast than a sharp, contiguous edge.
+  // Otherwise an ordinary full-band spectral tilt can eventually cross the
+  // high-frequency floor by a few grayscale steps and create an arbitrary
+  // cutoff. Require a material transition into the stable tail instead.
+  final activeMargin = math.max(12.0, dynamicSpan * 0.25);
   final activeThreshold = tailReferenceLevel + activeMargin;
   for (var edgeIndex = searchEnd - 1; edgeIndex >= searchStart; edgeIndex--) {
     final belowEnd = edgeIndex - gapRows;
@@ -519,8 +545,13 @@ double? estimateEffectiveSpectralCutoffHz({
     math.max(1, (height * 0.90).floor()),
   );
   final topBandNearPeak = topBandLevel >= highLevel - minimumDrop;
+  // A real low-contrast full-band slope can change by less than the tail
+  // stability tolerance. Preserve it when the upper octave still trends
+  // downward by at least one grayscale step; a low-pass noise plateau remains
+  // flat here and must already have passed the validated edge checks above.
+  final upperBandSlope = lowerTopBandLevel - topBandLevel;
   final topBandStillSloping =
-      lowerTopBandLevel - topBandLevel > stableTailSpread;
+      upperBandSlope >= math.max(1.0, dynamicSpan * 0.05);
   if (basebandLevel >= 24 &&
       topBandLevel >= 24 &&
       (topBandNearPeak || topBandStillSloping)) {

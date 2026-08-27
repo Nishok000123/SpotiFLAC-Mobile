@@ -3,7 +3,7 @@ part of 'audio_analysis_widget.dart';
 // Analysis result models and per-run parameter records.
 
 class AudioAnalysisData {
-  static const cacheVersion = 10;
+  static const cacheVersion = 12;
 
   final String filePath;
   final int fileSize;
