@@ -11,8 +11,6 @@ import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/providers/library_collections_provider.dart';
-import 'package:spotiflac_android/providers/music_player_provider.dart';
-import 'package:spotiflac_android/providers/playback_provider.dart';
 import 'package:spotiflac_android/utils/image_cache_utils.dart';
 import 'package:spotiflac_android/utils/cover_art_utils.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
@@ -345,8 +343,6 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen>
         children: [
           _buildLoveAllButton(),
           const SizedBox(width: 12),
-          Flexible(child: _buildPlayDownloadedButton(context)),
-          const SizedBox(width: 8),
           Flexible(child: _buildDownloadAllCenterButton(context)),
           const SizedBox(width: 12),
           _buildAddToPlaylistButton(context),
@@ -503,16 +499,6 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen>
     );
   }
 
-  Widget _buildPlayDownloadedButton(BuildContext context) {
-    return HeaderFilledButton(
-      icon: Icons.play_arrow_rounded,
-      label: context.l10n.tooltipPlay,
-      onPressed: _tracks.isEmpty
-          ? null
-          : () => _playDownloadedPlaylist(context),
-    );
-  }
-
   Widget _buildDownloadAllCenterButton(BuildContext context) {
     return HeaderFilledButton(
       icon: Icons.download_rounded,
@@ -546,21 +532,6 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen>
 
   Future<void> _loveAll(List<Track> tracks) =>
       loveAllTracks(context, ref, tracks);
-
-  Future<void> _playDownloadedPlaylist(BuildContext context) async {
-    final tracks = List<Track>.from(_tracks, growable: false);
-    if (tracks.isEmpty) return;
-
-    try {
-      await ref.read(musicPlayerControllerProvider).setShuffle(false);
-      await ref.read(playbackProvider.notifier).playTrackList(tracks);
-    } catch (e) {
-      if (!mounted || !context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.snackbarCannotOpenFile('$e'))),
-      );
-    }
-  }
 
   void _downloadAll(BuildContext context) {
     _downloadTracks(context, _tracks);
