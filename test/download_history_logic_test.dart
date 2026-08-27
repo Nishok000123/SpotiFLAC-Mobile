@@ -93,6 +93,41 @@ void main() {
       expect(state.items, hasLength(2));
     });
 
+    test('recent in-memory completion is visible during batch reload', () {
+      final completed = _historyItem(
+        id: 'completed',
+        filePath: '/music/Album/Same Song.flac',
+        downloadedAt: DateTime.utc(2026, 8, 27),
+      );
+      final state = DownloadHistoryState(
+        items: [completed],
+        lookupItems: [completed],
+        totalCount: 1,
+      );
+      const completedLookup = HistoryLookupRequest(
+        spotifyId: 'same',
+        isrc: 'SAME-ISRC',
+        trackName: 'Same Song',
+        artistName: 'Same Artist',
+      );
+      const olderLookup = HistoryLookupRequest(
+        spotifyId: 'older',
+        trackName: 'Older Song',
+        artistName: 'Same Artist',
+      );
+
+      final visible = mergeVisibleHistoryLookupKeys(
+        state: state,
+        request: const HistoryBatchLookupRequest([
+          completedLookup,
+          olderLookup,
+        ]),
+        persistedKeys: {olderLookup.lookupKey},
+      );
+
+      expect(visible, {completedLookup.lookupKey, olderLookup.lookupKey});
+    });
+
     test('actual audio quality survives history serialization', () {
       final item =
           _historyItem(

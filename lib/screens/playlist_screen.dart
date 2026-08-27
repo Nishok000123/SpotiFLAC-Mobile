@@ -399,13 +399,11 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen>
     final historyLookups = _tracks
         .map(historyLookupForTrack)
         .toList(growable: false);
-    final existingHistoryKeys = ref
-        .watch(
-          downloadHistoryBatchExistsProvider(
-            HistoryBatchLookupRequest(historyLookups),
-          ),
-        )
-        .maybeWhen(data: (keys) => keys, orElse: () => const <String>{});
+    final existingHistoryKeys = ref.watch(
+      downloadHistoryVisibleBatchExistsProvider(
+        HistoryBatchLookupRequest(historyLookups),
+      ),
+    );
     return SliverPadding(
       padding: EdgeInsets.symmetric(horizontal: wideListInset(context)),
       sliver: SliverList(

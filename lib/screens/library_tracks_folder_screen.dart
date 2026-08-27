@@ -302,13 +302,11 @@ class _LibraryTracksFolderScreenState
     final historyLookups = folderTracks
         .map(historyLookupForTrack)
         .toList(growable: false);
-    final existingHistoryKeys = ref
-        .watch(
-          downloadHistoryBatchExistsProvider(
-            HistoryBatchLookupRequest(historyLookups),
-          ),
-        )
-        .maybeWhen(data: (keys) => keys, orElse: () => const <String>{});
+    final existingHistoryKeys = ref.watch(
+      downloadHistoryVisibleBatchExistsProvider(
+        HistoryBatchLookupRequest(historyLookups),
+      ),
+    );
 
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
     final bottomInset = context.navBarBottomInset;

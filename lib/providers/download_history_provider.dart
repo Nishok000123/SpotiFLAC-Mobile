@@ -1135,6 +1135,61 @@ final downloadHistoryBatchExistsProvider = FutureProvider.autoDispose
       };
     });
 
+bool historyLookupExistsInMemory(
+  DownloadHistoryState state,
+  HistoryLookupRequest request,
+) {
+  for (final candidate in HistoryDatabase.spotifyLookupCandidates(
+    request.spotifyId,
+  )) {
+    if (state.getBySpotifyId(candidate) != null) return true;
+  }
+
+  final isrc = request.isrc?.trim();
+  if (isrc != null && isrc.isNotEmpty && state.getByIsrc(isrc) != null) {
+    return true;
+  }
+
+  return state.findByTrackAndArtist(request.trackName, request.artistName) !=
+      null;
+}
+
+Set<String> mergeVisibleHistoryLookupKeys({
+  required DownloadHistoryState state,
+  required HistoryBatchLookupRequest request,
+  required Set<String> persistedKeys,
+}) {
+  final keys = <String>{...persistedKeys};
+  for (final track in request.tracks) {
+    if (historyLookupExistsInMemory(state, track)) {
+      keys.add(track.lookupKey);
+    }
+  }
+  return keys;
+}
+
+/// UI-facing history lookup that keeps the last database result visible while
+/// a batch query reloads and immediately merges downloads persisted in memory.
+/// This prevents completed tracks from losing their Play action until the
+/// remainder of a large download batch finishes.
+final downloadHistoryVisibleBatchExistsProvider = Provider.autoDispose
+    .family<Set<String>, HistoryBatchLookupRequest>((ref, request) {
+      final state = ref.watch(downloadHistoryProvider);
+      final persistedKeys = ref
+          .watch(downloadHistoryBatchExistsProvider(request))
+          .maybeWhen(
+            skipLoadingOnReload: true,
+            skipLoadingOnRefresh: true,
+            data: (keys) => keys,
+            orElse: () => const <String>{},
+          );
+      return mergeVisibleHistoryLookupKeys(
+        state: state,
+        request: request,
+        persistedKeys: persistedKeys,
+      );
+    });
+
 class DownloadedAlbumTracksRequest {
   final String albumName;
   final String artistName;
