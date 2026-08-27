@@ -72,6 +72,49 @@ func trimKnownProviderPrefix(trackID, providerID string) string {
 	return trimmedID
 }
 
+func buildSourceExtensionTrackMetadata(req DownloadRequest) *ExtTrackMetadata {
+	return &ExtTrackMetadata{
+		ID:          req.SpotifyID,
+		Name:        req.TrackName,
+		Artists:     req.ArtistName,
+		AlbumName:   req.AlbumName,
+		AlbumArtist: req.AlbumArtist,
+		DurationMS:  req.DurationMS,
+		CoverURL:    req.CoverURL,
+		ISRC:        req.ISRC,
+		ReleaseDate: req.ReleaseDate,
+		TrackNumber: req.TrackNumber,
+		TotalTracks: req.TotalTracks,
+		DiscNumber:  req.DiscNumber,
+		TotalDiscs:  req.TotalDiscs,
+		ProviderID:  req.Source,
+		AlbumType:   req.AlbumType,
+		Explicit:    req.Explicit,
+		UPC:         req.UPC,
+		TidalID:     req.TidalID,
+		QobuzID:     req.QobuzID,
+		DeezerID:    req.DeezerID,
+		SpotifyID:   req.SpotifyID,
+		Label:       req.Label,
+		Copyright:   req.Copyright,
+		Genre:       req.Genre,
+		Composer:    req.Composer,
+		Comment:     req.Comment,
+	}
+}
+
+func overlaySourceExtensionTrackIdentity(req *DownloadRequest, enrichedTrack ExtTrackMetadata) {
+	if req == nil {
+		return
+	}
+
+	// The queued track describes the release selected by the user. Enrichment
+	// may fill missing identity fields, but must not rename it to another
+	// release's display title or artist spelling.
+	overlayStr(&req.TrackName, enrichedTrack.Name, "TrackName")
+	overlayStr(&req.ArtistName, enrichedTrack.Artists, "ArtistName")
+}
+
 func resolvePreferredTrackIDForExtension(ext *loadedExtension, req DownloadRequest, explicitTrackID string) string {
 	candidates := make([]string, 0, 8)
 	appendCandidate := func(value string) {

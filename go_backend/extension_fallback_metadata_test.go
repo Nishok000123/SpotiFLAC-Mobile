@@ -55,3 +55,51 @@ func TestOverlayExtensionReleaseMetadataDoesNotEraseExistingValues(t *testing.T)
 		t.Fatalf("existing release metadata changed: %#v", req)
 	}
 }
+
+func TestBuildSourceExtensionTrackMetadataCarriesKnownIdentifiers(t *testing.T) {
+	req := DownloadRequest{
+		SpotifyID: "source-id",
+		TidalID:   "alternate-id-a",
+		QobuzID:   "alternate-id-b",
+		DeezerID:  "alternate-id-c",
+	}
+
+	track := buildSourceExtensionTrackMetadata(req)
+	if track.ID != req.SpotifyID || track.SpotifyID != req.SpotifyID {
+		t.Fatalf("primary identifier was not propagated: %#v", track)
+	}
+	if track.TidalID != req.TidalID || track.QobuzID != req.QobuzID || track.DeezerID != req.DeezerID {
+		t.Fatalf("alternate identifiers were not propagated: %#v", track)
+	}
+}
+
+func TestOverlaySourceExtensionTrackIdentityPreservesRequestedValues(t *testing.T) {
+	req := DownloadRequest{
+		TrackName:  "Album Display Title",
+		ArtistName: "Album Artist Credit",
+	}
+
+	overlaySourceExtensionTrackIdentity(&req, ExtTrackMetadata{
+		Name:    "Single Display Title",
+		Artists: "Provider Artist Credit",
+	})
+
+	if req.TrackName != "Album Display Title" {
+		t.Fatalf("track name = %q, want requested title", req.TrackName)
+	}
+	if req.ArtistName != "Album Artist Credit" {
+		t.Fatalf("artist name = %q, want requested credit", req.ArtistName)
+	}
+}
+
+func TestOverlaySourceExtensionTrackIdentityFillsMissingValues(t *testing.T) {
+	req := DownloadRequest{}
+	overlaySourceExtensionTrackIdentity(&req, ExtTrackMetadata{
+		Name:    "Resolved Title",
+		Artists: "Resolved Artist",
+	})
+
+	if req.TrackName != "Resolved Title" || req.ArtistName != "Resolved Artist" {
+		t.Fatalf("missing identity fields were not enriched: %#v", req)
+	}
+}

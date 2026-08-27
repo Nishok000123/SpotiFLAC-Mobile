@@ -430,30 +430,7 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 				GoLog("[DownloadWithExtensionFallback] Enriching track from extension '%s'...\n", req.Source)
 
 				provider := newExtensionProviderWrapper(ext)
-				trackMeta := &ExtTrackMetadata{
-					ID:          req.SpotifyID,
-					Name:        req.TrackName,
-					Artists:     req.ArtistName,
-					AlbumName:   req.AlbumName,
-					AlbumArtist: req.AlbumArtist,
-					DurationMS:  req.DurationMS,
-					CoverURL:    req.CoverURL,
-					ISRC:        req.ISRC,
-					ReleaseDate: req.ReleaseDate,
-					TrackNumber: req.TrackNumber,
-					TotalTracks: req.TotalTracks,
-					DiscNumber:  req.DiscNumber,
-					TotalDiscs:  req.TotalDiscs,
-					ProviderID:  req.Source,
-					AlbumType:   req.AlbumType,
-					Explicit:    req.Explicit,
-					UPC:         req.UPC,
-					Label:       req.Label,
-					Copyright:   req.Copyright,
-					Genre:       req.Genre,
-					Composer:    req.Composer,
-					Comment:     req.Comment,
-				}
+				trackMeta := buildSourceExtensionTrackMetadata(req)
 
 				enrichedTrack, err := provider.EnrichTrackForItemID(trackMeta, req.ItemID)
 				if shouldAbortCancelledFallback(req.ItemID, err) {
@@ -476,12 +453,7 @@ func DownloadWithExtensionFallback(req DownloadRequest) (*DownloadResponse, erro
 						GoLog("[DownloadWithExtensionFallback] Deezer ID from Odesli: %s\n", enrichedTrack.DeezerID)
 						req.DeezerID = enrichedTrack.DeezerID
 					}
-					if enrichedTrack.Name != "" {
-						req.TrackName = enrichedTrack.Name
-					}
-					if enrichedTrack.Artists != "" {
-						req.ArtistName = enrichedTrack.Artists
-					}
+					overlaySourceExtensionTrackIdentity(&req, *enrichedTrack)
 					overlayStr(&req.AlbumName, enrichedTrack.AlbumName, "AlbumName")
 					overlayStr(&req.AlbumArtist, enrichedTrack.AlbumArtist, "")
 					overlayInt(&req.DurationMS, enrichedTrack.DurationMS, "DurationMS")

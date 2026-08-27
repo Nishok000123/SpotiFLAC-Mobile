@@ -150,9 +150,9 @@ func buildDownloadSuccessResponse(
 	filePath string,
 	alreadyExists bool,
 ) DownloadResponse {
-	title := result.Title
+	title := strings.TrimSpace(req.TrackName)
 	if title == "" {
-		title = req.TrackName
+		title = strings.TrimSpace(result.Title)
 	}
 
 	artist := result.Artist
@@ -207,9 +207,9 @@ func buildDownloadSuccessResponse(
 		upc = req.UPC
 	}
 
-	coverURL := strings.TrimSpace(result.CoverURL)
+	coverURL := strings.TrimSpace(req.CoverURL)
 	if coverURL == "" {
-		coverURL = strings.TrimSpace(req.CoverURL)
+		coverURL = strings.TrimSpace(result.CoverURL)
 	}
 
 	return DownloadResponse{

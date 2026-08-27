@@ -105,9 +105,54 @@ func TestPreferredReleaseMetadataPrefersRequestValues(t *testing.T) {
 	}
 }
 
-func TestBuildDownloadSuccessResponsePrefersProviderCoverURL(t *testing.T) {
+func TestBuildDownloadSuccessResponsePreservesRequestedTrackAndCover(t *testing.T) {
 	req := DownloadRequest{
-		TrackName:   "Track",
+		TrackName:   "Album Track Title",
+		ArtistName:  "Artist",
+		AlbumName:   "Original Album",
+		AlbumArtist: "Artist",
+		CoverURL:    "https://cdn.source.test/original-album.jpg",
+		ISRC:        "USAAA2600001",
+	}
+
+	result := DownloadResult{
+		Title:    "Single Version Title",
+		Artist:   "Artist",
+		Album:    "Single Version Title",
+		CoverURL: "https://cdn.provider.test/single.jpg",
+		ISRC:     "USAAA2600001",
+	}
+
+	resp := buildDownloadSuccessResponse(
+		req,
+		result,
+		"generic-provider",
+		"ok",
+		"/tmp/test.flac",
+		false,
+	)
+	overlayExtensionDownloadMetadata(&resp, &ExtDownloadResult{
+		Title:    result.Title,
+		Artist:   result.Artist,
+		Album:    result.Album,
+		CoverURL: result.CoverURL,
+		ISRC:     result.ISRC,
+	})
+	applyExtensionRequestFallbacks(&resp, req)
+
+	if resp.Title != req.TrackName {
+		t.Fatalf("title = %q, want requested title %q", resp.Title, req.TrackName)
+	}
+	if resp.Album != req.AlbumName {
+		t.Fatalf("album = %q, want requested album %q", resp.Album, req.AlbumName)
+	}
+	if resp.CoverURL != req.CoverURL {
+		t.Fatalf("cover url = %q, want requested album cover %q", resp.CoverURL, req.CoverURL)
+	}
+}
+
+func TestBuildDownloadSuccessResponseFallsBackToProviderTrackAndCover(t *testing.T) {
+	req := DownloadRequest{
 		ArtistName:  "Artist",
 		AlbumName:   "Album",
 		AlbumArtist: "Artist",
@@ -117,20 +162,23 @@ func TestBuildDownloadSuccessResponsePrefersProviderCoverURL(t *testing.T) {
 		Title:    "Track",
 		Artist:   "Artist",
 		Album:    "Album",
-		CoverURL: "https://cdn.qobuz.test/cover.jpg",
+		CoverURL: "https://cdn.provider.test/cover.jpg",
 	}
 
 	resp := buildDownloadSuccessResponse(
 		req,
 		result,
-		"qobuz",
+		"generic-provider",
 		"ok",
 		"/tmp/test.flac",
 		false,
 	)
 
+	if resp.Title != result.Title {
+		t.Fatalf("title = %q, want provider fallback %q", resp.Title, result.Title)
+	}
 	if resp.CoverURL != result.CoverURL {
-		t.Fatalf("cover url = %q, want %q", resp.CoverURL, result.CoverURL)
+		t.Fatalf("cover url = %q, want provider fallback %q", resp.CoverURL, result.CoverURL)
 	}
 }
 
