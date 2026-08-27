@@ -25,3 +25,17 @@ bool shouldRetainQueueLibraryPageSnapshot({
   required bool cachedHasContent,
   required bool activeDownloadFallbackAvailable,
 }) => currentIsEmpty && cachedHasContent && activeDownloadFallbackAvailable;
+
+/// Resolves the playable path for a just-completed download while its pinned
+/// completion-bridge card is still visible. The finalized history path wins
+/// because conversion or SAF publication may change the original queue path.
+String? resolveCompletionBridgePlayablePath({
+  String? historyFilePath,
+  String? completedItemFilePath,
+}) {
+  final historyPath = historyFilePath?.trim();
+  if (historyPath != null && historyPath.isNotEmpty) return historyPath;
+
+  final completedPath = completedItemFilePath?.trim();
+  return completedPath == null || completedPath.isEmpty ? null : completedPath;
+}

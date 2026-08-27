@@ -122,6 +122,10 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
     final quality =
         unifiedItem?.qualityForMode(_libraryQualityLabelMode) ??
         track.audioQuality;
+    final playablePath = resolveCompletionBridgePlayablePath(
+      historyFilePath: historyItem?.filePath,
+      completedItemFilePath: item.filePath,
+    );
     final cover = unifiedItem != null
         ? _buildUnifiedCoverImage(unifiedItem, colorScheme)
         : track.coverUrl != null
@@ -132,6 +136,8 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
         : 'cover_${item.id}';
     final trackName = historyItem?.trackName ?? track.name;
     final artistName = historyItem?.artistName ?? track.artistName;
+    final albumName = historyItem?.albumName ?? track.albumName;
+    final coverUrl = historyItem?.coverUrl ?? track.coverUrl ?? '';
     return TrackGridCard(
       semanticLabel: context.l10n.a11yTrackByArtist(trackName, artistName),
       onTap: () => historyItem != null
@@ -143,14 +149,70 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
           : _navigateToMetadataScreen(item),
       cover: Hero(tag: heroTag, child: cover),
       overlays: [
+        Positioned(
+          right: 4,
+          top: 4,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer,
+              borderRadius: context.tokens.borderRadiusBadge,
+            ),
+            child: Icon(
+              Icons.download_done,
+              size: 12,
+              color: colorScheme.onPrimaryContainer,
+            ),
+          ),
+        ),
         if (quality != null && quality.isNotEmpty)
           Positioned(
             left: 4,
-            right: 4,
+            right: 28,
             top: 4,
             child: Align(
               alignment: Alignment.centerLeft,
               child: _buildLibraryQualityBadge(context, colorScheme, quality),
+            ),
+          ),
+        if (playablePath != null)
+          Positioned(
+            right: 4,
+            bottom: 4,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _fileExistsListenable(playablePath),
+              builder: (context, fileExists, child) {
+                if (fileExists) {
+                  return TrackGridPlayButton(
+                    tooltip: context.l10n.a11yPlayTrackByArtist(
+                      trackName,
+                      artistName,
+                    ),
+                    onPressed: () => _openFile(
+                      playablePath,
+                      title: trackName,
+                      artist: artistName,
+                      album: albumName,
+                      coverUrl: coverUrl,
+                    ),
+                  );
+                }
+                return Tooltip(
+                  message: context.l10n.queueDownloadedFileMissing,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: colorScheme.errorContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.error_outline,
+                      color: colorScheme.error,
+                      size: 14,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
       ],
@@ -176,6 +238,10 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
     final quality =
         unifiedItem?.qualityForMode(_libraryQualityLabelMode) ??
         track.audioQuality;
+    final playablePath = resolveCompletionBridgePlayablePath(
+      historyFilePath: historyItem?.filePath,
+      completedItemFilePath: item.filePath,
+    );
     final cover = unifiedItem != null
         ? _buildUnifiedCoverImage(unifiedItem, colorScheme, coverSize)
         : track.coverUrl != null
@@ -199,6 +265,8 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
         : 'cover_${item.id}';
     final trackName = historyItem?.trackName ?? track.name;
     final artistName = historyItem?.artistName ?? track.artistName;
+    final albumName = historyItem?.albumName ?? track.albumName;
+    final coverUrl = historyItem?.coverUrl ?? track.coverUrl ?? '';
     return TrackCard(
       onTap: () => historyItem != null
           ? _navigateToHistoryMetadataScreen(
@@ -235,6 +303,40 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
           ],
         ],
       ),
+      trailing: playablePath == null
+          ? null
+          : ValueListenableBuilder<bool>(
+              valueListenable: _fileExistsListenable(playablePath),
+              builder: (context, fileExists, child) {
+                if (fileExists) {
+                  return IconButton(
+                    onPressed: () => _openFile(
+                      playablePath,
+                      title: trackName,
+                      artist: artistName,
+                      album: albumName,
+                      coverUrl: coverUrl,
+                    ),
+                    icon: Icon(Icons.play_arrow, color: colorScheme.primary),
+                    tooltip: context.l10n.tooltipPlay,
+                    style: IconButton.styleFrom(
+                      minimumSize: Size.square(context.tokens.minTouchTarget),
+                      backgroundColor: colorScheme.primaryContainer.withValues(
+                        alpha: 0.3,
+                      ),
+                    ),
+                  );
+                }
+                return Tooltip(
+                  message: context.l10n.queueDownloadedFileMissing,
+                  child: Icon(
+                    Icons.error_outline,
+                    color: colorScheme.error,
+                    size: 20,
+                  ),
+                );
+              },
+            ),
     );
   }
 

@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+
 import 'package:spotiflac_android/screens/queue_library_refresh_policy.dart';
 import 'package:spotiflac_android/services/library_database.dart';
 
@@ -72,5 +75,52 @@ void main() {
       ),
       isFalse,
     );
+  });
+
+  test('completion bridge prefers the finalized history path', () {
+    expect(
+      resolveCompletionBridgePlayablePath(
+        historyFilePath: ' /music/final.flac ',
+        completedItemFilePath: '/music/staging.flac',
+      ),
+      '/music/final.flac',
+    );
+    expect(
+      resolveCompletionBridgePlayablePath(
+        historyFilePath: ' ',
+        completedItemFilePath: ' /music/completed.flac ',
+      ),
+      '/music/completed.flac',
+    );
+    expect(
+      resolveCompletionBridgePlayablePath(
+        historyFilePath: null,
+        completedItemFilePath: '',
+      ),
+      isNull,
+    );
+  });
+
+  test('completion bridge cards retain Play actions during a batch', () {
+    final source = File(
+      'lib/screens/queue_tab_collection_items.dart',
+    ).readAsStringSync();
+    final gridStart = source.indexOf('Widget _buildBridgeGridItem(');
+    final listStart = source.indexOf('Widget _buildBridgeListItem(');
+    final badgeStart = source.indexOf('Widget _buildLibraryQualityBadge(');
+
+    expect(gridStart, greaterThanOrEqualTo(0));
+    expect(listStart, greaterThan(gridStart));
+    expect(badgeStart, greaterThan(listStart));
+
+    final gridSource = source.substring(gridStart, listStart);
+    final listSource = source.substring(listStart, badgeStart);
+
+    expect(gridSource, contains('resolveCompletionBridgePlayablePath('));
+    expect(gridSource, contains('_fileExistsListenable(playablePath)'));
+    expect(gridSource, contains('TrackGridPlayButton('));
+    expect(listSource, contains('resolveCompletionBridgePlayablePath('));
+    expect(listSource, contains('_fileExistsListenable(playablePath)'));
+    expect(listSource, contains('Icons.play_arrow'));
   });
 }
