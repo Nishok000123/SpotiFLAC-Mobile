@@ -1194,6 +1194,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get trackAudioQuality => 'Kualitas audio';
 
   @override
+  String get libraryQualityLabelFileFormat => 'Format berkas';
+
+  @override
   String get trackReleaseDate => 'Tanggal rilis';
 
   @override

@@ -1218,6 +1218,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get trackAudioQuality => 'Qualité audio';
 
   @override
+  String get libraryQualityLabelFileFormat => 'File format';
+
+  @override
   String get trackReleaseDate => 'Date de sortie';
 
   @override

@@ -54,6 +54,48 @@ void main() {
       );
     });
 
+    test('shows detected file format without quality metrics', () {
+      expect(
+        normalizeLibraryQualityLabelMode(
+          AppSettings.libraryQualityLabelFileFormat,
+        ),
+        AppSettings.libraryQualityLabelFileFormat,
+      );
+      expect(
+        buildLibraryAudioQualityLabel(
+          mode: AppSettings.libraryQualityLabelFileFormat,
+          format: 'flac',
+          bitrateKbps: 1760,
+          bitDepth: 24,
+          sampleRate: 96000,
+        ),
+        'FLAC',
+      );
+      expect(
+        buildLibraryAudioQualityLabel(
+          mode: AppSettings.libraryQualityLabelFileFormat,
+          format: 'm4a',
+          bitrateKbps: 256,
+        ),
+        'M4A',
+      );
+      expect(
+        buildLibraryAudioQualityLabel(
+          mode: AppSettings.libraryQualityLabelFileFormat,
+          format: 'mp3',
+          bitrateKbps: 320,
+        ),
+        'MP3',
+      );
+      expect(
+        buildLibraryAudioQualityLabel(
+          mode: AppSettings.libraryQualityLabelFileFormat,
+          format: 'ape',
+        ),
+        'APE',
+      );
+    });
+
     test('shows only bit depth when requested', () {
       expect(
         buildLibraryAudioQualityLabel(

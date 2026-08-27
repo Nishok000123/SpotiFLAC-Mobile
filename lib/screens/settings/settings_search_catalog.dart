@@ -149,7 +149,16 @@ class SettingsSearchCatalog {
         SettingsSearchEntry(
           icon: Icons.graphic_eq_rounded,
           title: l10n.trackAudioQuality,
-          keywords: const ['quality label', 'bitrate', 'bit depth', 'kbps'],
+          keywords: const [
+            'quality label',
+            'bitrate',
+            'bit depth',
+            'file format',
+            'codec',
+            'flac',
+            'mp3',
+            'kbps',
+          ],
         ),
         SettingsSearchEntry(
           icon: Icons.library_music_outlined,

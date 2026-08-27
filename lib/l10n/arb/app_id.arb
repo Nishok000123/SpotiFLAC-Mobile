@@ -2164,6 +2164,7 @@
   "@trackAudioQuality": {
     "description": "Metadata label - audio quality"
   },
+  "libraryQualityLabelFileFormat": "Format berkas",
   "libraryRemovedMissingFiles": "Removed {count} missing files from library",
   "@libraryRemovedMissingFiles": {
     "description": "Snackbar after cleanup",

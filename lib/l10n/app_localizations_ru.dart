@@ -1195,6 +1195,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get trackAudioQuality => 'Качество записи';
 
   @override
+  String get libraryQualityLabelFileFormat => 'File format';
+
+  @override
   String get trackReleaseDate => 'Дата выхода';
 
   @override

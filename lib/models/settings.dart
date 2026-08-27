@@ -7,6 +7,7 @@ part 'settings.g.dart';
 class AppSettings {
   static const String homeFeedProviderOff = '__off__';
   static const String libraryQualityLabelBitrate = 'bitrate';
+  static const String libraryQualityLabelFileFormat = 'file_format';
   static const String libraryQualityLabelBitDepthOnly = 'bit_depth_only';
   static const String libraryQualityLabelBitDepth = 'bit_depth';
   static const String libraryQualityLabelBitDepthBitrate = 'bit_depth_bitrate';
@@ -42,8 +43,8 @@ class AppSettings {
   /// 'last' (keep last used), 'all', 'albums', 'singles', or 'playlists'.
   final String defaultLibraryView;
 
-  /// Library badge text: measured bitrate, bit depth, bit depth/sample rate,
-  /// or the combined bit depth/bitrate label.
+  /// Library badge text: measured bitrate, file format, bit depth,
+  /// bit depth/sample rate, or the combined bit depth/bitrate label.
   final String libraryQualityLabelMode;
   final bool askQualityBeforeDownload;
   final bool enableLogging;

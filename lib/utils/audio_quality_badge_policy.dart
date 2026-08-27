@@ -11,6 +11,8 @@ final RegExp _bitDepthQualityPattern = RegExp(
 
 String normalizeLibraryQualityLabelMode(String? mode) {
   return switch (mode) {
+    AppSettings.libraryQualityLabelFileFormat =>
+      AppSettings.libraryQualityLabelFileFormat,
     AppSettings.libraryQualityLabelBitDepthOnly =>
       AppSettings.libraryQualityLabelBitDepthOnly,
     AppSettings.libraryQualityLabelBitDepth =>
@@ -21,9 +23,29 @@ String normalizeLibraryQualityLabelMode(String? mode) {
   };
 }
 
+String? _libraryFileFormatLabel(String? format) {
+  final rawFormat = normalizeOptionalString(format);
+  if (rawFormat == null) return null;
+
+  return switch (normalizeAudioFormatValue(rawFormat)) {
+    'flac' => 'FLAC',
+    'alac' => 'ALAC',
+    'wav' => 'WAV',
+    'aiff' => 'AIFF',
+    'aac' => 'AAC',
+    'eac3' => 'EAC3',
+    'ac3' => 'AC3',
+    'ac4' => 'AC4',
+    'mp3' => 'MP3',
+    'opus' => 'OPUS',
+    'm4a' => 'M4A',
+    _ => rawFormat.replaceFirst(RegExp(r'^\.'), '').toUpperCase(),
+  };
+}
+
 /// Builds a Library label from metadata already held in memory. Lossy formats
-/// keep their bitrate label because bit depth is not a useful quality signal
-/// for encoded MP3/AAC/Opus audio.
+/// keep their bitrate label in quality modes because bit depth is not a useful
+/// quality signal for encoded MP3/AAC/Opus audio.
 String? buildLibraryAudioQualityLabel({
   required String mode,
   String? format,
@@ -52,6 +74,10 @@ String? buildLibraryAudioQualityLabel({
       ? '$effectiveBitDepth-bit'
       : null;
   final normalizedMode = normalizeLibraryQualityLabelMode(mode);
+
+  if (normalizedMode == AppSettings.libraryQualityLabelFileFormat) {
+    return _libraryFileFormatLabel(format);
+  }
 
   if (isLossyAudioFormat(format)) {
     return bitrateLabel;

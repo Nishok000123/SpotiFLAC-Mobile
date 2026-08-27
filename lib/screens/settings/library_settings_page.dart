@@ -435,6 +435,9 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
   }
 
   String _getQualityLabelModeLabel(BuildContext context, String mode) {
+    if (mode == AppSettings.libraryQualityLabelFileFormat) {
+      return context.l10n.libraryQualityLabelFileFormat;
+    }
     if (mode == AppSettings.libraryQualityLabelBitDepthOnly) {
       return context.l10n.audioAnalysisBitDepth;
     }
@@ -473,6 +476,11 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
         Icons.multiline_chart_rounded,
         '${context.l10n.audioAnalysisBitDepth} & '
             '${context.l10n.trackConvertBitrate}',
+      ),
+      (
+        AppSettings.libraryQualityLabelFileFormat,
+        Icons.audio_file_rounded,
+        context.l10n.libraryQualityLabelFileFormat,
       ),
     ];
     showModalBottomSheet<void>(

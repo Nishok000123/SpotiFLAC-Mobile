@@ -2206,6 +2206,12 @@ abstract class AppLocalizations {
   /// **'Audio quality'**
   String get trackAudioQuality;
 
+  /// Library audio quality label mode that shows the detected file format
+  ///
+  /// In en, this message translates to:
+  /// **'File format'**
+  String get libraryQualityLabelFileFormat;
+
   /// Metadata label - release date
   ///
   /// In en, this message translates to:

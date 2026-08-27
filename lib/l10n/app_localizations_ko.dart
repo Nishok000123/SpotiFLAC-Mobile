@@ -1163,6 +1163,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get trackAudioQuality => '오디오 음질';
 
   @override
+  String get libraryQualityLabelFileFormat => 'File format';
+
+  @override
   String get trackReleaseDate => '발매일자';
 
   @override

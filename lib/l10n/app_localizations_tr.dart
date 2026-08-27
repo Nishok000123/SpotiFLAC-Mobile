@@ -1200,6 +1200,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get trackAudioQuality => 'Ses kalitesi';
 
   @override
+  String get libraryQualityLabelFileFormat => 'File format';
+
+  @override
   String get trackReleaseDate => 'Yayın tarihi';
 
   @override
