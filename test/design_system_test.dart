@@ -49,8 +49,7 @@ class _IconButtonTooltipVisitor extends RecursiveAstVisitor<void> {
     if (node.constructorName.type.name.lexeme == 'IconButton') {
       final hasTooltip = node.argumentList.arguments.any(
         (argument) =>
-            argument is NamedExpression &&
-            argument.name.label.name == 'tooltip',
+            argument is NamedArgument && argument.name.lexeme == 'tooltip',
       );
       if (!hasTooltip) {
         final line = lineInfo.getLocation(node.offset).lineNumber;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:material_ui/material_ui.dart' as material_ui;
 import 'package:spotiflac_android/providers/theme_provider.dart';
 import 'package:spotiflac_android/theme/app_theme.dart';
 
@@ -15,15 +16,15 @@ class DynamicColorWrapper extends ConsumerWidget {
     final themeSettings = ref.watch(themeProvider);
 
     return DynamicColorBuilder(
-      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+      builder: (lightDynamic, darkDynamic) {
         ColorScheme lightScheme;
         ColorScheme darkScheme;
 
         if (themeSettings.useDynamicColor &&
             lightDynamic != null &&
             darkDynamic != null) {
-          lightScheme = lightDynamic;
-          darkScheme = darkDynamic;
+          lightScheme = _toFlutterColorScheme(lightDynamic);
+          darkScheme = _toFlutterColorScheme(darkDynamic);
         } else {
           final seedColor = themeSettings.seedColor;
           lightScheme = ColorScheme.fromSeed(
@@ -48,6 +49,46 @@ class DynamicColorWrapper extends ConsumerWidget {
 
         return builder(lightTheme, darkTheme, themeSettings.themeMode);
       },
+    );
+  }
+
+  ColorScheme _toFlutterColorScheme(material_ui.ColorScheme scheme) {
+    return ColorScheme.fromSeed(
+      seedColor: scheme.primary,
+      brightness: scheme.brightness,
+    ).copyWith(
+      primary: scheme.primary,
+      onPrimary: scheme.onPrimary,
+      primaryContainer: scheme.primaryContainer,
+      onPrimaryContainer: scheme.onPrimaryContainer,
+      secondary: scheme.secondary,
+      onSecondary: scheme.onSecondary,
+      secondaryContainer: scheme.secondaryContainer,
+      onSecondaryContainer: scheme.onSecondaryContainer,
+      tertiary: scheme.tertiary,
+      onTertiary: scheme.onTertiary,
+      tertiaryContainer: scheme.tertiaryContainer,
+      onTertiaryContainer: scheme.onTertiaryContainer,
+      error: scheme.error,
+      onError: scheme.onError,
+      errorContainer: scheme.errorContainer,
+      onErrorContainer: scheme.onErrorContainer,
+      outline: scheme.outline,
+      outlineVariant: scheme.outlineVariant,
+      surface: scheme.surface,
+      onSurface: scheme.onSurface,
+      surfaceContainerLowest: scheme.surfaceContainerLowest,
+      surfaceContainerLow: scheme.surfaceContainerLow,
+      surfaceContainer: scheme.surfaceContainer,
+      surfaceContainerHigh: scheme.surfaceContainerHigh,
+      surfaceContainerHighest: scheme.surfaceContainerHighest,
+      onSurfaceVariant: scheme.onSurfaceVariant,
+      inverseSurface: scheme.inverseSurface,
+      onInverseSurface: scheme.onInverseSurface,
+      inversePrimary: scheme.inversePrimary,
+      shadow: scheme.shadow,
+      surfaceTint: scheme.surfaceTint,
+      scrim: scheme.scrim,
     );
   }
 
