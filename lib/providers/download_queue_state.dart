@@ -80,6 +80,7 @@ class DownloadQueueLookup {
   final Map<String, DownloadItem> byItemId;
   final Map<String, int> indexByItemId;
   final List<String> itemIds;
+  final List<String> notCompletedItemIds;
   final int queuedCount;
   final int completedCount;
   final int failedCount;
@@ -91,6 +92,7 @@ class DownloadQueueLookup {
       byItemId = const {},
       indexByItemId = const {},
       itemIds = const [],
+      notCompletedItemIds = const [],
       queuedCount = 0,
       completedCount = 0,
       failedCount = 0,
@@ -102,6 +104,7 @@ class DownloadQueueLookup {
     required this.byItemId,
     required this.indexByItemId,
     required this.itemIds,
+    required this.notCompletedItemIds,
     required this.queuedCount,
     required this.completedCount,
     required this.failedCount,
@@ -114,6 +117,7 @@ class DownloadQueueLookup {
     final byItemId = <String, DownloadItem>{};
     final indexByItemId = <String, int>{};
     final itemIds = <String>[];
+    final notCompletedItemIds = <String>[];
     var queuedCount = 0;
     var completedCount = 0;
     var failedCount = 0;
@@ -125,6 +129,9 @@ class DownloadQueueLookup {
       byItemId[item.id] = item;
       indexByItemId[item.id] = index;
       itemIds.add(item.id);
+      if (item.status != DownloadStatus.completed) {
+        notCompletedItemIds.add(item.id);
+      }
       if (_countsAsQueued(item.status)) queuedCount++;
       if (item.status == DownloadStatus.completed) completedCount++;
       if (item.status == DownloadStatus.failed) failedCount++;
@@ -136,6 +143,7 @@ class DownloadQueueLookup {
       byItemId: Map.unmodifiable(byItemId),
       indexByItemId: Map.unmodifiable(indexByItemId),
       itemIds: List.unmodifiable(itemIds),
+      notCompletedItemIds: List.unmodifiable(notCompletedItemIds),
       queuedCount: queuedCount,
       completedCount: completedCount,
       failedCount: failedCount,
@@ -185,6 +193,7 @@ class DownloadQueueLookup {
     var nextFailedCount = failedCount;
     var nextActiveDownloadsCount = activeDownloadsCount;
     var nextFinalizingCount = finalizingCount;
+    var notCompletedMembershipChanged = false;
     Map<String, DownloadItem>? nextByItemId;
     Map<String, DownloadItem>? nextByTrackId;
 
@@ -193,6 +202,11 @@ class DownloadQueueLookup {
       final next = nextItems[index];
       if (previous.id != next.id || previous.track.id != next.track.id) {
         return DownloadQueueLookup.fromItems(nextItems);
+      }
+
+      if ((previous.status == DownloadStatus.completed) !=
+          (next.status == DownloadStatus.completed)) {
+        notCompletedMembershipChanged = true;
       }
 
       nextByItemId ??= Map<String, DownloadItem>.from(byItemId);
@@ -237,6 +251,12 @@ class DownloadQueueLookup {
           : Map.unmodifiable(nextByItemId),
       indexByItemId: indexByItemId,
       itemIds: itemIds,
+      notCompletedItemIds: notCompletedMembershipChanged
+          ? List.unmodifiable([
+              for (final item in nextItems)
+                if (item.status != DownloadStatus.completed) item.id,
+            ])
+          : notCompletedItemIds,
       queuedCount: nextQueuedCount,
       completedCount: nextCompletedCount,
       failedCount: nextFailedCount,

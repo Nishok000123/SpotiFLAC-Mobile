@@ -104,4 +104,26 @@ void main() {
     expect(calls, 1);
     expect(metadata['title'], 'Instrumental');
   });
+
+  test('shuffle candidate selection excludes recent tracks', () {
+    expect(
+      buildShuffleCandidatePool(
+        mediaCount: 6,
+        currentIndex: 2,
+        recentIndices: const [0, 1, 3],
+      ),
+      [4, 5],
+    );
+  });
+
+  test('shuffle candidate selection resets after exhausting the pool', () {
+    expect(
+      buildShuffleCandidatePool(
+        mediaCount: 4,
+        currentIndex: 2,
+        recentIndices: const [0, 1, 3],
+      ),
+      [0, 1, 3],
+    );
+  });
 }

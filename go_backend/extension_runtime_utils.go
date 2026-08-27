@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -226,9 +227,12 @@ func (r *extensionRuntime) cryptoDecrypt(call goja.FunctionCall) goja.Value {
 func (r *extensionRuntime) cryptoGenerateKey(call goja.FunctionCall) goja.Value {
 	length := 32
 	if len(call.Arguments) > 0 && !goja.IsUndefined(call.Arguments[0]) {
-		if l, ok := call.Arguments[0].Export().(float64); ok {
-			length = int(l)
+		requested := call.Arguments[0].ToFloat()
+		if math.IsNaN(requested) || math.IsInf(requested, 0) ||
+			requested != math.Trunc(requested) || requested < 1 || requested > 4096 {
+			return r.jsError("key length must be an integer between 1 and 4096 bytes")
 		}
+		length = int(requested)
 	}
 
 	key := make([]byte, length)

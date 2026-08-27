@@ -67,7 +67,7 @@ func (r *extensionRuntime) fetchPolyfill(call goja.FunctionCall) goja.Value {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := readExtensionHTTPResponseBody(resp)
 	if err != nil {
 		return r.createFetchError(err.Error())
 	}
@@ -81,9 +81,15 @@ func (r *extensionRuntime) fetchPolyfill(call goja.FunctionCall) goja.Value {
 	responseObj.Set("headers", respHeaders)
 	responseObj.Set("url", resp.Request.URL.String())
 
-	bodyString := string(body)
-
+	var bodyString string
+	var bodyStringReady bool
 	responseObj.Set("text", func(call goja.FunctionCall) goja.Value {
+		// Avoid allocating a second full response copy when callers only use
+		// json() or arrayBuffer().
+		if !bodyStringReady {
+			bodyString = string(body)
+			bodyStringReady = true
+		}
 		return r.vm.ToValue(bodyString)
 	})
 
@@ -97,11 +103,10 @@ func (r *extensionRuntime) fetchPolyfill(call goja.FunctionCall) goja.Value {
 	})
 
 	responseObj.Set("arrayBuffer", func(call goja.FunctionCall) goja.Value {
-		byteArray := make([]any, len(body))
-		for i, b := range body {
-			byteArray[i] = int(b)
-		}
-		return r.vm.ToValue(byteArray)
+		// A Go-backed byte slice preserves the existing synchronous, array-like
+		// contract (length and numeric indexes) without one interface allocation
+		// per byte.
+		return r.vm.ToValue(body)
 	})
 
 	return responseObj

@@ -14,7 +14,34 @@ var (
 	benchmarkStringSink string
 	benchmarkIntSink    int64
 	benchmarkScanSink   *LibraryScanResult
+	benchmarkValueSink  goja.Value
 )
+
+func BenchmarkGojaByteArrayConversion(b *testing.B) {
+	const payloadSize = 64 << 10
+	payload := make([]byte, payloadSize)
+	vm := goja.New()
+
+	b.Run("go_backed_bytes", func(b *testing.B) {
+		b.ReportAllocs()
+		b.SetBytes(payloadSize)
+		for b.Loop() {
+			benchmarkValueSink = vm.ToValue(payload)
+		}
+	})
+
+	b.Run("boxed_interfaces", func(b *testing.B) {
+		b.ReportAllocs()
+		b.SetBytes(payloadSize)
+		for b.Loop() {
+			boxed := make([]any, len(payload))
+			for index, value := range payload {
+				boxed[index] = int(value)
+			}
+			benchmarkValueSink = vm.ToValue(boxed)
+		}
+	})
+}
 
 func BenchmarkGojaProviderInvocation(b *testing.B) {
 	vm := goja.New()

@@ -571,6 +571,7 @@ class MainActivity: FlutterFragmentActivity() {
                         file.lastModified() < cutoff &&
                         (file.name.startsWith("bridge_json_") ||
                             file.name.startsWith("saf_") ||
+                            file.name.startsWith("native_saf_") ||
                             file.name.startsWith("ms_"))
                     if (stale) file.delete()
                 }

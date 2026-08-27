@@ -37,6 +37,17 @@ func TestExtensionRuntimeAuthAndPolyfills(t *testing.T) {
 					Request:    req,
 				}, nil
 			case "api.example.com":
+				if req.URL.Path == "/huge" {
+					return &http.Response{
+						StatusCode: 200,
+						Header:     make(http.Header),
+						Body: io.NopCloser(io.LimitReader(
+							strings.NewReader(strings.Repeat("x", maxExtensionHTTPResponseBytes+1)),
+							maxExtensionHTTPResponseBytes+1,
+						)),
+						Request: req,
+					}, nil
+				}
 				return &http.Response{
 					StatusCode: 200,
 					Header:     http.Header{"X-Test": []string{"yes"}},
@@ -154,7 +165,8 @@ func TestExtensionRuntimeAuthAndPolyfills(t *testing.T) {
 			ok: response.ok,
 			status: response.status,
 			jsonOk: response.json().ok,
-			bufferLen: response.arrayBuffer().length
+			bufferLen: response.arrayBuffer().length,
+			bufferFirst: response.arrayBuffer()[0]
 		});
 	`)
 	if err != nil {
@@ -164,13 +176,18 @@ func TestExtensionRuntimeAuthAndPolyfills(t *testing.T) {
 	if err := json.Unmarshal([]byte(value.String()), &result); err != nil {
 		t.Fatalf("decode polyfill result: %v", err)
 	}
-	if result["decoded"] != "hello" || result["host"] != "api.example.com" || result["ok"] != true {
+	if result["decoded"] != "hello" || result["host"] != "api.example.com" || result["ok"] != true ||
+		result["bufferLen"] != float64(len(`{"ok":true,"items":[1,2]}`)) || result["bufferFirst"] != float64('{') {
 		t.Fatalf("polyfill result = %#v", result)
 	}
 
 	blocked := runtime.fetchPolyfill(goja.FunctionCall{Arguments: []goja.Value{vm.ToValue("https://blocked.example.com")}}).ToObject(vm)
 	if blocked.Get("ok").ToBoolean() {
 		t.Fatal("expected blocked fetch")
+	}
+	huge := runtime.fetchPolyfill(goja.FunctionCall{Arguments: []goja.Value{vm.ToValue("https://api.example.com/huge")}}).ToObject(vm)
+	if huge.Get("ok").ToBoolean() || !strings.Contains(huge.Get("error").String(), "exceeds") {
+		t.Fatalf("expected bounded fetch response, got %s", huge.String())
 	}
 	runtime.authClear(goja.FunctionCall{})
 	if runtime.authIsAuthenticated(goja.FunctionCall{}).ToBoolean() {
@@ -887,6 +904,13 @@ func TestExtensionRuntimeFileAPIs(t *testing.T) {
 		t.Fatal("expected sandbox escape error")
 	}
 	AddAllowedDownloadDir(dir)
+	AddAllowedDownloadDir(filepath.Clean(dir))
+	allowedDownloadDirsMu.RLock()
+	allowedDirCount := len(allowedDownloadDirs)
+	allowedDownloadDirsMu.RUnlock()
+	if allowedDirCount != 1 {
+		t.Fatalf("duplicate allowed directories retained: %d", allowedDirCount)
+	}
 	absolutePath := filepath.Join(dir, "allowed.txt")
 	if got, err := runtime.validatePath(absolutePath); err != nil || got != absolutePath {
 		t.Fatalf("absolute validatePath = %q/%v", got, err)
@@ -1026,6 +1050,12 @@ func TestExtensionRuntimeUtilityAPIs(t *testing.T) {
 	key := runtime.cryptoGenerateKey(goja.FunctionCall{Arguments: []goja.Value{vm.ToValue(float64(8))}}).Export().(map[string]any)
 	if key["success"] != true || key["key"] == "" || key["hex"] == "" {
 		t.Fatalf("cryptoGenerateKey = %#v", key)
+	}
+	for _, invalidLength := range []float64{-1, 0, 1.5, 4097} {
+		invalidKey := runtime.cryptoGenerateKey(goja.FunctionCall{Arguments: []goja.Value{vm.ToValue(invalidLength)}}).Export().(map[string]any)
+		if invalidKey["success"] != false {
+			t.Fatalf("cryptoGenerateKey(%v) should fail: %#v", invalidLength, invalidKey)
+		}
 	}
 	if runtime.randomUserAgent(goja.FunctionCall{}).String() == "" || runtime.appUserAgent(goja.FunctionCall{}).String() == "" {
 		t.Fatal("expected user agents")

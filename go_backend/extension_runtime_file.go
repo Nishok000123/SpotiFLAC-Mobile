@@ -17,12 +17,20 @@ var (
 )
 
 func AddAllowedDownloadDir(dir string) {
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return
+	}
+	absDir = filepath.Clean(absDir)
+
 	allowedDownloadDirsMu.Lock()
 	defer allowedDownloadDirsMu.Unlock()
-	absDir, err := filepath.Abs(dir)
-	if err == nil {
-		allowedDownloadDirs = append(allowedDownloadDirs, absDir)
+	for _, existing := range allowedDownloadDirs {
+		if existing == absDir {
+			return
+		}
 	}
+	allowedDownloadDirs = append(allowedDownloadDirs, absDir)
 }
 
 // SetAllowedDownloadDirs replaces the whole allow-list in one call (passing nil
@@ -31,7 +39,20 @@ func AddAllowedDownloadDir(dir string) {
 func SetAllowedDownloadDirs(dirs []string) {
 	allowedDownloadDirsMu.Lock()
 	defer allowedDownloadDirsMu.Unlock()
-	allowedDownloadDirs = dirs
+	allowedDownloadDirs = nil
+	seen := make(map[string]struct{}, len(dirs))
+	for _, dir := range dirs {
+		absDir, err := filepath.Abs(dir)
+		if err != nil {
+			continue
+		}
+		absDir = filepath.Clean(absDir)
+		if _, duplicate := seen[absDir]; duplicate {
+			continue
+		}
+		seen[absDir] = struct{}{}
+		allowedDownloadDirs = append(allowedDownloadDirs, absDir)
+	}
 }
 
 func isPathInAllowedDirs(absPath string) bool {

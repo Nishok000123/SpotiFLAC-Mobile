@@ -36,6 +36,24 @@ void setPlaybackNormalizationEnabled(bool enabled) {
   _activeMusicPlayerHandler?.reapplyNormalization();
 }
 
+List<int> buildShuffleCandidatePool({
+  required int mediaCount,
+  required int currentIndex,
+  required Iterable<int> recentIndices,
+}) {
+  final recent = recentIndices.toSet();
+  final pool = <int>[];
+  for (var index = 0; index < mediaCount; index++) {
+    if (index != currentIndex && !recent.contains(index)) pool.add(index);
+  }
+  if (pool.isEmpty) {
+    for (var index = 0; index < mediaCount; index++) {
+      if (index != currentIndex) pool.add(index);
+    }
+  }
+  return pool;
+}
+
 final AudioContext _musicAudioContext = AudioContext(
   android: const AudioContextAndroid(
     audioFocus: AndroidAudioFocus.none,
@@ -967,15 +985,11 @@ class MusicPlayerHandler extends BaseAudioHandler
 
   int _pickNextShuffle() {
     if (_media.length <= 1) return _index;
-    final pool = <int>[];
-    for (var i = 0; i < _media.length; i++) {
-      if (i != _index && !_recent.contains(i)) pool.add(i);
-    }
-    if (pool.isEmpty) {
-      for (var i = 0; i < _media.length; i++) {
-        if (i != _index) pool.add(i);
-      }
-    }
+    final pool = buildShuffleCandidatePool(
+      mediaCount: _media.length,
+      currentIndex: _index,
+      recentIndices: _recent,
+    );
     return pool[_random.nextInt(pool.length)];
   }
 

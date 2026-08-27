@@ -755,6 +755,7 @@ void main() {
       expect(lookup.queuedCount, 3);
       expect(lookup.activeDownloadsCount, 1);
       expect(lookup.finalizingCount, 1);
+      expect(lookup.notCompletedItemIds, ['queued', 'active', 'finalizing']);
 
       final next = List<DownloadItem>.from(previous);
       next[2] = previous[2].copyWith(status: DownloadStatus.completed);
@@ -769,6 +770,22 @@ void main() {
       expect(updated.finalizingCount, 0);
       expect(identical(updated.indexByItemId, lookup.indexByItemId), isTrue);
       expect(identical(updated.itemIds, lookup.itemIds), isTrue);
+      expect(updated.notCompletedItemIds, ['queued', 'active']);
+
+      final progressOnly = List<DownloadItem>.from(next);
+      progressOnly[1] = next[1].copyWith(progress: 0.5);
+      final progressUpdated = updated.updatedForIndices(
+        previousItems: next,
+        nextItems: progressOnly,
+        changedIndices: const [1],
+      );
+      expect(
+        identical(
+          progressUpdated.notCompletedItemIds,
+          updated.notCompletedItemIds,
+        ),
+        isTrue,
+      );
     });
   });
 

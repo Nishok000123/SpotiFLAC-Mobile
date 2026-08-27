@@ -495,17 +495,3 @@ final _queueLibraryCountsProvider = FutureProvider.autoDispose
       );
       return LibraryDatabase.instance.getQueueCounts(request.toDbQuery());
     });
-
-class _QueueItemIdsSnapshot {
-  final List<String> ids;
-
-  const _QueueItemIdsSnapshot(this.ids);
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is _QueueItemIdsSnapshot && listEquals(ids, other.ids);
-
-  @override
-  int get hashCode => Object.hashAll(ids);
-}

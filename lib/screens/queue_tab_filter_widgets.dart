@@ -57,19 +57,10 @@ extension _QueueTabFilterWidgets on _QueueTabState {
         ? const <String>[]
         : ref
               .watch(
-                downloadQueueLookupProvider.select((lookup) {
-                  final ids = <String>[];
-                  for (final id in lookup.itemIds) {
-                    final entry = lookup.byItemId[id];
-                    if (entry != null &&
-                        entry.status != DownloadStatus.completed) {
-                      ids.add(id);
-                    }
-                  }
-                  return _QueueItemIdsSnapshot(ids);
-                }),
+                downloadQueueLookupProvider.select(
+                  (lookup) => lookup.notCompletedItemIds,
+                ),
               )
-              .ids
               .reversed
               .toList(growable: false);
 

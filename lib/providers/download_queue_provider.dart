@@ -1861,27 +1861,37 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         continue;
       }
 
+      final maxConcurrent = ref
+          .read(settingsProvider)
+          .concurrentDownloads
+          .clamp(1, 3);
+      if (activeDownloads.length >= maxConcurrent) {
+        // Keep pause/settings changes responsive without rescanning the full
+        // queue while every worker slot is already occupied.
+        await Future.any([
+          Future.any(activeDownloads.values),
+          Future<void>.delayed(_queueSchedulingInterval),
+        ]);
+        continue;
+      }
+
+      final availableSlots = maxConcurrent - activeDownloads.length;
       final queuedItems = state.items
           .where(
             (item) =>
                 item.status == DownloadStatus.queued &&
                 !_pausePendingItemIds.contains(item.id),
           )
-          .toList();
+          .take(availableSlots)
+          .toList(growable: false);
 
       if (queuedItems.isEmpty && activeDownloads.isEmpty) {
         _log.d('No more items to process');
         break;
       }
 
-      final maxConcurrent = ref
-          .read(settingsProvider)
-          .concurrentDownloads
-          .clamp(1, 3);
-      while (activeDownloads.length < maxConcurrent &&
-          queuedItems.isNotEmpty &&
-          !state.isPaused) {
-        final item = queuedItems.removeAt(0);
+      for (final item in queuedItems) {
+        if (state.isPaused) break;
 
         updateItemStatus(item.id, DownloadStatus.downloading);
 

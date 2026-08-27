@@ -1314,6 +1314,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   ProviderSubscription<bool>? _playingSubscription;
   ProviderSubscription<bool>? _loadingSubscription;
   Timer? _lineBoundaryTimer;
+  Timer? _userScrollIdleTimer;
   late List<GlobalKey> _lineKeys;
   int _active = -1;
   Duration _activeTransitionPosition = Duration.zero;
@@ -1432,6 +1433,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     _playingSubscription?.close();
     _loadingSubscription?.close();
     _lineBoundaryTimer?.cancel();
+    _userScrollIdleTimer?.cancel();
     _scroll.dispose();
     super.dispose();
   }
@@ -1488,7 +1490,8 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       onNotification: (notification) {
         if (notification.direction != ScrollDirection.idle) {
           _userScrolling = true;
-          Future.delayed(const Duration(seconds: 4), () {
+          _userScrollIdleTimer?.cancel();
+          _userScrollIdleTimer = Timer(const Duration(seconds: 4), () {
             if (mounted) _userScrolling = false;
           });
         }
@@ -1883,13 +1886,27 @@ class _SweepingTimedLyricTextState extends State<_SweepingTimedLyricText> {
             ? constraints.maxWidth
             : pendingPainter.width;
         final height = pendingPainter.height;
+        final segmentBoxes = <List<TextBox>>[];
+        var segmentOffset = 0;
+        for (final segment in widget.segments) {
+          final segmentEnd = segmentOffset + segment.length;
+          segmentBoxes.add(
+            highlightedPainter.getBoxesForSelection(
+              TextSelection(
+                baseOffset: segmentOffset,
+                extentOffset: segmentEnd,
+              ),
+            ),
+          );
+          segmentOffset = segmentEnd;
+        }
 
         return Semantics(
           label: widget.semanticsLabel,
           child: CustomPaint(
             size: Size(width, height),
             painter: _TimedLyricSweepPainter(
-              segments: widget.segments,
+              segmentBoxes: segmentBoxes,
               starts: widget.starts,
               ends: widget.ends,
               currentPosition: widget.currentPosition,
@@ -1905,7 +1922,7 @@ class _SweepingTimedLyricTextState extends State<_SweepingTimedLyricText> {
 }
 
 class _TimedLyricSweepPainter extends CustomPainter {
-  final List<String> segments;
+  final List<List<TextBox>> segmentBoxes;
   final List<Duration> starts;
   final List<Duration> ends;
   final Duration Function() currentPosition;
@@ -1913,7 +1930,7 @@ class _TimedLyricSweepPainter extends CustomPainter {
   final TextPainter highlightedPainter;
 
   _TimedLyricSweepPainter({
-    required this.segments,
+    required this.segmentBoxes,
     required this.starts,
     required this.ends,
     required this.currentPosition,
@@ -1929,9 +1946,7 @@ class _TimedLyricSweepPainter extends CustomPainter {
     final completedPath = Path();
     final partialBoxes = <(Rect, double)>[];
     final position = currentPosition();
-    var offset = 0;
-    for (var index = 0; index < segments.length; index++) {
-      final end = offset + segments[index].length;
+    for (var index = 0; index < segmentBoxes.length; index++) {
       final value = index < starts.length && index < ends.length
           ? syncedLyricSegmentProgress(
               position: position,
@@ -1939,11 +1954,8 @@ class _TimedLyricSweepPainter extends CustomPainter {
               end: ends[index],
             )
           : 0.0;
-      if (value > 0 && end > offset) {
-        final boxes = highlightedPainter.getBoxesForSelection(
-          TextSelection(baseOffset: offset, extentOffset: end),
-        );
-        for (final box in boxes) {
+      if (value > 0) {
+        for (final box in segmentBoxes[index]) {
           final rect = box.toRect();
           if (value >= 1) {
             completedPath.addRect(rect);
@@ -1952,7 +1964,6 @@ class _TimedLyricSweepPainter extends CustomPainter {
           }
         }
       }
-      offset = end;
     }
 
     if (!completedPath.getBounds().isEmpty) {
@@ -1998,7 +2009,7 @@ class _TimedLyricSweepPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _TimedLyricSweepPainter oldDelegate) {
-    return oldDelegate.segments != segments ||
+    return oldDelegate.segmentBoxes != segmentBoxes ||
         oldDelegate.starts != starts ||
         oldDelegate.ends != ends ||
         oldDelegate.currentPosition != currentPosition ||

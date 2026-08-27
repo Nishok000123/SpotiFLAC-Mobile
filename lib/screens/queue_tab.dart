@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:spotiflac_android/services/shell_navigation_service.dart';
 import 'package:spotiflac_android/widgets/error_card.dart';
@@ -1223,7 +1223,10 @@ class _QueueTabState extends ConsumerState<QueueTab> {
 
     ref.listen(downloadQueueLookupProvider, (previous, next) {
       if (previous == null) return;
-      for (final id in previous.itemIds) {
+      if (identical(previous.notCompletedItemIds, next.notCompletedItemIds)) {
+        return;
+      }
+      for (final id in previous.notCompletedItemIds) {
         final prevItem = previous.byItemId[id];
         final nextItem = next.byItemId[id];
         if (prevItem == null) continue;
@@ -1656,16 +1659,9 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     return Consumer(
       builder: (context, ref, child) {
         final queueCount = ref.watch(
-          downloadQueueLookupProvider.select((lookup) {
-            var count = 0;
-            for (final id in lookup.itemIds) {
-              final entry = lookup.byItemId[id];
-              if (entry != null && entry.status != DownloadStatus.completed) {
-                count++;
-              }
-            }
-            return count;
-          }),
+          downloadQueueLookupProvider.select(
+            (lookup) => lookup.notCompletedItemIds.length,
+          ),
         );
         final failedCount = ref.watch(
           downloadQueueProvider.select((state) => state.failedCount),

@@ -303,6 +303,7 @@ object SafDownloadHandler {
     }
 
     fun copyContentUriToTemp(context: Context, uriStr: String): String? {
+        var temp: File? = null
         return try {
             val uri = Uri.parse(uriStr)
             val extension = DocumentFile.fromSingleUri(context, uri)
@@ -311,14 +312,19 @@ object SafDownloadHandler {
                 ?.takeIf { it.isNotBlank() }
                 ?.let { ".$it" }
                 ?: ".tmp"
-            val temp = File.createTempFile("native_saf_", extension, context.cacheDir)
+            val createdTemp = File.createTempFile("native_saf_", extension, context.cacheDir)
+            temp = createdTemp
             context.contentResolver.openInputStream(uri)?.use { input ->
-                temp.outputStream().use { output ->
+                createdTemp.outputStream().use { output ->
                     input.copyTo(output)
                 }
-            } ?: return null
-            temp.absolutePath
+            } ?: run {
+                createdTemp.delete()
+                return null
+            }
+            createdTemp.absolutePath
         } catch (e: Exception) {
+            try { temp?.delete() } catch (_: Exception) {}
             android.util.Log.w("SpotiFLAC", "Failed to copy SAF URI to temp: ${e.message}")
             null
         }
