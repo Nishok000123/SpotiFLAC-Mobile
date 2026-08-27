@@ -134,6 +134,99 @@ void main() {
     },
   );
 
+  test('library file cache hides transient publication misses', () async {
+    var checks = 0;
+    final cache = LibraryFileAvailabilityCache(
+      pathExists: (_) async => ++checks >= 3,
+      normalizePath: (path) => path ?? '',
+      retryDelays: const [Duration.zero, Duration.zero],
+    );
+    addTearDown(cache.dispose);
+
+    final availability = cache.listenable('/music/new.flac');
+    final publishedValues = <bool>[];
+    availability.addListener(() => publishedValues.add(availability.value));
+    expect(availability.value, isTrue);
+
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(checks, 3);
+    expect(availability.value, isTrue);
+    expect(publishedValues, isNot(contains(false)));
+  });
+
+  test('library file cache rechecks a stale confirmed miss', () async {
+    var exists = false;
+    final cache = LibraryFileAvailabilityCache(
+      pathExists: (_) async => exists,
+      normalizePath: (path) => path ?? '',
+      retryDelays: const [],
+      missingRecheckAfter: Duration.zero,
+    );
+    addTearDown(cache.dispose);
+
+    final availability = cache.listenable('/music/late.flac');
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(availability.value, isFalse);
+
+    exists = true;
+    expect(identical(cache.listenable('/music/late.flac'), availability), true);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(availability.value, isTrue);
+  });
+
+  test('completion probe heals the normal library file cache', () async {
+    final availabilityCache = LibraryFileAvailabilityCache(
+      pathExists: (_) async => false,
+      normalizePath: (path) => path ?? '',
+      retryDelays: const [],
+    );
+    addTearDown(availabilityCache.dispose);
+
+    final availability = availabilityCache.listenable(
+      'content://downloads/final.flac',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(availability.value, isFalse);
+
+    final completionProbe = CompletionBridgePlayableProbeCache(
+      pathExists: (_) async => true,
+      onPlayable: availabilityCache.markExists,
+      retryDelays: const [],
+    );
+    addTearDown(completionProbe.dispose);
+    completionProbe.listenable(
+      completedItemFilePath: 'content://downloads/final.flac',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(availability.value, isTrue);
+  });
+
+  test(
+    'download completion explicitly refreshes cached missing paths',
+    () async {
+      var exists = false;
+      final cache = LibraryFileAvailabilityCache(
+        pathExists: (_) async => exists,
+        normalizePath: (path) => path ?? '',
+        retryDelays: const [],
+      );
+      addTearDown(cache.dispose);
+
+      final availability = cache.listenable('/music/reused.flac');
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(availability.value, isFalse);
+
+      exists = true;
+      cache.refreshForPath('/music/reused.flac');
+      expect(availability.value, isTrue);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(availability.value, isTrue);
+    },
+  );
+
   test(
     'completion probe retries publication before reporting missing',
     () async {

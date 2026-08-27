@@ -222,10 +222,9 @@ class QueueTab extends ConsumerStatefulWidget {
 
 class _QueueTabState extends ConsumerState<QueueTab> {
   static const int _libraryPageSize = 300;
-  final _FileExistsListenableCache _fileExistsCache =
-      _FileExistsListenableCache();
-  final CompletionBridgePlayableProbeCache _completionBridgePlayableProbe =
-      CompletionBridgePlayableProbeCache();
+  final LibraryFileAvailabilityCache _fileExistsCache =
+      LibraryFileAvailabilityCache();
+  late final CompletionBridgePlayableProbeCache _completionBridgePlayableProbe;
   static const double _libraryGridMinExtent = 92;
   static const double _libraryGridDefaultExtent = 126;
   static const double _libraryGridMaxExtent = 190;
@@ -340,6 +339,9 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   @override
   void initState() {
     super.initState();
+    _completionBridgePlayableProbe = CompletionBridgePlayableProbeCache(
+      onPlayable: _fileExistsCache.markExists,
+    );
   }
 
   void _initializePageController() {
@@ -1232,6 +1234,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         final nowCompleted =
             nextItem != null && nextItem.status == DownloadStatus.completed;
         if (wasActive && nowCompleted) {
+          _fileExistsCache.refreshForPath(nextItem.filePath);
           _completionBridgePlayableProbe.refreshForPath(nextItem.filePath);
           _completionBridge[id] = nextItem;
           _completionBridgeAt[id] = DateTime.now();
@@ -1244,10 +1247,14 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         if (previous == null || previous == next) return;
         final historyItems = ref.read(downloadHistoryProvider).items;
         for (final bridgeItem in _completionBridge.values) {
+          _fileExistsCache.refreshForPath(bridgeItem.filePath);
           _completionBridgePlayableProbe.refreshForPath(bridgeItem.filePath);
-          _completionBridgePlayableProbe.refreshForPath(
-            _historyItemForCompletionBridge(bridgeItem, historyItems)?.filePath,
-          );
+          final historyPath = _historyItemForCompletionBridge(
+            bridgeItem,
+            historyItems,
+          )?.filePath;
+          _fileExistsCache.refreshForPath(historyPath);
+          _completionBridgePlayableProbe.refreshForPath(historyPath);
         }
         // The family provider already reruns for the new revision. Retain its
         // last successful page while SQLite is loading so metadata backfills
