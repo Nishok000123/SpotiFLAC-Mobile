@@ -213,8 +213,17 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
     required int navigationIndex,
   }) async {
     final navigator = Navigator.of(context);
-    precacheCoverImage(context, item.coverUrl);
-    final backdropReady = precacheMetadataBackdrop(context, item.coverUrl);
+    final embeddedCoverPath =
+        await DownloadedEmbeddedCoverResolver.resolveOrExtract(
+          item.filePath,
+          onChanged: _onEmbeddedCoverChanged,
+        );
+    if (!mounted) return;
+    final artworkSource = embeddedCoverPath ?? item.coverUrl;
+    if (embeddedCoverPath == null) {
+      precacheCoverImage(context, item.coverUrl);
+    }
+    final backdropReady = precacheMetadataBackdrop(context, artworkSource);
     final beforeModTime =
         await DownloadedEmbeddedCoverResolver.readFileModTimeMillis(
           item.filePath,

@@ -96,86 +96,62 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
   ) {
     final coverCacheWidth = coverCacheWidthForViewport(context);
     final backdropCacheWidth = metadataBackdropCacheExtent(context);
-    final backdropRemoteUrl = _isLocalItem
-        ? null
-        : normalizeRemoteHttpUrl(_downloadItem!.coverUrl);
+    // Downloaded-item entry points must await resolveOrExtract before pushing
+    // this route. That precondition keeps the Hero, foreground, and backdrop
+    // on one source from the first frame; this synchronous lookup also covers
+    // cached rebuilds and in-screen swipe navigation.
+    final sharedEmbeddedCoverPath = _hasPath(_embeddedCoverPreviewPath)
+        ? _embeddedCoverPreviewPath
+        : DownloadedEmbeddedCoverResolver.resolve(_filePath);
+    final artworkSource = resolveMetadataArtworkSource(
+      embeddedCoverPath: sharedEmbeddedCoverPath,
+      localCoverPath: _localCoverPath,
+      remoteCoverUrl: _coverUrl,
+    );
 
-    Widget coverImage() => _hasPath(_embeddedCoverPreviewPath)
-        ? Image.file(
-            File(_embeddedCoverPreviewPath!),
-            fit: BoxFit.cover,
-            cacheWidth: coverCacheWidth,
-            gaplessPlayback: true,
-            filterQuality: FilterQuality.low,
-            errorBuilder: (_, _, _) => Container(color: colorScheme.surface),
-          )
-        : _coverUrl != null
-        ? CachedCoverImage(
-            imageUrl: _coverUrl!,
-            fit: BoxFit.cover,
-            memCacheWidth: coverCacheWidth,
-            placeholder: (_, _) => Container(color: colorScheme.surface),
-            errorWidget: (_, _, _) => Container(color: colorScheme.surface),
-          )
-        : _localCoverPath != null && _localCoverPath!.isNotEmpty
-        ? Image.file(
-            File(_localCoverPath!),
-            fit: BoxFit.cover,
-            cacheWidth: coverCacheWidth,
-            gaplessPlayback: true,
-            filterQuality: FilterQuality.low,
-            errorBuilder: (_, _, _) => Container(color: colorScheme.surface),
-          )
-        : Container(
-            color: colorScheme.surfaceContainerHighest,
-            child: Icon(
-              Icons.music_note,
-              size: 80,
-              color: colorScheme.onSurfaceVariant,
-            ),
-          );
+    Widget artworkImage({required int cacheWidth, int? cacheHeight}) {
+      final source = artworkSource;
+      if (source == null) {
+        return Container(
+          color: colorScheme.surfaceContainerHighest,
+          child: Icon(
+            Icons.music_note,
+            size: 80,
+            color: colorScheme.onSurfaceVariant,
+          ),
+        );
+      }
 
-    // Keep the backdrop on the stable Library artwork source instead of
-    // switching to the asynchronously extracted embedded preview mid-route.
-    // The smaller resize key is prewarmed before navigation and is sufficient
-    // behind a strong blur, while the foreground Hero keeps full resolution.
-    Widget backdropImage() => backdropRemoteUrl != null
-        ? CachedCoverImage(
-            imageUrl: backdropRemoteUrl,
-            fit: BoxFit.cover,
-            memCacheWidth: backdropCacheWidth,
-            memCacheHeight: backdropCacheWidth,
-            placeholder: (_, _) => Container(color: colorScheme.surface),
-            errorWidget: (_, _, _) => Container(color: colorScheme.surface),
-          )
-        : _localCoverPath != null && _localCoverPath!.isNotEmpty
-        ? Image.file(
-            File(_localCoverPath!),
-            fit: BoxFit.cover,
-            cacheWidth: backdropCacheWidth,
-            cacheHeight: backdropCacheWidth,
-            gaplessPlayback: true,
-            filterQuality: FilterQuality.low,
-            errorBuilder: (_, _, _) => Container(color: colorScheme.surface),
-          )
-        : _hasPath(_embeddedCoverPreviewPath)
-        ? Image.file(
-            File(_embeddedCoverPreviewPath!),
-            fit: BoxFit.cover,
-            cacheWidth: backdropCacheWidth,
-            cacheHeight: backdropCacheWidth,
-            gaplessPlayback: true,
-            filterQuality: FilterQuality.low,
-            errorBuilder: (_, _, _) => Container(color: colorScheme.surface),
-          )
-        : Container(
-            color: colorScheme.surfaceContainerHighest,
-            child: Icon(
-              Icons.music_note,
-              size: 80,
-              color: colorScheme.onSurfaceVariant,
-            ),
-          );
+      if (source.startsWith('http://') || source.startsWith('https://')) {
+        return CachedCoverImage(
+          imageUrl: source,
+          fit: BoxFit.cover,
+          memCacheWidth: cacheWidth,
+          memCacheHeight: cacheHeight,
+          placeholder: (_, _) => Container(color: colorScheme.surface),
+          errorWidget: (_, _, _) => Container(color: colorScheme.surface),
+        );
+      }
+
+      final filePath = source.startsWith('file://')
+          ? Uri.parse(source).toFilePath()
+          : source;
+      return Image.file(
+        File(filePath),
+        fit: BoxFit.cover,
+        cacheWidth: cacheWidth,
+        cacheHeight: cacheHeight,
+        gaplessPlayback: true,
+        filterQuality: FilterQuality.low,
+        errorBuilder: (_, _, _) => Container(color: colorScheme.surface),
+      );
+    }
+
+    Widget coverImage() => artworkImage(cacheWidth: coverCacheWidth);
+    Widget backdropImage() => artworkImage(
+      cacheWidth: backdropCacheWidth,
+      cacheHeight: backdropCacheWidth,
+    );
 
     // Centered square cover over a blurred backdrop (same layout as the album
     // header) so the Hero flight from a list thumbnail keeps its square shape.

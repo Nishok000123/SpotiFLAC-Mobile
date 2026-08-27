@@ -5198,6 +5198,10 @@
   "@queueDownloadedFileMissing": {
     "description": "Accessibility label when a downloaded file is missing from disk"
   },
+  "queueCheckingDownloadedFile": "Checking downloaded file...",
+  "@queueCheckingDownloadedFile": {
+    "description": "Accessibility label while the app checks whether a just-completed download has appeared at its final path yet. Not about authentication or a download session."
+  },
   "queueDownloadCompleted": "Download completed",
   "@queueDownloadCompleted": {
     "description": "Accessibility label for completed download state in queue"
@@ -5656,6 +5660,9 @@
   "queueResumingAfterVerification": "Resuming after verification...",
   "@queueDownloadStarting": {
     "description": "Queue status before download progress is available"
+  },
+  "@queueCheckingDownloadSession": {
+    "description": "Queue status while the download provider's session is being checked during preparation (preparationStage 'checking_session'). This is about the provider session, not about locating a finished file."
   },
   "a11ySelectTrack": "Select track",
   "@a11ySelectTrack": {

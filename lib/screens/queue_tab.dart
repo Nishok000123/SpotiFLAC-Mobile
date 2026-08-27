@@ -224,6 +224,8 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   static const int _libraryPageSize = 300;
   final _FileExistsListenableCache _fileExistsCache =
       _FileExistsListenableCache();
+  final CompletionBridgePlayableProbeCache _completionBridgePlayableProbe =
+      CompletionBridgePlayableProbeCache();
   static const double _libraryGridMinExtent = 92;
   static const double _libraryGridDefaultExtent = 126;
   static const double _libraryGridMaxExtent = 190;
@@ -391,6 +393,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     _hideSelectionOverlay();
     _hidePlaylistSelectionOverlay();
     _fileExistsCache.dispose();
+    _completionBridgePlayableProbe.dispose();
     _embeddedCoverVersion.dispose();
     _filterPageController?.dispose();
     _searchController.dispose();
@@ -1229,6 +1232,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         final nowCompleted =
             nextItem != null && nextItem.status == DownloadStatus.completed;
         if (wasActive && nowCompleted) {
+          _completionBridgePlayableProbe.refreshForPath(nextItem.filePath);
           _completionBridge[id] = nextItem;
           _completionBridgeAt[id] = DateTime.now();
         }
@@ -1238,6 +1242,13 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       downloadHistoryProvider.select((state) => state.loadedIndexVersion),
       (previous, next) {
         if (previous == null || previous == next) return;
+        final historyItems = ref.read(downloadHistoryProvider).items;
+        for (final bridgeItem in _completionBridge.values) {
+          _completionBridgePlayableProbe.refreshForPath(bridgeItem.filePath);
+          _completionBridgePlayableProbe.refreshForPath(
+            _historyItemForCompletionBridge(bridgeItem, historyItems)?.filePath,
+          );
+        }
         // The family provider already reruns for the new revision. Retain its
         // last successful page while SQLite is loading so metadata backfills
         // and download completions cannot flash the Library as empty.

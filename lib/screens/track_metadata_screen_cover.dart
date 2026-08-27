@@ -1,14 +1,15 @@
 // ignore_for_file: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
 part of 'track_metadata_screen.dart';
 
-// Embedded-cover preview: disk cache keyed by file validation token,
-// plus the FFmpeg-backed refresh that extracts the preview image.
+// Embedded-cover preview: screen-local validation/dimension metadata keyed by
+// track, while DownloadedEmbeddedCoverResolver owns extraction and temp files.
 extension _TrackMetadataCover on _TrackMetadataScreenState {
   bool _isCacheTrackedPath(String? path) {
     if (!_hasPath(path)) return false;
     return _TrackMetadataScreenState._embeddedCoverPreviewCache.values.any(
-      (entry) => entry.previewPath == path,
-    );
+          (entry) => entry.previewPath == path,
+        ) ||
+        DownloadedEmbeddedCoverResolver.isManagedPreviewPath(path);
   }
 
   bool _isVolatileSafTempPath(String path) {
@@ -109,77 +110,59 @@ extension _TrackMetadataCover on _TrackMetadataScreenState {
     final generation = _metadataLoadGeneration;
     final cacheKey = _coverCacheKey;
     final sourcePath = cleanFilePath;
-    if (!force) {
-      final cachedCover = await _getCachedEmbeddedCoverPreviewIfValid(
-        cacheKey,
-        sourcePath,
-      );
-      if (cachedCover != null) {
-        if (mounted &&
-            generation == _metadataLoadGeneration &&
-            sourcePath == cleanFilePath &&
-            (_embeddedCoverPreviewPath != cachedCover.previewPath ||
-                _embeddedCoverDimensions != cachedCover.dimensions)) {
-          setState(() {
-            _embeddedCoverPreviewPath = cachedCover.previewPath;
-            _embeddedCoverDimensions = cachedCover.dimensions;
-          });
-        }
-        return;
+    final oldPreviewPath = _embeddedCoverPreviewPath;
+
+    if (!_fileExists) {
+      await _invalidateEmbeddedCoverPreviewCacheForPath(cacheKey);
+      await DownloadedEmbeddedCoverResolver.invalidate(sourcePath);
+      if (mounted &&
+          generation == _metadataLoadGeneration &&
+          sourcePath == cleanFilePath) {
+        setState(() {
+          _embeddedCoverPreviewPath = null;
+          _embeddedCoverDimensions = null;
+        });
       }
+      return;
+    }
+
+    if (force) {
+      await _invalidateEmbeddedCoverPreviewCacheForPath(cacheKey);
+      await DownloadedEmbeddedCoverResolver.scheduleRefreshForPath(
+        sourcePath,
+        force: true,
+      );
     }
 
     String? newPreviewPath;
     ({int width, int height})? newDimensions;
     try {
-      if (!_fileExists) {
-        await _invalidateEmbeddedCoverPreviewCacheForPath(cacheKey);
-        await _cleanupTempFileAndParentIfNotCached(_embeddedCoverPreviewPath);
-        if (mounted &&
-            generation == _metadataLoadGeneration &&
-            sourcePath == cleanFilePath) {
-          setState(() {
-            _embeddedCoverPreviewPath = null;
-            _embeddedCoverDimensions = null;
-          });
-        }
-        return;
-      }
-      if (force) {
-        await _invalidateEmbeddedCoverPreviewCacheForPath(cacheKey);
-      }
-      final tempDir = await Directory.systemTemp.createTemp(
-        'track_cover_preview_',
-      );
-      final outputPath =
-          '${tempDir.path}${Platform.pathSeparator}cover_preview.jpg';
-      final result = await PlatformBridge.extractCoverToFile(
+      newPreviewPath = await DownloadedEmbeddedCoverResolver.resolveOrExtract(
         sourcePath,
-        outputPath,
       );
-      if (result['error'] == null && await File(outputPath).exists()) {
-        newPreviewPath = outputPath;
-        newDimensions = await FFmpegService.probeImageDimensions(outputPath);
-        await _cacheEmbeddedCoverPreview(
-          cacheKey,
-          sourcePath,
-          outputPath,
-          newDimensions,
-        );
-      } else {
-        try {
-          await tempDir.delete(recursive: true);
-        } catch (_) {}
+      if (newPreviewPath != null) {
+        final cachedCover = force
+            ? null
+            : await _getCachedEmbeddedCoverPreviewIfValid(cacheKey, sourcePath);
+        if (cachedCover != null && cachedCover.previewPath == newPreviewPath) {
+          newDimensions = cachedCover.dimensions;
+        } else {
+          newDimensions = await FFmpegService.probeImageDimensions(
+            newPreviewPath,
+          );
+          await _cacheEmbeddedCoverPreview(
+            cacheKey,
+            sourcePath,
+            newPreviewPath,
+            newDimensions,
+          );
+        }
       }
     } catch (_) {}
 
-    final oldPreviewPath = _embeddedCoverPreviewPath;
     if (!mounted ||
         generation != _metadataLoadGeneration ||
         sourcePath != cleanFilePath) {
-      if (newPreviewPath != null) {
-        await _cleanupTempFileAndParentIfNotCached(newPreviewPath);
-      }
       return;
     }
 

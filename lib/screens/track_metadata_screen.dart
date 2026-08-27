@@ -20,6 +20,7 @@ import 'package:spotiflac_android/providers/music_player_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
+import 'package:spotiflac_android/services/downloaded_embedded_cover_resolver.dart';
 import 'package:spotiflac_android/services/ffmpeg_service.dart';
 import 'package:spotiflac_android/services/replaygain_service.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
@@ -243,27 +244,10 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen>
         filePath == cleanFilePath &&
         exists &&
         !_hasPath(_embeddedCoverPreviewPath)) {
-      final cachedCover = await _getCachedEmbeddedCoverPreviewIfValid(
-        _coverCacheKey,
-        filePath,
-      );
-      if (mounted &&
-          generation == _metadataLoadGeneration &&
-          filePath == cleanFilePath &&
-          cachedCover != null) {
-        setState(() {
-          _embeddedCoverPreviewPath = cachedCover.previewPath;
-          _embeddedCoverDimensions = cachedCover.dimensions;
-        });
-      } else if (mounted &&
-          generation == _metadataLoadGeneration &&
-          filePath == cleanFilePath) {
-        // The information card reports the artwork embedded in the audio
-        // file, not a potentially resized Library thumbnail or remote cover.
-        // Extraction is cached, so revisiting the same track does not repeat
-        // the work.
-        unawaited(_refreshEmbeddedCoverPreview());
-      }
+      // The information card reports artwork embedded in the audio file, not
+      // a resized Library thumbnail or remote cover. The shared resolver owns
+      // extraction; this screen only caches validation data and dimensions.
+      unawaited(_refreshEmbeddedCoverPreview());
     }
   }
 

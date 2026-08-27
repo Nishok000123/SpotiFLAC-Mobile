@@ -116,11 +116,17 @@ extension _QueueTabNavigation on _QueueTabState {
         );
 
     final navigator = Navigator.of(context);
-    precacheCoverImage(context, historyItem.coverUrl);
-    final backdropReady = precacheMetadataBackdrop(
-      context,
-      historyItem.coverUrl,
-    );
+    final embeddedCoverPath =
+        await DownloadedEmbeddedCoverResolver.resolveOrExtract(
+          historyItem.filePath,
+          onChanged: _onEmbeddedCoverChanged,
+        );
+    if (!mounted) return;
+    final artworkSource = embeddedCoverPath ?? historyItem.coverUrl;
+    if (embeddedCoverPath == null) {
+      precacheCoverImage(context, historyItem.coverUrl);
+    }
+    final backdropReady = precacheMetadataBackdrop(context, artworkSource);
     _searchFocusNode.unfocus();
     final beforeModTime = await _readFileModTimeMillis(historyItem.filePath);
     await backdropReady;
@@ -149,8 +155,17 @@ extension _QueueTabNavigation on _QueueTabState {
     int? navigationIndex,
   }) async {
     final navigator = Navigator.of(context);
-    precacheCoverImage(context, item.coverUrl);
-    final backdropReady = precacheMetadataBackdrop(context, item.coverUrl);
+    final embeddedCoverPath =
+        await DownloadedEmbeddedCoverResolver.resolveOrExtract(
+          item.filePath,
+          onChanged: _onEmbeddedCoverChanged,
+        );
+    if (!mounted) return;
+    final artworkSource = embeddedCoverPath ?? item.coverUrl;
+    if (embeddedCoverPath == null) {
+      precacheCoverImage(context, item.coverUrl);
+    }
+    final backdropReady = precacheMetadataBackdrop(context, artworkSource);
     _searchFocusNode.unfocus();
     final beforeModTime = await _readFileModTimeMillis(item.filePath);
     await backdropReady;

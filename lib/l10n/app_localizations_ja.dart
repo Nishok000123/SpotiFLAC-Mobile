@@ -4004,6 +4004,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get queueDownloadedFileMissing => 'Downloaded file missing';
 
   @override
+  String get queueCheckingDownloadedFile => 'Checking downloaded file...';
+
+  @override
   String get queueDownloadCompleted => 'Download completed';
 
   @override

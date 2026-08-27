@@ -179,21 +179,42 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
           Positioned(
             right: 4,
             bottom: 4,
-            child: ValueListenableBuilder<bool>(
-              valueListenable: _fileExistsListenable(playablePath),
-              builder: (context, fileExists, child) {
-                if (fileExists) {
+            child: ValueListenableBuilder<CompletionBridgePlayableResult>(
+              valueListenable: _completionBridgePlayableProbe.listenable(
+                historyFilePath: historyItem?.filePath,
+                completedItemFilePath: item.filePath,
+              ),
+              builder: (context, result, child) {
+                final resolvedPath = result.path;
+                if (result.status == CompletionBridgePlayableStatus.playable &&
+                    resolvedPath != null) {
                   return TrackGridPlayButton(
                     tooltip: context.l10n.a11yPlayTrackByArtist(
                       trackName,
                       artistName,
                     ),
                     onPressed: () => _openFile(
-                      playablePath,
+                      resolvedPath,
                       title: trackName,
                       artist: artistName,
                       album: albumName,
                       coverUrl: coverUrl,
+                    ),
+                  );
+                }
+                if (result.status == CompletionBridgePlayableStatus.checking) {
+                  return Container(
+                    width: 28,
+                    height: 28,
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: colorScheme.primary,
+                      semanticsLabel: context.l10n.queueCheckingDownloadedFile,
                     ),
                   );
                 }
@@ -305,13 +326,18 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
       ),
       trailing: playablePath == null
           ? null
-          : ValueListenableBuilder<bool>(
-              valueListenable: _fileExistsListenable(playablePath),
-              builder: (context, fileExists, child) {
-                if (fileExists) {
+          : ValueListenableBuilder<CompletionBridgePlayableResult>(
+              valueListenable: _completionBridgePlayableProbe.listenable(
+                historyFilePath: historyItem?.filePath,
+                completedItemFilePath: item.filePath,
+              ),
+              builder: (context, result, child) {
+                final resolvedPath = result.path;
+                if (result.status == CompletionBridgePlayableStatus.playable &&
+                    resolvedPath != null) {
                   return IconButton(
                     onPressed: () => _openFile(
-                      playablePath,
+                      resolvedPath,
                       title: trackName,
                       artist: artistName,
                       album: albumName,
@@ -323,6 +349,22 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
                       minimumSize: Size.square(context.tokens.minTouchTarget),
                       backgroundColor: colorScheme.primaryContainer.withValues(
                         alpha: 0.3,
+                      ),
+                    ),
+                  );
+                }
+                if (result.status == CompletionBridgePlayableStatus.checking) {
+                  return SizedBox.square(
+                    dimension: context.tokens.minTouchTarget,
+                    child: Center(
+                      child: SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: colorScheme.primary,
+                          semanticsLabel:
+                              context.l10n.queueCheckingDownloadedFile,
+                        ),
                       ),
                     ),
                   );

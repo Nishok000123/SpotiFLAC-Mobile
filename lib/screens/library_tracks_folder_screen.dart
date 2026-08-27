@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/services/m3u_playlist_service.dart';
+import 'package:spotiflac_android/services/downloaded_embedded_cover_resolver.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
@@ -1081,7 +1082,15 @@ class _CollectionTrackTile extends ConsumerWidget {
     if (!context.mounted) return;
 
     if (historyItem != null) {
-      await precacheMetadataBackdrop(context, historyItem.coverUrl);
+      final embeddedCoverPath =
+          await DownloadedEmbeddedCoverResolver.resolveOrExtract(
+            historyItem.filePath,
+          );
+      if (!context.mounted) return;
+      await precacheMetadataBackdrop(
+        context,
+        embeddedCoverPath ?? historyItem.coverUrl,
+      );
       if (!context.mounted) return;
       await Navigator.of(context).push(
         slidePageRoute<void>(page: TrackMetadataScreen(item: historyItem)),

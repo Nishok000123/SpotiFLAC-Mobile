@@ -180,6 +180,21 @@ CachedNetworkImageProvider cachedCoverImageProvider(String url) {
   );
 }
 
+/// Chooses one artwork source for both the Metadata foreground cover and its
+/// blurred backdrop. Embedded file artwork is authoritative for downloaded
+/// tracks; local scan artwork is next, with remote metadata only as fallback.
+String? resolveMetadataArtworkSource({
+  String? embeddedCoverPath,
+  String? localCoverPath,
+  String? remoteCoverUrl,
+}) {
+  for (final candidate in [embeddedCoverPath, localCoverPath, remoteCoverUrl]) {
+    final normalized = candidate?.trim();
+    if (normalized != null && normalized.isNotEmpty) return normalized;
+  }
+  return null;
+}
+
 /// Decode size shared by Track Metadata's blurred backdrop and its prewarm.
 /// The backdrop is heavily blurred, so a modest square bitmap is sufficient
 /// and avoids allocating a second full-viewport image beside the Hero cover.

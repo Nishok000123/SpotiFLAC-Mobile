@@ -6660,6 +6660,12 @@ abstract class AppLocalizations {
   /// **'Downloaded file missing'**
   String get queueDownloadedFileMissing;
 
+  /// Accessibility label while the app checks whether a just-completed download has appeared at its final path yet. Not about authentication or a download session.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking downloaded file...'**
+  String get queueCheckingDownloadedFile;
+
   /// Accessibility label for completed download state in queue
   ///
   /// In en, this message translates to:
@@ -7176,7 +7182,7 @@ abstract class AppLocalizations {
   /// **'Starting...'**
   String get queueDownloadStarting;
 
-  /// No description provided for @queueCheckingDownloadSession.
+  /// Queue status while the download provider's session is being checked during preparation (preparationStage 'checking_session'). This is about the provider session, not about locating a finished file.
   ///
   /// In en, this message translates to:
   /// **'Checking download session...'**

@@ -11,6 +11,7 @@ import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/services/cover_cache_manager.dart';
+import 'package:spotiflac_android/services/downloaded_embedded_cover_resolver.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
@@ -187,6 +188,7 @@ class _CacheManagementPageState extends ConsumerState<CacheManagementPage> {
   }
 
   Future<void> _clearAppCache() async {
+    await DownloadedEmbeddedCoverResolver.clearPersistentCache();
     final cacheDir = await getApplicationCacheDirectory();
     await _clearDirectoryContents(cacheDir.path);
   }
