@@ -1305,6 +1305,14 @@ void main() {
       );
     });
 
+    test('treats generic M4A container reports as inconclusive codecs', () {
+      expect(isInconclusiveAudioCodec(null), isTrue);
+      expect(isInconclusiveAudioCodec('m4a'), isTrue);
+      expect(isInconclusiveAudioCodec('MP4'), isTrue);
+      expect(isInconclusiveAudioCodec('flac'), isFalse);
+      expect(isInconclusiveAudioCodec('aac'), isFalse);
+    });
+
     test('uses m4a for ISO-BMFF audio except AC-4 passthrough', () {
       expect(isoBmffAudioExtensionForCodec('opus'), '.m4a');
       expect(isoBmffAudioExtensionForCodec('ec-3'), '.m4a');

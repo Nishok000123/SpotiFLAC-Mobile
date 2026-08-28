@@ -102,6 +102,40 @@ class NativeFinalizationPolicyTest {
     }
 
     @Test
+    fun forcedContainerConversionAttemptsInconclusiveCodecButPreservesLossy() {
+        assertTrue(
+            NativeFinalizationPolicy.shouldAttemptLosslessContainerConversion(
+                forceConversion = true,
+                probedCodec = null,
+            ),
+        )
+        assertTrue(
+            NativeFinalizationPolicy.shouldAttemptLosslessContainerConversion(
+                forceConversion = true,
+                probedCodec = "m4a",
+            ),
+        )
+        assertTrue(
+            NativeFinalizationPolicy.shouldAttemptLosslessContainerConversion(
+                forceConversion = false,
+                probedCodec = "flac",
+            ),
+        )
+        assertFalse(
+            NativeFinalizationPolicy.shouldAttemptLosslessContainerConversion(
+                forceConversion = true,
+                probedCodec = "aac",
+            ),
+        )
+        assertFalse(
+            NativeFinalizationPolicy.shouldAttemptLosslessContainerConversion(
+                forceConversion = false,
+                probedCodec = null,
+            ),
+        )
+    }
+
+    @Test
     fun isoBmffAudioUsesM4aExceptForAc4Passthrough() {
         assertEquals(
             ".m4a",

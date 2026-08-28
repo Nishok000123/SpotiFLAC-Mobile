@@ -69,6 +69,10 @@ String? audioFormatForPath(String? filePath, {String? fileName}) {
   final candidates = <String>[?filePath, ?fileName];
   for (final candidate in candidates) {
     final lower = candidate.trim().toLowerCase();
+    if (lower.endsWith('.flac')) return 'FLAC';
+    if (lower.endsWith('.alac')) return 'ALAC';
+    if (lower.endsWith('.wav')) return 'WAV';
+    if (lower.endsWith('.aiff') || lower.endsWith('.aif')) return 'AIFF';
     if (lower.endsWith('.opus') || lower.endsWith('.ogg')) return 'OPUS';
     if (lower.endsWith('.mp3')) return 'MP3';
     if (lower.endsWith('.aac')) return 'AAC';
@@ -151,6 +155,17 @@ bool isLossyAudioFormat(String? value) {
     'opus',
     'm4a',
   }.contains(normalizeAudioFormatValue(value));
+}
+
+/// Whether a reported codec value only identifies the ISO-BMFF container.
+/// `m4a`/`mp4` cannot tell callers whether the audio stream is AAC, ALAC,
+/// FLAC, or another codec, so an explicit conversion request must probe or
+/// attempt conversion instead of classifying it as known-lossy audio.
+bool isInconclusiveAudioCodec(String? value) {
+  final raw = normalizeOptionalString(value);
+  if (raw == null) return true;
+  final normalized = raw.toLowerCase().replaceAll('-', '_');
+  return normalized == 'm4a' || normalized == 'mp4';
 }
 
 /// Returns a provider-independent quality label suitable for a filename.

@@ -1114,15 +1114,22 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
       result['audio_codec']?.toString() ??
           result['actual_audio_codec']?.toString(),
     );
-    if (isLossyAudioFormat(resultAudioFormat)) {
+    final requiresContainerConversion =
+        result['requires_container_conversion'] == true ||
+        result['requiresContainerConversion'] == true ||
+        _shouldRequestContainerConversion(
+          context.item.service,
+          context.outputExt,
+        );
+    // M4A/MP4 identifies a container, not necessarily a lossy codec. When an
+    // extension explicitly requests conversion, probe the stream below rather
+    // than treating the container label as proof that its audio is lossy.
+    if (!requiresContainerConversion && isLossyAudioFormat(resultAudioFormat)) {
       _log.d(
         'Native-worker output is $resultAudioFormat; preserving native container.',
       );
       return filePath;
     }
-    final requiresContainerConversion =
-        result['requires_container_conversion'] == true ||
-        result['requiresContainerConversion'] == true;
     final resultOutputExt = _downloadResultOutputExt(
       result,
       filePath: filePath,
@@ -1180,6 +1187,13 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
       );
     }
 
+    void markFinalOutputAsFlac() {
+      result['audio_codec'] = 'flac';
+      result['format'] = 'flac';
+      result['actual_extension'] = '.flac';
+      result['output_extension'] = '.flac';
+    }
+
     if (context.storageMode == 'saf' && isContentUri(filePath)) {
       final treeUri = context.downloadTreeUri;
       if (treeUri == null || treeUri.isEmpty) {
@@ -1195,7 +1209,10 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
           final codec = await FFmpegService.probePrimaryAudioCodec(tempPath);
           final isAlreadyNativeFlac =
               codec == 'flac' && await FFmpegService.isNativeFlacFile(tempPath);
-          if (!FFmpegService.isLosslessAudioCodec(codec)) {
+          final shouldAttemptConversion =
+              FFmpegService.isLosslessAudioCodec(codec) ||
+              (requiresContainerConversion && isInconclusiveAudioCodec(codec));
+          if (!shouldAttemptConversion) {
             _log.d(
               'Preserving native container; audio codec is ${codec ?? 'unknown'}, '
               'no FLAC container conversion needed.',
@@ -1241,13 +1258,17 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
         return null;
       }
       result['file_name'] = producedFileName;
+      markFinalOutputAsFlac();
       return newUri;
     }
 
     final codec = await FFmpegService.probePrimaryAudioCodec(filePath);
     final isAlreadyNativeFlac =
         codec == 'flac' && await FFmpegService.isNativeFlacFile(filePath);
-    if (!FFmpegService.isLosslessAudioCodec(codec)) {
+    final shouldAttemptConversion =
+        FFmpegService.isLosslessAudioCodec(codec) ||
+        (requiresContainerConversion && isInconclusiveAudioCodec(codec));
+    if (!shouldAttemptConversion) {
       _log.d(
         'Preserving native container; audio codec is ${codec ?? 'unknown'}, '
         'no FLAC container conversion needed.',
@@ -1265,6 +1286,7 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
         flacPath = targetPath;
       }
       await embedFlacMetadata(flacPath);
+      markFinalOutputAsFlac();
       return flacPath;
     }
     final flacPath = await FFmpegService.convertM4aToFlac(filePath);
@@ -1272,6 +1294,7 @@ extension _DownloadQueueFinalization on DownloadQueueNotifier {
       return null;
     }
     await embedFlacMetadata(flacPath);
+    markFinalOutputAsFlac();
     return flacPath;
   }
 

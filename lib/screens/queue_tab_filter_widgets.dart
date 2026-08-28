@@ -81,23 +81,26 @@ extension _QueueTabFilterWidgets on _QueueTabState {
       final pending = <String>[];
       final hasActiveDownloads = activeDownloadIds.isNotEmpty;
       _completionBridge.forEach((id, _) {
-        final historyId = bridgeHistoryById[id]?.id ?? id;
+        final historyItem = bridgeHistoryById[id];
+        final historyId = historyItem?.id ?? id;
         final landed = libIdSet.contains('dl_$historyId');
         final addedAt = _completionBridgeAt[id];
         final expired =
             addedAt == null || now.difference(addedAt).inSeconds >= 6;
-        if (activeDownloadIds.contains(id)) {
-          // Re-queued (retry): the live row takes over from the bridge.
-          stale.add(id);
-        } else if (hasActiveDownloads) {
-          // Keep just-completed tracks pinned in the lead zone while the
-          // rest of the batch is still downloading, so they don't jump
-          // below the remaining queue the moment they finish.
+        if (shouldRetainCompletionBridge(
+          isRequeued: activeDownloadIds.contains(id),
+          hasActiveDownloads: hasActiveDownloads,
+          libraryRowLanded: landed,
+          hasHistoryItem: historyItem != null,
+          expired: expired,
+        )) {
+          // Keep completed tracks pinned while their batch is active or their
+          // persisted History row is still waiting for the paged Library.
           pending.add(id);
-        } else if (landed || expired) {
-          stale.add(id);
         } else {
-          pending.add(id);
+          // Re-queued items are represented by the live row; landed items by
+          // the normal Library row; unpersisted bridges retain a short grace.
+          stale.add(id);
         }
       });
       bridgeIds = pending;

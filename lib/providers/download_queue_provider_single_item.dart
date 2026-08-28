@@ -691,11 +691,13 @@ class _DownloadRun {
       result['audio_codec']?.toString() ??
           result['actual_audio_codec']?.toString(),
     );
-    final resultIsLossyAudio = isLossyAudioFormat(resultAudioFormat);
+    final resultIsKnownLossyAudio =
+        isLossyAudioFormat(resultAudioFormat) &&
+        !isInconclusiveAudioCodec(resultAudioFormat);
     final requiresContainerConversion =
         result['requires_container_conversion'] == true ||
         result['requiresContainerConversion'] == true ||
-        (!resultIsLossyAudio &&
+        (!resultIsKnownLossyAudio &&
             n._shouldRequestContainerConversion(actualService, safOutputExt));
     final preferredOutputExt = n._extensionPreferredOutputExt(actualService);
     shouldPreserveNativeM4a =
@@ -987,6 +989,14 @@ class _DownloadRun {
     }
   }
 
+  void _markFinalOutputAsFlac() {
+    result['audio_codec'] = 'flac';
+    result['format'] = 'flac';
+    result['actual_extension'] = '.flac';
+    result['output_extension'] = '.flac';
+    resultOutputExt = '.flac';
+  }
+
   Future<bool> _publishDeferredSafOutputOnce() async {
     final localPath = filePath;
     if (localPath == null || isContentUri(localPath)) return true;
@@ -1252,7 +1262,10 @@ class _DownloadRun {
           final codec = await FFmpegService.probePrimaryAudioCodec(tempPath);
           final isAlreadyNativeFlac =
               codec == 'flac' && await FFmpegService.isNativeFlacFile(tempPath);
-          if (!FFmpegService.isLosslessAudioCodec(codec)) {
+          final shouldAttemptConversion =
+              FFmpegService.isLosslessAudioCodec(codec) ||
+              isInconclusiveAudioCodec(codec);
+          if (!shouldAttemptConversion) {
             _log.d(
               'Preserving native container; audio codec is ${codec ?? 'unknown'}, '
               'no FLAC container conversion needed.',
@@ -1309,6 +1322,7 @@ class _DownloadRun {
       if (newUri != null) {
         filePath = newUri;
         finalSafFileName = producedFileName;
+        _markFinalOutputAsFlac();
       } else if (branch == 'nativeFlac') {
         _log.w('Failed to write native FLAC to SAF');
       } else if (branch == 'convert') {
@@ -1437,7 +1451,10 @@ class _DownloadRun {
           final isAlreadyNativeFlac =
               codec == 'flac' &&
               await FFmpegService.isNativeFlacFile(currentFilePath);
-          if (!FFmpegService.isLosslessAudioCodec(codec)) {
+          final shouldAttemptConversion =
+              FFmpegService.isLosslessAudioCodec(codec) ||
+              isInconclusiveAudioCodec(codec);
+          if (!shouldAttemptConversion) {
             _log.d(
               'Preserving native container; audio codec is ${codec ?? 'unknown'}, '
               'no FLAC container conversion needed.',
@@ -1462,6 +1479,7 @@ class _DownloadRun {
             }
 
             await _embedFinalMetadata(flacPath, format: 'flac');
+            _markFinalOutputAsFlac();
           } else {
             n.updateItemStatus(
               item.id,
@@ -1474,6 +1492,7 @@ class _DownloadRun {
 
             if (flacPath != null) {
               filePath = flacPath;
+              _markFinalOutputAsFlac();
               _log.d('Converted to FLAC: $flacPath');
 
               _log.d('Embedding metadata and cover to converted FLAC...');

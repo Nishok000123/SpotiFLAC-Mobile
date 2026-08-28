@@ -158,6 +158,22 @@ internal object NativeFinalizationPolicy {
         )
     }
 
+    /**
+     * Decides whether a stream should enter the lossless container conversion
+     * path. A missing or generic M4A/MP4 codec is inconclusive rather than
+     * proof of lossy audio; an extension capability may explicitly request
+     * that FFmpeg attempt the conversion. Known lossy codecs remain native.
+     */
+    fun shouldAttemptLosslessContainerConversion(
+        forceConversion: Boolean,
+        probedCodec: String?,
+    ): Boolean {
+        if (isLosslessAudioCodec(probedCodec)) return true
+        val normalized = normalizeAudioCodec(probedCodec)
+        val inconclusive = normalized == null || normalized == "m4a"
+        return forceConversion && inconclusive
+    }
+
     fun displayAudioQuality(
         filePath: String,
         fileName: String,

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:spotiflac_android/utils/audio_format_utils.dart';
+import 'package:spotiflac_android/utils/audio_quality_badge_policy.dart';
 import 'package:spotiflac_android/services/downloaded_embedded_cover_resolver.dart';
 import 'package:spotiflac_android/services/library_database.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
@@ -30,6 +32,37 @@ bool shouldRetainQueueLibraryPageSnapshot({
   required bool cachedHasContent,
   required bool activeDownloadFallbackAvailable,
 }) => currentIsEmpty && cachedHasContent && activeDownloadFallbackAvailable;
+
+/// Keeps a completed queue card visible until the matching Library row has
+/// actually landed. A completed item with an in-memory History row must not
+/// expire merely because the rest of its album batch was cancelled: the
+/// paged Library query can still be one refresh behind that persisted row.
+bool shouldRetainCompletionBridge({
+  required bool isRequeued,
+  required bool hasActiveDownloads,
+  required bool libraryRowLanded,
+  required bool hasHistoryItem,
+  required bool expired,
+}) {
+  if (isRequeued || libraryRowLanded) return false;
+  if (hasActiveDownloads || hasHistoryItem) return true;
+  return !expired;
+}
+
+/// Builds a mode-aware label while a just-completed item is waiting for its
+/// History row. This avoids pinning the card to the track's old quality text
+/// when the user changes the Library label setting during an album download.
+String? buildCompletionBridgeFallbackQualityLabel({
+  required String mode,
+  required String? completedItemFilePath,
+  required String? storedQuality,
+}) {
+  return buildLibraryAudioQualityLabel(
+    mode: mode,
+    format: audioFormatForPath(completedItemFilePath),
+    storedQuality: storedQuality,
+  );
+}
 
 /// Returns distinct final-path candidates for a just-completed download.
 /// History is authoritative after conversion/SAF publication, while the

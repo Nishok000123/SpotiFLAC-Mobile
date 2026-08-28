@@ -121,7 +121,11 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
         : UnifiedLibraryItem.fromDownloadHistory(historyItem);
     final quality =
         unifiedItem?.qualityForMode(_libraryQualityLabelMode) ??
-        track.audioQuality;
+        buildCompletionBridgeFallbackQualityLabel(
+          mode: _libraryQualityLabelMode,
+          completedItemFilePath: item.filePath,
+          storedQuality: track.audioQuality,
+        );
     final playablePath = resolveCompletionBridgePlayablePath(
       historyFilePath: historyItem?.filePath,
       completedItemFilePath: item.filePath,
@@ -258,7 +262,11 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
         : UnifiedLibraryItem.fromDownloadHistory(historyItem);
     final quality =
         unifiedItem?.qualityForMode(_libraryQualityLabelMode) ??
-        track.audioQuality;
+        buildCompletionBridgeFallbackQualityLabel(
+          mode: _libraryQualityLabelMode,
+          completedItemFilePath: item.filePath,
+          storedQuality: track.audioQuality,
+        );
     final playablePath = resolveCompletionBridgePlayablePath(
       historyFilePath: historyItem?.filePath,
       completedItemFilePath: item.filePath,

@@ -18,8 +18,6 @@ import com.zarz.spotiflac.SafDownloadHandler.normalizeExt
 import com.zarz.spotiflac.NativeFinalizationPolicy.applyQualityVariantFilenameLabel
 import com.zarz.spotiflac.NativeFinalizationPolicy.displayAudioQuality
 import com.zarz.spotiflac.NativeFinalizationPolicy.formatIndexTag
-import com.zarz.spotiflac.NativeFinalizationPolicy.isLosslessAudioCodec
-import com.zarz.spotiflac.NativeFinalizationPolicy.isLossyAudioCodec
 import com.zarz.spotiflac.NativeFinalizationPolicy.normalizeAudioCodec
 import com.zarz.spotiflac.NativeFinalizationPolicy.resolvePreferredDecryptionExtension
 import gobackend.Gobackend
@@ -808,7 +806,11 @@ object NativeDownloadFinalizer {
         try {
             val codec = probePrimaryAudioCodec(localInput, shouldCancel)
             val isAlreadyNativeFlac = codec == "flac" && isNativeFlacFile(localInput)
-            if (!isLosslessAudioCodec(codec)) {
+            if (!NativeFinalizationPolicy.shouldAttemptLosslessContainerConversion(
+                    forceContainerConversion,
+                    codec,
+                )
+            ) {
                 Log.d(TAG, "Preserving native container; audio codec is ${codec.ifBlank { "unknown" }}")
                 // The preserved stream is not FLAC but still carries the
                 // requested .flac name. Rename to the real container so the
