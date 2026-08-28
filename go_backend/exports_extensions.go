@@ -717,7 +717,7 @@ func GetAllPendingFFmpegCommandsJSON() (string, error) {
 
 	commands := make([]map[string]any, 0)
 	for cmdID, cmd := range ffmpegCommands {
-		if !cmd.Completed {
+		if !cmd.Completed && !cmd.Claimed {
 			commands = append(commands, map[string]any{
 				"command_id":   cmdID,
 				"extension_id": cmd.ExtensionID,
@@ -727,6 +727,47 @@ func GetAllPendingFFmpegCommandsJSON() (string, error) {
 	}
 
 	return marshalJSONString(commands)
+}
+
+// WaitForPendingFFmpegCommandsJSON blocks until work is available or the
+// timeout elapses. Native command pumps use this instead of polling the bridge
+// every 100 ms while still retaining GetAllPendingFFmpegCommandsJSON for older
+// clients.
+func WaitForPendingFFmpegCommandsJSON(timeoutMillis int64) (string, error) {
+	if timeoutMillis < 0 {
+		timeoutMillis = 0
+	}
+	deadline := time.NewTimer(time.Duration(timeoutMillis) * time.Millisecond)
+	defer deadline.Stop()
+
+	for {
+		ffmpegCommandsMu.Lock()
+		commands := make([]map[string]any, 0)
+		for cmdID, cmd := range ffmpegCommands {
+			if cmd.Completed || cmd.Claimed {
+				continue
+			}
+			cmd.Claimed = true
+			commands = append(commands, map[string]any{
+				"command_id":   cmdID,
+				"extension_id": cmd.ExtensionID,
+				"command":      cmd.Command,
+			})
+		}
+		ffmpegCommandsMu.Unlock()
+		if len(commands) > 0 {
+			return marshalJSONString(commands)
+		}
+
+		select {
+		case <-ffmpegCommandQueued:
+			// A buffered notification can be stale if another command pump
+			// already consumed the work, so re-check until the deadline.
+			continue
+		case <-deadline.C:
+			return "[]", nil
+		}
+	}
 }
 
 func EnrichTrackWithExtensionJSON(extensionID, trackJSON string) (string, error) {

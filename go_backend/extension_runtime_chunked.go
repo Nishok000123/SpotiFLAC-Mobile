@@ -211,6 +211,7 @@ func (r *extensionRuntime) fileDownloadChunked(
 	}
 
 	shouldTrackBytes := activeItemID != "" && trackItemBytes
+	itemProgressReporter := NewItemTransferProgressReporter(activeItemID, totalWritten, totalSize)
 	if shouldTrackBytes {
 		if totalSize > 0 {
 			SetItemProgress(
@@ -413,16 +414,7 @@ func (r *extensionRuntime) fileDownloadChunked(
 						})
 					}
 					if shouldTrackBytes {
-						if totalSize > 0 {
-							SetItemProgress(
-								activeItemID,
-								float64(totalWritten)/float64(totalSize),
-								totalWritten,
-								totalSize,
-							)
-						} else {
-							SetItemBytesReceived(activeItemID, totalWritten)
-						}
+						itemProgressReporter.Report(totalWritten, totalSize)
 					}
 					if onProgress != nil && totalSize > 0 &&
 						(totalWritten-lastProgressNotify >= progressUpdateThreshold || totalWritten >= totalSize) {

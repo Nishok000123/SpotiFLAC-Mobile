@@ -31,6 +31,21 @@ class _ResolvedLosslessConversionQuality {
   });
 }
 
+class _PrimaryAudioProperties {
+  final String? codec;
+  final int? bitDepth;
+  final int? sampleRate;
+
+  const _PrimaryAudioProperties({this.codec, this.bitDepth, this.sampleRate});
+}
+
+class _AudioProbeCacheEntry {
+  final String identity;
+  final Future<_PrimaryAudioProperties> result;
+
+  const _AudioProbeCacheEntry({required this.identity, required this.result});
+}
+
 class _ConversionOutputPlan {
   final String workingPath;
   final String finalPath;
@@ -45,6 +60,7 @@ class _ConversionOutputPlan {
 
 class FFmpegService {
   static const int _commandLogPreviewLength = 300;
+  static const int _audioProbeCacheMaxEntries = 64;
   static const Duration _liveTunnelStartupTimeout = Duration(seconds: 8);
   static const Duration _liveTunnelStartupPollInterval = Duration(
     milliseconds: 200,
@@ -60,6 +76,8 @@ class FFmpegService {
   static String? _activeNativeDashManifestPath;
   static String? _activeNativeDashManifestUrl;
   static final Set<String> _preparedNativeDashManifestPaths = <String>{};
+  static final Map<String, _AudioProbeCacheEntry> _audioProbeCache =
+      <String, _AudioProbeCacheEntry>{};
 
   static String _buildOutputPath(String inputPath, String extension) {
     final normalizedExt = extension.startsWith('.') ? extension : '.$extension';
@@ -407,21 +425,71 @@ class FFmpegService {
   }
 
   static Future<String?> probePrimaryAudioCodec(String filePath) async {
+    return (await _probePrimaryAudioProperties(filePath)).codec;
+  }
+
+  static Future<String?> _audioProbeIdentity(String filePath) async {
+    try {
+      final stat = await File(filePath).stat();
+      if (stat.type != FileSystemEntityType.file) return null;
+      return '${stat.modified.millisecondsSinceEpoch}:${stat.size}';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<_PrimaryAudioProperties> _probePrimaryAudioProperties(
+    String filePath,
+  ) async {
+    final identity = await _audioProbeIdentity(filePath);
+    if (identity != null) {
+      final cached = _audioProbeCache[filePath];
+      if (cached != null && cached.identity == identity) {
+        return cached.result;
+      }
+    }
+
+    final result = _readPrimaryAudioProperties(filePath);
+    if (identity != null) {
+      while (_audioProbeCache.length >= _audioProbeCacheMaxEntries &&
+          _audioProbeCache.isNotEmpty) {
+        _audioProbeCache.remove(_audioProbeCache.keys.first);
+      }
+      _audioProbeCache[filePath] = _AudioProbeCacheEntry(
+        identity: identity,
+        result: result,
+      );
+    }
+    return result;
+  }
+
+  static Future<_PrimaryAudioProperties> _readPrimaryAudioProperties(
+    String filePath,
+  ) async {
     try {
       final session = await FFprobeKit.getMediaInformation(filePath);
       final info = session.getMediaInformation();
-      if (info == null) return null;
+      if (info == null) return const _PrimaryAudioProperties();
 
       for (final stream in info.getStreams()) {
         final props = stream.getAllProperties() ?? const <String, dynamic>{};
         if (props['codec_type']?.toString() != 'audio') continue;
         final codec = props['codec_name']?.toString().trim().toLowerCase();
-        return codec == null || codec.isEmpty ? null : codec;
+        final rawBits = props['bits_per_raw_sample']?.toString();
+        final bits = props['bits_per_sample']?.toString();
+        final bitDepth =
+            int.tryParse(rawBits ?? '') ?? int.tryParse(bits ?? '');
+        final sampleRate = int.tryParse(props['sample_rate']?.toString() ?? '');
+        return _PrimaryAudioProperties(
+          codec: codec == null || codec.isEmpty ? null : codec,
+          bitDepth: bitDepth != null && bitDepth > 0 ? bitDepth : null,
+          sampleRate: sampleRate != null && sampleRate > 0 ? sampleRate : null,
+        );
       }
     } catch (e) {
-      _log.w('Audio codec probe failed for $filePath: $e');
+      _log.w('Audio property probe failed for $filePath: $e');
     }
-    return null;
+    return const _PrimaryAudioProperties();
   }
 
   static bool isLosslessAudioCodec(String? codec) {
@@ -443,41 +511,11 @@ class FFmpegService {
   /// Probes the source audio bit depth (bits_per_raw_sample, falling back to
   /// bits_per_sample). Returns null when unknown.
   static Future<int?> probeBitDepth(String filePath) async {
-    try {
-      final session = await FFprobeKit.getMediaInformation(filePath);
-      final info = session.getMediaInformation();
-      if (info == null) return null;
-      for (final stream in info.getStreams()) {
-        final props = stream.getAllProperties() ?? const <String, dynamic>{};
-        if (props['codec_type']?.toString() != 'audio') continue;
-        final raw = props['bits_per_raw_sample']?.toString();
-        final bps = props['bits_per_sample']?.toString();
-        final v = int.tryParse(raw ?? '') ?? int.tryParse(bps ?? '');
-        if (v != null && v > 0) return v;
-        return null;
-      }
-    } catch (e) {
-      _log.w('Bit depth probe failed for $filePath: $e');
-    }
-    return null;
+    return (await _probePrimaryAudioProperties(filePath)).bitDepth;
   }
 
   static Future<int?> probeSampleRate(String filePath) async {
-    try {
-      final session = await FFprobeKit.getMediaInformation(filePath);
-      final info = session.getMediaInformation();
-      if (info == null) return null;
-      for (final stream in info.getStreams()) {
-        final props = stream.getAllProperties() ?? const <String, dynamic>{};
-        if (props['codec_type']?.toString() != 'audio') continue;
-        final value = int.tryParse(props['sample_rate']?.toString() ?? '');
-        if (value != null && value > 0) return value;
-        return null;
-      }
-    } catch (e) {
-      _log.w('Sample rate probe failed for $filePath: $e');
-    }
-    return null;
+    return (await _probePrimaryAudioProperties(filePath)).sampleRate;
   }
 
   /// Returns `true` when [filePath] starts with the native FLAC magic bytes
@@ -507,12 +545,14 @@ class FFmpegService {
     required LosslessConversionQuality quality,
     int? sourceBitDepth,
   }) async {
-    final probedBitDepth =
-        sourceBitDepth ??
-        (quality.maxBitDepth != null ? await probeBitDepth(inputPath) : null);
-    final probedSampleRate = quality.maxSampleRate != null
-        ? await probeSampleRate(inputPath)
-        : null;
+    final needsBitDepthProbe =
+        sourceBitDepth == null && quality.maxBitDepth != null;
+    final needsSampleRateProbe = quality.maxSampleRate != null;
+    final probe = needsBitDepthProbe || needsSampleRateProbe
+        ? await _probePrimaryAudioProperties(inputPath)
+        : const _PrimaryAudioProperties();
+    final probedBitDepth = sourceBitDepth ?? probe.bitDepth;
+    final probedSampleRate = needsSampleRateProbe ? probe.sampleRate : null;
 
     int? targetBitDepth;
     if (quality.maxBitDepth != null &&

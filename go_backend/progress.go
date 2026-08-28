@@ -407,6 +407,54 @@ type ItemProgressWriter struct {
 }
 
 const progressUpdateThreshold = 128 * 1024
+const progressUpdateMaxInterval = 250 * time.Millisecond
+
+// ItemTransferProgressReporter coalesces hot-path byte updates before they
+// acquire multiMu. Transfer loops commonly read in 64 KiB chunks; reporting
+// every read needlessly serializes parallel workers even though the bridge
+// exposes progress at a much lower cadence.
+type ItemTransferProgressReporter struct {
+	itemID       string
+	mu           sync.Mutex
+	lastReported int64
+	lastTotal    int64
+	lastReportAt time.Time
+}
+
+func NewItemTransferProgressReporter(itemID string, received, total int64) *ItemTransferProgressReporter {
+	return &ItemTransferProgressReporter{
+		itemID:       itemID,
+		lastReported: received,
+		lastTotal:    total,
+		lastReportAt: time.Now(),
+	}
+}
+
+func (reporter *ItemTransferProgressReporter) Report(received, total int64) {
+	if reporter == nil || reporter.itemID == "" {
+		return
+	}
+
+	reporter.mu.Lock()
+	defer reporter.mu.Unlock()
+	now := time.Now()
+	bytesDelta := received - reporter.lastReported
+	if bytesDelta >= 0 &&
+		bytesDelta < progressUpdateThreshold &&
+		total == reporter.lastTotal &&
+		now.Sub(reporter.lastReportAt) < progressUpdateMaxInterval {
+		return
+	}
+
+	reporter.lastReported = received
+	reporter.lastTotal = total
+	reporter.lastReportAt = now
+	if total > 0 {
+		SetItemProgress(reporter.itemID, float64(received)/float64(total), received, total)
+	} else {
+		SetItemBytesReceived(reporter.itemID, received)
+	}
+}
 
 func NewItemProgressWriter(w interface{ Write([]byte) (int, error) }, itemID string) *ItemProgressWriter {
 	now := time.Now()

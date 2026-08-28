@@ -20,6 +20,22 @@ import (
 // process-wide; the per-runtime mutexes only cover a single VM.
 var extensionFileMus sync.Map // file path -> *sync.Mutex
 
+type extensionFileIdentity struct {
+	exists   bool
+	size     int64
+	modified int64
+}
+
+type extensionJSONCacheEntry struct {
+	identity extensionFileIdentity
+	snapshot map[string]any
+}
+
+// Shared by all isolated runtimes so repeated storage/credential reads avoid
+// reading, decoding, and (for credentials) decrypting the complete file. The
+// corresponding extensionFileMu must be held while accessing an entry.
+var extensionJSONCaches sync.Map // file path -> *extensionJSONCacheEntry
+
 func extensionFileMu(path string) *sync.Mutex {
 	mu, _ := extensionFileMus.LoadOrStore(path, &sync.Mutex{})
 	return mu.(*sync.Mutex)
@@ -33,6 +49,86 @@ func writeExtensionFileLocked(path string, data []byte) error {
 		return err
 	}
 	return os.Rename(tmp, path)
+}
+
+func extensionFileIdentityForPath(path string) (extensionFileIdentity, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return extensionFileIdentity{}, nil
+		}
+		return extensionFileIdentity{}, err
+	}
+	return extensionFileIdentity{
+		exists:   true,
+		size:     info.Size(),
+		modified: info.ModTime().UnixNano(),
+	}, nil
+}
+
+func cloneJSONValue(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		return cloneJSONMap(typed)
+	case []any:
+		result := make([]any, len(typed))
+		for index, item := range typed {
+			result[index] = cloneJSONValue(item)
+		}
+		return result
+	default:
+		return typed
+	}
+}
+
+func cloneJSONMap(source map[string]any) map[string]any {
+	result := make(map[string]any, len(source))
+	for key, value := range source {
+		result[key] = cloneJSONValue(value)
+	}
+	return result
+}
+
+// readCachedJSONMapLocked returns an isolated snapshot. The path-specific
+// mutex must be held, which makes the stat/load/update sequence coherent with
+// writers from all runtimes.
+func readCachedJSONMapLocked(
+	path string,
+	load func() (map[string]any, error),
+) (map[string]any, error) {
+	identity, err := extensionFileIdentityForPath(path)
+	if err != nil {
+		return nil, err
+	}
+	if cached, ok := extensionJSONCaches.Load(path); ok {
+		entry := cached.(*extensionJSONCacheEntry)
+		if entry.identity == identity {
+			return cloneJSONMap(entry.snapshot), nil
+		}
+	}
+
+	snapshot, err := load()
+	if err != nil {
+		return nil, err
+	}
+	extensionJSONCaches.Store(path, &extensionJSONCacheEntry{
+		identity: identity,
+		snapshot: cloneJSONMap(snapshot),
+	})
+	return snapshot, nil
+}
+
+func storeCachedJSONMapLocked(path string, snapshot map[string]any) error {
+	identity, err := extensionFileIdentityForPath(path)
+	if err != nil {
+		extensionJSONCaches.Delete(path)
+		return err
+	}
+	extensionJSONCaches.Store(path, &extensionJSONCacheEntry{
+		identity: identity,
+		snapshot: cloneJSONMap(snapshot),
+	})
+	return nil
 }
 
 func (r *extensionRuntime) getStoragePath() string {
@@ -61,7 +157,9 @@ func (r *extensionRuntime) refreshStorage() error {
 	path := r.getStoragePath()
 	fileMu := extensionFileMu(path)
 	fileMu.Lock()
-	snapshot, err := readJSONMapFile(path)
+	snapshot, err := readCachedJSONMapLocked(path, func() (map[string]any, error) {
+		return readJSONMapFile(path)
+	})
 	fileMu.Unlock()
 	if err != nil {
 		return err
@@ -83,12 +181,17 @@ func (r *extensionRuntime) mutateStorage(mutate func(map[string]any) bool) error
 	path := r.getStoragePath()
 	fileMu := extensionFileMu(path)
 	fileMu.Lock()
-	snapshot, err := readJSONMapFile(path)
+	snapshot, err := readCachedJSONMapLocked(path, func() (map[string]any, error) {
+		return readJSONMapFile(path)
+	})
 	if err == nil && mutate(snapshot) {
 		var data []byte
 		data, err = json.Marshal(snapshot)
 		if err == nil {
 			err = writeExtensionFileLocked(path, data)
+		}
+		if err == nil {
+			err = storeCachedJSONMapLocked(path, snapshot)
 		}
 	}
 	fileMu.Unlock()
@@ -253,7 +356,7 @@ func (r *extensionRuntime) refreshCredentials() error {
 	path := r.getCredentialsPath()
 	fileMu := extensionFileMu(path)
 	fileMu.Lock()
-	snapshot, err := r.readCredentialsFileLocked()
+	snapshot, err := readCachedJSONMapLocked(path, r.readCredentialsFileLocked)
 	fileMu.Unlock()
 	if err != nil {
 		return err
@@ -268,7 +371,7 @@ func (r *extensionRuntime) mutateCredentials(mutate func(map[string]any)) error 
 	path := r.getCredentialsPath()
 	fileMu := extensionFileMu(path)
 	fileMu.Lock()
-	snapshot, err := r.readCredentialsFileLocked()
+	snapshot, err := readCachedJSONMapLocked(path, r.readCredentialsFileLocked)
 	if err == nil {
 		mutate(snapshot)
 		var data []byte
@@ -282,6 +385,9 @@ func (r *extensionRuntime) mutateCredentials(mutate func(map[string]any)) error 
 		}
 		if err == nil {
 			err = writeExtensionFileLocked(path, data)
+		}
+		if err == nil {
+			err = storeCachedJSONMapLocked(path, snapshot)
 		}
 	}
 	fileMu.Unlock()

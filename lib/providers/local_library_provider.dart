@@ -3,15 +3,12 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
-import 'package:spotiflac_android/services/history_database.dart';
 import 'package:spotiflac_android/services/library_database.dart';
 import 'package:spotiflac_android/services/notification_service.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/utils/local_library_scan_prefs.dart';
-import 'package:spotiflac_android/utils/path_match_keys.dart';
 import 'package:spotiflac_android/utils/progress_stream_poller.dart';
 
 final _log = AppLogger('LocalLibrary');
@@ -122,7 +119,6 @@ class LocalLibraryState {
 
 class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
   final LibraryDatabase _db = LibraryDatabase.instance;
-  final HistoryDatabase _historyDb = HistoryDatabase.instance;
   final NotificationService _notificationService = NotificationService();
   static const _progressPollingInterval = Duration(milliseconds: 350);
   static const _progressStreamBootstrapTimeout = Duration(milliseconds: 900);
@@ -520,24 +516,10 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
     return reconnected;
   }
 
-  bool _isDownloadedPath(String? filePath, Set<String> downloadedPathKeys) {
-    if (filePath == null || filePath.isEmpty || downloadedPathKeys.isEmpty) {
-      return false;
-    }
-    final candidateKeys = buildPathMatchKeys(filePath);
-    for (final key in candidateKeys) {
-      if (downloadedPathKeys.contains(key)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   Future<({int inserted, int skipped})?> _replaceFromFullScanStream({
     required String sourceId,
     required String folderPath,
     required bool isSaf,
-    required Set<String> downloadedPathKeys,
   }) async {
     if (_scanCancelRequested) return null;
     final scanFile = isSaf
@@ -549,7 +531,6 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
             folderPath,
             isCancelled: () => _scanCancelRequested,
           );
-    var skipped = 0;
     try {
       if (_scanCancelRequested) return null;
       state = state.copyWith(
@@ -557,18 +538,13 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
         scanProgress: state.scanProgress >= 99 ? state.scanProgress : 99,
         scanCurrentFile: null,
       );
-      Stream<Map<String, dynamic>> filteredRows() async* {
+      Stream<Map<String, dynamic>> validatedRows() async* {
         var decodedRows = 0;
         await for (final json in scanFile.rows()) {
           if (_scanCancelRequested) {
             throw StateError('Library scan cancelled during ingestion');
           }
           decodedRows++;
-          final filePath = json['filePath'] as String?;
-          if (_isDownloadedPath(filePath, downloadedPathKeys)) {
-            skipped++;
-            continue;
-          }
           yield json;
         }
         if (decodedRows != scanFile.expectedCount) {
@@ -579,12 +555,12 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
         }
       }
 
-      final inserted = await _db.replaceSourceStream(sourceId, filteredRows());
+      final result = await _db.replaceSourceStream(sourceId, validatedRows());
       _log.i(
-        'Stream-ingested $inserted/${scanFile.expectedCount} scan rows '
-        '($skipped downloads excluded)',
+        'Stream-ingested ${result.inserted}/${scanFile.expectedCount} scan rows '
+        '(${result.skipped} downloads excluded)',
       );
-      return (inserted: inserted, skipped: skipped);
+      return result;
     } finally {
       await scanFile.delete();
     }
@@ -684,25 +660,6 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
     try {
       final isSaf = effectiveFolderPath.startsWith('content://');
 
-      final downloadedPaths = await _historyDb.getAllFilePaths();
-      final inMemoryHistoryPaths = ref
-          .read(downloadHistoryProvider)
-          .items
-          .map((item) => item.filePath)
-          .where((path) => path.isNotEmpty);
-      final allHistoryPaths = <String>{
-        ...downloadedPaths,
-        ...inMemoryHistoryPaths,
-      };
-      final downloadedPathKeys = <String>{};
-      for (final path in allHistoryPaths) {
-        downloadedPathKeys.addAll(buildPathMatchKeys(path));
-      }
-      _log.i(
-        'Excluding ${allHistoryPaths.length} downloaded files from library scan '
-        '(${downloadedPathKeys.length} path keys)',
-      );
-
       final useStreamingFullScan =
           forceFullScan || await _db.getSourceCount(activeSourceId) == 0;
       if (useStreamingFullScan) {
@@ -710,7 +667,6 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
           sourceId: activeSourceId,
           folderPath: effectiveFolderPath,
           isSaf: isSaf,
-          downloadedPathKeys: downloadedPathKeys,
         );
         if (scanResult == null || _scanCancelRequested) {
           state = state.copyWith(
@@ -868,39 +824,31 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
           '$skippedCount skipped, ${deletedPaths.length} deleted, $totalFiles total',
         );
 
-        final existingPaths = existingFiles.keys.toList(growable: false);
-        final existingDownloadedPaths = <String>[];
-        for (final path in existingPaths) {
-          if (_isDownloadedPath(path, downloadedPathKeys)) {
-            existingDownloadedPaths.add(path);
-          }
-        }
-        if (existingDownloadedPaths.isNotEmpty) {
-          final removed = await _db.deleteByPaths(existingDownloadedPaths);
+        final removedDownloaded = await _db.deleteDownloadedRowsForSource(
+          activeSourceId,
+        );
+        if (removedDownloaded > 0) {
           _log.i(
-            'Removed $removed downloaded tracks already present in local library index',
+            'Removed $removedDownloaded downloaded tracks already present in '
+            'the local Library index',
           );
         }
 
         final updatedItems = <LocalLibraryItem>[];
-        int skippedDownloads = existingDownloadedPaths.length;
+        var skippedDownloads = removedDownloaded;
         if (scannedList.isNotEmpty) {
           for (final json in scannedList) {
             final map = json as Map<String, dynamic>;
-            final filePath = map['filePath'] as String?;
-            if (_isDownloadedPath(filePath, downloadedPathKeys)) {
-              skippedDownloads++;
-              continue;
-            }
             final item = LocalLibraryItem.fromJson(map);
             updatedItems.add(item);
           }
           if (updatedItems.isNotEmpty) {
-            await _db.upsertBatch(
+            final upsertResult = await _db.upsertBatchExcludingHistory(
               updatedItems.map((e) => e.toJson()).toList(),
               sourceId: activeSourceId,
             );
-            _log.i('Upserted ${updatedItems.length} items');
+            skippedDownloads += upsertResult.skipped;
+            _log.i('Upserted ${upsertResult.upserted} items');
           }
           if (skippedDownloads > 0) {
             _log.i(

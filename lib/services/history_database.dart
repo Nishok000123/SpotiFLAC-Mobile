@@ -928,72 +928,118 @@ class HistoryDatabase {
     return null;
   }
 
-  /// Batch variant used by playlist playback. Four indexed scans resolve the
-  /// complete list while preserving the same Spotify -> ISRC -> match-key
-  /// priority as [findExistingTrack].
+  /// Batch variant used by playlist playback and bulk existence checks. A
+  /// compact candidates CTE resolves all identifiers in one indexed lookup per
+  /// bounded chunk, returning only the id/path reference those callers need.
   Future<List<Map<String, dynamic>?>> findExistingTracks(
     List<HistoryLookupRequest> requests,
   ) async {
     if (requests.isEmpty) return const [];
     final db = await database;
-    final bySpotify = <String, Map<String, dynamic>>{};
-    final bySpotifyNorm = <String, Map<String, dynamic>>{};
-    final byIsrcNorm = <String, Map<String, dynamic>>{};
-    final byMatchKey = <String, Map<String, dynamic>>{};
+    final results = List<Map<String, dynamic>?>.filled(requests.length, null);
+    const requestChunkSize = 80;
 
-    Future<void> loadColumn(
-      String column,
-      Iterable<String> rawValues,
-      Map<String, Map<String, dynamic>> destination,
+    for (
+      var chunkStart = 0;
+      chunkStart < requests.length;
+      chunkStart += requestChunkSize
     ) {
-      return sqlite.loadRowsByColumn(
-        db,
-        table: 'history',
-        column: column,
-        rawValues: rawValues,
-        destination: destination,
-        mapRow: _dbRowToJson,
-        orderBy: 'sort_added DESC, id DESC',
+      final chunkEnd = (chunkStart + requestChunkSize).clamp(
+        0,
+        requests.length,
       );
-    }
+      final chunk = requests.sublist(chunkStart, chunkEnd);
+      final candidateRows = <String>[];
+      final args = <Object?>[];
 
-    final spotifyCandidates = requests.expand(
-      (request) => spotifyLookupCandidates(request.spotifyId),
-    );
-    await Future.wait([
-      loadColumn('spotify_id', spotifyCandidates, bySpotify),
-      loadColumn(
-        'spotify_id_norm',
-        spotifyCandidates.map(normalizeSpotifyId),
-        bySpotifyNorm,
-      ),
-      loadColumn(
-        'isrc_norm',
-        requests.map((request) => normalizeIsrc(request.isrc)),
-        byIsrcNorm,
-      ),
-      loadColumn(
-        'match_key',
-        requests.map(
-          (request) => matchKeyFor(request.trackName, request.artistName),
-        ),
-        byMatchKey,
-      ),
-    ]);
+      void addCandidate(
+        int requestIndex,
+        int priority,
+        String kind,
+        String value,
+      ) {
+        if (value.isEmpty) return;
+        candidateRows.add("($requestIndex, $priority, '$kind', ?)");
+        args.add(value);
+      }
 
-    return requests
-        .map((request) {
-          for (final candidate in spotifyLookupCandidates(request.spotifyId)) {
-            final match =
-                bySpotify[candidate] ??
-                bySpotifyNorm[normalizeSpotifyId(candidate)];
-            if (match != null) return match;
+      for (var requestIndex = 0; requestIndex < chunk.length; requestIndex++) {
+        final request = chunk[requestIndex];
+        var priority = 0;
+        final seen = <String>{};
+        for (final candidate in spotifyLookupCandidates(request.spotifyId)) {
+          final exactKey = 'spotify_id\u0000$candidate';
+          if (candidate.isNotEmpty && seen.add(exactKey)) {
+            addCandidate(requestIndex, priority++, 'spotify_id', candidate);
           }
-          final byIsrc = byIsrcNorm[normalizeIsrc(request.isrc)];
-          if (byIsrc != null) return byIsrc;
-          return byMatchKey[matchKeyFor(request.trackName, request.artistName)];
-        })
-        .toList(growable: false);
+          final normalized = normalizeSpotifyId(candidate);
+          final normalizedKey = 'spotify_id_norm\u0000$normalized';
+          if (normalized.isNotEmpty && seen.add(normalizedKey)) {
+            addCandidate(
+              requestIndex,
+              priority++,
+              'spotify_id_norm',
+              normalized,
+            );
+          }
+        }
+        addCandidate(
+          requestIndex,
+          priority++,
+          'isrc_norm',
+          normalizeIsrc(request.isrc),
+        );
+        addCandidate(
+          requestIndex,
+          priority,
+          'match_key',
+          matchKeyFor(request.trackName, request.artistName),
+        );
+      }
+      if (candidateRows.isEmpty) continue;
+
+      final rows = await db.rawQuery('''
+        WITH candidates(request_index, priority, lookup_kind, lookup_value) AS (
+          VALUES ${candidateRows.join(', ')}
+        ), matches AS (
+          SELECT c.request_index, c.priority, h.id, h.file_path,
+                 h.sort_added
+          FROM candidates c
+          JOIN history h ON h.spotify_id = c.lookup_value
+          WHERE c.lookup_kind = 'spotify_id'
+          UNION ALL
+          SELECT c.request_index, c.priority, h.id, h.file_path,
+                 h.sort_added
+          FROM candidates c
+          JOIN history h ON h.spotify_id_norm = c.lookup_value
+          WHERE c.lookup_kind = 'spotify_id_norm'
+          UNION ALL
+          SELECT c.request_index, c.priority, h.id, h.file_path,
+                 h.sort_added
+          FROM candidates c
+          JOIN history h ON h.isrc_norm = c.lookup_value
+          WHERE c.lookup_kind = 'isrc_norm'
+          UNION ALL
+          SELECT c.request_index, c.priority, h.id, h.file_path,
+                 h.sort_added
+          FROM candidates c
+          JOIN history h ON h.match_key = c.lookup_value
+          WHERE c.lookup_kind = 'match_key'
+        )
+        SELECT request_index, id, file_path
+        FROM matches
+        ORDER BY request_index, priority, sort_added DESC, id DESC
+      ''', args);
+      for (final row in rows) {
+        final localIndex = (row['request_index'] as num).toInt();
+        final resultIndex = chunkStart + localIndex;
+        results[resultIndex] ??= {
+          'id': row['id'],
+          'filePath': _normalizeIosPath(row['file_path'] as String?),
+        };
+      }
+    }
+    return results;
   }
 
   Future<void> deleteById(String id) async {

@@ -18,10 +18,18 @@ class LibraryDatabase {
   static final LibraryDatabase instance = LibraryDatabase._init();
   // The FTS table is a derived, optional index and is initialized lazily after
   // the existing schema migration, so it does not require a user_version bump.
-  static const int schemaVersion = 13;
+  static const int schemaVersion = 14;
   static const String legacySourceId = LocalLibraryItem.legacySourceId;
   static const String visibleLibraryView = 'library_visible';
   static const String searchFtsTable = 'library_search_fts';
+  static const String lookupSummaryTable = 'library_lookup_summary';
+  static const String _scanStageTable = 'library_scan_stage';
+  static const String _scanStagePathKeysTable = 'library_scan_path_keys_stage';
+  static const String _incrementalStageTable = 'library_incremental_stage';
+  static const String _incrementalStagePathKeysTable =
+      'library_incremental_path_keys_stage';
+  static const String _downloadedLibraryIdsStageTable =
+      'library_downloaded_ids_stage';
   static const int audioMetadataScanVersion = 3;
   static final sqlite.SingleFlightInitializer<Database> _database =
       sqlite.SingleFlightInitializer<Database>();
@@ -40,6 +48,9 @@ class LibraryDatabase {
         onCreate: _createDB,
         onUpgrade: _upgradeDB,
       );
+      // Library upserts use INSERT OR REPLACE. Recursive triggers ensure the
+      // implicit delete also decrements materialized lookup ref-counts.
+      await db.execute('PRAGMA recursive_triggers = ON');
       // onCreate normally initializes this derived index. Retry once after
       // opening an existing database in case an earlier setup was
       // interrupted; unsupported SQLite builds remain on the LIKE fallback.
@@ -127,6 +138,7 @@ class LibraryDatabase {
     await _createQueueIndexes(db);
     await _createPathKeyTable(db);
     await _createLibrarySources(db);
+    await _createLookupSummary(db);
     _searchFtsAvailable = await _createSearchFts(db);
 
     _log.i('Library database schema created with indexes');
@@ -235,6 +247,130 @@ class LibraryDatabase {
       );
       _log.i('Added indexed lyrics availability metadata');
     }
+    if (oldVersion < 14) {
+      await _createLookupSummary(db);
+      _log.i('Added incremental Library lookup summary');
+    }
+  }
+
+  Future<void> _createLookupSummary(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $lookupSummaryTable (
+        source_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        value TEXT NOT NULL,
+        ref_count INTEGER NOT NULL,
+        PRIMARY KEY (source_id, kind, value)
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_library_lookup_summary_value '
+      'ON $lookupSummaryTable(kind, value)',
+    );
+
+    for (final name in const [
+      'library_lookup_insert_isrc',
+      'library_lookup_delete_isrc',
+      'library_lookup_update_isrc',
+      'library_lookup_insert_match',
+      'library_lookup_delete_match',
+      'library_lookup_update_match',
+    ]) {
+      await db.execute('DROP TRIGGER IF EXISTS $name');
+    }
+
+    await db.execute('''
+      CREATE TRIGGER library_lookup_insert_isrc AFTER INSERT ON library
+      WHEN NEW.isrc IS NOT NULL AND NEW.isrc != ''
+      BEGIN
+        INSERT OR IGNORE INTO $lookupSummaryTable(source_id, kind, value, ref_count)
+        VALUES (NEW.source_id, 'isrc', NEW.isrc, 0);
+        UPDATE $lookupSummaryTable SET ref_count = ref_count + 1
+        WHERE source_id = NEW.source_id AND kind = 'isrc' AND value = NEW.isrc;
+      END
+    ''');
+    await db.execute('''
+      CREATE TRIGGER library_lookup_delete_isrc AFTER DELETE ON library
+      WHEN OLD.isrc IS NOT NULL AND OLD.isrc != ''
+      BEGIN
+        UPDATE $lookupSummaryTable SET ref_count = ref_count - 1
+        WHERE source_id = OLD.source_id AND kind = 'isrc' AND value = OLD.isrc;
+        DELETE FROM $lookupSummaryTable
+        WHERE source_id = OLD.source_id AND kind = 'isrc' AND value = OLD.isrc
+          AND ref_count <= 0;
+      END
+    ''');
+    await db.execute('''
+      CREATE TRIGGER library_lookup_update_isrc AFTER UPDATE OF source_id, isrc ON library
+      WHEN OLD.source_id IS NOT NEW.source_id OR OLD.isrc IS NOT NEW.isrc
+      BEGIN
+        UPDATE $lookupSummaryTable SET ref_count = ref_count - 1
+        WHERE OLD.isrc IS NOT NULL AND OLD.isrc != ''
+          AND source_id = OLD.source_id AND kind = 'isrc' AND value = OLD.isrc;
+        DELETE FROM $lookupSummaryTable
+        WHERE source_id = OLD.source_id AND kind = 'isrc' AND value = OLD.isrc
+          AND ref_count <= 0;
+        INSERT OR IGNORE INTO $lookupSummaryTable(source_id, kind, value, ref_count)
+        SELECT NEW.source_id, 'isrc', NEW.isrc, 0
+        WHERE NEW.isrc IS NOT NULL AND NEW.isrc != '';
+        UPDATE $lookupSummaryTable SET ref_count = ref_count + 1
+        WHERE NEW.isrc IS NOT NULL AND NEW.isrc != ''
+          AND source_id = NEW.source_id AND kind = 'isrc' AND value = NEW.isrc;
+      END
+    ''');
+    await db.execute('''
+      CREATE TRIGGER library_lookup_insert_match AFTER INSERT ON library
+      WHEN NEW.match_key IS NOT NULL AND NEW.match_key != ''
+      BEGIN
+        INSERT OR IGNORE INTO $lookupSummaryTable(source_id, kind, value, ref_count)
+        VALUES (NEW.source_id, 'match', NEW.match_key, 0);
+        UPDATE $lookupSummaryTable SET ref_count = ref_count + 1
+        WHERE source_id = NEW.source_id AND kind = 'match' AND value = NEW.match_key;
+      END
+    ''');
+    await db.execute('''
+      CREATE TRIGGER library_lookup_delete_match AFTER DELETE ON library
+      WHEN OLD.match_key IS NOT NULL AND OLD.match_key != ''
+      BEGIN
+        UPDATE $lookupSummaryTable SET ref_count = ref_count - 1
+        WHERE source_id = OLD.source_id AND kind = 'match' AND value = OLD.match_key;
+        DELETE FROM $lookupSummaryTable
+        WHERE source_id = OLD.source_id AND kind = 'match' AND value = OLD.match_key
+          AND ref_count <= 0;
+      END
+    ''');
+    await db.execute('''
+      CREATE TRIGGER library_lookup_update_match AFTER UPDATE OF source_id, match_key ON library
+      WHEN OLD.source_id IS NOT NEW.source_id OR OLD.match_key IS NOT NEW.match_key
+      BEGIN
+        UPDATE $lookupSummaryTable SET ref_count = ref_count - 1
+        WHERE OLD.match_key IS NOT NULL AND OLD.match_key != ''
+          AND source_id = OLD.source_id AND kind = 'match' AND value = OLD.match_key;
+        DELETE FROM $lookupSummaryTable
+        WHERE source_id = OLD.source_id AND kind = 'match' AND value = OLD.match_key
+          AND ref_count <= 0;
+        INSERT OR IGNORE INTO $lookupSummaryTable(source_id, kind, value, ref_count)
+        SELECT NEW.source_id, 'match', NEW.match_key, 0
+        WHERE NEW.match_key IS NOT NULL AND NEW.match_key != '';
+        UPDATE $lookupSummaryTable SET ref_count = ref_count + 1
+        WHERE NEW.match_key IS NOT NULL AND NEW.match_key != ''
+          AND source_id = NEW.source_id AND kind = 'match' AND value = NEW.match_key;
+      END
+    ''');
+
+    await db.delete(lookupSummaryTable);
+    await db.rawInsert('''
+      INSERT INTO $lookupSummaryTable(source_id, kind, value, ref_count)
+      SELECT source_id, 'isrc', isrc, COUNT(*)
+      FROM library WHERE isrc IS NOT NULL AND isrc != ''
+      GROUP BY source_id, isrc
+    ''');
+    await db.rawInsert('''
+      INSERT INTO $lookupSummaryTable(source_id, kind, value, ref_count)
+      SELECT source_id, 'match', match_key, COUNT(*)
+      FROM library WHERE match_key IS NOT NULL AND match_key != ''
+      GROUP BY source_id, match_key
+    ''');
   }
 
   Future<bool> _createSearchFts(DatabaseExecutor db) {
@@ -607,6 +743,161 @@ class LibraryDatabase {
     _log.i('Batch inserted ${items.length} items');
   }
 
+  /// Removes rows from one source whose normalized path keys already exist in
+  /// download History, without materializing either database's paths in Dart.
+  Future<int> deleteDownloadedRowsForSource(String sourceId) async {
+    final db = await database;
+    await _ensureHistoryAttached(db);
+    const downloadedMatch = '''
+      EXISTS (
+        SELECT 1
+        FROM library_path_keys lk
+        JOIN history_db.history_path_keys hk ON hk.path_key = lk.path_key
+        WHERE lk.item_id = library.id
+      )
+    ''';
+    await db.execute('DROP TABLE IF EXISTS $_downloadedLibraryIdsStageTable');
+    await db.execute(
+      'CREATE TEMP TABLE $_downloadedLibraryIdsStageTable '
+      '(id TEXT PRIMARY KEY)',
+    );
+    try {
+      await db.rawInsert(
+        'INSERT INTO $_downloadedLibraryIdsStageTable(id) '
+        'SELECT id FROM library '
+        'WHERE source_id = ? AND $downloadedMatch',
+        [sourceId],
+      );
+      final countRows = await db.rawQuery(
+        'SELECT COUNT(*) AS count FROM $_downloadedLibraryIdsStageTable',
+      );
+      final count = Sqflite.firstIntValue(countRows) ?? 0;
+      if (count == 0) return 0;
+
+      await db.transaction((txn) async {
+        await txn.rawDelete(
+          'DELETE FROM library_path_keys WHERE item_id IN '
+          '(SELECT id FROM $_downloadedLibraryIdsStageTable)',
+        );
+        await txn.rawDelete(
+          'DELETE FROM library WHERE id IN '
+          '(SELECT id FROM $_downloadedLibraryIdsStageTable)',
+        );
+      });
+      return count;
+    } finally {
+      await db.execute('DROP TABLE IF EXISTS $_downloadedLibraryIdsStageTable');
+    }
+  }
+
+  /// Upserts incremental scan rows after filtering them through the attached
+  /// History path-key index. This keeps the hot incremental path independent
+  /// of total History size.
+  Future<({int upserted, int skipped})> upsertBatchExcludingHistory(
+    List<Map<String, dynamic>> items, {
+    required String sourceId,
+  }) async {
+    if (items.isEmpty) return (upserted: 0, skipped: 0);
+    final db = await database;
+    await _ensureHistoryAttached(db);
+    await db.execute('DROP TABLE IF EXISTS $_incrementalStageTable');
+    await db.execute('DROP TABLE IF EXISTS $_incrementalStagePathKeysTable');
+    await db.execute(
+      'CREATE TEMP TABLE $_incrementalStageTable '
+      'AS SELECT * FROM library WHERE 0',
+    );
+    await db.execute(
+      'CREATE UNIQUE INDEX idx_${_incrementalStageTable}_id '
+      'ON $_incrementalStageTable(id)',
+    );
+    await db.execute(
+      'CREATE UNIQUE INDEX idx_${_incrementalStageTable}_path '
+      'ON $_incrementalStageTable(file_path)',
+    );
+    await db.execute('''
+      CREATE TEMP TABLE $_incrementalStagePathKeysTable (
+        item_id TEXT NOT NULL,
+        path_key TEXT NOT NULL,
+        PRIMARY KEY (item_id, path_key)
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_${_incrementalStagePathKeysTable}_key '
+      'ON $_incrementalStagePathKeysTable(path_key)',
+    );
+
+    try {
+      final batch = db.batch();
+      for (final json in items) {
+        final id = json['id'] as String?;
+        if (id == null || id.trim().isEmpty) {
+          throw const FormatException('Library scan row has no valid id');
+        }
+        batch.insert(
+          _incrementalStageTable,
+          _jsonToDbRow(json, sourceId: sourceId),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        sqlite.putPathKeysInBatch(
+          batch,
+          _incrementalStagePathKeysTable,
+          id,
+          json['filePath'] as String?,
+        );
+      }
+      await batch.commit(noResult: true);
+
+      const historyMatch =
+          '''
+        EXISTS (
+          SELECT 1
+          FROM $_incrementalStagePathKeysTable sk
+          JOIN history_db.history_path_keys hk ON hk.path_key = sk.path_key
+          WHERE sk.item_id = s.id
+        )
+      ''';
+      final skippedRows = await db.rawQuery(
+        'SELECT COUNT(*) AS count FROM $_incrementalStageTable s '
+        'WHERE $historyMatch',
+      );
+      final skipped = Sqflite.firstIntValue(skippedRows) ?? 0;
+      final stagedRows = await db.rawQuery(
+        'SELECT COUNT(*) AS count FROM $_incrementalStageTable',
+      );
+      final staged = Sqflite.firstIntValue(stagedRows) ?? 0;
+      final columns = (await db.rawQuery(
+        'PRAGMA table_info(library)',
+      )).map((row) => row['name'] as String).toList(growable: false);
+      final columnList = columns.join(', ');
+      final selectedColumns = columns.map((column) => 's.$column').join(', ');
+
+      await db.transaction((txn) async {
+        await txn.rawDelete('''
+          DELETE FROM library_path_keys
+          WHERE item_id IN (
+            SELECT s.id FROM $_incrementalStageTable s WHERE NOT $historyMatch
+          )
+        ''');
+        await txn.rawInsert('''
+          INSERT OR REPLACE INTO library ($columnList)
+          SELECT $selectedColumns FROM $_incrementalStageTable s
+          WHERE NOT $historyMatch
+        ''');
+        await txn.rawInsert('''
+          INSERT OR IGNORE INTO library_path_keys(item_id, path_key)
+          SELECT sk.item_id, sk.path_key
+          FROM $_incrementalStagePathKeysTable sk
+          JOIN $_incrementalStageTable s ON s.id = sk.item_id
+          WHERE NOT $historyMatch
+        ''');
+      });
+      return (upserted: staged - skipped, skipped: skipped);
+    } finally {
+      await db.execute('DROP TABLE IF EXISTS $_incrementalStagePathKeysTable');
+      await db.execute('DROP TABLE IF EXISTS $_incrementalStageTable');
+    }
+  }
+
   Future<void> replaceAll(List<Map<String, dynamic>> items) async {
     final db = await database;
     await db.transaction((txn) async {
@@ -680,9 +971,10 @@ class LibraryDatabase {
     return inserted;
   }
 
-  /// Atomically replaces only one source. Other folders, including temporarily
-  /// disconnected removable storage, retain their index rows.
-  Future<int> replaceSourceStream(
+  /// Stages scan rows in bounded, independently committed batches, then swaps
+  /// only this source in one short transaction. Download-history exclusion is
+  /// an indexed SQLite anti-join, avoiding a full History path set in Dart.
+  Future<({int inserted, int skipped})> replaceSourceStream(
     String sourceId,
     Stream<Map<String, dynamic>> items, {
     int batchSize = 300,
@@ -691,25 +983,40 @@ class LibraryDatabase {
       throw ArgumentError.value(batchSize, 'batchSize', 'Must be positive');
     }
     final db = await database;
-    var inserted = 0;
-    await db.transaction((txn) async {
-      await txn.rawDelete(
-        'DELETE FROM library_path_keys WHERE item_id IN '
-        '(SELECT id FROM library WHERE source_id = ?)',
-        [sourceId],
-      );
-      await txn.delete(
-        'library',
-        where: 'source_id = ?',
-        whereArgs: [sourceId],
-      );
+    await _ensureHistoryAttached(db);
+    await db.execute('DROP TABLE IF EXISTS $_scanStageTable');
+    await db.execute('DROP TABLE IF EXISTS $_scanStagePathKeysTable');
+    await db.execute(
+      'CREATE TEMP TABLE $_scanStageTable AS SELECT * FROM library WHERE 0',
+    );
+    await db.execute(
+      'CREATE UNIQUE INDEX idx_${_scanStageTable}_id '
+      'ON $_scanStageTable(id)',
+    );
+    await db.execute(
+      'CREATE UNIQUE INDEX idx_${_scanStageTable}_path '
+      'ON $_scanStageTable(file_path)',
+    );
+    await db.execute('''
+      CREATE TEMP TABLE $_scanStagePathKeysTable (
+        item_id TEXT NOT NULL,
+        path_key TEXT NOT NULL,
+        PRIMARY KEY (item_id, path_key)
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_${_scanStagePathKeysTable}_key '
+      'ON $_scanStagePathKeysTable(path_key)',
+    );
 
-      var batch = txn.batch();
+    var streamed = 0;
+    try {
+      var batch = db.batch();
       var pending = 0;
       Future<void> flush() async {
         if (pending == 0) return;
         await batch.commit(noResult: true);
-        batch = txn.batch();
+        batch = db.batch();
         pending = 0;
       }
 
@@ -719,19 +1026,87 @@ class LibraryDatabase {
           throw const FormatException('Library scan row has no valid id');
         }
         batch.insert(
-          'library',
+          _scanStageTable,
           _jsonToDbRow(json, sourceId: sourceId),
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
-        _putPathKeysInBatch(batch, id, json['filePath'] as String?);
-        inserted++;
+        sqlite.putPathKeysInBatch(
+          batch,
+          _scanStagePathKeysTable,
+          id,
+          json['filePath'] as String?,
+        );
+        streamed++;
         pending++;
         if (pending >= batchSize) await flush();
       }
       await flush();
-    });
-    _log.i('Stream-replaced library source $sourceId with $inserted items');
-    return inserted;
+
+      const historyMatch =
+          '''
+        EXISTS (
+          SELECT 1
+          FROM $_scanStagePathKeysTable sk
+          JOIN history_db.history_path_keys hk ON hk.path_key = sk.path_key
+          WHERE sk.item_id = s.id
+        )
+      ''';
+      final skippedRows = await db.rawQuery(
+        'SELECT COUNT(*) AS count FROM $_scanStageTable s '
+        'WHERE $historyMatch',
+      );
+      final skipped = Sqflite.firstIntValue(skippedRows) ?? 0;
+      final stagedRows = await db.rawQuery(
+        'SELECT COUNT(*) AS count FROM $_scanStageTable',
+      );
+      final staged = Sqflite.firstIntValue(stagedRows) ?? 0;
+      final columns = (await db.rawQuery(
+        'PRAGMA table_info(library)',
+      )).map((row) => row['name'] as String).toList(growable: false);
+      final columnList = columns.join(', ');
+      final selectedColumns = columns.map((column) => 's.$column').join(', ');
+
+      await db.transaction((txn) async {
+        await txn.rawDelete(
+          'DELETE FROM library_path_keys WHERE item_id IN '
+          '(SELECT id FROM library WHERE source_id = ?)',
+          [sourceId],
+        );
+        await txn.delete(
+          'library',
+          where: 'source_id = ?',
+          whereArgs: [sourceId],
+        );
+        await txn.rawDelete('''
+          DELETE FROM library_path_keys
+          WHERE item_id IN (
+            SELECT s.id FROM $_scanStageTable s WHERE NOT $historyMatch
+          )
+        ''');
+        await txn.rawInsert('''
+          INSERT OR REPLACE INTO library ($columnList)
+          SELECT $selectedColumns FROM $_scanStageTable s
+          WHERE NOT $historyMatch
+        ''');
+        await txn.rawInsert('''
+          INSERT OR IGNORE INTO library_path_keys(item_id, path_key)
+          SELECT sk.item_id, sk.path_key
+          FROM $_scanStagePathKeysTable sk
+          JOIN $_scanStageTable s ON s.id = sk.item_id
+          WHERE NOT $historyMatch
+        ''');
+      });
+      final inserted = staged - skipped;
+      _log.i(
+        'Streamed $streamed rows, staged $staged unique rows, and swapped '
+        '$inserted into Library source '
+        '$sourceId ($skipped downloads excluded)',
+      );
+      return (inserted: inserted, skipped: skipped);
+    } finally {
+      await db.execute('DROP TABLE IF EXISTS $_scanStagePathKeysTable');
+      await db.execute('DROP TABLE IF EXISTS $_scanStageTable');
+    }
   }
 
   Future<List<LocalLibrarySource>> getSources() async {
@@ -1323,19 +1698,22 @@ class LibraryDatabase {
 
   Future<LocalLibraryLookupIndex> getLookupIndex() async {
     final db = await database;
-    final rows = await db.rawQuery(
-      'SELECT isrc, match_key FROM $visibleLibraryView',
-    );
+    final rows = await db.rawQuery('''
+      SELECT summary.kind, summary.value
+      FROM $lookupSummaryTable summary
+      JOIN library_sources source ON source.id = summary.source_id
+      WHERE source.enabled = 1 AND source.available = 1
+      GROUP BY summary.kind, summary.value
+    ''');
     final isrcs = <String>{};
     final matchKeys = <String>{};
     for (final row in rows) {
-      final isrc = row['isrc'] as String?;
-      if (isrc != null && isrc.isNotEmpty) {
-        isrcs.add(isrc);
-      }
-      final matchKey = row['match_key'] as String?;
-      if (matchKey != null && matchKey.isNotEmpty) {
-        matchKeys.add(matchKey);
+      final value = row['value'] as String?;
+      if (value == null || value.isEmpty) continue;
+      if (row['kind'] == 'isrc') {
+        isrcs.add(value);
+      } else if (row['kind'] == 'match') {
+        matchKeys.add(value);
       }
     }
     return LocalLibraryLookupIndex(

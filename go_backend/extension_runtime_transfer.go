@@ -293,6 +293,7 @@ func (r *extensionRuntime) reliableFileDownload(
 		SetItemDownloading(activeItemID)
 	}
 	shouldTrackItemBytes := activeItemID != "" && trackItemBytes
+	itemProgressReporter := NewItemTransferProgressReporter(activeItemID, written, contentLength)
 	if shouldTrackItemBytes {
 		if contentLength > 0 {
 			SetItemProgress(activeItemID, float64(written)/float64(contentLength), written, contentLength)
@@ -541,12 +542,7 @@ func (r *extensionRuntime) reliableFileDownload(
 			contentLength = resp.ContentLength
 		}
 		if shouldTrackItemBytes && contentLength > 0 {
-			SetItemProgress(
-				activeItemID,
-				float64(written)/float64(contentLength),
-				written,
-				contentLength,
-			)
+			itemProgressReporter.Report(written, contentLength)
 		}
 		var readErr error
 		buffer := make([]byte, 64*1024)
@@ -569,11 +565,7 @@ func (r *extensionRuntime) reliableFileDownload(
 					})
 				}
 				if shouldTrackItemBytes {
-					if contentLength > 0 {
-						SetItemProgress(activeItemID, float64(written)/float64(contentLength), written, contentLength)
-					} else {
-						SetItemBytesReceived(activeItemID, written)
-					}
+					itemProgressReporter.Report(written, contentLength)
 				}
 				if onProgress != nil && contentLength > 0 &&
 					(written-lastProgressNotify >= progressUpdateThreshold || written >= contentLength) {

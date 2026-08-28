@@ -3,7 +3,36 @@ package gobackend
 import (
 	"encoding/json"
 	"testing"
+	"time"
 )
+
+func TestItemTransferProgressReporterCoalescesHotPathUpdates(t *testing.T) {
+	ClearAllItemProgress()
+	defer ClearAllItemProgress()
+
+	const itemID = "coalesced-transfer-progress"
+	const total = int64(1024 * 1024)
+	StartItemProgress(itemID)
+	SetItemDownloading(itemID)
+	SetItemBytesTotal(itemID, total)
+	reporter := NewItemTransferProgressReporter(itemID, 0, total)
+
+	reporter.Report(64*1024, total)
+	if received := multiProgress.Items[itemID].BytesReceived; received != 0 {
+		t.Fatalf("sub-threshold bytes = %d, want 0", received)
+	}
+
+	reporter.Report(progressUpdateThreshold, total)
+	if received := multiProgress.Items[itemID].BytesReceived; received != progressUpdateThreshold {
+		t.Fatalf("threshold bytes = %d, want %d", received, progressUpdateThreshold)
+	}
+
+	reporter.lastReportAt = time.Now().Add(-progressUpdateMaxInterval)
+	reporter.Report(progressUpdateThreshold+1, total)
+	if received := multiProgress.Items[itemID].BytesReceived; received != progressUpdateThreshold+1 {
+		t.Fatalf("interval flush bytes = %d, want %d", received, progressUpdateThreshold+1)
+	}
+}
 
 func TestItemProgressPreparingAndDownloadingStatuses(t *testing.T) {
 	const itemID = "progress-phase-item"

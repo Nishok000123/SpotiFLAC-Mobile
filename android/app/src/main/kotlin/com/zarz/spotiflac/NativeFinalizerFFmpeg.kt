@@ -153,7 +153,7 @@ internal fun NativeDownloadFinalizer.withFFmpegCommandPump(
     val pump = Thread {
         while (running.get()) {
             try {
-                val raw = Gobackend.getAllPendingFFmpegCommandsJSON()
+                val raw = Gobackend.waitForPendingFFmpegCommandsJSON(1_000L)
                 val commands = org.json.JSONArray(raw)
                 for (index in 0 until commands.length()) {
                     val command = commands.optJSONObject(index) ?: continue
@@ -189,13 +189,6 @@ internal fun NativeDownloadFinalizer.withFFmpegCommandPump(
                     }
                 }
             } catch (_: Exception) {
-            }
-            try {
-                Thread.sleep(100)
-            } catch (_: InterruptedException) {
-                // Keep pumping until `running` flips: on cancel the Go call
-                // may still be waiting for a result for an in-flight
-                // command, and it is delivered as failed above.
             }
         }
     }

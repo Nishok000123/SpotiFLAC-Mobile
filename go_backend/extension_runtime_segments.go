@@ -169,7 +169,7 @@ func (r *extensionRuntime) fetchSegmentToTemp(
 	tempPath string,
 	policy DownloadTransferPolicy,
 	received *atomic.Int64,
-	activeItemID string,
+	itemProgressReporter *ItemTransferProgressReporter,
 ) segmentTransferResult {
 	config := transferRetryConfig(policy)
 	retryDelay := config.InitialDelay
@@ -291,9 +291,7 @@ func (r *extensionRuntime) fetchSegmentToTemp(
 				writeCount, writeErr := output.Write(buffer[:readCount])
 				size += int64(writeCount)
 				received.Add(int64(writeCount))
-				if activeItemID != "" {
-					SetItemBytesReceived(activeItemID, received.Load())
-				}
+				itemProgressReporter.Report(received.Load(), 0)
 				if writeErr != nil || writeCount != readCount {
 					if writeErr == nil {
 						writeErr = io.ErrShortWrite
@@ -564,6 +562,7 @@ func (r *extensionRuntime) fileDownloadSegments(call goja.FunctionCall) goja.Val
 	results := make(chan segmentTransferResult, policy.MaxParallelSegments)
 	var received atomic.Int64
 	received.Store(totalWritten)
+	itemProgressReporter := NewItemTransferProgressReporter(activeItemID, totalWritten, 0)
 	var workers sync.WaitGroup
 	workerCount := min(policy.MaxParallelSegments, len(segments)-nextIndex)
 	for workerIndex := 0; workerIndex < workerCount; workerIndex++ {
@@ -578,7 +577,7 @@ func (r *extensionRuntime) fileDownloadSegments(call goja.FunctionCall) goja.Val
 					segmentTempPath(stagedPath, spec.Index),
 					policy,
 					&received,
-					activeItemID,
+					itemProgressReporter,
 				)
 				select {
 				case results <- result:

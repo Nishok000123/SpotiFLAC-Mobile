@@ -16,16 +16,26 @@ type FFmpegCommand struct {
 	InputPath   string
 	OutputPath  string
 	Completed   bool
+	Claimed     bool
 	Success     bool
 	Error       string
 	Output      string
+	done        chan struct{}
 }
 
 var (
-	ffmpegCommands   = make(map[string]*FFmpegCommand)
-	ffmpegCommandsMu sync.RWMutex
-	ffmpegCommandID  int64
+	ffmpegCommands      = make(map[string]*FFmpegCommand)
+	ffmpegCommandsMu    sync.RWMutex
+	ffmpegCommandID     int64
+	ffmpegCommandQueued = make(chan struct{}, 1)
 )
+
+func notifyFFmpegCommandQueued() {
+	select {
+	case ffmpegCommandQueued <- struct{}{}:
+	default:
+	}
+}
 
 func GetPendingFFmpegCommand(commandID string) *FFmpegCommand {
 	ffmpegCommandsMu.RLock()
@@ -37,10 +47,16 @@ func SetFFmpegCommandResult(commandID string, success bool, output, errorMsg str
 	ffmpegCommandsMu.Lock()
 	defer ffmpegCommandsMu.Unlock()
 	if cmd, exists := ffmpegCommands[commandID]; exists {
+		if cmd.Completed {
+			return
+		}
 		cmd.Completed = true
 		cmd.Success = success
 		cmd.Output = output
 		cmd.Error = errorMsg
+		if cmd.done != nil {
+			close(cmd.done)
+		}
 	}
 }
 
@@ -66,46 +82,36 @@ func (r *extensionRuntime) executeFFmpegCommand(command, inputPath, outputPath s
 	ffmpegCommandsMu.Lock()
 	ffmpegCommandID++
 	cmdID := fmt.Sprintf("%s_%d", r.extensionID, ffmpegCommandID)
-	ffmpegCommands[cmdID] = &FFmpegCommand{
+	queuedCommand := &FFmpegCommand{
 		ExtensionID: r.extensionID,
 		Command:     command,
 		InputPath:   inputPath,
 		OutputPath:  outputPath,
 		Completed:   false,
+		done:        make(chan struct{}),
 	}
+	ffmpegCommands[cmdID] = queuedCommand
 	ffmpegCommandsMu.Unlock()
+	notifyFFmpegCommandQueued()
 
 	GoLog("[Extension:%s] FFmpeg command queued: %s\n", r.extensionID, cmdID)
 
-	timeout := 5 * time.Minute
-	start := time.Now()
-	for {
-		ffmpegCommandsMu.RLock()
-		cmd := ffmpegCommands[cmdID]
-		completed := cmd != nil && cmd.Completed
-		ffmpegCommandsMu.RUnlock()
-
-		if completed {
-			ffmpegCommandsMu.RLock()
-			result := map[string]any{
-				"success": cmd.Success,
-				"output":  cmd.Output,
-			}
-			if cmd.Error != "" {
-				result["error"] = cmd.Error
-			}
-			ffmpegCommandsMu.RUnlock()
-
-			ClearFFmpegCommand(cmdID)
-			return r.vm.ToValue(result)
+	select {
+	case <-queuedCommand.done:
+		ffmpegCommandsMu.Lock()
+		result := map[string]any{
+			"success": queuedCommand.Success,
+			"output":  queuedCommand.Output,
 		}
-
-		if time.Since(start) > timeout {
-			ClearFFmpegCommand(cmdID)
-			return r.jsError("FFmpeg command timed out")
+		if queuedCommand.Error != "" {
+			result["error"] = queuedCommand.Error
 		}
-
-		time.Sleep(100 * time.Millisecond)
+		delete(ffmpegCommands, cmdID)
+		ffmpegCommandsMu.Unlock()
+		return r.vm.ToValue(result)
+	case <-time.After(5 * time.Minute):
+		ClearFFmpegCommand(cmdID)
+		return r.jsError("FFmpeg command timed out")
 	}
 }
 

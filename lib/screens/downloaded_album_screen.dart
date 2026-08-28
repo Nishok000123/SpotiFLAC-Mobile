@@ -554,38 +554,47 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
     }
 
     final discNumbers = _getSortedDiscNumbers(tracks);
-    final List<Widget> children = [];
+    final navigationIndexById = <String, int>{
+      for (var index = 0; index < tracks.length; index++)
+        tracks[index].id: index,
+    };
+    final slivers = <Widget>[];
     var revealIndex = 0;
 
     for (final discNumber in discNumbers) {
       final discTracks = discMap[discNumber];
       if (discTracks == null || discTracks.isEmpty) continue;
 
-      children.add(DiscSeparatorChip(discNumber: discNumber));
-
-      for (final track in discTracks) {
-        final navigationIndex = tracks.indexOf(track);
-        children.add(
-          KeyedSubtree(
-            key: ValueKey(track.id),
-            child: StaggeredListItem(
-              index: revealIndex++,
-              child: _buildTrackItem(
-                context,
-                colorScheme,
-                track,
-                tracks,
-                navigationIndex,
+      slivers.add(
+        SliverToBoxAdapter(child: DiscSeparatorChip(discNumber: discNumber)),
+      );
+      final discRevealStart = revealIndex;
+      revealIndex += discTracks.length;
+      slivers.add(
+        SliverList(
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final track = discTracks[index];
+            return KeyedSubtree(
+              key: ValueKey(track.id),
+              child: StaggeredListItem(
+                index: discRevealStart + index,
+                child: _buildTrackItem(
+                  context,
+                  colorScheme,
+                  track,
+                  tracks,
+                  navigationIndexById[track.id] ?? 0,
+                ),
               ),
-            ),
-          ),
-        );
-      }
+            );
+          }, childCount: discTracks.length),
+        ),
+      );
     }
 
     return SliverPadding(
       padding: EdgeInsets.symmetric(horizontal: wideListInset(context)),
-      sliver: SliverList(delegate: SliverChildListDelegate(children)),
+      sliver: SliverMainAxisGroup(slivers: slivers),
     );
   }
 

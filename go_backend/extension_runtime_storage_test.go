@@ -24,6 +24,50 @@ func setStorageValue(t *testing.T, runtime *extensionRuntime, key string, value 
 	}
 }
 
+func TestExtensionJSONCacheUsesIdentityAndIsolatesSnapshots(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "storage.json")
+	if err := os.WriteFile(path, []byte(`{"value":"first"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	loads := 0
+	load := func() (map[string]any, error) {
+		loads++
+		return readJSONMapFile(path)
+	}
+
+	mu := extensionFileMu(path)
+	mu.Lock()
+	first, err := readCachedJSONMapLocked(path, load)
+	mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	first["value"] = "mutated locally"
+
+	mu.Lock()
+	second, err := readCachedJSONMapLocked(path, load)
+	mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loads != 1 || second["value"] != "first" {
+		t.Fatalf("cache did not isolate/reuse snapshot: loads=%d data=%#v", loads, second)
+	}
+
+	if err := os.WriteFile(path, []byte(`{"value":"external update"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	third, err := readCachedJSONMapLocked(path, load)
+	mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loads != 2 || third["value"] != "external update" {
+		t.Fatalf("external update was not reloaded: loads=%d data=%#v", loads, third)
+	}
+}
+
 func TestExtensionRuntimeStorageConcurrentRuntimesMergeWrites(t *testing.T) {
 	dataDir := t.TempDir()
 	ext := &loadedExtension{ID: "merge-test", Manifest: &ExtensionManifest{Name: "merge-test"}, DataDir: dataDir}
