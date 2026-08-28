@@ -903,6 +903,7 @@ func (r *extensionRuntime) signedSessionFetch(call goja.FunctionCall) goja.Value
 	sessionRetries := 0
 	providerRetries := 0
 	requestAuthRetryUsed := false
+	providerRetryCtx := r.activeOperationContext(context.Background())
 	for {
 		resp, respBody, respHeaders, requestErr := r.doSignedSessionRequest(
 			config,
@@ -931,7 +932,7 @@ func (r *extensionRuntime) signedSessionFetch(call goja.FunctionCall) goja.Value
 				providerRetries+1,
 				signedSessionMaxProviderRetries+1,
 			)
-			if waitErr := signedSessionProviderWait(resp.Request.Context(), delay); waitErr != nil {
+			if waitErr := signedSessionProviderWait(providerRetryCtx, delay); waitErr != nil {
 				return r.vm.ToValue(map[string]any{"ok": false, "error": waitErr.Error()})
 			}
 			continue

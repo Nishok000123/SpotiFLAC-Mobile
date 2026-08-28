@@ -1437,7 +1437,10 @@ func TestSignedSessionFetchProviderContractsNeverClearSession(t *testing.T) {
 		previousWait := signedSessionProviderWait
 		previousNow := signedSessionRequestNow
 		var waits []time.Duration
-		signedSessionProviderWait = func(_ context.Context, delay time.Duration) error {
+		signedSessionProviderWait = func(ctx context.Context, delay time.Duration) error {
+			if err := ctx.Err(); err != nil {
+				return fmt.Errorf("retry context was already done after the response closed: %w", err)
+			}
 			waits = append(waits, delay)
 			return nil
 		}
@@ -1479,6 +1482,10 @@ func TestSignedSessionFetchProviderContractsNeverClearSession(t *testing.T) {
 			}, nil
 		})
 		runtime := newSignedSessionTestRuntime(t, "provider-unavailable", transport)
+		// Production extension API clients have a finite timeout. net/http
+		// cancels that per-request context after the response body is closed;
+		// provider retry waits must outlive the completed request.
+		runtime.httpClient.Timeout = 15 * time.Second
 		config := SignedSessionConfig{Namespace: "provider-unavailable", BaseURL: "https://auth.example.com"}
 		runtime.manifest.SignedSession = &config
 		resolved := saveUsableSignedSession(t, runtime, config, "sess-provider-retry")
@@ -1517,6 +1524,49 @@ func TestSignedSessionFetchProviderContractsNeverClearSession(t *testing.T) {
 		}
 		if reloaded.SessionID != "sess-provider-retry" {
 			t.Fatalf("provider retry changed the gateway session: %+v", reloaded)
+		}
+	})
+
+	t.Run("temporary provider retry still honors user cancellation", func(t *testing.T) {
+		previousWait := signedSessionProviderWait
+		const itemID = "provider-retry-user-cancel"
+		signedSessionProviderWait = func(ctx context.Context, _ time.Duration) error {
+			cancelDownload(itemID)
+			return sleepRetry(ctx, time.Hour)
+		}
+		t.Cleanup(func() { signedSessionProviderWait = previousWait })
+
+		calls := 0
+		transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			calls++
+			return &http.Response{
+				StatusCode: http.StatusServiceUnavailable,
+				Header:     http.Header{"Retry-After": []string{"10"}},
+				Body: io.NopCloser(strings.NewReader(
+					`{"error":"Provider temporarily unavailable","code":"PROVIDER_UNAVAILABLE","origin":"provider","retryable":true,"retry_mode":"same_operation","retry_after_seconds":10}`,
+				)),
+				Request: req,
+			}, nil
+		})
+		runtime := newSignedSessionTestRuntime(t, "provider-retry-user-cancel", transport)
+		runtime.httpClient.Timeout = 15 * time.Second
+		runtime.setActiveDownloadItemID(itemID)
+		initDownloadCancel(itemID)
+		t.Cleanup(func() {
+			clearDownloadCancel(itemID)
+			runtime.clearActiveDownloadItemID()
+		})
+		config := SignedSessionConfig{Namespace: runtime.extensionID, BaseURL: "https://auth.example.com"}
+		runtime.manifest.SignedSession = &config
+		saveUsableSignedSession(t, runtime, config, "sess-provider-cancel")
+
+		call := goja.FunctionCall{Arguments: []goja.Value{
+			runtime.vm.ToValue("POST"),
+			runtime.vm.ToValue("/tickets"),
+		}}
+		result := runtime.signedSessionFetch(call).Export().(map[string]any)
+		if calls != 1 || !strings.Contains(fmt.Sprint(result["error"]), context.Canceled.Error()) {
+			t.Fatalf("user cancellation did not stop provider retry: calls=%d result=%+v", calls, result)
 		}
 	})
 

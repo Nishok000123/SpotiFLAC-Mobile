@@ -293,17 +293,27 @@ func (r *extensionRuntime) bindDownloadCancelContext(req *http.Request) *http.Re
 	if req == nil {
 		return nil
 	}
+	return req.WithContext(r.activeOperationContext(req.Context()))
+}
 
+// activeOperationContext is stable for the full extension operation. An
+// http.Client with a finite Timeout derives a per-request child context and
+// cancels it when that response body closes, so that request context must not
+// be reused for provider retry delays between requests.
+func (r *extensionRuntime) activeOperationContext(fallback context.Context) context.Context {
 	itemID := r.getActiveDownloadItemID()
 	if itemID == "" {
 		requestID := r.getActiveRequestID()
 		if requestID == "" {
-			return req
+			if fallback != nil {
+				return fallback
+			}
+			return context.Background()
 		}
-		return req.WithContext(extensionRequestCancelContext(requestID))
+		return extensionRequestCancelContext(requestID)
 	}
 
-	return req.WithContext(downloadCancelContext(itemID))
+	return downloadCancelContext(itemID)
 }
 
 // downloadStallTimeout is how long a download may go without receiving a single
