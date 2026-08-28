@@ -74,7 +74,9 @@ class HistoryDatabase {
   static final HistoryDatabase instance = HistoryDatabase._init();
   static final sqlite.SingleFlightInitializer<Database> _database =
       sqlite.SingleFlightInitializer<Database>();
-  bool _searchFtsAvailable = false;
+  // null means this database connection has not attempted FTS setup yet.
+  // false is a completed capability/setup result and must not be retried.
+  bool? _searchFtsAvailable;
 
   HistoryDatabase._init();
 
@@ -89,14 +91,12 @@ class HistoryDatabase {
       // onCreate normally initializes this derived index. Retry once after
       // opening an existing database in case an earlier setup was
       // interrupted; unsupported SQLite builds remain on the LIKE fallback.
-      if (!_searchFtsAvailable) {
-        _searchFtsAvailable = await _createSearchFts(db);
-      }
+      _searchFtsAvailable ??= await _createSearchFts(db);
       return db;
     });
   }
 
-  bool get searchFtsAvailable => _searchFtsAvailable;
+  bool get searchFtsAvailable => _searchFtsAvailable ?? false;
 
   Future<void> _createDB(Database db, int version) async {
     _log.i('Creating database schema v$version');
@@ -1079,6 +1079,7 @@ class HistoryDatabase {
     final db = await database;
     await db.close();
     _database.reset();
+    _searchFtsAvailable = null;
   }
 
   Future<void> updateFilePath(

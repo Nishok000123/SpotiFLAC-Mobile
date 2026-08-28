@@ -26,7 +26,9 @@ class LibraryDatabase {
   static final sqlite.SingleFlightInitializer<Database> _database =
       sqlite.SingleFlightInitializer<Database>();
   bool _historyAttached = false;
-  bool _searchFtsAvailable = false;
+  // null means this database connection has not attempted FTS setup yet.
+  // false is a completed capability/setup result and must not be retried.
+  bool? _searchFtsAvailable;
 
   LibraryDatabase._init();
 
@@ -41,14 +43,12 @@ class LibraryDatabase {
       // onCreate normally initializes this derived index. Retry once after
       // opening an existing database in case an earlier setup was
       // interrupted; unsupported SQLite builds remain on the LIKE fallback.
-      if (!_searchFtsAvailable) {
-        _searchFtsAvailable = await _createSearchFts(db);
-      }
+      _searchFtsAvailable ??= await _createSearchFts(db);
       return db;
     });
   }
 
-  bool get searchFtsAvailable => _searchFtsAvailable;
+  bool get searchFtsAvailable => _searchFtsAvailable ?? false;
 
   Future<void> _ensureHistoryAttached(Database db) async {
     if (_historyAttached) return;
@@ -1659,6 +1659,7 @@ class LibraryDatabase {
     await db.close();
     _database.reset();
     _historyAttached = false;
+    _searchFtsAvailable = null;
   }
 
   Future<Map<String, int>> getFileModTimes({String? sourceId}) async {

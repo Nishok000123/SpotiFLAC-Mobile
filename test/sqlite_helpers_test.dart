@@ -103,5 +103,35 @@ void main() {
         expect(ftsPhraseSearchQuery('a\u0000b'), isNull);
       },
     );
+
+    test('recognizes missing FTS5 and trigram capability errors', () {
+      expect(
+        isTrigramFts5UnavailableError(
+          Exception('DatabaseException(no such module: fts5)'),
+        ),
+        isTrue,
+      );
+      expect(
+        isTrigramFts5UnavailableError(
+          Exception('DatabaseException(no such tokenizer: trigram)'),
+        ),
+        isTrue,
+      );
+      expect(
+        isTrigramFts5UnavailableError(Exception('database is locked')),
+        isFalse,
+      );
+    });
+
+    test('probes the runtime with a temporary trigram FTS5 table', () {
+      final source = File(
+        'lib/services/sqlite_helpers.dart',
+      ).readAsStringSync();
+
+      expect(source, contains('CREATE VIRTUAL TABLE temp.'));
+      expect(source, contains("tokenize='trigram'"));
+      expect(source, contains('DROP TABLE IF EXISTS temp.'));
+      expect(source, contains('_trigramFts5Capability ??='));
+    });
   });
 }

@@ -6,6 +6,9 @@ import 'package:sqflite/sqflite.dart';
 
 final _log = AppLogger('AppSqlite');
 
+Future<bool>? _trigramFts5Capability;
+const _trigramFts5ProbeTable = 'spotiflac_trigram_fts5_probe';
+
 /// Caches an asynchronously-created value while also coalescing concurrent
 /// callers onto the same in-flight initialization.
 class SingleFlightInitializer<T extends Object> {
@@ -108,6 +111,57 @@ String? ftsPhraseSearchQuery(String value) {
   return '"${value.replaceAll('"', '""')}"';
 }
 
+/// Whether [error] means the current SQLite runtime cannot provide the
+/// FTS5/trigram combination used by the search indexes.
+bool isTrigramFts5UnavailableError(Object error) {
+  final message = error.toString().toLowerCase();
+  return message.contains('no such module: fts5') ||
+      message.contains('no such tokenizer: trigram') ||
+      message.contains('unknown tokenizer: trigram');
+}
+
+/// Probes FTS5 + trigram once for the current process.
+///
+/// Android's sqflite implementation uses the platform SQLite runtime, so
+/// compile-time modules can vary by device. A real temporary virtual table is
+/// more reliable than PRAGMA compile_options because it also verifies that the
+/// trigram tokenizer is registered. All app databases use the same sqflite
+/// runtime, so subsequent history/library initialization can reuse the result.
+Future<bool> _supportsTrigramFts5(DatabaseExecutor db) {
+  return _trigramFts5Capability ??= _probeTrigramFts5(db);
+}
+
+Future<bool> _probeTrigramFts5(DatabaseExecutor db) async {
+  try {
+    await db.execute('''
+      CREATE VIRTUAL TABLE temp.$_trigramFts5ProbeTable USING fts5(
+        search_text,
+        tokenize='trigram'
+      )
+    ''');
+    return true;
+  } catch (error) {
+    if (isTrigramFts5UnavailableError(error)) {
+      _log.i(
+        'Trigram FTS5 is unavailable in this SQLite runtime; '
+        'search will use the LIKE fallback',
+      );
+    } else {
+      _log.w(
+        'Could not probe trigram FTS5; search will use the LIKE fallback: '
+        '$error',
+      );
+    }
+    return false;
+  } finally {
+    try {
+      await db.execute('DROP TABLE IF EXISTS temp.$_trigramFts5ProbeTable');
+    } catch (error) {
+      _log.d('Could not remove the temporary FTS5 probe table: $error');
+    }
+  }
+}
+
 /// Creates an external-content FTS5 index that preserves substring search
 /// semantics through SQLite's trigram tokenizer.
 ///
@@ -122,6 +176,8 @@ Future<bool> createTrigramFtsIndex(
   required String contentTable,
   required String triggerPrefix,
 }) async {
+  if (!await _supportsTrigramFts5(db)) return false;
+
   try {
     final existingIndex = await db.rawQuery(
       "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
