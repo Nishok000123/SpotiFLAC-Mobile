@@ -992,6 +992,7 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
       final request = <String, dynamic>{
         'file_path': cleanFilePath,
         'cover_url': _coverUrl ?? '',
+        'cover_max_dimension': settings.embeddedCoverMaxDimension,
         'embed_lyrics': settings.embedLyrics,
         'lyrics_mode': settings.lyricsMode,
         'artist_tag_mode': artistTagMode,

@@ -19,6 +19,7 @@ type DownloadRequest struct {
 	AlbumName                   string `json:"album_name"`
 	AlbumArtist                 string `json:"album_artist"`
 	CoverURL                    string `json:"cover_url"`
+	CoverMaxDimension           int    `json:"cover_max_dimension,omitempty"`
 	OutputDir                   string `json:"output_dir"`
 	OutputPath                  string `json:"output_path,omitempty"`
 	OutputFD                    int    `json:"output_fd,omitempty"`

@@ -243,6 +243,12 @@ class SettingsSearchCatalog {
           keywords: const ['artist separator', 'multiple artists'],
         ),
         SettingsSearchEntry(
+          icon: Icons.photo_size_select_large_outlined,
+          title: l10n.optionsEmbeddedCoverSize,
+          subtitle: l10n.optionsEmbeddedCoverSizeDescription,
+          keywords: const ['cover size', 'artwork resolution', 'resize image'],
+        ),
+        SettingsSearchEntry(
           icon: Icons.graphic_eq,
           title: l10n.optionsReplayGain,
           keywords: const ['volume normalization', 'loudness'],

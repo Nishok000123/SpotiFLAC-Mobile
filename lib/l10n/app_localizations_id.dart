@@ -5000,4 +5000,14 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get metadataCopyAll => 'Salin semua metadata';
+
+  @override
+  String get optionsEmbeddedCoverSize => 'Ukuran Cover Tertanam';
+
+  @override
+  String get optionsEmbeddedCoverSizeDescription =>
+      'Perkecil cover yang diunduh dari internet sebelum ditanamkan. Gambar yang sudah berada dalam batas tidak akan diubah.';
+
+  @override
+  String get optionsEmbeddedCoverSizeOriginal => 'Resolusi asli';
 }

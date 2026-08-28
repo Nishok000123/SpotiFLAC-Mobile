@@ -108,6 +108,13 @@ class SettingsNotifier extends Notifier<AppSettings> {
     'external_first',
     'in_app_first',
   };
+  static const Set<int> _embeddedCoverMaxDimensionValues = {
+    0,
+    500,
+    1000,
+    1500,
+    2000,
+  };
 
   final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
@@ -168,6 +175,9 @@ class SettingsNotifier extends Notifier<AppSettings> {
           ),
           autoConvertBitrate: normalizeAutoConvertBitrate(
             loaded.autoConvertBitrate,
+          ),
+          embeddedCoverMaxDimension: _normalizeEmbeddedCoverMaxDimension(
+            loaded.embeddedCoverMaxDimension,
           ),
           defaultService: loaded.defaultService,
           searchProvider: loaded.searchProvider,
@@ -327,6 +337,9 @@ class SettingsNotifier extends Notifier<AppSettings> {
       downloadDirectoryBookmark: current.downloadDirectoryBookmark,
       storageMode: current.storageMode,
       downloadTreeUri: current.downloadTreeUri,
+      embeddedCoverMaxDimension: _normalizeEmbeddedCoverMaxDimension(
+        restored.embeddedCoverMaxDimension,
+      ),
     );
 
     await _saveSettings();
@@ -399,6 +412,10 @@ class SettingsNotifier extends Notifier<AppSettings> {
       return normalized;
     }
     return 'in_app_first';
+  }
+
+  int _normalizeEmbeddedCoverMaxDimension(int value) {
+    return _embeddedCoverMaxDimensionValues.contains(value) ? value : 0;
   }
 
   String? _sanitizeRetiredBuiltInProviderId(String? providerId) {
@@ -525,6 +542,15 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   void setEmbedMetadata(bool enabled) {
     state = state.copyWith(embedMetadata: enabled);
+    _saveSettings();
+  }
+
+  void setEmbeddedCoverMaxDimension(int maxDimension) {
+    state = state.copyWith(
+      embeddedCoverMaxDimension: _normalizeEmbeddedCoverMaxDimension(
+        maxDimension,
+      ),
+    );
     _saveSettings();
   }
 

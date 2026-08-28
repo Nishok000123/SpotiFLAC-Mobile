@@ -54,7 +54,7 @@ void main() {
   test('resolved preview metadata is reused without another online search', () {
     final request = buildBatchReEnrichRequest(
       item: _item(),
-      settings: const AppSettings(),
+      settings: const AppSettings(embeddedCoverMaxDimension: 1000),
       updateFields: const ['isrc'],
       resolvedMetadata: const {
         'isrc': 'USRC17607839',
@@ -66,6 +66,7 @@ void main() {
     expect(request['update_fields'], const ['isrc']);
     expect(request['isrc'], 'USRC17607839');
     expect(request['spotify_id'], 'resolved-id');
+    expect(request['cover_max_dimension'], 1000);
   });
 
   test('review only includes values that would actually change', () {

@@ -657,7 +657,10 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
       // Started here, awaited only after the lyrics fetch below so the two
       // network round trips overlap. Errors are handled inside the fetch
       // (it resolves to null), never as an unhandled rejection.
-      coverFuture = _sharedEmbedCover(coverUrl);
+      coverFuture = _sharedEmbedCover(
+        coverUrl,
+        settings.embeddedCoverMaxDimension,
+      );
     }
 
     String? lrcContent;
@@ -1019,24 +1022,25 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
   static const _embedCoverCacheMax = 8;
 
   /// One cover fetch per URL, shared by every track in the batch.
-  Future<String?> _sharedEmbedCover(String coverUrl) {
-    final existing = _embedCoverCache.remove(coverUrl);
+  Future<String?> _sharedEmbedCover(String coverUrl, int maxDimension) {
+    final cacheKey = '$maxDimension\u0000$coverUrl';
+    final existing = _embedCoverCache.remove(cacheKey);
     if (existing != null) {
-      _embedCoverCache[coverUrl] = existing; // LRU touch
+      _embedCoverCache[cacheKey] = existing; // LRU touch
       return existing;
     }
-    final fetch = _downloadEmbedCover(coverUrl).then((path) {
-      if (path == null) _embedCoverCache.remove(coverUrl); // allow retry
+    final fetch = _downloadEmbedCover(coverUrl, maxDimension).then((path) {
+      if (path == null) _embedCoverCache.remove(cacheKey); // allow retry
       return path;
     });
-    _embedCoverCache[coverUrl] = fetch;
+    _embedCoverCache[cacheKey] = fetch;
     while (_embedCoverCache.length > _embedCoverCacheMax) {
       _evictEmbedCover(_embedCoverCache.keys.first);
     }
     return fetch;
   }
 
-  Future<String?> _downloadEmbedCover(String coverUrl) async {
+  Future<String?> _downloadEmbedCover(String coverUrl, int maxDimension) async {
     try {
       final tempDir = await getTemporaryDirectory();
       final uniqueId =
@@ -1047,6 +1051,7 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
       final result = await PlatformBridge.downloadCoverToFile(
         coverUrl,
         coverPath,
+        maxDimension: maxDimension,
       );
       if (result['error'] != null) {
         _log.w('Failed to download cover: ${result['error']}');

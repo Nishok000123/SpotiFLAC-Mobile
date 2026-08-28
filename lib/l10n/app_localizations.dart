@@ -8223,6 +8223,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy all metadata'**
   String get metadataCopyAll;
+
+  /// Metadata setting that limits downloaded artwork resolution before it is embedded
+  ///
+  /// In en, this message translates to:
+  /// **'Embedded Cover Size'**
+  String get optionsEmbeddedCoverSize;
+
+  /// Description shown in the embedded cover size picker
+  ///
+  /// In en, this message translates to:
+  /// **'Downscale remotely downloaded cover art before embedding it. Images already within the limit are kept unchanged.'**
+  String get optionsEmbeddedCoverSizeDescription;
+
+  /// Option that preserves the provider artwork at its original resolution
+  ///
+  /// In en, this message translates to:
+  /// **'Original resolution'**
+  String get optionsEmbeddedCoverSizeOriginal;
 }
 
 class _AppLocalizationsDelegate

@@ -12,6 +12,7 @@ class DownloadRequestPayload {
   final String albumName;
   final String albumArtist;
   final String coverUrl;
+  final int coverMaxDimension;
   final String outputDir;
   final String filenameFormat;
   final String quality;
@@ -74,6 +75,7 @@ class DownloadRequestPayload {
     required this.albumName,
     this.albumArtist = '',
     this.coverUrl = '',
+    this.coverMaxDimension = 0,
     required this.outputDir,
     required this.filenameFormat,
     this.quality = 'LOSSLESS',
@@ -138,6 +140,7 @@ class DownloadRequestPayload {
       'album_name': albumName,
       'album_artist': albumArtist,
       'cover_url': coverUrl,
+      'cover_max_dimension': coverMaxDimension,
       'output_dir': outputDir,
       'filename_format': filenameFormat,
       'quality': quality,
@@ -206,6 +209,7 @@ class DownloadRequestPayload {
       albumName: albumName,
       albumArtist: albumArtist,
       coverUrl: coverUrl,
+      coverMaxDimension: coverMaxDimension,
       outputDir: outputDir,
       filenameFormat: filenameFormat,
       quality: quality,

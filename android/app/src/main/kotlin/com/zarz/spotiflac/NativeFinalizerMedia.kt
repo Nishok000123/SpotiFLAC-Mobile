@@ -483,9 +483,6 @@ internal fun NativeDownloadFinalizer.createMetadataBlockPicture(coverFile: File)
 }
 
 internal fun NativeDownloadFinalizer.detectCoverMimeType(coverFile: File, imageData: ByteArray): String {
-    val ext = coverFile.extension.lowercase(Locale.ROOT)
-    if (ext == "png") return "image/png"
-    if (ext == "jpg" || ext == "jpeg") return "image/jpeg"
     if (imageData.size >= 8 &&
         imageData[0] == 0x89.toByte() &&
         imageData[1] == 0x50.toByte() &&
@@ -494,6 +491,15 @@ internal fun NativeDownloadFinalizer.detectCoverMimeType(coverFile: File, imageD
     ) {
         return "image/png"
     }
+    if (imageData.size >= 3 &&
+        imageData[0] == 0xFF.toByte() &&
+        imageData[1] == 0xD8.toByte() &&
+        imageData[2] == 0xFF.toByte()
+    ) {
+        return "image/jpeg"
+    }
+    val ext = coverFile.extension.lowercase(Locale.ROOT)
+    if (ext == "png") return "image/png"
     return "image/jpeg"
 }
 
@@ -502,12 +508,13 @@ internal fun NativeDownloadFinalizer.downloadCoverForMetadata(context: Context, 
     if (coverUrl.isBlank()) return null
 
     val safeItemId = input.itemId.ifBlank { "item" }.replace(Regex("[^A-Za-z0-9._-]"), "_")
+    val maxDimension = input.request.optLong("cover_max_dimension", 0L).coerceAtLeast(0L)
     val output = File.createTempFile("native_cover_${safeItemId}_", ".jpg", context.cacheDir)
     return try {
-        Gobackend.downloadCoverToFile(
+        Gobackend.downloadCoverToFileSized(
             coverUrl,
             output.absolutePath,
-            false
+            maxDimension
         )
         if (output.exists() && output.length() > 0L) {
             output

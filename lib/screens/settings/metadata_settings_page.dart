@@ -52,6 +52,19 @@ class MetadataSettingsPage extends ConsumerWidget {
                         settings.artistTagMode,
                       ),
                     ),
+                    SettingsItem(
+                      icon: Icons.photo_size_select_large_outlined,
+                      title: context.l10n.optionsEmbeddedCoverSize,
+                      subtitle: _getEmbeddedCoverSizeLabel(
+                        context,
+                        settings.embeddedCoverMaxDimension,
+                      ),
+                      onTap: () => _showEmbeddedCoverSizePicker(
+                        context,
+                        ref,
+                        settings.embeddedCoverMaxDimension,
+                      ),
+                    ),
                     SettingsSwitchItem(
                       icon: Icons.graphic_eq,
                       title: context.l10n.optionsReplayGain,
@@ -144,6 +157,77 @@ class MetadataSettingsPage extends ConsumerWidget {
       default:
         return context.l10n.optionsArtistTagModeJoined;
     }
+  }
+
+  String _getEmbeddedCoverSizeLabel(BuildContext context, int maxDimension) {
+    if (maxDimension <= 0) {
+      return context.l10n.optionsEmbeddedCoverSizeOriginal;
+    }
+    return '$maxDimension × $maxDimension px';
+  }
+
+  void _showEmbeddedCoverSizePicker(
+    BuildContext context,
+    WidgetRef ref,
+    int currentMaxDimension,
+  ) {
+    const options = [0, 500, 1000, 1500, 2000];
+    final colorScheme = Theme.of(context).colorScheme;
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: colorScheme.surfaceContainerHigh,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                child: Text(
+                  context.l10n.optionsEmbeddedCoverSize,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                child: Text(
+                  context.l10n.optionsEmbeddedCoverSizeDescription,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              for (final maxDimension in options)
+                ListTile(
+                  leading: Icon(
+                    maxDimension == 0
+                        ? Icons.image_outlined
+                        : Icons.compress_outlined,
+                  ),
+                  title: Text(
+                    _getEmbeddedCoverSizeLabel(context, maxDimension),
+                  ),
+                  trailing: currentMaxDimension == maxDimension
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () {
+                    ref
+                        .read(settingsProvider.notifier)
+                        .setEmbeddedCoverMaxDimension(maxDimension);
+                    Navigator.pop(context);
+                  },
+                ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showArtistTagModePicker(

@@ -146,7 +146,7 @@ func embedExtensionDownloadMetadata(resp DownloadResponse, req DownloadRequest, 
 	coverURL := firstNonEmptyTrimmed(resp.CoverURL, req.CoverURL)
 	var coverData []byte
 	if coverURL != "" {
-		data, err := downloadCoverToMemory(coverURL)
+		data, err := downloadCoverToMemorySized(coverURL, req.CoverMaxDimension)
 		if err != nil {
 			GoLog("[DownloadWithExtensionFallback] Warning: failed to download cover for metadata embed: %v\n", err)
 		} else if len(data) > 0 {

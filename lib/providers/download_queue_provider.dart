@@ -849,6 +849,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       albumName: track.albumName,
       albumArtist: resolvedAlbumArtist ?? '',
       coverUrl: settings.embedMetadata ? (track.coverUrl ?? '') : '',
+      coverMaxDimension: settings.embeddedCoverMaxDimension,
       outputDir: outputDir,
       filenameFormat: filenameFormat,
       quality: quality,

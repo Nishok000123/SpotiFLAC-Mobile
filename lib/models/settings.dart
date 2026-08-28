@@ -21,6 +21,10 @@ class AppSettings {
   final String downloadTreeUri; // SAF persistable tree URI
   final bool autoFallback;
   final bool embedMetadata;
+
+  /// Maximum width or height of remotely fetched artwork before embedding.
+  /// Zero preserves the provider's original image.
+  final int embeddedCoverMaxDimension;
   final String
   artistTagMode; // 'joined' or 'split_vorbis' for Vorbis-based formats
   final bool embedLyrics;
@@ -131,6 +135,7 @@ class AppSettings {
     this.downloadTreeUri = '',
     this.autoFallback = true,
     this.embedMetadata = true,
+    this.embeddedCoverMaxDimension = 0,
     this.artistTagMode = artistTagModeJoined,
     this.embedLyrics = true,
     this.embedReplayGain = false,
@@ -205,6 +210,7 @@ class AppSettings {
     String? downloadTreeUri,
     bool? autoFallback,
     bool? embedMetadata,
+    int? embeddedCoverMaxDimension,
     String? artistTagMode,
     bool? embedLyrics,
     bool? embedReplayGain,
@@ -282,6 +288,8 @@ class AppSettings {
       downloadTreeUri: downloadTreeUri ?? this.downloadTreeUri,
       autoFallback: autoFallback ?? this.autoFallback,
       embedMetadata: embedMetadata ?? this.embedMetadata,
+      embeddedCoverMaxDimension:
+          embeddedCoverMaxDimension ?? this.embeddedCoverMaxDimension,
       artistTagMode: artistTagMode ?? this.artistTagMode,
       embedLyrics: embedLyrics ?? this.embedLyrics,
       embedReplayGain: embedReplayGain ?? this.embedReplayGain,

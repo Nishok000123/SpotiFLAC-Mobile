@@ -579,7 +579,8 @@ import Gobackend
             let args = call.arguments as! [String: Any]
             let coverURL = args["cover_url"] as! String
             let outputPath = args["output_path"] as! String
-            GobackendDownloadCoverToFile(coverURL, outputPath, false, &error)
+            let maxDimension = max(0, (args["max_dimension"] as? NSNumber)?.intValue ?? 0)
+            GobackendDownloadCoverToFileSized(coverURL, outputPath, maxDimension, &error)
             if let error = error { throw error }
             return "{\"success\":true}"
 

@@ -1544,9 +1544,17 @@ class MainActivity: FlutterFragmentActivity() {
                         "downloadCoverToFile" -> {
                             val coverUrl = call.argument<String>("cover_url") ?: ""
                             val outputPath = call.argument<String>("output_path") ?: ""
+                            val maxDimension = call.argument<Number>("max_dimension")
+                                ?.toLong()
+                                ?.coerceAtLeast(0L)
+                                ?: 0L
                             val response = withContext(Dispatchers.IO) {
                                 try {
-                                    Gobackend.downloadCoverToFile(coverUrl, outputPath, false)
+                                    Gobackend.downloadCoverToFileSized(
+                                        coverUrl,
+                                        outputPath,
+                                        maxDimension
+                                    )
                                     """{"success":true}"""
                                 } catch (e: Exception) {
                                     """{"success":false,"error":"${e.message?.replace("\"", "'")}"}"""

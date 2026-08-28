@@ -1,11 +1,43 @@
 package gobackend
 
 import (
+	"bytes"
+	"image"
+	"image/color"
+	"image/jpeg"
+	"image/png"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
+
+func encodedTestCover(t *testing.T, width, height int, format string) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			img.SetRGBA(x, y, color.RGBA{
+				R: uint8(x % 256),
+				G: uint8(y % 256),
+				B: uint8((x + y) % 256),
+				A: uint8(128 + (x+y)%128),
+			})
+		}
+	}
+
+	var encoded bytes.Buffer
+	var err error
+	if format == "png" {
+		err = png.Encode(&encoded, img)
+	} else {
+		err = jpeg.Encode(&encoded, img, &jpeg.Options{Quality: 95})
+	}
+	if err != nil {
+		t.Fatalf("encode test cover: %v", err)
+	}
+	return encoded.Bytes()
+}
 
 func resetCoverCache() {
 	coverMu.Lock()
@@ -116,5 +148,94 @@ func TestDownloadCoverUsesProviderURLUnchanged(t *testing.T) {
 	}
 	if string(got) != "provider-cover" {
 		t.Fatalf("downloaded cover = %q", got)
+	}
+}
+
+func TestResizeCoverForEmbeddingPreservesAspectRatio(t *testing.T) {
+	original := encodedTestCover(t, 1200, 600, "jpeg")
+
+	resized, changed, err := resizeCoverForEmbedding(original, 500)
+	if err != nil {
+		t.Fatalf("resize cover: %v", err)
+	}
+	if !changed {
+		t.Fatal("expected oversized artwork to be resized")
+	}
+	config, format, err := image.DecodeConfig(bytes.NewReader(resized))
+	if err != nil {
+		t.Fatalf("decode resized cover config: %v", err)
+	}
+	if config.Width != 500 || config.Height != 250 {
+		t.Fatalf("resized dimensions = %dx%d, want 500x250", config.Width, config.Height)
+	}
+	if format != "jpeg" {
+		t.Fatalf("resized format = %q, want jpeg", format)
+	}
+}
+
+func TestResizeCoverForEmbeddingKeepsSmallArtworkByteForByte(t *testing.T) {
+	original := encodedTestCover(t, 320, 320, "jpeg")
+
+	resized, changed, err := resizeCoverForEmbedding(original, 500)
+	if err != nil {
+		t.Fatalf("resize cover: %v", err)
+	}
+	if changed {
+		t.Fatal("artwork within the limit should not be re-encoded")
+	}
+	if !bytes.Equal(resized, original) {
+		t.Fatal("artwork within the limit was modified")
+	}
+}
+
+func TestResizeCoverForEmbeddingPreservesPNG(t *testing.T) {
+	original := encodedTestCover(t, 600, 1200, "png")
+
+	resized, changed, err := resizeCoverForEmbedding(original, 500)
+	if err != nil {
+		t.Fatalf("resize PNG cover: %v", err)
+	}
+	if !changed {
+		t.Fatal("expected oversized PNG artwork to be resized")
+	}
+	config, format, err := image.DecodeConfig(bytes.NewReader(resized))
+	if err != nil {
+		t.Fatalf("decode resized PNG config: %v", err)
+	}
+	if config.Width != 250 || config.Height != 500 {
+		t.Fatalf("resized dimensions = %dx%d, want 250x500", config.Width, config.Height)
+	}
+	if format != "png" {
+		t.Fatalf("resized format = %q, want png", format)
+	}
+}
+
+func TestDownloadCoverToMemorySizedCachesDerivedVariant(t *testing.T) {
+	originalFetch := coverFetch
+	defer func() { coverFetch = originalFetch }()
+	resetCoverCache()
+
+	original := encodedTestCover(t, 1200, 600, "jpeg")
+	var calls int32
+	coverFetch = func(string) ([]byte, error) {
+		atomic.AddInt32(&calls, 1)
+		return original, nil
+	}
+
+	for range 2 {
+		resized, err := downloadCoverToMemorySized(
+			"https://cdn.example/album.jpg",
+			500,
+		)
+		if err != nil {
+			t.Fatalf("download sized cover: %v", err)
+		}
+		width, height := coverDimensions(resized)
+		if width != 500 || height != 250 {
+			t.Fatalf("sized cover = %dx%d, want 500x250", width, height)
+		}
+	}
+	if got := atomic.LoadInt32(&calls); got != 1 {
+		t.Fatalf("provider cover fetched %d times, want once", got)
 	}
 }

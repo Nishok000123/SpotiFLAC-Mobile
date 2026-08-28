@@ -4997,6 +4997,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get metadataCopyAll => 'Copy all metadata';
+
+  @override
+  String get optionsEmbeddedCoverSize => 'Embedded Cover Size';
+
+  @override
+  String get optionsEmbeddedCoverSizeDescription =>
+      'Downscale remotely downloaded cover art before embedding it. Images already within the limit are kept unchanged.';
+
+  @override
+  String get optionsEmbeddedCoverSizeOriginal => 'Original resolution';
 }
 
 /// The translations for Spanish Castilian, as used in Spain (`es_ES`).

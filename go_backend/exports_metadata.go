@@ -531,11 +531,18 @@ func RewriteSplitArtistTagsExport(filePath, artist, albumArtist string) (string,
 // native shells. Resolution selection is extension-owned and the value is
 // intentionally ignored.
 func DownloadCoverToFile(coverURL string, outputPath string, _ bool) error {
+	return DownloadCoverToFileSized(coverURL, outputPath, 0)
+}
+
+// DownloadCoverToFileSized downloads provider artwork and optionally caps its
+// longest side before writing it. It is a separate export so the legacy
+// gomobile ABI remains available to older native shells.
+func DownloadCoverToFileSized(coverURL string, outputPath string, maxDimension int) error {
 	if coverURL == "" {
 		return fmt.Errorf("no cover URL provided")
 	}
 
-	data, err := downloadCoverToMemory(coverURL)
+	data, err := downloadCoverToMemorySized(coverURL, maxDimension)
 	if err != nil {
 		return fmt.Errorf("failed to download cover: %w", err)
 	}

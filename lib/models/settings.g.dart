@@ -16,6 +16,8 @@ AppSettings _$AppSettingsFromJson(Map<String, dynamic> json) => AppSettings(
   downloadTreeUri: json['downloadTreeUri'] as String? ?? '',
   autoFallback: json['autoFallback'] as bool? ?? true,
   embedMetadata: json['embedMetadata'] as bool? ?? true,
+  embeddedCoverMaxDimension:
+      (json['embeddedCoverMaxDimension'] as num?)?.toInt() ?? 0,
   artistTagMode: json['artistTagMode'] as String? ?? artistTagModeJoined,
   embedLyrics: json['embedLyrics'] as bool? ?? true,
   embedReplayGain: json['embedReplayGain'] as bool? ?? false,
@@ -111,6 +113,7 @@ Map<String, dynamic> _$AppSettingsToJson(
   'downloadTreeUri': instance.downloadTreeUri,
   'autoFallback': instance.autoFallback,
   'embedMetadata': instance.embedMetadata,
+  'embeddedCoverMaxDimension': instance.embeddedCoverMaxDimension,
   'artistTagMode': instance.artistTagMode,
   'embedLyrics': instance.embedLyrics,
   'embedReplayGain': instance.embedReplayGain,

@@ -19,29 +19,30 @@ var fetchMusicBrainzGenreByISRC = FetchMusicBrainzGenreByISRC
 var fetchMusicBrainzAlbumArtistByISRC = FetchMusicBrainzAlbumArtistByISRC
 
 type reEnrichRequest struct {
-	FilePath      string   `json:"file_path"`
-	CoverURL      string   `json:"cover_url"`
-	EmbedLyrics   bool     `json:"embed_lyrics"`
-	LyricsMode    string   `json:"lyrics_mode,omitempty"`
-	ArtistTagMode string   `json:"artist_tag_mode,omitempty"`
-	SpotifyID     string   `json:"spotify_id"`
-	TrackName     string   `json:"track_name"`
-	ArtistName    string   `json:"artist_name"`
-	AlbumName     string   `json:"album_name"`
-	AlbumArtist   string   `json:"album_artist"`
-	TrackNumber   int      `json:"track_number"`
-	DiscNumber    int      `json:"disc_number"`
-	TotalTracks   int      `json:"total_tracks,omitempty"`
-	TotalDiscs    int      `json:"total_discs,omitempty"`
-	ReleaseDate   string   `json:"release_date"`
-	ISRC          string   `json:"isrc"`
-	Genre         string   `json:"genre"`
-	Label         string   `json:"label"`
-	Copyright     string   `json:"copyright"`
-	Composer      string   `json:"composer"`
-	DurationMs    int64    `json:"duration_ms"`
-	SearchOnline  bool     `json:"search_online"`
-	UpdateFields  []string `json:"update_fields,omitempty"`
+	FilePath          string   `json:"file_path"`
+	CoverURL          string   `json:"cover_url"`
+	CoverMaxDimension int      `json:"cover_max_dimension,omitempty"`
+	EmbedLyrics       bool     `json:"embed_lyrics"`
+	LyricsMode        string   `json:"lyrics_mode,omitempty"`
+	ArtistTagMode     string   `json:"artist_tag_mode,omitempty"`
+	SpotifyID         string   `json:"spotify_id"`
+	TrackName         string   `json:"track_name"`
+	ArtistName        string   `json:"artist_name"`
+	AlbumName         string   `json:"album_name"`
+	AlbumArtist       string   `json:"album_artist"`
+	TrackNumber       int      `json:"track_number"`
+	DiscNumber        int      `json:"disc_number"`
+	TotalTracks       int      `json:"total_tracks,omitempty"`
+	TotalDiscs        int      `json:"total_discs,omitempty"`
+	ReleaseDate       string   `json:"release_date"`
+	ISRC              string   `json:"isrc"`
+	Genre             string   `json:"genre"`
+	Label             string   `json:"label"`
+	Copyright         string   `json:"copyright"`
+	Composer          string   `json:"composer"`
+	DurationMs        int64    `json:"duration_ms"`
+	SearchOnline      bool     `json:"search_online"`
+	UpdateFields      []string `json:"update_fields,omitempty"`
 	// PreviewOnly resolves the metadata candidate and returns the proposed
 	// values without downloading artwork, fetching lyrics, or touching the
 	// audio file. Batch callers use this to review changes before embedding.
@@ -726,7 +727,10 @@ func ReEnrichFile(requestJSON string) (string, error) {
 	var coverTempPath string
 	var coverDataBytes []byte
 	if req.CoverURL != "" && req.shouldUpdateTag("cover", "cover") {
-		coverData, err := downloadCoverToMemory(req.CoverURL)
+		coverData, err := downloadCoverToMemorySized(
+			req.CoverURL,
+			req.CoverMaxDimension,
+		)
 		if err != nil {
 			GoLog("[ReEnrich] Failed to download cover: %v\n", err)
 		} else {

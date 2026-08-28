@@ -882,6 +882,7 @@ void main() {
       expect(settings.audioQuality, 'LOSSLESS');
       expect(settings.filenameFormat, '{title} - {artist}');
       expect(settings.artistTagMode, artistTagModeJoined);
+      expect(settings.embeddedCoverMaxDimension, 0);
       expect(settings.autoFallback, isTrue);
       expect(settings.lyricsProviders, ['lrclib', 'apple_music']);
       expect(settings.lyricsAppleElrcWordSync, isFalse);
@@ -907,6 +908,7 @@ void main() {
       final updated = settings.copyWith(
         defaultService: 'tidal',
         embedReplayGain: true,
+        embeddedCoverMaxDimension: 1000,
         lyricsProviders: ['apple_music'],
         lyricsAppleElrcWordSync: true,
         deduplicateDownloads: false,
@@ -919,6 +921,7 @@ void main() {
 
       expect(updated.defaultService, 'tidal');
       expect(updated.embedReplayGain, isTrue);
+      expect(updated.embeddedCoverMaxDimension, 1000);
       expect(updated.lyricsProviders, ['apple_music']);
       expect(updated.lyricsAppleElrcWordSync, isTrue);
       expect(updated.deduplicateDownloads, isFalse);
@@ -957,6 +960,7 @@ void main() {
         autoConvertFormat: 'opus',
         autoConvertBitrate: '192k',
         libraryQualityLabelMode: AppSettings.libraryQualityLabelBitDepthOnly,
+        embeddedCoverMaxDimension: 1500,
       );
 
       final decoded = AppSettings.fromJson(settings.toJson());
@@ -986,6 +990,7 @@ void main() {
       expect(decoded.autoConvertDownloads, isTrue);
       expect(decoded.autoConvertFormat, 'opus');
       expect(decoded.autoConvertBitrate, '192k');
+      expect(decoded.embeddedCoverMaxDimension, 1500);
     });
   });
 
@@ -1026,6 +1031,7 @@ void main() {
         albumName: 'Album',
         albumArtist: 'Album Artist',
         coverUrl: 'https://example.test/cover.jpg',
+        coverMaxDimension: 1000,
         outputDir: '/downloads',
         filenameFormat: '{artist} - {title}',
         quality: 'HI_RES',
@@ -1086,6 +1092,7 @@ void main() {
         'album_name': 'Album',
         'album_artist': 'Album Artist',
         'cover_url': 'https://example.test/cover.jpg',
+        'cover_max_dimension': 1000,
         'output_dir': '/downloads',
         'filename_format': '{artist} - {title}',
         'quality': 'HI_RES',

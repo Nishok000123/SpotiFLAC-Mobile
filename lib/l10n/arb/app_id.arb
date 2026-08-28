@@ -6153,5 +6153,8 @@
   "trackOptionCopyTrackAndArtist": "Salin judul dan artis",
   "metadataCopyValue": "Salin nilai",
   "metadataCopyField": "Salin field dan nilai",
-  "metadataCopyAll": "Salin semua metadata"
+  "metadataCopyAll": "Salin semua metadata",
+  "optionsEmbeddedCoverSize": "Ukuran Cover Tertanam",
+  "optionsEmbeddedCoverSizeDescription": "Perkecil cover yang diunduh dari internet sebelum ditanamkan. Gambar yang sudah berada dalam batas tidak akan diubah.",
+  "optionsEmbeddedCoverSizeOriginal": "Resolusi asli"
 }
