@@ -58,6 +58,7 @@ import 'package:spotiflac_android/widgets/selection_action_button.dart';
 import 'package:spotiflac_android/widgets/selection_bottom_bar.dart';
 import 'package:spotiflac_android/widgets/smoothed_progress.dart';
 import 'package:spotiflac_android/widgets/scroll_edge_fade.dart';
+import 'package:spotiflac_android/widgets/two_finger_pinch_listener.dart';
 
 part 'queue_tab_helpers.dart';
 part 'queue_tab_widgets.dart';
@@ -285,7 +286,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   String _sortMode = 'latest';
   String _libraryQualityLabelMode = AppSettings.libraryQualityLabelBitrate;
   double _libraryGridExtent = _libraryGridDefaultExtent;
-  double? _libraryGridScaleStartExtent;
+  double? _libraryGridPinchStartExtent;
   final Map<String, int> _libraryPageOffsetByFilter = {};
   bool _libraryPageLoadScheduled = false;
   final Map<_QueueLibraryCountsRequest, QueueLibraryCounts>
@@ -315,16 +316,15 @@ class _QueueTabState extends ConsumerState<QueueTab> {
   /// through this forwarder.
   void _setState(VoidCallback fn) => setState(fn);
 
-  void _handleLibraryGridScaleStart(ScaleStartDetails details) {
-    if (details.pointerCount < 2) return;
-    _libraryGridScaleStartExtent = _libraryGridExtent;
+  void _handleLibraryGridPinchStart() {
+    _libraryGridPinchStartExtent = _libraryGridExtent;
   }
 
-  void _handleLibraryGridScaleUpdate(ScaleUpdateDetails details) {
-    final startExtent = _libraryGridScaleStartExtent;
-    if (startExtent == null || details.pointerCount < 2) return;
+  void _handleLibraryGridPinchUpdate(double scale) {
+    final startExtent = _libraryGridPinchStartExtent;
+    if (startExtent == null) return;
 
-    final nextExtent = (startExtent * details.scale).clamp(
+    final nextExtent = (startExtent * scale).clamp(
       _libraryGridMinExtent,
       _libraryGridMaxExtent,
     );
@@ -332,8 +332,8 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     setState(() => _libraryGridExtent = nextExtent);
   }
 
-  void _handleLibraryGridScaleEnd(ScaleEndDetails details) {
-    _libraryGridScaleStartExtent = null;
+  void _handleLibraryGridPinchEnd() {
+    _libraryGridPinchStartExtent = null;
   }
 
   @override

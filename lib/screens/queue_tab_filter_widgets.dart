@@ -761,11 +761,10 @@ extension _QueueTabFilterWidgets on _QueueTabState {
     );
 
     if (historyViewMode != 'grid') return scrollAwareContent;
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onScaleStart: _handleLibraryGridScaleStart,
-      onScaleUpdate: _handleLibraryGridScaleUpdate,
-      onScaleEnd: _handleLibraryGridScaleEnd,
+    return TwoFingerPinchListener(
+      onStart: _handleLibraryGridPinchStart,
+      onUpdate: _handleLibraryGridPinchUpdate,
+      onEnd: _handleLibraryGridPinchEnd,
       child: scrollAwareContent,
     );
   }
