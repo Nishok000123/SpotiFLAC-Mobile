@@ -2,6 +2,7 @@ package gobackend
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime/debug"
 	"sync"
@@ -167,19 +168,21 @@ func runGojaCallWithTimeoutContextAndRecover(ctx context.Context, vm *goja.Runti
 }
 
 func IsRuntimeUnsafeError(err error) bool {
-	jsErr, ok := err.(*JSExecutionError)
-	return ok && jsErr.RuntimeUnsafe
+	var jsErr *JSExecutionError
+	return errors.As(err, &jsErr) && jsErr.RuntimeUnsafe
 }
 
 func runtimeCompletion(err error) <-chan struct{} {
-	if jsErr, ok := err.(*JSExecutionError); ok && jsErr.RuntimeUnsafe {
+	var jsErr *JSExecutionError
+	if errors.As(err, &jsErr) && jsErr.RuntimeUnsafe {
 		return jsErr.runtimeDone
 	}
 	return nil
 }
 
 func IsTimeoutError(err error) bool {
-	if jsErr, ok := err.(*JSExecutionError); ok {
+	var jsErr *JSExecutionError
+	if errors.As(err, &jsErr) {
 		return jsErr.IsTimeout
 	}
 	return false

@@ -296,6 +296,9 @@ class MusicPlayerHandler extends BaseAudioHandler
   DateTime? _lastPositionBroadcastAt;
   DateTime? _lastPeriodicPersistAt;
   Future<void> _sessionWriteTail = Future<void>.value();
+  int _sessionQueueRevision = 0;
+  int _scheduledSessionQueueRevision = -1;
+  int _persistedSessionQueueRevision = -1;
   static const Duration _positionBroadcastInterval = Duration(
     milliseconds: 500,
   );
@@ -653,27 +656,77 @@ class MusicPlayerHandler extends BaseAudioHandler
     return queued;
   }
 
-  /// Persists queue, current index, and position so a killed process can
-  /// restore the session paused on next launch. Position updates are throttled
-  /// by [_handlePositionChanged], while lifecycle/pause writes flush exactly.
+  void _markSessionQueueChanged() {
+    _sessionQueueRevision++;
+  }
+
+  /// Persists the queue only when it changed. Periodic position updates write
+  /// fixed-size scalar columns, avoiding full queue JSON serialization every
+  /// ten seconds for large playback sessions.
   Future<void> _persistSession({Duration? position}) {
     if (_restoringSession) return Future<void>.value();
     if (_media.isEmpty || _index < 0 || _index >= _media.length) {
+      _scheduledSessionQueueRevision = -1;
+      _persistedSessionQueueRevision = -1;
       return _enqueueSessionWrite(
         AppStateDatabase.instance.clearPlaybackSession,
       );
     }
-    final session = <String, dynamic>{
-      'version': 1,
-      'media': _media.map((m) => m.toJson()).toList(growable: false),
-      'index': _index,
-      'positionMs': (position ?? Duration.zero).inMilliseconds,
-      'shuffle': _shuffle,
-      'repeat': _repeatMode.name,
-    };
-    return _enqueueSessionWrite(
-      () => AppStateDatabase.instance.savePlaybackSession(session),
-    );
+    final queueRevision = _sessionQueueRevision;
+    final index = _index;
+    final positionMs = (position ?? Duration.zero).inMilliseconds;
+    final shuffle = _shuffle;
+    final repeatMode = _repeatMode.name;
+
+    if (_scheduledSessionQueueRevision != queueRevision) {
+      final media = _media.map((item) => item.toJson()).toList(growable: false);
+      _scheduledSessionQueueRevision = queueRevision;
+      return _enqueueSessionWrite(() async {
+        try {
+          await AppStateDatabase.instance.savePlaybackSession({
+            'version': 2,
+            'media': media,
+            'index': index,
+            'positionMs': positionMs,
+            'shuffle': shuffle,
+            'repeat': repeatMode,
+          });
+          _persistedSessionQueueRevision = queueRevision;
+        } catch (_) {
+          if (_scheduledSessionQueueRevision == queueRevision) {
+            _scheduledSessionQueueRevision = _persistedSessionQueueRevision;
+          }
+          rethrow;
+        }
+      });
+    }
+
+    return _enqueueSessionWrite(() async {
+      final updated = await AppStateDatabase.instance
+          .updatePlaybackSessionState(
+            index: index,
+            positionMs: positionMs,
+            shuffle: shuffle,
+            repeatMode: repeatMode,
+          );
+      if (updated) return;
+      // A newer queue snapshot is already (or is about to be) scheduled. Do
+      // not recreate a missing row from this older scalar snapshot with a
+      // mismatched index; the newer full write will restore it consistently.
+      if (_sessionQueueRevision != queueRevision) return;
+
+      // Defensive recovery for an externally cleared/corrupted row. This is
+      // intentionally the only state-only path that serializes the queue.
+      await AppStateDatabase.instance.savePlaybackSession({
+        'version': 2,
+        'media': _media.map((item) => item.toJson()).toList(growable: false),
+        'index': index,
+        'positionMs': positionMs,
+        'shuffle': shuffle,
+        'repeat': repeatMode,
+      });
+      _persistedSessionQueueRevision = queueRevision;
+    });
   }
 
   Future<Duration> _currentPositionForPersist() async {
@@ -706,6 +759,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     required int index,
     required Duration position,
     required bool shuffle,
+    bool queueNeedsRewrite = false,
     AudioServiceRepeatMode repeatMode = AudioServiceRepeatMode.none,
   }) async {
     if (items.isEmpty) return;
@@ -725,6 +779,14 @@ class MusicPlayerHandler extends BaseAudioHandler
       _pendingRestorePosition = position > Duration.zero ? position : null;
       _sourceReady = false;
       _lastPeriodicPersistAt = null;
+      _sessionQueueRevision++;
+      if (queueNeedsRewrite) {
+        _scheduledSessionQueueRevision = -1;
+        _persistedSessionQueueRevision = -1;
+      } else {
+        _scheduledSessionQueueRevision = _sessionQueueRevision;
+        _persistedSessionQueueRevision = _sessionQueueRevision;
+      }
       queue.add(List<MediaItem>.unmodifiable(_queueItems));
       mediaItem.add(_media[_index].toMediaItem());
       if (position > Duration.zero) {
@@ -735,6 +797,9 @@ class MusicPlayerHandler extends BaseAudioHandler
       _broadcastState(playerState: PlayerState.paused);
     } finally {
       _restoringSession = false;
+    }
+    if (queueNeedsRewrite) {
+      await _persistSession(position: position);
     }
   }
 
@@ -758,6 +823,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     _queueItems
       ..clear()
       ..addAll(items.map((m) => m.toMediaItem()));
+    _markSessionQueueChanged();
     _recent.clear();
     _playHistory.clear();
     queue.add(List<MediaItem>.unmodifiable(_queueItems));
@@ -774,6 +840,7 @@ class MusicPlayerHandler extends BaseAudioHandler
         : _media.length;
     _media.insert(insertAt, item);
     _queueItems.insert(insertAt, item.toMediaItem());
+    _markSessionQueueChanged();
 
     for (var i = 0; i < _recent.length; i++) {
       if (_recent[i] >= insertAt) _recent[i]++;
@@ -808,6 +875,7 @@ class MusicPlayerHandler extends BaseAudioHandler
       }
       at++;
     }
+    _markSessionQueueChanged();
     queue.add(List<MediaItem>.unmodifiable(_queueItems));
     _broadcastState();
     unawaited(_persistSession(position: playbackState.value.position));
@@ -825,6 +893,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     final qi = _queueItems.removeAt(oldIndex);
     _media.insert(newIndex, media);
     _queueItems.insert(newIndex, qi);
+    _markSessionQueueChanged();
 
     if (_index == oldIndex) {
       _index = newIndex;
@@ -1127,6 +1196,8 @@ class MusicPlayerHandler extends BaseAudioHandler
     _recent.clear();
     _playHistory.clear();
     _pendingRestorePosition = null;
+    _scheduledSessionQueueRevision = -1;
+    _persistedSessionQueueRevision = -1;
     // An explicit stop ends the session for good; nothing to restore later.
     await _enqueueSessionWrite(AppStateDatabase.instance.clearPlaybackSession);
     // A stopped session has no current item; this also hides the mini player.
@@ -1236,6 +1307,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     _queueItems
       ..clear()
       ..addAll(kept.map((m) => m.toMediaItem()));
+    _markSessionQueueChanged();
     _recent.clear();
     _playHistory.clear();
     queue.add(List<MediaItem>.unmodifiable(_queueItems));
@@ -1376,6 +1448,7 @@ Future<void> restorePersistedPlaybackSession() async {
       index: index,
       position: position,
       shuffle: session['shuffle'] == true,
+      queueNeedsRewrite: items.length != rawMedia.length,
       repeatMode: AudioServiceRepeatMode.values.firstWhere(
         (mode) => mode.name == session['repeat'],
         orElse: () => AudioServiceRepeatMode.none,

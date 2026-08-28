@@ -362,6 +362,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   int _queueItemSequence = 0;
   bool _isLoaded = false;
   bool _foregroundResumeScheduled = false;
+  bool _iosBackgroundExecutionExpired = false;
+  StreamSubscription<List<String>>? _iosBackgroundExpirationSubscription;
   final Set<String> _ensuredDirs = {};
   final Map<String, Future<void>> _qualityVariantFileLocks = {};
   Future<String>? _appFolderStorageFallback;
@@ -423,6 +425,16 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
 
   @override
   DownloadQueueState build() {
+    if (Platform.isIOS) {
+      _iosBackgroundExpirationSubscription ??=
+          PlatformBridge.iosBackgroundDownloadExpirationEvents().listen(
+            _handleIosBackgroundDownloadExpiration,
+          );
+      ref.onDispose(() {
+        _iosBackgroundExpirationSubscription?.cancel();
+        _iosBackgroundExpirationSubscription = null;
+      });
+    }
     ref.listen<AppSettings>(settingsProvider, (previous, next) {
       updateSettings(next);
       if (previous?.downloadNetworkMode != next.downloadNetworkMode) {
@@ -487,6 +499,12 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   /// Restarts a queue that was deliberately left pending because Android did
   /// not allow a foreground service to be launched while the app was hidden.
   void resumePendingDownloadsOnForeground() {
+    if (Platform.isIOS && _iosBackgroundExecutionExpired) {
+      _iosBackgroundExecutionExpired = false;
+      if (state.isPaused) {
+        state = state.copyWith(isPaused: false);
+      }
+    }
     if (_foregroundResumeScheduled ||
         state.isProcessing ||
         state.isPaused ||
@@ -502,6 +520,61 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         await _processQueue();
       }
     });
+  }
+
+  void _handleIosBackgroundDownloadExpiration(List<String> nativeItemIds) {
+    if (!Platform.isIOS) return;
+    final cancelledItemIds = nativeItemIds.toSet();
+    final requeueItemIds = cancelledItemIds.where((id) {
+      final item = state.lookup.byItemId[id];
+      return item != null && item.status != DownloadStatus.completed;
+    }).toSet();
+    if (!state.isProcessing && requeueItemIds.isEmpty) return;
+
+    final alreadyForeground =
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    _log.w(
+      'iOS background execution time expired; safely deferring active downloads until foreground',
+    );
+    _iosBackgroundExecutionExpired = true;
+    if (state.isProcessing && !state.isPaused) {
+      pauseQueue(persistAcrossRestarts: false);
+    }
+
+    if (requeueItemIds.isNotEmpty) {
+      final updatedItems = state.items
+          .map((item) {
+            if (!requeueItemIds.contains(item.id)) {
+              return item;
+            }
+            return item.copyWith(
+              status: DownloadStatus.queued,
+              progress: 0,
+              speedMBps: 0,
+              bytesReceived: 0,
+              bytesTotal: 0,
+            );
+          })
+          .toList(growable: false);
+      if (state.isProcessing) {
+        _pausePendingItemIds.addAll(requeueItemIds);
+      }
+      state = state.copyWith(
+        items: updatedItems,
+        isPaused: true,
+        currentDownload: null,
+      );
+    } else if (!state.isProcessing) {
+      state = state.copyWith(isPaused: true, currentDownload: null);
+    }
+    unawaited(flushQueuePersistence());
+    // The native expiration callback cancels Go synchronously before this
+    // asynchronous event reaches Dart. If foregrounding won that race, still
+    // requeue the cancelled item, then immediately let the running queue loop
+    // continue instead of misclassifying it as a skipped download.
+    if (alreadyForeground) {
+      resumePendingDownloadsOnForeground();
+    }
   }
 
   Future<void> _loadQueueFromStorage() async {
@@ -1829,6 +1902,13 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     } else {
       _log.i('Queue processing finished');
     }
+    // All per-item futures have completed at this point. Remove any iOS
+    // expiration guards that arrived after an individual worker's finally
+    // block, otherwise the safely requeued item would be filtered forever on
+    // the next queue run.
+    _pausePendingItemIds.removeWhere(
+      (id) => state.lookup.byItemId[id]?.status == DownloadStatus.queued,
+    );
     state = state.copyWith(isProcessing: false, currentDownload: null);
 
     final hasQueuedItems = state.items.any(

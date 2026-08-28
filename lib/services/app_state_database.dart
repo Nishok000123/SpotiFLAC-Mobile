@@ -8,7 +8,7 @@ import 'package:spotiflac_android/utils/logger.dart';
 final _log = AppLogger('AppStateDb');
 
 const _dbFileName = 'app_state.db';
-const _dbVersion = 3;
+const _dbVersion = 4;
 
 const _queueTable = 'download_queue_items';
 const _recentTable = 'recent_access_items';
@@ -87,11 +87,11 @@ class AppStateDatabase {
 
   Future<void> _upgradeDb(Database db, int oldVersion, int newVersion) async {
     _log.i('Upgrading app state database from v$oldVersion to v$newVersion');
-    if (oldVersion < 2) {
-      await _createPlaybackSessionTable(db);
-    }
     if (oldVersion < 3) {
       await _createRecentStateTable(db);
+    }
+    if (oldVersion < 4) {
+      await _migratePlaybackSessionToV4(db);
     }
   }
 
@@ -105,16 +105,86 @@ class AppStateDatabase {
   }
 
   static Future<void> _createPlaybackSessionTable(Database db) {
-    // Keep this idempotent so an interrupted migration or a database restored
-    // from an intermediate build can resume v1 -> v2 without losing queue
-    // state merely because the table was already created.
     return db.execute('''
       CREATE TABLE IF NOT EXISTS $_playbackSessionTable (
         id INTEGER PRIMARY KEY CHECK (id = 1),
-        session_json TEXT NOT NULL,
+        media_json TEXT NOT NULL,
+        current_index INTEGER NOT NULL DEFAULT 0,
+        position_ms INTEGER NOT NULL DEFAULT 0,
+        shuffle INTEGER NOT NULL DEFAULT 0,
+        repeat_mode TEXT NOT NULL DEFAULT 'none',
         updated_at TEXT NOT NULL
       )
     ''');
+  }
+
+  static Future<void> _migratePlaybackSessionToV4(Database db) async {
+    final table = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+      [_playbackSessionTable],
+    );
+    if (table.isEmpty) {
+      await _createPlaybackSessionTable(db);
+      return;
+    }
+
+    final columns = await db.rawQuery(
+      'PRAGMA table_info($_playbackSessionTable)',
+    );
+    if (columns.any((column) => column['name'] == 'media_json')) return;
+
+    Map<String, dynamic>? legacySession;
+    final rows = await db.query(_playbackSessionTable, limit: 1);
+    final raw = rows.isEmpty ? null : rows.first['session_json'] as String?;
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          legacySession = Map<String, dynamic>.from(decoded);
+        }
+      } catch (e) {
+        _log.w('Discarding unreadable legacy playback session: $e');
+      }
+    }
+
+    const migratedTable = '${_playbackSessionTable}_v4';
+    await db.execute('DROP TABLE IF EXISTS $migratedTable');
+    await db.execute('''
+      CREATE TABLE $migratedTable (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        media_json TEXT NOT NULL,
+        current_index INTEGER NOT NULL DEFAULT 0,
+        position_ms INTEGER NOT NULL DEFAULT 0,
+        shuffle INTEGER NOT NULL DEFAULT 0,
+        repeat_mode TEXT NOT NULL DEFAULT 'none',
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    if (legacySession != null) {
+      await db.insert(migratedTable, _playbackSessionRow(legacySession));
+    }
+    await db.execute('DROP TABLE $_playbackSessionTable');
+    await db.execute(
+      'ALTER TABLE $migratedTable RENAME TO $_playbackSessionTable',
+    );
+  }
+
+  static Map<String, Object?> _playbackSessionRow(
+    Map<String, dynamic> session,
+  ) {
+    final media = session['media'];
+    final currentIndex = session['index'];
+    final positionMs = session['positionMs'];
+    final repeatMode = session['repeat'];
+    return {
+      'id': 1,
+      'media_json': jsonEncode(media is List ? media : const []),
+      'current_index': currentIndex is num ? currentIndex.toInt() : 0,
+      'position_ms': positionMs is num ? positionMs.toInt() : 0,
+      'shuffle': session['shuffle'] == true ? 1 : 0,
+      'repeat_mode': repeatMode is String ? repeatMode : 'none',
+      'updated_at': DateTime.now().toIso8601String(),
+    };
   }
 
   Future<bool> migrateQueueFromSharedPreferences() async {
@@ -288,11 +358,20 @@ class AppStateDatabase {
     final db = await database;
     final rows = await db.query(_playbackSessionTable, limit: 1);
     if (rows.isEmpty) return null;
-    final raw = rows.first['session_json'] as String?;
+    final row = rows.first;
+    final raw = row['media_json'] as String?;
     if (raw == null || raw.isEmpty) return null;
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      if (decoded is! List) return null;
+      return {
+        'version': 2,
+        'media': decoded,
+        'index': (row['current_index'] as num?)?.toInt() ?? 0,
+        'positionMs': (row['position_ms'] as num?)?.toInt() ?? 0,
+        'shuffle': (row['shuffle'] as num?)?.toInt() == 1,
+        'repeat': row['repeat_mode'] as String? ?? 'none',
+      };
     } catch (e) {
       _log.w('Discarding unreadable playback session: $e');
     }
@@ -301,11 +380,28 @@ class AppStateDatabase {
 
   Future<void> savePlaybackSession(Map<String, dynamic> session) async {
     final db = await database;
-    await db.insert(_playbackSessionTable, {
-      'id': 1,
-      'session_json': jsonEncode(session),
+    await db.insert(
+      _playbackSessionTable,
+      _playbackSessionRow(session),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<bool> updatePlaybackSessionState({
+    required int index,
+    required int positionMs,
+    required bool shuffle,
+    required String repeatMode,
+  }) async {
+    final db = await database;
+    final changed = await db.update(_playbackSessionTable, {
+      'current_index': index,
+      'position_ms': positionMs,
+      'shuffle': shuffle ? 1 : 0,
+      'repeat_mode': repeatMode,
       'updated_at': DateTime.now().toIso8601String(),
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }, where: 'id = 1');
+    return changed > 0;
   }
 
   Future<void> clearPlaybackSession() async {

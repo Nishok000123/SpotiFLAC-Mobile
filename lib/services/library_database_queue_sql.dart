@@ -365,9 +365,21 @@ extension _LibraryDbQueueSql on LibraryDatabase {
   ) {
     final query = LibraryDatabase.normalizeLookupText(request.searchQuery);
     if (query.isNotEmpty) {
-      final like = '%${_escapeLikePattern(query)}%';
-      where.add("h.search_text LIKE ? ESCAPE '\\'");
-      args.add(like);
+      final ftsQuery = sqlite.ftsPhraseSearchQuery(query);
+      if (HistoryDatabase.instance.searchFtsAvailable && ftsQuery != null) {
+        where.add('''
+          h.rowid IN (
+            SELECT rowid
+            FROM history_db.history_search_fts
+            WHERE history_search_fts MATCH ?
+          )
+          ''');
+        args.add(ftsQuery);
+      } else {
+        final like = '%${_escapeLikePattern(query)}%';
+        where.add("h.search_text LIKE ? ESCAPE '\\'");
+        args.add(like);
+      }
     }
     _appendQueueCommonFilters(
       where,
@@ -396,9 +408,21 @@ extension _LibraryDbQueueSql on LibraryDatabase {
   ) {
     final query = LibraryDatabase.normalizeLookupText(request.searchQuery);
     if (query.isNotEmpty) {
-      final like = '%${_escapeLikePattern(query)}%';
-      where.add("l.search_text LIKE ? ESCAPE '\\'");
-      args.add(like);
+      final ftsQuery = sqlite.ftsPhraseSearchQuery(query);
+      if (searchFtsAvailable && ftsQuery != null) {
+        where.add('''
+          l.rowid IN (
+            SELECT rowid
+            FROM library_search_fts
+            WHERE library_search_fts MATCH ?
+          )
+          ''');
+        args.add(ftsQuery);
+      } else {
+        final like = '%${_escapeLikePattern(query)}%';
+        where.add("l.search_text LIKE ? ESCAPE '\\'");
+        args.add(like);
+      }
     }
     _appendQueueCommonFilters(
       where,

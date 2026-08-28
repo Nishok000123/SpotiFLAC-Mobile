@@ -15,6 +15,7 @@ import android.net.NetworkRequest
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.SystemClock
 import android.util.AtomicFile
 import androidx.core.app.NotificationCompat
 import gobackend.Gobackend
@@ -56,6 +57,7 @@ class DownloadService : Service() {
         private const val VERIFICATION_REQUIRED_NOTIFICATION_ID = 4
         private const val WAKELOCK_TAG = "SpotiFLAC:DownloadWakeLock"
         private const val WAKELOCK_RENEW_MS = 30 * 60 * 1000L
+        private const val WAKELOCK_RENEW_INTERVAL_MS = 15 * 60 * 1000L
         
         const val ACTION_START = "com.zarz.spotiflac.action.START_DOWNLOAD"
         const val ACTION_STOP = "com.zarz.spotiflac.action.STOP_DOWNLOAD"
@@ -294,6 +296,9 @@ class DownloadService : Service() {
             if (progress.has("item_delta")) {
                 state.put("item_delta", progress.get("item_delta"))
             }
+            if (progress.has("item_deltas")) {
+                state.put("item_deltas", progress.get("item_deltas"))
+            }
             state.put("snapshot_mode", "compact_with_delta")
         }
     }
@@ -331,6 +336,7 @@ class DownloadService : Service() {
     private var nativeWorkerRequestChannel: Channel<NativeDownloadRequest>? = null
     @Volatile private var nativeWorkerPreparationComplete = true
     private var wakeLock: PowerManager.WakeLock? = null
+    @Volatile private var wakeLockLastRenewedAt = 0L
     private var currentTrackName = ""
     private var currentArtistName = ""
     internal var currentStatus = "preparing"
@@ -338,6 +344,10 @@ class DownloadService : Service() {
     // Signature of the last home-screen widget push; keeps widget updates
     // event-driven (track/status/queue changes, 25% steps), never per byte.
     private var widgetSignature = ""
+    // NotificationManager updates are also deduplicated by the visible
+    // notification state. Progress writers can report many byte-level changes
+    // that render the same percentage/text.
+    private var lastNotificationSignature: String? = null
     internal var lastProgress = 0L
     internal var lastTotal = 0L
     internal var nativeWorkerRunId = ""
@@ -346,6 +356,14 @@ class DownloadService : Service() {
     internal val nativeWorkerTerminalStatuses = mutableMapOf<String, String>()
     internal val nativeReplayGainEntries = mutableListOf<JSONObject>()
     internal val nativeReplayGainRequestAlbumKeys = mutableMapOf<String, String>()
+    // One coordinator polls Go's delta progress stream for all native workers.
+    // Individual workers consume this cache instead of parsing the complete
+    // multi-progress JSON independently.
+    internal val nativeWorkerProgressLock = Any()
+    internal val nativeWorkerProgressItems = mutableMapOf<String, NativeBackendProgress>()
+    internal var nativeWorkerProgressSeq = 0L
+    internal val nativeWorkerProgressEpoch = AtomicLong(0L)
+    @Volatile internal var nativeWorkerProgressJob: Job? = null
     internal val snapshotWriteLock = Any()
     internal val snapshotWriteSerial = AtomicLong(0L)
     internal var latestCommittedStateSnapshotSerial = 0L
@@ -625,6 +643,7 @@ class DownloadService : Service() {
     
     private fun startForegroundService() {
         isRunning = true
+        lastNotificationSignature = null
 
         ensureWakeLock()
 
@@ -1033,7 +1052,6 @@ class DownloadService : Service() {
             }
             if (nativeWorkerCancelRequested || generation != nativeWorkerGeneration) return
 
-            var progressJob: Job? = null
             var progressInitialized = false
             var retryCurrentRequest = false
             try {
@@ -1073,31 +1091,6 @@ class DownloadService : Service() {
                         )
                         Gobackend.initItemProgress(request.itemId)
                         progressInitialized = true
-                        progressJob = serviceScope.launch {
-                            var lastSignature: String? = null
-                            while (true) {
-                                updateNativeWorkerItemProgress(request.itemId)
-                                val signature = synchronized(nativeWorkerItems) {
-                                    nativeWorkerItems
-                                        .firstOrNull { it.itemId == request.itemId }
-                                        ?.let {
-                                            "${it.status}:${it.bytesReceived}:" +
-                                                "${it.bytesTotal}:${it.progress}"
-                                        }
-                                }
-                                if (signature != lastSignature) {
-                                    lastSignature = signature
-                                    writeNativeWorkerSnapshot(
-                                        isRunning = true,
-                                        isPaused = false,
-                                        currentItemId = request.itemId,
-                                        message = "Downloading",
-                                        settingsJson = settingsJson,
-                                    )
-                                }
-                                delay(1000)
-                            }
-                        }
                         currentStatus = "downloading"
                         updateNativeWorkerItem(request.itemId) {
                             it.status = "downloading"
@@ -1107,8 +1100,6 @@ class DownloadService : Service() {
                                 Gobackend.downloadByStrategy(json)
                             }
                         } finally {
-                            progressJob?.cancel()
-                            progressJob = null
                             updateNativeWorkerItemProgress(request.itemId)
                             try {
                                 Gobackend.clearItemProgress(request.itemId)
@@ -1319,7 +1310,6 @@ class DownloadService : Service() {
                     includeItems = true,
                 )
             } finally {
-                progressJob?.cancel()
                 if (progressInitialized) {
                     updateNativeWorkerItemProgress(request.itemId)
                     try {
@@ -1348,6 +1338,7 @@ class DownloadService : Service() {
         val finalizerMutex = Mutex()
         val providerSemaphores = ConcurrentHashMap<String, Semaphore>()
         val rateLimitAttempts = ConcurrentHashMap<String, Int>()
+        val progressCoordinatorJob = startNativeWorkerProgressCoordinator(generation)
 
         try {
             supervisorScope {
@@ -1384,6 +1375,7 @@ class DownloadService : Service() {
                 workers.joinAll()
             }
         } finally {
+            stopNativeWorkerProgressCoordinator(progressCoordinatorJob)
             if (generation == nativeWorkerGeneration) {
                 cancelScheduledNativeWorkerItemsSnapshot()
                 nativeWorkerRequestChannel = null
@@ -1420,6 +1412,7 @@ class DownloadService : Service() {
         generation: Long
     ) {
         val rateLimitAttempts = mutableMapOf<String, Int>()
+        val progressCoordinatorJob = startNativeWorkerProgressCoordinator(generation)
         try {
             var requestIndex = 0
             while (requestIndex < requests.size) {
@@ -1467,41 +1460,11 @@ class DownloadService : Service() {
                     includeItems = true
                 )
 
-                var progressJob: Job? = null
                 try {
                     Gobackend.initItemProgress(request.itemId)
-                    progressJob = serviceScope.launch {
-                        // The snapshot write is an AtomicFile open+fsync+
-                        // rename; skip ticks where progress hasn't moved.
-                        var lastSignature: String? = null
-                        while (true) {
-                            updateNativeWorkerItemProgress(request.itemId)
-                            val signature = synchronized(nativeWorkerItems) {
-                                nativeWorkerItems
-                                    .firstOrNull { it.itemId == request.itemId }
-                                    ?.let {
-                                        "${it.status}:${it.bytesReceived}:" +
-                                            "${it.bytesTotal}:${it.progress}"
-                                    }
-                            }
-                            if (signature != lastSignature) {
-                                lastSignature = signature
-                                writeNativeWorkerSnapshot(
-                                    isRunning = true,
-                                    isPaused = false,
-                                    currentItemId = request.itemId,
-                                    message = "Downloading",
-                                    settingsJson = settingsJson
-                                )
-                            }
-                            delay(1000)
-                        }
-                    }
                     val response = SafDownloadHandler.handle(this, request.requestJson) { json ->
                         Gobackend.downloadByStrategy(json)
                     }
-                    progressJob.cancel()
-                    progressJob = null
                     if (generation != nativeWorkerGeneration) {
                         // Superseded while blocked in the download call; the
                         // new run owns the shared state now.
@@ -1706,7 +1669,6 @@ class DownloadService : Service() {
                         includeItems = true
                     )
                 } finally {
-                    progressJob?.cancel()
                     updateNativeWorkerItemProgress(request.itemId)
                     try {
                         Gobackend.clearItemProgress(request.itemId)
@@ -1721,6 +1683,7 @@ class DownloadService : Service() {
                 }
             }
         } finally {
+            stopNativeWorkerProgressCoordinator(progressCoordinatorJob)
             if (generation == nativeWorkerGeneration) {
                 cancelScheduledNativeWorkerItemsSnapshot()
                 if (!nativeWorkerCancelRequested) {
@@ -1750,10 +1713,15 @@ class DownloadService : Service() {
         }
     }
 
+    @Synchronized
     private fun ensureWakeLock() {
         val existingWakeLock = wakeLock
         if (existingWakeLock?.isHeld == true) {
-            existingWakeLock.acquire(WAKELOCK_RENEW_MS)
+            val now = SystemClock.elapsedRealtime()
+            if (now - wakeLockLastRenewedAt >= WAKELOCK_RENEW_INTERVAL_MS) {
+                existingWakeLock.acquire(WAKELOCK_RENEW_MS)
+                wakeLockLastRenewedAt = now
+            }
             return
         }
         if (existingWakeLock != null) {
@@ -1768,12 +1736,14 @@ class DownloadService : Service() {
             setReferenceCounted(false)
             acquire(WAKELOCK_RENEW_MS)
         }
+        wakeLockLastRenewedAt = SystemClock.elapsedRealtime()
     }
 
     @Synchronized
     private fun releaseWakeLock() {
         val existingWakeLock = wakeLock
         wakeLock = null
+        wakeLockLastRenewedAt = 0L
         if (existingWakeLock?.isHeld == true) {
             try {
                 existingWakeLock.release()
@@ -1786,6 +1756,7 @@ class DownloadService : Service() {
     @Synchronized
     private fun stopForegroundService(cancelNativeWorker: Boolean = true) {
         cancelScheduledNativeWorkerItemsSnapshot()
+        cancelNativeWorkerProgressCoordinator()
         if (cancelNativeWorker) {
             nativeWorkerCancelRequested = true
             nativeWorkerPreparationComplete = true
@@ -1811,6 +1782,7 @@ class DownloadService : Service() {
         nativeWorkerNetworkPaused = false
         nativeWorkerJob = null
         isRunning = false
+        lastNotificationSignature = null
         widgetSignature = ""
         try {
             DownloadQueueWidgetProvider.push(this, running = false)
@@ -1828,15 +1800,47 @@ class DownloadService : Service() {
             return nativeWorkerItems.isNotEmpty()
         }
     }
+
+    internal fun isNativeWorkerProgressActive(generation: Long): Boolean =
+        generation == nativeWorkerGeneration &&
+            !nativeWorkerCancelRequested &&
+            isRunning
+
+    internal fun nativeWorkerCurrentItemIdSnapshot(): String = nativeWorkerCurrentItemId
     
+    @Synchronized
     internal fun updateNotification(progress: Long, total: Long) {
         if (!isRunning) return
+        // Keep the foreground-service wake lock alive even when the visible
+        // notification is unchanged and therefore deduplicated below.
         ensureWakeLock()
+
+        val visibleProgress = when {
+            total <= 0L -> "indeterminate"
+            total == NOTIFICATION_PERCENT_TOTAL ->
+                "percent:${(progress * 100 / total).toInt()}"
+            else -> {
+                // buildNotification renders one decimal place for MB and an
+                // integer percentage. Suppress byte-level updates that would
+                // produce the same visible notification.
+                val progressTenthsMb = progress / (1024L * 1024L / 10L)
+                val totalTenthsMb = total / (1024L * 1024L / 10L)
+                val percent = (progress * 100 / total).toInt()
+                "mb:${progressTenthsMb}:${totalTenthsMb}:$percent"
+            }
+        }
+        val signature = "$currentTrackName|$currentArtistName|$currentStatus|$queueCount|$visibleProgress"
+        if (signature == lastNotificationSignature) return
+        lastNotificationSignature = signature
 
         val notification = buildNotification(progress, total)
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, notification)
         pushWidgetState(progress, total)
+    }
+
+    internal fun maintainNativeWorkerWakeLock() {
+        if (isRunning) ensureWakeLock()
     }
 
     private fun pushWidgetState(progress: Long, total: Long) {

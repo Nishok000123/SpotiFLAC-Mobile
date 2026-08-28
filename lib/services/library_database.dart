@@ -16,26 +16,39 @@ final _log = AppLogger('LibraryDatabase');
 
 class LibraryDatabase {
   static final LibraryDatabase instance = LibraryDatabase._init();
+  // The FTS table is a derived, optional index and is initialized lazily after
+  // the existing schema migration, so it does not require a user_version bump.
   static const int schemaVersion = 13;
   static const String legacySourceId = LocalLibraryItem.legacySourceId;
   static const String visibleLibraryView = 'library_visible';
+  static const String searchFtsTable = 'library_search_fts';
   static const int audioMetadataScanVersion = 3;
   static final sqlite.SingleFlightInitializer<Database> _database =
       sqlite.SingleFlightInitializer<Database>();
   bool _historyAttached = false;
+  bool _searchFtsAvailable = false;
 
   LibraryDatabase._init();
 
   Future<Database> get database {
-    return _database.getOrCreate(
-      () => sqlite.openAppDatabase(
+    return _database.getOrCreate(() async {
+      final db = await sqlite.openAppDatabase(
         'local_library.db',
         version: schemaVersion,
         onCreate: _createDB,
         onUpgrade: _upgradeDB,
-      ),
-    );
+      );
+      // onCreate normally initializes this derived index. Retry once after
+      // opening an existing database in case an earlier setup was
+      // interrupted; unsupported SQLite builds remain on the LIKE fallback.
+      if (!_searchFtsAvailable) {
+        _searchFtsAvailable = await _createSearchFts(db);
+      }
+      return db;
+    });
   }
+
+  bool get searchFtsAvailable => _searchFtsAvailable;
 
   Future<void> _ensureHistoryAttached(Database db) async {
     if (_historyAttached) return;
@@ -114,6 +127,7 @@ class LibraryDatabase {
     await _createQueueIndexes(db);
     await _createPathKeyTable(db);
     await _createLibrarySources(db);
+    _searchFtsAvailable = await _createSearchFts(db);
 
     _log.i('Library database schema created with indexes');
   }
@@ -221,6 +235,15 @@ class LibraryDatabase {
       );
       _log.i('Added indexed lyrics availability metadata');
     }
+  }
+
+  Future<bool> _createSearchFts(DatabaseExecutor db) {
+    return sqlite.createTrigramFtsIndex(
+      db,
+      ftsTable: searchFtsTable,
+      contentTable: 'library',
+      triggerPrefix: 'library_search_fts',
+    );
   }
 
   Future<void> _createLibrarySources(DatabaseExecutor db) async {

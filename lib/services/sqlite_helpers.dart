@@ -65,6 +65,11 @@ Future<Database> openAppDatabase(
       if (foreignKeys) {
         await db.execute('PRAGMA foreign_keys = ON');
       }
+      // History/library use INSERT OR REPLACE extensively. SQLite only fires
+      // delete triggers for REPLACE when recursive_triggers is enabled; the
+      // FTS external-content delete trigger needs that event to remove the old
+      // rowid instead of accumulating unreachable index entries.
+      await db.execute('PRAGMA recursive_triggers = ON');
       if (incrementalAutoVacuum) {
         final tables = await db.rawQuery('''
           SELECT 1
@@ -91,6 +96,101 @@ Future<Database> openAppDatabase(
 
 String normalizeLookupText(String? value) {
   return (value ?? '').trim().toLowerCase();
+}
+
+/// Returns a literal phrase suitable for the trigram FTS5 MATCH operator.
+///
+/// The trigram tokenizer cannot answer one- or two-character searches, so
+/// callers should use their compatibility fallback when this returns null.
+/// Quoting and escaping the value keeps user-entered FTS operators literal.
+String? ftsPhraseSearchQuery(String value) {
+  if (value.runes.length < 3 || value.contains('\u0000')) return null;
+  return '"${value.replaceAll('"', '""')}"';
+}
+
+/// Creates an external-content FTS5 index that preserves substring search
+/// semantics through SQLite's trigram tokenizer.
+///
+/// FTS5 is an optional SQLite extension on some platform/database builds, so
+/// callers must retain their existing query fallback when this returns false.
+/// The index is external-content: the source table remains authoritative and
+/// these triggers keep the index synchronized for every insert/update/delete,
+/// including writes that happen outside the Dart repository methods.
+Future<bool> createTrigramFtsIndex(
+  DatabaseExecutor db, {
+  required String ftsTable,
+  required String contentTable,
+  required String triggerPrefix,
+}) async {
+  try {
+    final existingIndex = await db.rawQuery(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+      [ftsTable],
+    );
+    final existingTriggers = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'trigger' AND name IN (?, ?, ?)",
+      ['${triggerPrefix}_ai', '${triggerPrefix}_ad', '${triggerPrefix}_au'],
+    );
+    final needsRebuild = existingIndex.isEmpty || existingTriggers.length != 3;
+    await db.execute('''
+      CREATE VIRTUAL TABLE IF NOT EXISTS $ftsTable USING fts5(
+        search_text,
+        content='$contentTable',
+        content_rowid='rowid',
+        tokenize='trigram'
+      )
+    ''');
+    await db.execute('''
+      CREATE TRIGGER IF NOT EXISTS ${triggerPrefix}_ai
+      AFTER INSERT ON $contentTable
+      BEGIN
+        INSERT INTO $ftsTable(rowid, search_text)
+        VALUES (new.rowid, COALESCE(new.search_text, ''));
+      END
+    ''');
+    await db.execute('''
+      CREATE TRIGGER IF NOT EXISTS ${triggerPrefix}_ad
+      AFTER DELETE ON $contentTable
+      BEGIN
+        INSERT INTO $ftsTable($ftsTable, rowid, search_text)
+        VALUES ('delete', old.rowid, COALESCE(old.search_text, ''));
+      END
+    ''');
+    await db.execute('''
+      CREATE TRIGGER IF NOT EXISTS ${triggerPrefix}_au
+      AFTER UPDATE OF search_text ON $contentTable
+      BEGIN
+        INSERT INTO $ftsTable($ftsTable, rowid, search_text)
+        VALUES ('delete', old.rowid, COALESCE(old.search_text, ''));
+        INSERT INTO $ftsTable(rowid, search_text)
+        VALUES (new.rowid, COALESCE(new.search_text, ''));
+      END
+    ''');
+
+    // Rebuild a new or partially-created index. Avoid doing this on every app
+    // start: the external-content table is already kept current by triggers.
+    if (needsRebuild) {
+      await db.rawInsert("INSERT INTO $ftsTable($ftsTable) VALUES (?)", [
+        'rebuild',
+      ]);
+    }
+    return true;
+  } catch (error) {
+    _log.w(
+      'FTS5 index unavailable for $contentTable; using LIKE fallback: $error',
+    );
+    // Do not leave a half-created index/triggers behind. This makes a later
+    // retry deterministic and never compromises the authoritative table.
+    try {
+      await db.execute('DROP TRIGGER IF EXISTS ${triggerPrefix}_ai');
+      await db.execute('DROP TRIGGER IF EXISTS ${triggerPrefix}_ad');
+      await db.execute('DROP TRIGGER IF EXISTS ${triggerPrefix}_au');
+      await db.execute('DROP TABLE IF EXISTS $ftsTable');
+    } catch (cleanupError) {
+      _log.w('Failed to clean up partial FTS5 index $ftsTable: $cleanupError');
+    }
+    return false;
+  }
 }
 
 Future<void> addColumnIfMissing(

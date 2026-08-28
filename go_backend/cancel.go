@@ -90,6 +90,26 @@ func (r *cancelRegistry) requestCancel(id string) {
 	r.mu.Unlock()
 }
 
+// requestCancelActive marks every entry with live work as cancelled and
+// returns its ID. Pending cancellation sentinels (refs <= 0) are deliberately
+// ignored so a platform lifecycle callback cannot poison a future retry.
+func (r *cancelRegistry) requestCancelActive() []string {
+	r.mu.Lock()
+	ids := make([]string, 0, len(r.entries))
+	for id, entry := range r.entries {
+		if entry == nil || entry.refs <= 0 {
+			continue
+		}
+		entry.canceled = true
+		if entry.cancel != nil {
+			entry.cancel()
+		}
+		ids = append(ids, id)
+	}
+	r.mu.Unlock()
+	return ids
+}
+
 func (r *cancelRegistry) isCancelled(id string) bool {
 	if id == "" {
 		return false
@@ -147,6 +167,14 @@ func cancelDownload(itemID string) {
 	}
 	downloadCancels.requestCancel(itemID)
 	RemoveItemProgress(itemID)
+}
+
+func cancelAllActiveDownloads() []string {
+	itemIDs := downloadCancels.requestCancelActive()
+	for _, itemID := range itemIDs {
+		RemoveItemProgress(itemID)
+	}
+	return itemIDs
 }
 
 func isDownloadCancelled(itemID string) bool {

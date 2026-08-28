@@ -25,6 +25,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -32,6 +33,18 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicLong
 
 // Native-worker item state snapshots for the Flutter side.
+
+/**
+ * The compact subset of Go progress needed by the Android worker UI. Keeping
+ * this as a Kotlin value avoids sharing mutable JSONObject instances between
+ * the polling coroutine and worker coroutines.
+ */
+internal data class NativeBackendProgress(
+    val status: String,
+    val bytesReceived: Long,
+    val bytesTotal: Long,
+    val progress: Double,
+)
 
 internal fun DownloadService.writeNativeWorkerSnapshot(
     isRunning: Boolean,
@@ -41,10 +54,20 @@ internal fun DownloadService.writeNativeWorkerSnapshot(
     lastResult: JSONObject? = null,
     settingsJson: String = "",
     includeItems: Boolean = false,
+    progressItemIds: Collection<String>? = null,
+    progressCoordinatorEpoch: Long? = null,
     snapshotSerial: Long = snapshotWriteSerial.incrementAndGet()
 ) {
     try {
         synchronized(snapshotWriteLock) {
+            // A stopped/superseded progress coordinator must not publish a
+            // newer running snapshot after the queue's terminal snapshot.
+            if (
+                progressCoordinatorEpoch != null &&
+                nativeWorkerProgressEpoch.get() != progressCoordinatorEpoch
+            ) {
+                return
+            }
             if (includeItems) {
                 if (snapshotSerial < latestCommittedStateSnapshotSerial) return
             } else {
@@ -67,13 +90,23 @@ internal fun DownloadService.writeNativeWorkerSnapshot(
                 .put("snapshot_serial", snapshotSerial)
                 .put("state_serial", if (includeItems) snapshotSerial else latestCommittedStateSnapshotSerial)
                 .put("snapshot_mode", if (includeItems) "compact_items" else "delta")
+            if (includeItems) {
+                // The queue index is structural state. Progress deltas carry
+                // only the changed item; repeating every ID here made each
+                // tick grow linearly with a large queue.
+                snapshot.put("item_ids", nativeWorkerItemIds())
+            }
             // Snapshot of the header before the per-item payload is
             // attached; served to pollers that already consumed this
             // items payload (see getNativeWorkerSnapshot).
             val headerCandidate = if (includeItems) snapshot.toString() else null
-            snapshot.put("item_ids", nativeWorkerItemIds())
             if (includeItems) {
                 snapshot.put("items", nativeWorkerItemsSnapshot(includeStatic = false))
+            } else if (progressItemIds != null) {
+                snapshot.put(
+                    "item_deltas",
+                    nativeWorkerItemsSnapshot(progressItemIds, includeStatic = false),
+                )
             } else {
                 nativeWorkerItemSnapshot(currentItemId, includeStatic = false)?.let {
                     snapshot.put("item_delta", it)
@@ -209,60 +242,200 @@ internal fun DownloadService.updateNativeWorkerItem(itemId: String, updater: (Do
     }
 }
 
-internal fun DownloadService.updateNativeWorkerItemProgress(itemId: String) {
-    try {
-        val raw = Gobackend.getAllDownloadProgress()
+/**
+ * Polls the exported Go delta API once for the whole native queue. Workers
+ * update their item state from [nativeWorkerProgressItems] instead of making
+ * independent full-payload calls. The generation check prevents a delayed
+ * gomobile call from an old queue from contaminating a replacement queue.
+ */
+internal fun DownloadService.startNativeWorkerProgressCoordinator(generation: Long): Job {
+    nativeWorkerProgressJob?.cancel()
+    val coordinatorEpoch = nativeWorkerProgressEpoch.incrementAndGet()
+    synchronized(nativeWorkerProgressLock) {
+        nativeWorkerProgressItems.clear()
+        nativeWorkerProgressSeq = 0L
+    }
+
+    val job = serviceScope.launch {
+        val lastSignatures = mutableMapOf<String, String?>()
+        while (isActive && isNativeWorkerProgressActive(generation)) {
+            maintainNativeWorkerWakeLock()
+            val changedItemIds = pollNativeWorkerProgress(generation)
+            val snapshotItemIds = mutableListOf<String>()
+            for (itemId in changedItemIds) {
+                if (!updateNativeWorkerItemProgress(itemId, emitNotification = false)) {
+                    continue
+                }
+                val signature = synchronized(nativeWorkerItems) {
+                    nativeWorkerItems.firstOrNull { it.itemId == itemId }?.let {
+                        "${it.status}:${it.bytesReceived}:${it.bytesTotal}:${it.progress}"
+                    }
+                }
+                if (signature != null && lastSignatures[itemId] != signature) {
+                    lastSignatures[itemId] = signature
+                    snapshotItemIds.add(itemId)
+                }
+            }
+
+            if (snapshotItemIds.isNotEmpty() && isNativeWorkerProgressActive(generation)) {
+                // Only the active item is visible in the foreground
+                // notification. Apply it once after all cache updates so a
+                // concurrent queue never emits one notification per worker.
+                val activeItemId = nativeWorkerCurrentItemIdSnapshot()
+                if (activeItemId.isNotBlank() && activeItemId in snapshotItemIds) {
+                    updateNativeWorkerItemProgress(activeItemId, emitNotification = true)
+                }
+                val orderedItemIds = snapshotItemIds
+                    .filter { it != activeItemId }
+                    .let { ids ->
+                        if (activeItemId in snapshotItemIds) ids + activeItemId else ids
+                    }
+                // Commit every changed worker in one AtomicFile write. Writing
+                // one item_delta per worker would overwrite the same progress
+                // file repeatedly and expose only the last delta to Flutter.
+                writeNativeWorkerSnapshot(
+                    isRunning = true,
+                    isPaused = isNativeWorkerPaused(),
+                    currentItemId = activeItemId.ifBlank { orderedItemIds.last() },
+                    message = if (isNativeWorkerPaused()) nativeWorkerPauseMessage() else "Downloading",
+                    progressItemIds = orderedItemIds,
+                    progressCoordinatorEpoch = coordinatorEpoch,
+                )
+            }
+            delay(1000)
+        }
+    }
+    nativeWorkerProgressJob = job
+    return job
+}
+
+internal fun DownloadService.stopNativeWorkerProgressCoordinator(job: Job? = nativeWorkerProgressJob) {
+    if (job == null) return
+    if (nativeWorkerProgressJob === job) {
+        nativeWorkerProgressJob = null
+        nativeWorkerProgressEpoch.incrementAndGet()
+    }
+    job.cancel()
+}
+
+internal fun DownloadService.cancelNativeWorkerProgressCoordinator() {
+    stopNativeWorkerProgressCoordinator()
+    synchronized(nativeWorkerProgressLock) {
+        nativeWorkerProgressItems.clear()
+        nativeWorkerProgressSeq = 0L
+    }
+}
+
+private fun DownloadService.pollNativeWorkerProgress(generation: Long): Set<String> {
+    val sinceSeq = synchronized(nativeWorkerProgressLock) { nativeWorkerProgressSeq }
+    val raw = try {
+        Gobackend.getAllDownloadProgressDelta(sinceSeq)
+    } catch (_: Exception) {
+        return emptySet()
+    }
+    if (raw.isBlank() || !isNativeWorkerProgressActive(generation)) return emptySet()
+
+    return try {
         val root = JSONObject(raw)
-        val items = root.optJSONObject("items") ?: return
-        val progress = items.optJSONObject(itemId) ?: return
-        val backendStatus = progress.optString("status", "downloading")
-        val bytesReceived = progress.optLong("bytes_received", 0L)
-        val bytesTotal = progress.optLong("bytes_total", 0L)
+        val nextSeq = root.optLong("seq", sinceSeq)
+        val reset = root.optBoolean("reset", false)
+        val updated = mutableMapOf<String, NativeBackendProgress>()
+        root.optJSONObject("items")?.let { items ->
+            val keys = items.keys()
+            while (keys.hasNext()) {
+                val itemId = keys.next()
+                val item = items.optJSONObject(itemId) ?: continue
+                val bytesReceived = item.optLong("bytes_received", 0L).coerceAtLeast(0L)
+                val bytesTotal = item.optLong("bytes_total", 0L).coerceAtLeast(0L)
+                val progress = item.optDouble("progress", 0.0)
+                    .takeUnless { it.isNaN() }
+                    ?.coerceIn(0.0, 1.0)
+                    ?: 0.0
+                updated[itemId] = NativeBackendProgress(
+                    status = item.optString("status", "downloading"),
+                    bytesReceived = bytesReceived,
+                    bytesTotal = bytesTotal,
+                    progress = progress,
+                )
+            }
+        }
+        val removed = mutableListOf<String>()
+        root.optJSONArray("removed")?.let { ids ->
+            for (index in 0 until ids.length()) {
+                ids.optString(index, "").takeIf { it.isNotBlank() }?.let(removed::add)
+            }
+        }
+        synchronized(nativeWorkerProgressLock) {
+            if (!isNativeWorkerProgressActive(generation)) return emptySet()
+            if (reset) nativeWorkerProgressItems.clear()
+            nativeWorkerProgressItems.putAll(updated)
+            removed.forEach { nativeWorkerProgressItems.remove(it) }
+            if (nextSeq > nativeWorkerProgressSeq) {
+                nativeWorkerProgressSeq = nextSeq
+            }
+        }
+        updated.keys
+    } catch (_: Exception) {
+        emptySet()
+    }
+}
+
+internal fun DownloadService.updateNativeWorkerItemProgress(
+    itemId: String,
+    emitNotification: Boolean = true,
+): Boolean {
+    return try {
+        val progress = synchronized(nativeWorkerProgressLock) {
+            nativeWorkerProgressItems[itemId]
+        } ?: return false
+
+        val backendStatus = progress.status
         if (backendStatus == "preparing") {
-            currentStatus = "preparing"
             updateNativeWorkerItem(itemId) {
                 it.status = "preparing"
                 it.progress = 0.0
                 it.bytesReceived = 0L
                 it.bytesTotal = 0L
             }
-            lastProgress = 0L
-            lastTotal = 0L
-            updateNotification(0L, 0L)
-            return
+            if (emitNotification) {
+                currentStatus = "preparing"
+                lastProgress = 0L
+                lastTotal = 0L
+                updateNotification(0L, 0L)
+            }
+            return true
         }
-        val progressValue = if (bytesTotal > 0L) {
-            bytesReceived.toDouble() / bytesTotal.toDouble()
+
+        val progressValue = if (progress.bytesTotal > 0L) {
+            progress.bytesReceived.toDouble() / progress.bytesTotal.toDouble()
         } else {
-            progress.optDouble("progress", 0.0)
+            progress.progress
         }.coerceIn(0.0, 1.0)
-        currentStatus = if (backendStatus == "finalizing") {
-            "finalizing"
-        } else {
-            "downloading"
-        }
+        val itemStatus = if (backendStatus == "finalizing") "finalizing" else "downloading"
         updateNativeWorkerItem(itemId) {
-            it.status = currentStatus
+            it.status = itemStatus
             it.progress = progressValue
-            it.bytesReceived = bytesReceived
-            it.bytesTotal = bytesTotal
+            it.bytesReceived = progress.bytesReceived
+            it.bytesTotal = progress.bytesTotal
         }
-        if (bytesTotal > 0L) {
-            lastProgress = bytesReceived
-            lastTotal = bytesTotal
-            updateNotification(bytesReceived, bytesTotal)
-        } else if (progressValue > 0.0) {
-            val percentProgress = (progressValue * DownloadService.NOTIFICATION_PERCENT_TOTAL).toLong()
-                .coerceIn(0L, DownloadService.NOTIFICATION_PERCENT_TOTAL)
-            lastProgress = percentProgress
-            lastTotal = DownloadService.NOTIFICATION_PERCENT_TOTAL
-            updateNotification(percentProgress, DownloadService.NOTIFICATION_PERCENT_TOTAL)
-        } else {
-            lastProgress = 0L
-            lastTotal = 0L
-            updateNotification(0L, 0L)
+        if (emitNotification) {
+            currentStatus = itemStatus
+            if (progress.bytesTotal > 0L) {
+                lastProgress = progress.bytesReceived
+                lastTotal = progress.bytesTotal
+            } else if (progressValue > 0.0) {
+                lastProgress = (progressValue * DownloadService.NOTIFICATION_PERCENT_TOTAL).toLong()
+                    .coerceIn(0L, DownloadService.NOTIFICATION_PERCENT_TOTAL)
+                lastTotal = DownloadService.NOTIFICATION_PERCENT_TOTAL
+            } else {
+                lastProgress = 0L
+                lastTotal = 0L
+            }
+            updateNotification(lastProgress, lastTotal)
         }
+        true
     } catch (_: Exception) {
+        false
     }
 }
 
@@ -319,6 +492,22 @@ internal fun DownloadService.nativeWorkerItemsSnapshot(includeStatic: Boolean): 
     synchronized(nativeWorkerItems) {
         for (item in nativeWorkerItems) {
             array.put(nativeWorkerItemSnapshotLocked(item, includeStatic))
+        }
+    }
+    return array
+}
+
+internal fun DownloadService.nativeWorkerItemsSnapshot(
+    itemIds: Collection<String>,
+    includeStatic: Boolean,
+): JSONArray {
+    val requested = itemIds.toSet()
+    val array = JSONArray()
+    synchronized(nativeWorkerItems) {
+        for (item in nativeWorkerItems) {
+            if (item.itemId in requested) {
+                array.put(nativeWorkerItemSnapshotLocked(item, includeStatic))
+            }
         }
     }
     return array

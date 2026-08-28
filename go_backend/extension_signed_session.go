@@ -2,6 +2,7 @@ package gobackend
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -38,10 +39,16 @@ var (
 	pendingSignedSessionGrants   = make(map[string]string)
 	pendingSignedSessionGrantsMu sync.Mutex
 	signedSessionCoordinators    sync.Map
-	signedSessionRetryWait       = time.Sleep
-	signedSessionProviderWait    = sleepRetry
-	signedSessionRequestNow      = time.Now
+	// signedSessionRetryWait is retained as a test hook for callers that used
+	// the old duration-only seam. Production waits use the context-aware hook
+	// below; a non-nil legacy hook short-circuits the delay in tests.
+	signedSessionRetryWait        func(time.Duration)
+	signedSessionRetryWaitContext = sleepRetry
+	signedSessionProviderWait     = sleepRetry
+	signedSessionRequestNow       = time.Now
 )
+
+const signedSessionExchangeTimeout = DefaultJSTimeout
 
 var sessionHintPattern = regexp.MustCompile(`^[0-9a-f]{32}$`)
 
@@ -109,6 +116,45 @@ type signedSessionCoordinator struct {
 	pendingExtensionIDs map[string]struct{}
 	completedGrantHash  string
 	blockedGeneration   string
+	clearGeneration     uint64
+
+	// exchangeInFlight serializes grant exchanges without keeping mu held over
+	// HTTP or Retry-After backoff. Waiters observe the completion channel and
+	// retry their state check after the owner commits or fails.
+	exchangeInFlight bool
+	exchangeDone     chan struct{}
+}
+
+func (c *signedSessionCoordinator) beginExchange(ctx context.Context) (func(), error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	for {
+		c.mu.Lock()
+		if !c.exchangeInFlight {
+			c.exchangeInFlight = true
+			c.exchangeDone = make(chan struct{})
+			done := c.exchangeDone
+			c.mu.Unlock()
+			return func() {
+				c.mu.Lock()
+				if c.exchangeInFlight && c.exchangeDone == done {
+					c.exchangeInFlight = false
+					c.exchangeDone = nil
+					close(done)
+				}
+				c.mu.Unlock()
+			}, nil
+		}
+		done := c.exchangeDone
+		c.mu.Unlock()
+
+		select {
+		case <-done:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
 }
 
 func (r *extensionRuntime) signedSessionCoordinator(config SignedSessionConfig) (*signedSessionCoordinator, error) {
@@ -538,6 +584,11 @@ func (r *extensionRuntime) signedSessionClear(call goja.FunctionCall) goja.Value
 	if err := r.saveSignedSession(config, record); err != nil {
 		return r.vm.ToValue(map[string]any{"success": false, "error": err.Error()})
 	}
+	// Invalidate exchanges that released the coordinator lock while performing
+	// HTTP. A response that started before this explicit clear must never
+	// resurrect the just-cleared credentials.
+	coordinator.clearGeneration++
+	coordinator.completedGrantHash = ""
 	coordinator.clearBlockedGeneration()
 	coordinator.clearChallenge()
 	ClearPendingAuthRequest(r.extensionID)
@@ -560,7 +611,9 @@ func (r *extensionRuntime) signedSessionCompleteGrant(call goja.FunctionCall) go
 	if grant == "" {
 		return r.vm.ToValue(map[string]any{"success": false, "error": "no pending grant"})
 	}
-	if err := r.exchangeSignedSessionGrant(grant); err != nil {
+	ctx, cancel := r.signedSessionExchangeContext()
+	defer cancel()
+	if err := r.exchangeSignedSessionGrantContext(ctx, grant); err != nil {
 		return r.vm.ToValue(map[string]any{"success": false, "error": err.Error()})
 	}
 	pendingSignedSessionGrantsMu.Lock()
@@ -571,23 +624,87 @@ func (r *extensionRuntime) signedSessionCompleteGrant(call goja.FunctionCall) go
 }
 
 func (r *extensionRuntime) exchangeSignedSessionGrant(grant string) error {
+	ctx, cancel := r.signedSessionExchangeContext()
+	defer cancel()
+	return r.exchangeSignedSessionGrantContext(ctx, grant)
+}
+
+func (r *extensionRuntime) signedSessionExchangeContext() (context.Context, context.CancelFunc) {
+	parent := context.Background()
+	if r != nil {
+		if itemID := r.getActiveDownloadItemID(); itemID != "" {
+			parent = downloadCancelContext(itemID)
+		} else if requestID := r.getActiveRequestID(); requestID != "" {
+			parent = extensionRequestCancelContext(requestID)
+		}
+	}
+	return context.WithTimeout(parent, signedSessionExchangeTimeout)
+}
+
+func waitSignedSessionRetry(ctx context.Context, delay time.Duration) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	// Keep the old duration-only hook useful for existing package tests without
+	// allowing production to fall back to an uninterruptible time.Sleep. The
+	// default hook is nil; tests install an immediate recorder/no-op here.
+	if legacyWait := signedSessionRetryWait; legacyWait != nil {
+		done := make(chan struct{})
+		go func() {
+			legacyWait(delay)
+			close(done)
+		}()
+		select {
+		case <-done:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return signedSessionRetryWaitContext(ctx, delay)
+}
+
+func (r *extensionRuntime) exchangeSignedSessionGrantContext(ctx context.Context, grant string) error {
+	if r == nil || r.manifest == nil || r.manifest.SignedSession == nil {
+		return fmt.Errorf("signedSession is not configured")
+	}
+	if r.httpClient == nil {
+		return fmt.Errorf("signed-session exchange HTTP client is unavailable")
+	}
 	config := signedSessionConfigWithDefaults(r.manifest.SignedSession)
 	coordinator, err := r.signedSessionCoordinator(config)
 	if err != nil {
 		return err
 	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	coordinator.mu.Lock()
-	defer coordinator.mu.Unlock()
-	return r.exchangeSignedSessionGrantLocked(config, coordinator, grant)
+	clearGeneration := coordinator.clearGeneration
+	coordinator.mu.Unlock()
+	release, err := coordinator.beginExchange(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
+	return r.exchangeSignedSessionGrantLocked(ctx, config, coordinator, clearGeneration, grant)
 }
 
 func (r *extensionRuntime) exchangeSignedSessionGrantLocked(
+	ctx context.Context,
 	config SignedSessionConfig,
 	coordinator *signedSessionCoordinator,
+	clearGeneration uint64,
 	grant string,
 ) error {
+	coordinator.mu.Lock()
+	if coordinator.clearGeneration != clearGeneration {
+		coordinator.mu.Unlock()
+		return fmt.Errorf("signed-session exchange was superseded by session clear")
+	}
 	record, err := r.loadSignedSession(config)
 	if err != nil {
+		coordinator.mu.Unlock()
 		return err
 	}
 	grantHashBytes := sha256.Sum256([]byte(grant))
@@ -599,10 +716,12 @@ func (r *extensionRuntime) exchangeSignedSessionGrantLocked(
 		signedSessionRecordIsUsable(record) {
 		coordinator.clearBlockedGeneration()
 		coordinator.clearChallenge()
+		coordinator.mu.Unlock()
 		return nil
 	}
 	endpoint, err := signedSessionURL(config, config.Endpoints.Exchange)
 	if err != nil {
+		coordinator.mu.Unlock()
 		return err
 	}
 	payload := map[string]any{
@@ -612,9 +731,11 @@ func (r *extensionRuntime) exchangeSignedSessionGrantLocked(
 		"platform":    config.Platform,
 	}
 	body, _ := json.Marshal(payload)
+	coordinator.mu.Unlock()
+
 	var respBody []byte
 	for attempt := 1; attempt <= signedSessionExchangeMaxAttempts; attempt++ {
-		req, requestErr := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(body))
+		req, requestErr := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 		if requestErr != nil {
 			return requestErr
 		}
@@ -646,7 +767,9 @@ func (r *extensionRuntime) exchangeSignedSessionGrantLocked(
 				attempt+1,
 				signedSessionExchangeMaxAttempts,
 			)
-			signedSessionRetryWait(retryAfter)
+			if waitErr := waitSignedSessionRetry(ctx, retryAfter); waitErr != nil {
+				return waitErr
+			}
 			continue
 		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -665,6 +788,30 @@ func (r *extensionRuntime) exchangeSignedSessionGrantLocked(
 	if exchanged.SessionID == "" || exchanged.SessionSecret == "" || exchanged.ExpiresAt == "" {
 		return fmt.Errorf("session exchange response missing session fields")
 	}
+
+	coordinator.mu.Lock()
+	defer coordinator.mu.Unlock()
+	if coordinator.clearGeneration != clearGeneration {
+		return fmt.Errorf("signed-session exchange was superseded by session clear")
+	}
+	latest, err := r.loadSignedSession(config)
+	if err != nil {
+		return err
+	}
+	// Another exchange may have completed while this request was in flight.
+	// Never overwrite that newer shared session with a stale response.
+	if coordinator.completedGrantHash == grantHash &&
+		signedSessionRecordIsUsable(latest) {
+		coordinator.clearBlockedGeneration()
+		coordinator.clearChallenge()
+		return nil
+	}
+	if signedSessionRecordIsUsable(latest) && !sameSignedSession(latest, record) {
+		coordinator.clearBlockedGeneration()
+		coordinator.clearChallenge()
+		return nil
+	}
+	record = latest
 	record.SessionID = exchanged.SessionID
 	record.SessionSecret = exchanged.SessionSecret
 	record.ExpiresAt = exchanged.ExpiresAt

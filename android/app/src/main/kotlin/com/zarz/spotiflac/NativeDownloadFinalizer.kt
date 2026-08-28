@@ -40,6 +40,16 @@ object NativeDownloadFinalizer {
     // Native finalizer owns background-safe history writes while Flutter may be suspended.
     // Keep this schema contract in sync with Dart HistoryDatabase before bumping either side.
     const val HISTORY_SCHEMA_VERSION = 13
+    // Keep one native connection for the process. Opening history.db and
+    // probing/migrating its schema for every finalized track was expensive,
+    // and a single guarded writer also prevents native finalizer calls from
+    // interleaving transactions on the same connection. Flutter/sqflite uses
+    // its own WAL connection, so the busy timeout remains configured once on
+    // this connection for cross-connection contention.
+    private val historyDatabaseLock = Any()
+    private var historyDatabase: SQLiteDatabase? = null
+    private var historyDatabasePath = ""
+    private var historyDatabaseSchemaVersion = 0
     internal val activeFFmpegSessionIds = mutableSetOf<Long>()
     internal val nativeFFmpegSessionIds = BoundedRegistry<Long>(maxEntries = 256)
     internal val activeFFmpegSessionLock = Any()
@@ -1346,26 +1356,18 @@ object NativeDownloadFinalizer {
         values: ContentValues,
         deduplicateTrack: Boolean = true,
     ) {
-        val dbFile = File(File(context.applicationInfo.dataDir, "app_flutter"), "history.db")
-        dbFile.parentFile?.mkdirs()
-        val db = SQLiteDatabase.openDatabase(
-            dbFile.absolutePath,
-            null,
-            SQLiteDatabase.OPEN_READWRITE or
-                SQLiteDatabase.CREATE_IF_NECESSARY or
-                SQLiteDatabase.ENABLE_WRITE_AHEAD_LOGGING,
-        )
-        try {
-	            configureHistoryDatabase(db)
-	            db.beginTransaction()
-	            try {
-	                if (db.version > HISTORY_SCHEMA_VERSION) {
-	                    throw IllegalStateException(
-	                        "history schema v${db.version} is newer than native finalizer contract v$HISTORY_SCHEMA_VERSION"
-	                    )
-	                }
-	                val needsBackfill = db.version < HISTORY_SCHEMA_VERSION
-	                db.execSQL(
+        withHistoryDatabase(context) { db ->
+            val initializeSchema = historyDatabaseSchemaVersion != HISTORY_SCHEMA_VERSION
+            db.beginTransaction()
+            try {
+                if (initializeSchema) {
+                    if (db.version > HISTORY_SCHEMA_VERSION) {
+                        throw IllegalStateException(
+                            "history schema v${db.version} is newer than native finalizer contract v$HISTORY_SCHEMA_VERSION"
+                        )
+                    }
+                    val needsBackfill = db.version < HISTORY_SCHEMA_VERSION
+                db.execSQL(
 	                    """
 	                    CREATE TABLE IF NOT EXISTS history (
                       id TEXT PRIMARY KEY,
@@ -1463,21 +1465,60 @@ object NativeDownloadFinalizer {
 	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_queue_album ON history(sort_album, sort_track, id)")
 	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_queue_genre ON history(sort_genre, sort_track, id)")
 	                db.execSQL("CREATE INDEX IF NOT EXISTS idx_history_queue_release ON history(sort_release, sort_track, id)")
-	                if (db.version < HISTORY_SCHEMA_VERSION) db.version = HISTORY_SCHEMA_VERSION
-	                if (deduplicateTrack) deleteDuplicateHistoryRows(db, values)
-	                db.insertWithOnConflict("history", null, values, SQLiteDatabase.CONFLICT_REPLACE)
-	                replaceHistoryPathKeys(db, values.getAsString("id"), values.getAsString("file_path"))
-	                db.setTransactionSuccessful()
-	            } finally {
-	                db.endTransaction()
+                    if (db.version < HISTORY_SCHEMA_VERSION) db.version = HISTORY_SCHEMA_VERSION
+                }
+                if (deduplicateTrack) deleteDuplicateHistoryRows(db, values)
+                db.insertWithOnConflict("history", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+                replaceHistoryPathKeys(db, values.getAsString("id"), values.getAsString("file_path"))
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
             }
-        } finally {
-            db.close()
+            if (initializeSchema) {
+                historyDatabaseSchemaVersion = HISTORY_SCHEMA_VERSION
+            }
+        }
+    }
+
+    private inline fun <T> withHistoryDatabase(
+        context: Context,
+        block: (SQLiteDatabase) -> T,
+    ): T {
+        synchronized(historyDatabaseLock) {
+            val dbFile = File(File(context.applicationInfo.dataDir, "app_flutter"), "history.db")
+            dbFile.parentFile?.mkdirs()
+            val db = historyDatabase?.takeIf {
+                it.isOpen && historyDatabasePath == dbFile.absolutePath
+            } ?: run {
+                historyDatabase?.close()
+                val opened = SQLiteDatabase.openDatabase(
+                    dbFile.absolutePath,
+                    null,
+                    SQLiteDatabase.OPEN_READWRITE or
+                        SQLiteDatabase.CREATE_IF_NECESSARY or
+                        SQLiteDatabase.ENABLE_WRITE_AHEAD_LOGGING,
+                )
+                try {
+                    configureHistoryDatabase(opened)
+                } catch (e: Exception) {
+                    opened.close()
+                    throw e
+                }
+                historyDatabase = opened
+                historyDatabasePath = dbFile.absolutePath
+                historyDatabaseSchemaVersion = 0
+                opened
+            }
+            historyDatabase = db
+            return block(db)
         }
     }
 
     private fun configureHistoryDatabase(db: SQLiteDatabase) {
         runHistoryPragma(db, "PRAGMA busy_timeout = 5000", required = false)
+        // CONFLICT_REPLACE must fire the history delete trigger so the
+        // external-content FTS index does not retain the replaced rowid.
+        runHistoryPragma(db, "PRAGMA recursive_triggers = ON", required = false)
         runHistoryPragma(db, "PRAGMA synchronous = NORMAL", required = false)
         runHistoryPragma(db, "PRAGMA journal_mode = WAL", required = false)
     }

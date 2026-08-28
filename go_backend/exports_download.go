@@ -444,6 +444,18 @@ func CancelDownload(itemID string) {
 	cancelDownload(itemID)
 }
 
+// CancelAllActiveDownloads is a lifecycle safety valve for platforms that are
+// about to suspend the process. It only cancels entries with live work and
+// does not create cancellation flags for queued/future items.
+func CancelAllActiveDownloads() string {
+	itemIDs := cancelAllActiveDownloads()
+	payload, err := json.Marshal(itemIDs)
+	if err != nil {
+		return "[]"
+	}
+	return string(payload)
+}
+
 // ResetDownloadCancel drops a pre-registered cancellation flag for an item
 // with no active download, so a user-initiated retry does not consume a stale
 // cancel and abort instantly. Entries with live references are left alone.

@@ -196,22 +196,28 @@ func (m *extensionManager) loadExtensionFromFileLocked(filePath string) (*loaded
 	}
 
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if _, exists := m.extensions[manifest.Name]; exists {
+		m.mu.Unlock()
 		return nil, fmt.Errorf("extension '%s' was installed by another process", manifest.DisplayName)
 	}
 
-	extDir, err := managedExtensionPath(m.extensionsDir, manifest.Name)
+	extensionsDir := m.extensionsDir
+	dataDir := m.dataDir
+	extDir, err := managedExtensionPath(extensionsDir, manifest.Name)
 	if err != nil {
+		m.mu.Unlock()
 		return nil, err
 	}
 	if _, err := os.Lstat(extDir); err == nil {
+		m.mu.Unlock()
 		return nil, fmt.Errorf("extension directory already exists for %q", manifest.Name)
 	} else if !os.IsNotExist(err) {
+		m.mu.Unlock()
 		return nil, fmt.Errorf("failed to inspect extension directory: %w", err)
 	}
-	stagingDir, err := os.MkdirTemp(m.extensionsDir, "."+manifest.Name+"-install-*")
+	m.mu.Unlock()
+
+	stagingDir, err := os.MkdirTemp(extensionsDir, "."+manifest.Name+"-install-*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create extension staging directory: %w", err)
 	}
@@ -225,7 +231,7 @@ func (m *extensionManager) loadExtensionFromFileLocked(filePath string) (*loaded
 		return nil, err
 	}
 
-	extDataDir, err := managedExtensionPath(m.dataDir, manifest.Name)
+	extDataDir, err := managedExtensionPath(dataDir, manifest.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +258,15 @@ func (m *extensionManager) loadExtensionFromFileLocked(filePath string) (*loaded
 	stagingCommitted = true
 	ext.SourceDir = extDir
 
+	m.mu.Lock()
+	if _, exists := m.extensions[manifest.Name]; exists {
+		m.mu.Unlock()
+		teardownExtension(ext)
+		_ = os.RemoveAll(extDir)
+		return nil, fmt.Errorf("extension '%s' was installed by another process", manifest.DisplayName)
+	}
 	m.extensions[manifest.Name] = ext
+	m.mu.Unlock()
 	GoLog("[Extension] Loaded extension: %s v%s\n", manifest.DisplayName, manifest.Version)
 
 	return ext, nil
@@ -330,19 +344,23 @@ func teardownExtension(ext *loadedExtension) {
 
 func (m *extensionManager) UnloadExtension(extensionID string) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	ext, exists := m.extensions[extensionID]
 	if !exists {
+		m.mu.Unlock()
 		return fmt.Errorf("extension not found")
 	}
 
 	ext.Enabled = false
+	// Remove the extension from the manager before running user cleanup. New
+	// operations can no longer acquire it, while existing operations keep their
+	// per-extension VMMu lease and are allowed to finish before teardown.
+	delete(m.extensions, extensionID)
+	m.mu.Unlock()
+
 	ext.VMMu.Lock()
 	teardownVMLocked(ext)
 	ext.VMMu.Unlock()
 
-	delete(m.extensions, extensionID)
 	GoLog("[Extension] Unloaded extension: %s\n", extensionID)
 
 	return nil
@@ -372,24 +390,39 @@ func (m *extensionManager) GetAllExtensions() []*loadedExtension {
 
 func (m *extensionManager) SetExtensionEnabled(extensionID string, enabled bool) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	ext, exists := m.extensions[extensionID]
 	if !exists {
+		m.mu.Unlock()
 		return fmt.Errorf("extension not found")
 	}
 
 	if enabled {
 		ext.Enabled = true
-		if err := ext.ensureRuntimeReady(); err != nil {
+	} else {
+		ext.Enabled = false
+		ext.Error = ""
+	}
+	m.mu.Unlock()
+
+	if enabled {
+		ext.VMMu.Lock()
+		if !m.isManagedExtensionEnabled(extensionID, ext) {
+			ext.VMMu.Unlock()
+			return fmt.Errorf("extension is no longer installed")
+		}
+		err := ensureRuntimeReadyLocked(ext, true)
+		ext.VMMu.Unlock()
+		if err != nil {
+			m.mu.Lock()
+			if m.extensions[extensionID] == ext {
+				ext.Enabled = false
+			}
+			m.mu.Unlock()
 			store := GetExtensionSettingsStore()
-			ext.Enabled = false
 			_ = store.Set(extensionID, "_enabled", false)
 			return err
 		}
 	} else {
-		ext.Enabled = false
-		ext.Error = ""
 		ext.VMMu.Lock()
 		teardownVMLocked(ext)
 		ext.VMMu.Unlock()
@@ -402,6 +435,21 @@ func (m *extensionManager) SetExtensionEnabled(extensionID string, enabled bool)
 	}
 
 	return nil
+}
+
+// isManagedExtensionEnabled validates an operation lease after it has acquired
+// the per-extension VM lock. The manager lock is deliberately not held while
+// lifecycle/user JavaScript runs, so list/unload operations remain responsive.
+func (m *extensionManager) isManagedExtensionEnabled(extensionID string, ext *loadedExtension) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.extensions[extensionID] == ext && ext.Enabled
+}
+
+func (m *extensionManager) isManagedExtension(extensionID string, ext *loadedExtension) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.extensions[extensionID] == ext
 }
 
 func (m *extensionManager) LoadExtensionsFromDirectory(dirPath string) ([]string, []error) {
@@ -444,7 +492,12 @@ func (m *extensionManager) LoadExtensionsFromDirectory(dirPath string) ([]string
 
 func (m *extensionManager) loadExtensionFromDirectory(dirPath string) (*loadedExtension, error) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	locked := true
+	defer func() {
+		if locked {
+			m.mu.Unlock()
+		}
+	}()
 
 	manifestPath := filepath.Join(dirPath, "manifest.json")
 	manifestData, err := os.ReadFile(manifestPath)
@@ -486,6 +539,8 @@ func (m *extensionManager) loadExtensionFromDirectory(dirPath string) (*loadedEx
 		DataDir:   extDataDir,
 		SourceDir: dirPath,
 	}
+	m.mu.Unlock()
+	locked = false
 
 	store := GetExtensionSettingsStore()
 	if enabledVal, err := store.Get(manifest.Name, "_enabled"); err == nil {
@@ -501,7 +556,17 @@ func (m *extensionManager) loadExtensionFromDirectory(dirPath string) (*loadedEx
 		GoLog("[Extension] Failed to validate extension %s: %v\n", manifest.Name, err)
 	}
 
+	m.mu.Lock()
+	locked = true
+	if _, exists := m.extensions[manifest.Name]; exists {
+		m.mu.Unlock()
+		locked = false
+		teardownExtension(ext)
+		return nil, fmt.Errorf("extension '%s' was installed by another process", manifest.DisplayName)
+	}
 	m.extensions[manifest.Name] = ext
+	m.mu.Unlock()
+	locked = false
 	GoLog("[Extension] Loaded extension: %s v%s\n", manifest.DisplayName, manifest.Version)
 
 	return ext, nil
@@ -838,16 +903,18 @@ func (m *extensionManager) GetInstalledExtensionsJSON() (string, error) {
 }
 
 func (m *extensionManager) InitializeExtension(extensionID string, settings map[string]any) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
+	m.mu.RLock()
 	ext, exists := m.extensions[extensionID]
+	m.mu.RUnlock()
 	if !exists {
 		return fmt.Errorf("extension not found")
 	}
 
 	ext.VMMu.Lock()
 	defer ext.VMMu.Unlock()
+	if !m.isManagedExtension(extensionID, ext) {
+		return fmt.Errorf("extension is no longer installed")
+	}
 
 	if err := ensureRuntimeReadyLocked(ext, false); err != nil {
 		return err
@@ -856,20 +923,25 @@ func (m *extensionManager) InitializeExtension(extensionID string, settings map[
 }
 
 func (m *extensionManager) CleanupExtension(extensionID string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
+	m.mu.RLock()
 	ext, exists := m.extensions[extensionID]
+	m.mu.RUnlock()
 	if !exists {
 		return fmt.Errorf("extension not found")
 	}
 
+	ext.VMMu.Lock()
+	defer ext.VMMu.Unlock()
+	if !m.isManagedExtension(extensionID, ext) {
+		return fmt.Errorf("extension is no longer installed")
+	}
 	if ext.VM == nil {
 		return nil
 	}
-	ext.VMMu.Lock()
-	defer ext.VMMu.Unlock()
 	if err := runCleanupLocked(ext); err != nil {
+		if IsRuntimeUnsafeError(err) {
+			quarantineRuntimeLocked(ext, ext.VM, err)
+		}
 		GoLog("[Extension] Cleanup error for %s: %v\n", extensionID, err)
 		return err
 	}
@@ -893,21 +965,27 @@ func (m *extensionManager) UnloadAllExtensions() {
 }
 
 func (m *extensionManager) InvokeAction(extensionID string, actionName string) (map[string]any, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
+	m.mu.RLock()
 	ext, exists := m.extensions[extensionID]
+	enabled := exists && ext.Enabled
+	m.mu.RUnlock()
 	if !exists {
 		return nil, fmt.Errorf("extension not found: %s", extensionID)
 	}
 
-	if !ext.Enabled {
+	if !enabled {
 		return nil, fmt.Errorf("extension is disabled")
 	}
-	vm, err := ext.lockReadyVM()
-	if err != nil {
+	ext.VMMu.Lock()
+	if !m.isManagedExtensionEnabled(extensionID, ext) {
+		ext.VMMu.Unlock()
+		return nil, fmt.Errorf("extension is disabled or no longer installed")
+	}
+	if err := ensureRuntimeReadyLocked(ext, true); err != nil {
+		ext.VMMu.Unlock()
 		return nil, err
 	}
+	vm := ext.VM
 	defer ext.VMMu.Unlock()
 
 	// Merge extension return values onto the top-level JSON object so Flutter can read

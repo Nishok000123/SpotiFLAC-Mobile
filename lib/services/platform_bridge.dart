@@ -181,6 +181,9 @@ class PlatformBridge {
       StreamController<ExtensionSessionGrantEvent>.broadcast();
   static final StreamController<void> _libraryStorageEvents =
       StreamController<void>.broadcast();
+  static final StreamController<List<String>>
+  _iosBackgroundDownloadExpirationEvents =
+      StreamController<List<String>>.broadcast();
   static bool _backendEventHandlerInstalled = false;
 
   static bool get supportsCoreBackend => Platform.isAndroid || Platform.isIOS;
@@ -196,6 +199,11 @@ class PlatformBridge {
   static Stream<void> libraryStorageEvents() {
     _ensureBackendEventHandler();
     return _libraryStorageEvents.stream;
+  }
+
+  static Stream<List<String>> iosBackgroundDownloadExpirationEvents() {
+    _ensureBackendEventHandler();
+    return _iosBackgroundDownloadExpirationEvents.stream;
   }
 
   static void _ensureBackendEventHandler() {
@@ -219,6 +227,24 @@ class PlatformBridge {
           return null;
         case 'libraryStorageChanged':
           _libraryStorageEvents.add(null);
+          return null;
+        case 'iosBackgroundDownloadExpired':
+          final raw = call.arguments;
+          var itemIds = const <String>[];
+          try {
+            final decoded = raw is String ? jsonDecode(raw) : raw;
+            if (decoded is List) {
+              itemIds = decoded
+                  .map((value) => value.toString().trim())
+                  .where((value) => value.isNotEmpty)
+                  .toSet()
+                  .toList(growable: false);
+            }
+          } catch (_) {
+            // Older/native-mismatched builds may send no payload. The queue
+            // still pauses its currently visible active items below.
+          }
+          _iosBackgroundDownloadExpirationEvents.add(itemIds);
           return null;
         default:
           return null;

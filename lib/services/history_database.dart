@@ -65,23 +65,38 @@ class HistoryBatchLookupRequest {
 }
 
 class HistoryDatabase {
+  // The FTS table is a derived, optional index and is initialized lazily after
+  // the existing schema migration. Keep this contract at v13 because the
+  // background native writer shares history.db and must accept the same
+  // user_version without depending on FTS5.
   static const int schemaVersion = 13;
+  static const String searchFtsTable = 'history_search_fts';
   static final HistoryDatabase instance = HistoryDatabase._init();
   static final sqlite.SingleFlightInitializer<Database> _database =
       sqlite.SingleFlightInitializer<Database>();
+  bool _searchFtsAvailable = false;
 
   HistoryDatabase._init();
 
   Future<Database> get database {
-    return _database.getOrCreate(
-      () => sqlite.openAppDatabase(
+    return _database.getOrCreate(() async {
+      final db = await sqlite.openAppDatabase(
         'history.db',
         version: schemaVersion,
         onCreate: _createDB,
         onUpgrade: _upgradeDB,
-      ),
-    );
+      );
+      // onCreate normally initializes this derived index. Retry once after
+      // opening an existing database in case an earlier setup was
+      // interrupted; unsupported SQLite builds remain on the LIKE fallback.
+      if (!_searchFtsAvailable) {
+        _searchFtsAvailable = await _createSearchFts(db);
+      }
+      return db;
+    });
   }
+
+  bool get searchFtsAvailable => _searchFtsAvailable;
 
   Future<void> _createDB(Database db, int version) async {
     _log.i('Creating database schema v$version');
@@ -151,6 +166,7 @@ class HistoryDatabase {
     await _createNormalizedIndexes(db);
     await _createQueueIndexes(db);
     await _createPathKeyTable(db);
+    _searchFtsAvailable = await _createSearchFts(db);
 
     _log.i('Database schema created with indexes');
   }
@@ -256,6 +272,15 @@ class HistoryDatabase {
       );
       _log.i('Added indexed lyrics availability metadata');
     }
+  }
+
+  Future<bool> _createSearchFts(DatabaseExecutor db) {
+    return sqlite.createTrigramFtsIndex(
+      db,
+      ftsTable: searchFtsTable,
+      contentTable: 'history',
+      triggerPrefix: 'history_search_fts',
+    );
   }
 
   static String normalizeLookupText(String? value) =>

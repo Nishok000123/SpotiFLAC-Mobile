@@ -984,6 +984,7 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
   ) async {
     final rawItems = snapshot['items'];
     final rawDelta = snapshot['item_delta'];
+    final rawDeltas = snapshot['item_deltas'];
     final itemSnapshots = <Map<String, dynamic>>[];
     if (rawItems is List) {
       for (final rawItem in rawItems) {
@@ -994,6 +995,13 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
     }
     if (rawDelta is Map) {
       itemSnapshots.add(Map<String, dynamic>.from(rawDelta));
+    }
+    if (rawDeltas is List) {
+      for (final rawItem in rawDeltas) {
+        if (rawItem is Map) {
+          itemSnapshots.add(Map<String, dynamic>.from(rawItem));
+        }
+      }
     }
     if (itemSnapshots.isEmpty) {
       return;

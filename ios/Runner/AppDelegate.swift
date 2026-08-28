@@ -28,8 +28,9 @@ import Gobackend
     /// Pending Flutter result for the native folder picker
     private var pendingDirectoryPickerResult: FlutterResult?
 
-    /// Whether a download queue is active; while true a background task is
-    /// started on each background entry to extend execution time. Main-thread only.
+    /// Whether a download queue is active; while true a background assertion
+    /// is acquired before work starts and renewed on later background entries.
+    /// Main-thread only.
     private var downloadsActive = false
     private var downloadBackgroundTask: UIBackgroundTaskIdentifier = .invalid
 
@@ -318,6 +319,10 @@ import Gobackend
         switch call.method {
         case "beginBackgroundDownloadTask":
             downloadsActive = true
+            // Request the assertion before the long-running Go call starts.
+            // Waiting for applicationDidEnterBackground is too late: iOS may
+            // suspend the process before the assertion is granted.
+            beginBackgroundDownloadTask()
             result(nil)
             return
         case "endBackgroundDownloadTask":
@@ -419,6 +424,16 @@ import Gobackend
         downloadBackgroundTask = UIApplication.shared.beginBackgroundTask(
             withName: "SpotiFLACDownloads"
         ) { [weak self] in
+            if self?.downloadsActive == true {
+                // Flutter channel delivery is asynchronous and iOS may suspend
+                // us immediately after this callback. Cancel live Go requests
+                // synchronously first; Dart then persists/requeues the items.
+                let cancelledItemIDs = GobackendCancelAllActiveDownloads()
+                self?.backendChannel?.invokeMethod(
+                    "iosBackgroundDownloadExpired",
+                    arguments: cancelledItemIDs
+                )
+            }
             self?.endBackgroundDownloadTask()
         }
     }

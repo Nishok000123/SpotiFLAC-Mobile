@@ -169,18 +169,76 @@ void main() {
     final source = File(
       'lib/services/app_state_database.dart',
     ).readAsStringSync();
+    final playerSource = File(
+      'lib/services/music_player_service.dart',
+    ).readAsStringSync();
 
-    test('v1 to v2 tolerates an existing playback session table', () {
+    test('v4 normalizes playback queue and scalar state', () {
+      expect(source, contains('const _dbVersion = 4;'));
+      expect(source, contains('await _migratePlaybackSessionToV4(db);'));
+      expect(source, contains('media_json TEXT NOT NULL'));
+      expect(source, contains('position_ms INTEGER NOT NULL DEFAULT 0'));
+      expect(source, contains('updatePlaybackSessionState'));
+    });
+
+    test('periodic playback updates do not serialize an unchanged queue', () {
+      final scalarUpdate = RegExp(
+        r'updatePlaybackSessionState\([\s\S]*?if \(updated\) return;',
+      ).firstMatch(playerSource);
+
+      expect(scalarUpdate, isNotNull);
+      expect(scalarUpdate!.group(0), isNot(contains("'media':")));
+      expect(playerSource, contains('_scheduledSessionQueueRevision'));
+    });
+  });
+
+  group('iOS background download lifecycle', () {
+    final appDelegateSource = File(
+      'ios/Runner/AppDelegate.swift',
+    ).readAsStringSync();
+    final queueProviderSource = File(
+      'lib/providers/download_queue_provider.dart',
+    ).readAsStringSync();
+
+    test('acquires background time before starting long-running work', () {
+      final beginCase = RegExp(
+        r'case "beginBackgroundDownloadTask":[\s\S]*?result\(nil\)',
+      ).firstMatch(appDelegateSource);
+      expect(beginCase, isNotNull);
       expect(
-        source,
-        contains('CREATE TABLE IF NOT EXISTS \$_playbackSessionTable'),
+        beginCase!.group(0)!.indexOf('beginBackgroundDownloadTask()'),
+        lessThan(beginCase.group(0)!.indexOf('result(nil)')),
+      );
+    });
+
+    test('expiration safely defers and foreground resumes the queue', () {
+      expect(appDelegateSource, contains('iosBackgroundDownloadExpired'));
+      final expirationHandler = RegExp(
+        r'if self\?\.downloadsActive == true \{[\s\S]*?\n\s*\}',
+      ).firstMatch(appDelegateSource);
+      expect(expirationHandler, isNotNull);
+      expect(
+        expirationHandler!
+            .group(0)!
+            .indexOf('GobackendCancelAllActiveDownloads()'),
+        lessThan(
+          expirationHandler.group(0)!.indexOf('iosBackgroundDownloadExpired'),
+        ),
       );
       expect(
-        RegExp(
-          r'if \(oldVersion < 2\)\s*\{\s*'
-          r'await _createPlaybackSessionTable\(db\);',
-        ).hasMatch(source),
-        isTrue,
+        queueProviderSource,
+        contains('pauseQueue(persistAcrossRestarts: false)'),
+      );
+      expect(queueProviderSource, contains('_iosBackgroundExecutionExpired'));
+      expect(queueProviderSource, contains('final requeueItemIds ='));
+      expect(
+        queueProviderSource,
+        contains('if (!state.isProcessing && requeueItemIds.isEmpty) return;'),
+      );
+      expect(queueProviderSource, contains('if (alreadyForeground) {'));
+      expect(
+        queueProviderSource,
+        contains('resumePendingDownloadsOnForeground();'),
       );
     });
   });
@@ -192,6 +250,13 @@ void main() {
     ).readAsStringSync();
     final historyDatabaseSource = File(
       'lib/services/history_database.dart',
+    ).readAsStringSync();
+    final workerSnapshotSource = File(
+      'android/app/src/main/kotlin/com/zarz/spotiflac/'
+      'DownloadServiceSnapshot.kt',
+    ).readAsStringSync();
+    final nativeWorkerProviderSource = File(
+      'lib/providers/download_queue_provider_native_worker.dart',
     ).readAsStringSync();
 
     int kotlinConstant(String name) {
@@ -214,6 +279,27 @@ void main() {
         kotlinConstant('HISTORY_SCHEMA_VERSION'),
         HistoryDatabase.schemaVersion,
       );
+    });
+
+    test('polls one progress delta stream and preserves concurrent items', () {
+      expect(
+        RegExp(
+          r'Gobackend\.getAllDownloadProgressDelta\(',
+        ).allMatches(workerSnapshotSource),
+        hasLength(1),
+      );
+      expect(
+        workerSnapshotSource,
+        isNot(contains('Gobackend.getAllDownloadProgress()')),
+      );
+      expect(workerSnapshotSource, contains('"item_deltas"'));
+      expect(
+        workerSnapshotSource,
+        contains('progressItemIds = orderedItemIds'),
+      );
+      expect(workerSnapshotSource, contains('progressCoordinatorEpoch'));
+      expect(workerSnapshotSource, contains('nativeWorkerProgressEpoch.get()'));
+      expect(nativeWorkerProviderSource, contains("snapshot['item_deltas']"));
     });
 
     Set<String> historyTableColumns(String source) {

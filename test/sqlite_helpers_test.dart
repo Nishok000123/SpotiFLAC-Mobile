@@ -87,5 +87,21 @@ void main() {
       );
       expect(autoVacuumMatches.single.start, lessThan(onCreateIndex));
     });
+
+    test('enables delete triggers for replace-backed FTS synchronization', () {
+      expect(source, contains('PRAGMA recursive_triggers = ON'));
+    });
+  });
+
+  group('FTS5 search query', () {
+    test(
+      'quotes literal input and leaves unsupported short terms to fallback',
+      () {
+        expect(ftsPhraseSearchQuery('ab'), isNull);
+        expect(ftsPhraseSearchQuery('beat'), '"beat"');
+        expect(ftsPhraseSearchQuery('foo"bar'), '"foo""bar"');
+        expect(ftsPhraseSearchQuery('a\u0000b'), isNull);
+      },
+    );
   });
 }
