@@ -476,12 +476,16 @@ func preflightExtensionDownloadSession(extensionID string) (bool, error) {
 	if _, err := ext.lockReadyVM(); err != nil {
 		return false, err
 	}
-	defer ext.VMMu.Unlock()
-	if ext.runtime == nil {
+	runtime := ext.runtime
+	ext.VMMu.Unlock()
+	if runtime == nil {
 		return false, fmt.Errorf("extension '%s' runtime is unavailable", extensionID)
 	}
 
-	return ext.runtime.preflightSignedSession()
+	// Preflight touches only the runtime's thread-safe HTTP/session state. Do
+	// not hold the Goja VM lock across bootstrap network I/O: metadata/status
+	// calls on the same extension must remain responsive while auth is slow.
+	return runtime.preflightSignedSession()
 }
 
 func DownloadWithExtensionsJSON(requestJSON string) (string, error) {

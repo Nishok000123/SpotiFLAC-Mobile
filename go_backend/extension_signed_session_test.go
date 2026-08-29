@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	goruntime "runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -435,6 +436,68 @@ func TestParallelSignedSessionPreflightSharesOneBootstrap(t *testing.T) {
 	}
 	if got := calls.Load(); got != 1 {
 		t.Fatalf("parallel preflight bootstrap calls = %d, want 1", got)
+	}
+}
+
+func TestParallelSignedSessionPreflightSharesBootstrapFailure(t *testing.T) {
+	var calls atomic.Int32
+	requestStarted := make(chan struct{})
+	releaseRequest := make(chan struct{})
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if calls.Add(1) == 1 {
+			close(requestStarted)
+		}
+		<-releaseRequest
+		return &http.Response{
+			StatusCode: http.StatusServiceUnavailable,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(`{"error":"busy"}`)),
+			Request:    req,
+		}, nil
+	})
+
+	root := t.TempDir()
+	config := &SignedSessionConfig{
+		Namespace: "shared-failed-session",
+		BaseURL:   "https://auth.example.com",
+	}
+	newRuntime := func(extensionID string) *extensionRuntime {
+		return &extensionRuntime{
+			extensionID: extensionID,
+			manifest: &ExtensionManifest{
+				Name:          extensionID,
+				SignedSession: config,
+			},
+			dataDir:    filepath.Join(root, extensionID),
+			vm:         goja.New(),
+			httpClient: &http.Client{Transport: transport},
+		}
+	}
+
+	const workers = 12
+	errors := make(chan error, workers)
+	for worker := range workers {
+		go func(worker int) {
+			_, err := newRuntime(fmt.Sprintf("failed-provider-%d", worker)).preflightSignedSession()
+			errors <- err
+		}(worker)
+	}
+	select {
+	case <-requestStarted:
+	case <-time.After(time.Second):
+		t.Fatal("bootstrap request did not start")
+	}
+	// Give every parallel caller time to join the in-flight generation. The
+	// request remains blocked, so no caller can observe a completed operation.
+	time.Sleep(50 * time.Millisecond)
+	close(releaseRequest)
+	for range workers {
+		if err := <-errors; err == nil || !strings.Contains(err.Error(), "HTTP 503") {
+			t.Fatalf("unexpected coalesced bootstrap error: %v", err)
+		}
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("parallel failed bootstrap calls = %d, want 1", got)
 	}
 }
 
@@ -1948,6 +2011,160 @@ func TestRefreshSignedSession(t *testing.T) {
 			t.Fatal("expected an error for a non-2xx refresh response")
 		}
 	})
+}
+
+func TestRefreshSignedSessionCoalescesWithoutHoldingCoordinatorMutex(t *testing.T) {
+	var calls int32
+	requestStarted := make(chan struct{})
+	releaseRequest := make(chan struct{})
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if atomic.AddInt32(&calls, 1) == 1 {
+			close(requestStarted)
+		}
+		<-releaseRequest
+		payload := signedSessionExchangeResponse{
+			SessionSecret: "rotated-secret",
+			ExpiresAt:     time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339),
+		}
+		body, _ := json.Marshal(payload)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(string(body))),
+			Request:    req,
+		}, nil
+	})
+	runtime := newSignedSessionTestRuntime(t, "refresh-coalesced", transport)
+	config := signedSessionConfigWithDefaults(&SignedSessionConfig{
+		Namespace: "refresh-coalesced",
+		BaseURL:   "https://auth.example.com",
+		Endpoints: SignedSessionEndpoints{Refresh: "/session/refresh"},
+	})
+	record, err := runtime.loadSignedSession(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.SessionID = "session-1"
+	record.SessionSecret = "old-secret"
+	record.ExpiresAt = time.Now().Add(time.Minute).UTC().Format(time.RFC3339)
+	if err := runtime.saveSignedSession(config, record); err != nil {
+		t.Fatal(err)
+	}
+	coordinator, err := runtime.signedSessionCoordinator(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const workers = 12
+	results := make(chan *signedSessionRecord, workers)
+	errors := make(chan error, workers)
+	var wg sync.WaitGroup
+	wg.Add(workers)
+	for range workers {
+		go func() {
+			defer wg.Done()
+			refreshed, refreshErr := runtime.refreshSignedSessionCoalesced(config, coordinator)
+			results <- refreshed
+			errors <- refreshErr
+		}()
+	}
+	select {
+	case <-requestStarted:
+	case <-time.After(time.Second):
+		t.Fatal("refresh request did not start")
+	}
+
+	mutexAvailable := make(chan struct{})
+	go func() {
+		coordinator.mu.Lock()
+		coordinator.mu.Unlock()
+		close(mutexAvailable)
+	}()
+	select {
+	case <-mutexAvailable:
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("coordinator mutex was held during refresh HTTP")
+	}
+
+	close(releaseRequest)
+	wg.Wait()
+	close(results)
+	close(errors)
+	for refreshErr := range errors {
+		if refreshErr != nil {
+			t.Fatalf("coalesced refresh failed: %v", refreshErr)
+		}
+	}
+	for refreshed := range results {
+		if refreshed == nil || refreshed.SessionSecret != "rotated-secret" {
+			t.Fatalf("unexpected refreshed record: %+v", refreshed)
+		}
+	}
+	if got := atomic.LoadInt32(&calls); got != 1 {
+		t.Fatalf("refresh requests = %d, want 1", got)
+	}
+}
+
+func TestRefreshSignedSessionSharesFailureWithWaiters(t *testing.T) {
+	var calls atomic.Int32
+	requestStarted := make(chan struct{})
+	releaseRequest := make(chan struct{})
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if calls.Add(1) == 1 {
+			close(requestStarted)
+		}
+		<-releaseRequest
+		return &http.Response{
+			StatusCode: http.StatusServiceUnavailable,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(`{}`)),
+			Request:    req,
+		}, nil
+	})
+	runtime := newSignedSessionTestRuntime(t, "refresh-failure-coalesced", transport)
+	config := signedSessionConfigWithDefaults(&SignedSessionConfig{
+		Namespace: "refresh-failure-coalesced",
+		BaseURL:   "https://auth.example.com",
+		Endpoints: SignedSessionEndpoints{Refresh: "/session/refresh"},
+	})
+	record, err := runtime.loadSignedSession(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.SessionID = "session-1"
+	record.SessionSecret = "old-secret"
+	record.ExpiresAt = time.Now().Add(time.Minute).UTC().Format(time.RFC3339)
+	if err := runtime.saveSignedSession(config, record); err != nil {
+		t.Fatal(err)
+	}
+	coordinator, err := runtime.signedSessionCoordinator(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const workers = 12
+	errors := make(chan error, workers)
+	for range workers {
+		go func() {
+			_, refreshErr := runtime.refreshSignedSessionCoalesced(config, coordinator)
+			errors <- refreshErr
+		}()
+	}
+	select {
+	case <-requestStarted:
+	case <-time.After(time.Second):
+		t.Fatal("refresh request did not start")
+	}
+	time.Sleep(50 * time.Millisecond)
+	close(releaseRequest)
+	for range workers {
+		if refreshErr := <-errors; refreshErr == nil || !strings.Contains(refreshErr.Error(), "HTTP 503") {
+			t.Fatalf("unexpected coalesced refresh error: %v", refreshErr)
+		}
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("parallel failed refresh calls = %d, want 1", got)
+	}
 }
 
 func TestSignedSessionCompleteGrant(t *testing.T) {
