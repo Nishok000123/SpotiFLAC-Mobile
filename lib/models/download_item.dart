@@ -3,6 +3,8 @@ import 'package:spotiflac_android/models/track.dart';
 
 part 'download_item.g.dart';
 
+const Object _downloadItemUnset = Object();
+
 enum DownloadStatus {
   queued,
   downloading,
@@ -72,9 +74,9 @@ class DownloadItem {
     double? speedMBps,
     int? bytesReceived,
     int? bytesTotal,
-    String? filePath,
-    String? error,
-    DownloadErrorType? errorType,
+    Object? filePath = _downloadItemUnset,
+    Object? error = _downloadItemUnset,
+    Object? errorType = _downloadItemUnset,
     String? preparationStage,
     DateTime? createdAt,
     String? qualityOverride,
@@ -92,9 +94,15 @@ class DownloadItem {
       speedMBps: speedMBps ?? this.speedMBps,
       bytesReceived: bytesReceived ?? this.bytesReceived,
       bytesTotal: bytesTotal ?? this.bytesTotal,
-      filePath: filePath ?? this.filePath,
-      error: error ?? this.error,
-      errorType: errorType ?? this.errorType,
+      filePath: identical(filePath, _downloadItemUnset)
+          ? this.filePath
+          : filePath as String?,
+      error: identical(error, _downloadItemUnset)
+          ? this.error
+          : error as String?,
+      errorType: identical(errorType, _downloadItemUnset)
+          ? this.errorType
+          : errorType as DownloadErrorType?,
       preparationStage: preparationStage ?? this.preparationStage,
       createdAt: createdAt ?? this.createdAt,
       qualityOverride: qualityOverride ?? this.qualityOverride,

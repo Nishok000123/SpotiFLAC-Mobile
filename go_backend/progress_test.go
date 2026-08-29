@@ -6,6 +6,51 @@ import (
 	"time"
 )
 
+func TestWaitForMultiProgressDeltaWakesOnRevision(t *testing.T) {
+	ClearAllItemProgress()
+	defer ClearAllItemProgress()
+
+	multiMu.RLock()
+	since := multiProgressSeq
+	multiMu.RUnlock()
+	result := make(chan string, 1)
+	go func() {
+		result <- WaitForMultiProgressDelta(since, 1_000)
+	}()
+	time.Sleep(10 * time.Millisecond)
+	StartItemProgress("wait-progress")
+	select {
+	case payload := <-result:
+		if payload == "" {
+			t.Fatal("waiter woke without a progress delta")
+		}
+		var delta MultiProgressDelta
+		if err := json.Unmarshal([]byte(payload), &delta); err != nil {
+			t.Fatalf("decode delta: %v", err)
+		}
+		if delta.Items["wait-progress"] == nil {
+			t.Fatalf("delta missing item: %#v", delta)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("progress waiter did not wake")
+	}
+}
+
+func TestWaitForMultiProgressDeltaHeartbeatTimeout(t *testing.T) {
+	ClearAllItemProgress()
+	defer ClearAllItemProgress()
+	multiMu.RLock()
+	since := multiProgressSeq
+	multiMu.RUnlock()
+	startedAt := time.Now()
+	if payload := WaitForMultiProgressDelta(since, 20); payload != "" {
+		t.Fatalf("timeout payload = %q, want empty", payload)
+	}
+	if elapsed := time.Since(startedAt); elapsed < 15*time.Millisecond {
+		t.Fatalf("wait returned too early after %v", elapsed)
+	}
+}
+
 func TestItemTransferProgressReporterCoalescesHotPathUpdates(t *testing.T) {
 	ClearAllItemProgress()
 	defer ClearAllItemProgress()

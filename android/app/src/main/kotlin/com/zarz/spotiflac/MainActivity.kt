@@ -66,7 +66,6 @@ class MainActivity: FlutterFragmentActivity() {
         "com.zarz.spotiflac/download_progress_stream"
     private val LIBRARY_SCAN_PROGRESS_STREAM_CHANNEL =
         "com.zarz.spotiflac/library_scan_progress_stream"
-    private val DOWNLOAD_PROGRESS_STREAM_POLLING_INTERVAL_MS = 1200L
     // A progress bar can't show sub-second granularity; 400ms halves the
     // disk-read wakeups during a scan vs the previous 200ms.
     private val LIBRARY_SCAN_PROGRESS_STREAM_POLLING_INTERVAL_MS = 400L
@@ -482,12 +481,17 @@ class MainActivity: FlutterFragmentActivity() {
             while (isActive && downloadProgressEventSink === sink) {
                 try {
                     val payload = withContext(Dispatchers.IO) {
-                        Gobackend.getAllDownloadProgressDelta(lastDownloadProgressSeq)
+                        Gobackend.waitForAllDownloadProgressDelta(
+                            lastDownloadProgressSeq,
+                            15_000L,
+                        )
                     }
+                    if (!isActive || downloadProgressEventSink !== sink) break
                     if (payload.isNotEmpty() && payload != lastDownloadProgressPayload) {
                         updateDownloadProgressSeq(payload)
                         lastDownloadProgressPayload = payload
                         sink.success(parseJsonPayload(payload))
+                        delay(250L)
                     }
                 } catch (e: Exception) {
                     android.util.Log.w(
@@ -495,7 +499,7 @@ class MainActivity: FlutterFragmentActivity() {
                         "Download progress stream poll failed: ${e.message}",
                     )
                 }
-                delay(DOWNLOAD_PROGRESS_STREAM_POLLING_INTERVAL_MS)
+                if (downloadProgressEventSink !== sink) break
             }
         }
     }
@@ -517,6 +521,7 @@ class MainActivity: FlutterFragmentActivity() {
                 val initialPayload = withContext(Dispatchers.IO) {
                     readLibraryScanProgressJsonForStream()
                 }
+                if (!isActive || libraryScanProgressEventSink !== sink) return@launch
                 lastLibraryScanProgressPayload = initialPayload
                 sink.success(parseJsonPayload(initialPayload))
             } catch (e: Exception) {
@@ -530,6 +535,7 @@ class MainActivity: FlutterFragmentActivity() {
                     val payload = withContext(Dispatchers.IO) {
                         readLibraryScanProgressJsonForStream()
                     }
+                    if (!isActive || libraryScanProgressEventSink !== sink) break
                     if (payload != lastLibraryScanProgressPayload) {
                         lastLibraryScanProgressPayload = payload
                         sink.success(parseJsonPayload(payload))

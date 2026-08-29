@@ -67,6 +67,7 @@ var (
 	multiProgressSeq    int64
 	multiProgressReset  int64
 	removedProgressSeq  = make(map[string]int64)
+	multiProgressNotify = make(chan struct{})
 )
 
 func markMultiProgressDirtyLocked() {
@@ -75,6 +76,8 @@ func markMultiProgressDirtyLocked() {
 
 func nextMultiProgressSeqLocked() int64 {
 	multiProgressSeq++
+	close(multiProgressNotify)
+	multiProgressNotify = make(chan struct{})
 	return multiProgressSeq
 }
 
@@ -178,6 +181,37 @@ func GetMultiProgressDelta(sinceSeq int64) string {
 		return ""
 	}
 	return string(jsonBytes)
+}
+
+// WaitForMultiProgressDelta blocks without polling until the bridge revision
+// advances or the bounded heartbeat expires. Each waiter observes the same
+// close-only notification channel, so UI and native-worker consumers do not
+// compete for events.
+func WaitForMultiProgressDelta(sinceSeq, timeoutMs int64) string {
+	if timeoutMs <= 0 {
+		timeoutMs = 15_000
+	}
+	if timeoutMs > 60_000 {
+		timeoutMs = 60_000
+	}
+	timer := time.NewTimer(time.Duration(timeoutMs) * time.Millisecond)
+	defer timer.Stop()
+	for {
+		multiMu.RLock()
+		if sinceSeq < multiProgressSeq {
+			multiMu.RUnlock()
+			return GetMultiProgressDelta(sinceSeq)
+		}
+		notify := multiProgressNotify
+		multiMu.RUnlock()
+
+		select {
+		case <-notify:
+			continue
+		case <-timer.C:
+			return ""
+		}
+	}
 }
 
 func StartItemProgress(itemID string) {

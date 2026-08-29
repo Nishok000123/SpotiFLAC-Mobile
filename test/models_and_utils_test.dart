@@ -281,10 +281,10 @@ void main() {
       );
     });
 
-    test('polls one progress delta stream and preserves concurrent items', () {
+    test('waits on one progress delta stream and preserves concurrent items', () {
       expect(
         RegExp(
-          r'Gobackend\.getAllDownloadProgressDelta\(',
+          r'Gobackend\.waitForAllDownloadProgressDelta\(',
         ).allMatches(workerSnapshotSource),
         hasLength(1),
       );
@@ -726,6 +726,7 @@ void main() {
         track: sampleTrack(),
         service: 'qobuz',
         createdAt: DateTime.utc(2026),
+        filePath: '/music/stale.flac',
         error: 'raw backend failure',
       );
 
@@ -746,7 +747,16 @@ void main() {
         base.copyWith(errorType: DownloadErrorType.permission).errorMessage,
         'Cannot write to folder, check storage permission',
       );
-      expect(base.copyWith(error: null).errorMessage, 'raw backend failure');
+      expect(base.copyWith(error: null).errorMessage, isEmpty);
+      expect(base.copyWith().filePath, '/music/stale.flac');
+      expect(base.copyWith(filePath: null).filePath, isNull);
+      expect(
+        base
+            .copyWith(errorType: DownloadErrorType.network)
+            .copyWith(errorType: null)
+            .errorType,
+        isNull,
+      );
     });
 
     test('decodes json defaults and enums', () {

@@ -433,6 +433,10 @@ func GetAllDownloadProgressDelta(sinceSeq int64) string {
 	return GetMultiProgressDelta(sinceSeq)
 }
 
+func WaitForAllDownloadProgressDelta(sinceSeq, timeoutMs int64) string {
+	return WaitForMultiProgressDelta(sinceSeq, timeoutMs)
+}
+
 func InitItemProgress(itemID string) {
 	StartItemProgress(itemID)
 }

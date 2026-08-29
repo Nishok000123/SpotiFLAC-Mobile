@@ -12,13 +12,19 @@ import Gobackend
     private let LARGE_JSON_RESULT_FILE_KEY = "__json_file"
     private let LARGE_JSON_RESULT_FILE_THRESHOLD_BYTES = 256 * 1024
     private let streamQueue = DispatchQueue(label: "com.zarz.spotiflac.progress_stream", qos: .utility)
+    private let downloadProgressQueue = DispatchQueue(
+        label: "com.zarz.spotiflac.download_progress_stream",
+        qos: .utility
+    )
     private var downloadProgressTimer: DispatchSourceTimer?
     private var downloadProgressEventSink: FlutterEventSink?
     private var lastDownloadProgressPayload: String?
     private var lastDownloadProgressSeq: Int64 = 0
+    private var downloadProgressGeneration: UInt64 = 0
     private var libraryScanProgressTimer: DispatchSourceTimer?
     private var libraryScanProgressEventSink: FlutterEventSink?
     private var lastLibraryScanProgressPayload: String?
+    private var libraryScanProgressGeneration: UInt64 = 0
     private var backendChannel: FlutterMethodChannel?
     private var pendingSessionGrantEvents: [[String: Any]] = []
     
@@ -222,22 +228,28 @@ import Gobackend
 
     private func startDownloadProgressStream(_ eventSink: @escaping FlutterEventSink) {
         stopDownloadProgressStream()
+        downloadProgressGeneration &+= 1
+        let generation = downloadProgressGeneration
         downloadProgressEventSink = eventSink
         lastDownloadProgressPayload = nil
         lastDownloadProgressSeq = 0
 
-        let timer = DispatchSource.makeTimerSource(queue: streamQueue)
-        timer.schedule(deadline: .now(), repeating: .milliseconds(800))
+        let timer = DispatchSource.makeTimerSource(queue: downloadProgressQueue)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(250))
         timer.setEventHandler { [weak self] in
-            guard let self else { return }
-            let payload = GobackendGetAllDownloadProgressDelta(self.lastDownloadProgressSeq) as String? ?? ""
+            guard let self, self.downloadProgressGeneration == generation else { return }
+            let payload = GobackendWaitForAllDownloadProgressDelta(
+                self.lastDownloadProgressSeq,
+                15_000
+            ) as String? ?? ""
             if payload.isEmpty || payload == self.lastDownloadProgressPayload {
                 return
             }
             self.updateDownloadProgressSeq(payload)
             self.lastDownloadProgressPayload = payload
             DispatchQueue.main.async { [weak self] in
-                self?.downloadProgressEventSink?(self?.parseJsonPayload(payload))
+                guard let self, self.downloadProgressGeneration == generation else { return }
+                eventSink(self.parseJsonPayload(payload))
             }
         }
         downloadProgressTimer = timer
@@ -245,6 +257,7 @@ import Gobackend
     }
 
     private func stopDownloadProgressStream() {
+        downloadProgressGeneration &+= 1
         downloadProgressTimer?.setEventHandler {}
         downloadProgressTimer?.cancel()
         downloadProgressTimer = nil
@@ -255,20 +268,23 @@ import Gobackend
 
     private func startLibraryScanProgressStream(_ eventSink: @escaping FlutterEventSink) {
         stopLibraryScanProgressStream()
+        libraryScanProgressGeneration &+= 1
+        let generation = libraryScanProgressGeneration
         libraryScanProgressEventSink = eventSink
         lastLibraryScanProgressPayload = nil
 
         let timer = DispatchSource.makeTimerSource(queue: streamQueue)
         timer.schedule(deadline: .now(), repeating: .milliseconds(800))
         timer.setEventHandler { [weak self] in
-            guard let self else { return }
+            guard let self, self.libraryScanProgressGeneration == generation else { return }
             let payload = GobackendGetLibraryScanProgressJSON() as String? ?? "{}"
             if payload == self.lastLibraryScanProgressPayload {
                 return
             }
             self.lastLibraryScanProgressPayload = payload
             DispatchQueue.main.async { [weak self] in
-                self?.libraryScanProgressEventSink?(self?.parseJsonPayload(payload))
+                guard let self, self.libraryScanProgressGeneration == generation else { return }
+                eventSink(self.parseJsonPayload(payload))
             }
         }
         libraryScanProgressTimer = timer
@@ -276,6 +292,7 @@ import Gobackend
     }
 
     private func stopLibraryScanProgressStream() {
+        libraryScanProgressGeneration &+= 1
         libraryScanProgressTimer?.setEventHandler {}
         libraryScanProgressTimer?.cancel()
         libraryScanProgressTimer = nil

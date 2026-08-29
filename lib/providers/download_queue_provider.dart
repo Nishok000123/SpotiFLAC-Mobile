@@ -1311,7 +1311,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     }
   }
 
-  void retryItem(String id) {
+  Future<void> retryItem(String id) async {
     final item = state.items.where((i) => i.id == id).firstOrNull;
     if (item == null) {
       _log.w('retryItem: Item not found: $id');
@@ -1328,11 +1328,18 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     // A cancel issued while the item never started leaves a pre-registered
     // flag in the Go backend that the next attempt would consume and abort
     // instantly; the user asked for a retry, so drop it first.
-    unawaited(
-      PlatformBridge.resetDownloadCancel(id).catchError((Object e) {
-        _log.w('Failed to reset cancel flag for $id: $e');
-      }),
-    );
+    try {
+      await PlatformBridge.resetDownloadCancel(id);
+    } catch (e) {
+      _log.w('Failed to reset cancel flag for $id: $e');
+      return;
+    }
+    final current = state.items.where((i) => i.id == id).firstOrNull;
+    if (current == null ||
+        (current.status != DownloadStatus.failed &&
+            current.status != DownloadStatus.skipped)) {
+      return;
+    }
     _locallyCancelledItemIds.remove(id);
     _verificationRetryGuard.clearItem(id);
     _rateLimitRetriedItemIds.remove(id);
@@ -1347,6 +1354,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
           status: DownloadStatus.queued,
           progress: 0,
           error: null,
+          errorType: null,
+          filePath: null,
         );
       }
       return i;
@@ -1362,7 +1371,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     }
   }
 
-  void retryAllFailed({bool networkOnly = false}) {
+  Future<void> retryAllFailed({bool networkOnly = false}) async {
     final failedIds = state.items
         .where(
           (item) =>
@@ -1378,24 +1387,34 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     }
 
     _log.i('Retrying ${failedIds.length} failed download(s)');
-    for (final id in failedIds) {
-      unawaited(
-        PlatformBridge.resetDownloadCancel(id).catchError((Object e) {
+    final resetResults = await Future.wait(
+      failedIds.map((id) async {
+        try {
+          await PlatformBridge.resetDownloadCancel(id);
+          return id;
+        } catch (e) {
           _log.w('Failed to reset cancel flag for $id: $e');
-        }),
-      );
-    }
-    _locallyCancelledItemIds.removeAll(failedIds);
-    _pausePendingItemIds.removeAll(failedIds);
+          return null;
+        }
+      }),
+    );
+    final retryableIds = resetResults.whereType<String>().toSet();
+    if (retryableIds.isEmpty) return;
+    _locallyCancelledItemIds.removeAll(retryableIds);
+    _pausePendingItemIds.removeAll(retryableIds);
 
     for (final item in state.items) {
-      if (!failedIds.contains(item.id)) continue;
+      if (!retryableIds.contains(item.id)) continue;
       _purgeAlbumRgEntry(item.track);
     }
 
     final items = state.items
         .map((item) {
-          if (!failedIds.contains(item.id)) return item;
+          if (!retryableIds.contains(item.id)) return item;
+          if (item.status != DownloadStatus.failed &&
+              item.status != DownloadStatus.skipped) {
+            return item;
+          }
           return item.copyWith(
             status: DownloadStatus.queued,
             progress: 0,
@@ -1403,6 +1422,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
             bytesReceived: 0,
             bytesTotal: 0,
             error: null,
+            errorType: null,
+            filePath: null,
           );
         })
         .toList(growable: false);

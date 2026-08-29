@@ -329,7 +329,7 @@ internal fun DownloadService.cancelNativeWorkerProgressCoordinator() {
 private fun DownloadService.pollNativeWorkerProgress(generation: Long): Set<String> {
     val sinceSeq = synchronized(nativeWorkerProgressLock) { nativeWorkerProgressSeq }
     val raw = try {
-        Gobackend.getAllDownloadProgressDelta(sinceSeq)
+        Gobackend.waitForAllDownloadProgressDelta(sinceSeq, 5_000L)
     } catch (_: Exception) {
         return emptySet()
     }

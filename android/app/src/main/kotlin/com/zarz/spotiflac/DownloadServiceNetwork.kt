@@ -94,6 +94,17 @@ internal fun DownloadService.configureNativeWorkerNetworkPolicy(settingsJson: St
             "DownloadService",
             "Failed to monitor Wi-Fi for native worker: ${e.message}",
         )
+        // Callback registration can fail when the process/system callback quota is
+        // exhausted. Keep the Wi-Fi-only queue observable instead of leaving it
+        // paused forever with no event capable of resuming it.
+        nativeWorkerNetworkFallbackJob?.cancel()
+        nativeWorkerNetworkFallbackJob = serviceScope.launch {
+            while (NativeWorkerPolicy.requiresWifi(nativeWorkerDownloadNetworkMode)) {
+                delay(5_000)
+                refreshNativeWorkerNetworkPause()
+                if (nativeWorkerJob?.isActive != true) break
+            }
+        }
     }
 }
 
@@ -159,6 +170,8 @@ internal fun DownloadService.refreshNativeWorkerNetworkPause() {
 }
 
 internal fun DownloadService.unregisterNativeWorkerNetworkCallback() {
+    nativeWorkerNetworkFallbackJob?.cancel()
+    nativeWorkerNetworkFallbackJob = null
     val callback = nativeWorkerNetworkCallback
     nativeWorkerNetworkCallback = null
     synchronized(nativeWorkerWifiNetworks) {

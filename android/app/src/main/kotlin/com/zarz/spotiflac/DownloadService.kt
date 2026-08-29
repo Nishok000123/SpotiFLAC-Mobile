@@ -374,6 +374,7 @@ class DownloadService : Service() {
     @Volatile private var nativeWorkerCancelRequested = false
     internal var nativeWorkerDownloadNetworkMode = "any"
     internal var nativeWorkerNetworkCallback: ConnectivityManager.NetworkCallback? = null
+    internal var nativeWorkerNetworkFallbackJob: Job? = null
     internal val nativeWorkerWifiNetworks = mutableSetOf<Network>()
     // Bumped every time a new native queue replaces the current one. A worker
     // coroutine that observes a different generation than its own must stop
