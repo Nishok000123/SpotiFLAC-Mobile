@@ -15,7 +15,7 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 2  # Need previous commit to compare
 
@@ -23,7 +23,11 @@ jobs:
         id: current
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid current version" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Current version: $VERSION"
 
       - name: Get previous version
@@ -36,40 +40,52 @@ jobs:
             VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
           fi
           git checkout HEAD -- pubspec.yaml
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid previous version" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Previous version: $VERSION"
 
       - name: Check if version changed
         id: check
+        env:
+          CURRENT: ${{ steps.current.outputs.version }}
+          PREVIOUS: ${{ steps.previous.outputs.version }}
         run: |
-          CURRENT="${{ steps.current.outputs.version }}"
-          PREVIOUS="${{ steps.previous.outputs.version }}"
-          
+          if [[ ! "$CURRENT" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid current version" >&2
+            exit 1
+          fi
           if [ "$CURRENT" != "$PREVIOUS" ]; then
             echo "Version changed from $PREVIOUS to $CURRENT"
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "Version unchanged: $CURRENT"
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Check if tag exists
         id: tag_exists
         if: steps.check.outputs.changed == 'true'
+        env:
+          CURRENT_VERSION: ${{ steps.current.outputs.version }}
         run: |
-          TAG="v${{ steps.current.outputs.version }}"
+          TAG="v${CURRENT_VERSION}"
           if git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
             echo "Tag $TAG already exists"
-            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "Tag $TAG does not exist"
-            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Create and push tag
         if: steps.check.outputs.changed == 'true' && steps.tag_exists.outputs.exists == 'false'
+        env:
+          CURRENT_VERSION: ${{ steps.current.outputs.version }}
         run: |
-          TAG="v${{ steps.current.outputs.version }}"
+          TAG="v${CURRENT_VERSION}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a "$TAG" -m "Release $TAG"

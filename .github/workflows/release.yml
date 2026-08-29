@@ -21,21 +21,28 @@ jobs:
     steps:
       - name: Get version
         id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
           else
             VERSION="${GITHUB_REF#refs/tags/}"
           fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [[ ! "$VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version" >&2
+            exit 1
+          fi
+          printf 'version=%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
 
           # Check if version contains -preview, -beta, -rc, or -alpha (NOT -hotfix)
           VERSION_LOWER=$(echo "$VERSION" | tr '[:upper:]' '[:lower:]')
           if [[ "$VERSION_LOWER" == *"-preview"* ]] || [[ "$VERSION_LOWER" == *"-beta"* ]] || [[ "$VERSION_LOWER" == *"-rc"* ]] || [[ "$VERSION_LOWER" == *"-alpha"* ]]; then
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
             echo "Detected pre-release version: $VERSION"
           else
-            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
             echo "Detected stable version: $VERSION"
           fi
 
@@ -59,23 +66,23 @@ jobs:
           df -h
 
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: "temurin"
           java-version: "25"
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go_backend/go.mod
           cache-dependency-path: go_backend/go.sum
 
       # Cache Gradle for faster builds
       - name: Cache Gradle
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: |
             ~/.gradle/caches
@@ -84,7 +91,7 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Cache Android NDK
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: /usr/local/lib/android/sdk/ndk/29.0.14206865
           key: ndk-29.0.14206865
@@ -126,14 +133,14 @@ jobs:
           CGO_ENABLED: 1
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: "stable"
           flutter-version-file: .fvmrc
           cache: true
 
       - name: Cache pub dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
@@ -154,7 +161,7 @@ jobs:
           test -f build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
 
       - name: Sign APKs
-        uses: r0adkll/sign-android-release@v1
+        uses: r0adkll/sign-android-release@349ebdef58775b1e0d8099458af0816dc79b6407 # v1
         id: sign_arm64
         with:
           releaseDirectory: build/app/outputs/flutter-apk
@@ -166,8 +173,9 @@ jobs:
           BUILD_TOOLS_VERSION: "36.0.0"
 
       - name: Rename APKs
+        env:
+          VERSION: ${{ needs.get-version.outputs.version }}
         run: |
-          VERSION="${{ needs.get-version.outputs.version }}"
           cd build/app/outputs/flutter-apk
 
           rename_required_apk() {
@@ -176,10 +184,8 @@ jobs:
             signed="${unsigned%.apk}-signed.apk"
             if [ -f "$signed" ]; then
               mv "$signed" "$destination"
-            elif [ -f "$unsigned" ]; then
-              mv "$unsigned" "$destination"
             else
-              echo "ERROR: Missing APK: $unsigned"
+              echo "ERROR: Missing signed APK: $signed"
               exit 1
             fi
           }
@@ -190,10 +196,24 @@ jobs:
           rename_required_apk \
             app-armeabi-v7a-release.apk \
             "SpotiFLAC-${VERSION}-arm32.apk"
+
+          apksigner="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner -print | sort -V | tail -n 1)"
+          if [ -z "$apksigner" ]; then
+            echo "ERROR: apksigner is unavailable" >&2
+            exit 1
+          fi
+
+          for apk in SpotiFLAC-*.apk; do
+            "$apksigner" verify --verbose --print-certs "$apk"
+            if "$apksigner" verify --print-certs "$apk" | grep -qi "Android Debug"; then
+              echo "ERROR: Refusing to publish a debug-signed APK" >&2
+              exit 1
+            fi
+          done
           ls -la
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: android-apk
           path: build/app/outputs/flutter-apk/SpotiFLAC-*.apk
@@ -204,7 +224,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Select Xcode 26.1.1
         run: |
@@ -212,14 +232,14 @@ jobs:
           xcodebuild -version
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go_backend/go.mod
           cache-dependency-path: go_backend/go.sum
 
       # Cache CocoaPods
       - name: Cache CocoaPods
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: ios/Pods
           key: pods-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock') }}
@@ -287,14 +307,14 @@ jobs:
           ruby add_framework.rb
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: "stable"
           flutter-version-file: .fvmrc
           cache: true
 
       - name: Cache pub dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
@@ -335,8 +355,9 @@ jobs:
             DEVELOPMENT_TEAM=""
 
       - name: Create IPA
+        env:
+          VERSION: ${{ needs.get-version.outputs.version }}
         run: |
-          VERSION=${{ needs.get-version.outputs.version }}
           mkdir -p build/ios/ipa
           cd ios/build/Runner.xcarchive/Products/Applications
           mkdir Payload
@@ -346,16 +367,17 @@ jobs:
           rm -rf Payload
 
       - name: Verify IPA created
+        env:
+          VERSION: ${{ needs.get-version.outputs.version }}
         run: |
           ls -la build/ios/ipa/
-          VERSION=${{ needs.get-version.outputs.version }}
           if [ ! -f "build/ios/ipa/SpotiFLAC-${VERSION}-ios-unsigned.ipa" ]; then
             echo "ERROR: IPA not created!"
             exit 1
           fi
 
       - name: Upload IPA artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: ios-ipa
           path: build/ios/ipa/SpotiFLAC-*.ipa
@@ -368,13 +390,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0  # Full history needed for git-cliff
 
       - name: Generate changelog with git-cliff
         id: changelog
-        uses: orhun/git-cliff-action@v4
+        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4
         with:
           config: cliff.toml
           args: --latest --strip header
@@ -388,22 +410,23 @@ jobs:
           cat /tmp/changelog.txt
 
       - name: Download Android APK
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: android-apk
           path: ./release
 
       - name: Download iOS IPA
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: ios-ipa
           path: ./release
 
       - name: Prepare release body
+        env:
+          VERSION: ${{ needs.get-version.outputs.version }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
         run: |
-          VERSION=${{ needs.get-version.outputs.version }}
-          REPO_OWNER="${{ github.repository_owner }}"
-          REPO_NAME="${{ github.event.repository.name }}"
           CURRENT_REF=$(git rev-list -n 1 "$VERSION" 2>/dev/null || git rev-parse HEAD)
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 "${CURRENT_REF}^" 2>/dev/null || true)
 
@@ -440,7 +463,7 @@ jobs:
           cat /tmp/release_body.txt
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ needs.get-version.outputs.version }}
           name: SpotiFLAC-Mobile ${{ needs.get-version.outputs.version }}
@@ -460,19 +483,21 @@ jobs:
 
     steps:
       - name: Checkout main branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: main
 
       - name: Download iOS IPA
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: ios-ipa
           path: ./release
 
       - name: Update apps.json
+        env:
+          VERSION: ${{ needs.get-version.outputs.version }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          VERSION="${{ needs.get-version.outputs.version }}"
           VERSION_NUM="${VERSION#v}"
           DATE=$(date -u +%Y-%m-%d)
           IPA_FILE=$(find ./release -name "*ios*.ipa" | head -1)
@@ -491,7 +516,7 @@ jobs:
 
           jq --arg ver "$VERSION_NUM" \
              --arg date "$DATE" \
-             --arg url "https://github.com/${{ github.repository }}/releases/download/${VERSION}/SpotiFLAC-${VERSION}-ios-unsigned.ipa" \
+             --arg url "https://github.com/${REPOSITORY}/releases/download/${VERSION}/SpotiFLAC-${VERSION}-ios-unsigned.ipa" \
              --argjson size "$IPA_SIZE" \
              '.apps[0].version = $ver | .apps[0].versionDate = $date | .apps[0].downloadURL = $url | .apps[0].size = $size' \
              apps.json > apps.json.tmp && mv apps.json.tmp apps.json
@@ -500,8 +525,9 @@ jobs:
           cat apps.json
 
       - name: Commit and push
+        env:
+          VERSION: ${{ needs.get-version.outputs.version }}
         run: |
-          VERSION="${{ needs.get-version.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add apps.json
@@ -515,24 +541,24 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 
       - name: Download Android APK
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: android-apk
           path: ./release
 
       - name: Download iOS IPA
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: ios-ipa
           path: ./release
 
       - name: Generate changelog with git-cliff for Telegram
-        uses: orhun/git-cliff-action@v4
+        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4
         with:
           config: cliff.toml
           args: --latest --strip all
@@ -574,8 +600,9 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          VERSION: ${{ needs.get-version.outputs.version }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          VERSION=${{ needs.get-version.outputs.version }}
           CHANGELOG=$(cat /tmp/changelog.txt)
           
           # Find APK files
@@ -589,7 +616,7 @@ jobs:
             "<b>What's New:</b>" \
             "${CHANGELOG}" \
             "" \
-            "<a href=\"https://github.com/${{ github.repository }}/releases/tag/${VERSION}\">View Release Notes</a>" \
+            "<a href=\"https://github.com/${REPOSITORY}/releases/tag/${VERSION}\">View Release Notes</a>" \
             > /tmp/telegram_message.txt
 
           MESSAGE=$(cat /tmp/telegram_message.txt)
