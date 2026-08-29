@@ -730,6 +730,7 @@ func (r *extensionRuntime) RegisterAPIs(vm *goja.Runtime) {
 		fileObj.Set("copy", r.fileCopy)
 		fileObj.Set("move", r.fileMove)
 		fileObj.Set("getSize", r.fileGetSize)
+		fileObj.Set("transformPatternedBlocks", r.fileTransformPatternedBlocks)
 		vm.Set("file", fileObj)
 
 		ffmpegObj := vm.NewObject()

@@ -103,3 +103,32 @@ func TestOverlaySourceExtensionTrackIdentityFillsMissingValues(t *testing.T) {
 		t.Fatalf("missing identity fields were not enriched: %#v", req)
 	}
 }
+
+func TestExtensionPreparedDownloadContextMergesHostMetadata(t *testing.T) {
+	providerContext := map[string]any{
+		"token":      "opaque-provider-value",
+		"host_track": "provider-key-must-not-win",
+	}
+	req := DownloadRequest{
+		ProviderTrackID: "provider-track-1",
+		TrackName:       "Song",
+		ArtistName:      "Artist",
+		AlbumName:       "Album",
+		ISRC:            "ISRC123",
+	}
+
+	merged := extensionPreparedDownloadContext(req, providerContext)
+	if merged["token"] != "opaque-provider-value" {
+		t.Fatalf("provider context was not preserved: %#v", merged)
+	}
+	hostTrack, ok := merged["host_track"].(map[string]any)
+	if !ok {
+		t.Fatalf("host_track = %#v", merged["host_track"])
+	}
+	if hostTrack["id"] != req.ProviderTrackID || hostTrack["name"] != req.TrackName || hostTrack["isrc"] != req.ISRC {
+		t.Fatalf("host metadata was not propagated: %#v", hostTrack)
+	}
+	if providerContext["host_track"] != "provider-key-must-not-win" {
+		t.Fatalf("input provider context was mutated: %#v", providerContext)
+	}
+}

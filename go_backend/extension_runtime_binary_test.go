@@ -184,6 +184,104 @@ func TestExtensionRuntime_BlockCipherCBCSupportsAES(t *testing.T) {
 	}
 }
 
+func TestExtensionRuntime_FileTransformPatternedBlocks(t *testing.T) {
+	vm := newBinaryTestRuntime(t, true)
+
+	result, err := vm.RunString(`
+		(function() {
+			var options = {
+				algorithm: "blowfish",
+				mode: "cbc",
+				key: "0123456789ABCDEFF0E1D2C3B4A59687",
+				keyEncoding: "hex",
+				iv: "0001020304050607",
+				ivEncoding: "hex",
+				inputEncoding: "hex",
+				outputEncoding: "hex",
+				padding: "none"
+			};
+			var plainSegments = [
+				"00112233445566778899aabbccddeeff",
+				"102132435465768798a9bacbdcedfe0f",
+				"2031425364758697a8b9cadbecfd0e1f",
+				"30415263748596a7b8c9daebfc0d1e2f"
+			];
+			var encrypted = "";
+			for (var i = 0; i < plainSegments.length; i++) {
+				if (i % 3 === 0) {
+					var enc = utils.encryptBlockCipher(plainSegments[i], options);
+					if (!enc.success) throw new Error(enc.error);
+					encrypted += enc.data;
+				} else {
+					encrypted += plainSegments[i];
+				}
+			}
+			var partialTail = "a1b2c3d4e5";
+			encrypted += partialTail;
+			var write = file.writeBytes("encrypted.bin", encrypted, {
+				encoding: "hex", truncate: true
+			});
+			if (!write.success) throw new Error(write.error);
+
+			var callbacks = 0;
+			var transformed = file.transformPatternedBlocks(
+				"encrypted.bin",
+				"decrypted.bin",
+				{
+					operation: "decrypt",
+					algorithm: "blowfish",
+					mode: "cbc",
+					key: options.key,
+					keyEncoding: "hex",
+					iv: options.iv,
+					ivEncoding: "hex",
+					padding: "none",
+					segmentSize: 16,
+					transformEvery: 3,
+					transformOffset: 0,
+					bufferSize: 32
+				},
+				function(processed, total) {
+					if (processed > total) throw new Error("invalid progress");
+					callbacks++;
+				}
+			);
+			if (!transformed.success) throw new Error(transformed.error);
+			var output = file.readBytes("decrypted.bin", {encoding: "hex"});
+			if (!output.success) throw new Error(output.error);
+			return JSON.stringify({
+				output: output.data,
+				expected: plainSegments.join("") + partialTail,
+				processed: transformed.bytes_processed,
+				segments: transformed.segments_processed,
+				transformedSegments: transformed.segments_transformed,
+				callbacks: callbacks
+			});
+		})()
+	`)
+	if err != nil {
+		t.Fatalf("patterned file transform failed: %v", err)
+	}
+
+	decoded := decodeJSONResult[struct {
+		Output              string `json:"output"`
+		Expected            string `json:"expected"`
+		Processed           int64  `json:"processed"`
+		Segments            int64  `json:"segments"`
+		TransformedSegments int64  `json:"transformedSegments"`
+		Callbacks           int    `json:"callbacks"`
+	}](t, result)
+	if decoded.Output != decoded.Expected {
+		t.Fatalf("output = %q, want %q", decoded.Output, decoded.Expected)
+	}
+	if decoded.Processed != 69 || decoded.Segments != 5 || decoded.TransformedSegments != 2 {
+		t.Fatalf("unexpected transform stats: %+v", decoded)
+	}
+	if decoded.Callbacks != 3 {
+		t.Fatalf("callbacks = %d, want 3 buffered updates", decoded.Callbacks)
+	}
+}
+
 func TestExtensionRuntime_BlockCipherCTRSupportsAES(t *testing.T) {
 	vm := newBinaryTestRuntime(t, false)
 

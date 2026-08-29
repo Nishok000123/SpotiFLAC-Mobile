@@ -58,6 +58,7 @@ type extCallOpts struct {
 // any ProviderID stamping.
 func callExtension[T any](p *extensionProviderWrapper, opts extCallOpts, parse func(perf *extensionCallPerf, result goja.Value) (T, error)) (T, error) {
 	var zero T
+	ctx := context.Background()
 
 	perf := newExtensionCallPerf(p.extension.ID, opts.perfName)
 	defer perf.finish()
@@ -73,14 +74,13 @@ func callExtension[T any](p *extensionProviderWrapper, opts extCallOpts, parse f
 			p.extension.runtime.setActiveDownloadItemID(opts.itemID)
 			defer p.extension.runtime.clearActiveDownloadItemID()
 		}
-		initDownloadCancel(opts.itemID)
+		ctx = initDownloadCancel(opts.itemID)
 		defer clearDownloadCancel(opts.itemID)
 		if isDownloadCancelled(opts.itemID) {
 			return zero, ErrDownloadCancelled
 		}
 	}
 
-	ctx := context.Background()
 	if opts.requestID != "" {
 		if p.extension.runtime != nil {
 			p.extension.runtime.setActiveRequestID(opts.requestID)
@@ -456,12 +456,13 @@ func (p *extensionProviderWrapper) EnrichTrackForItemID(track *ExtTrackMetadata,
 	}
 	perf.recordInit(time.Since(initStartedAt))
 	defer p.extension.VMMu.Unlock()
+	downloadCtx := context.Background()
 	if itemID != "" {
 		if p.extension.runtime != nil {
 			p.extension.runtime.setActiveDownloadItemID(itemID)
 			defer p.extension.runtime.clearActiveDownloadItemID()
 		}
-		initDownloadCancel(itemID)
+		downloadCtx = initDownloadCancel(itemID)
 		defer clearDownloadCancel(itemID)
 		if isDownloadCancelled(itemID) {
 			return track, ErrDownloadCancelled
@@ -469,7 +470,7 @@ func (p *extensionProviderWrapper) EnrichTrackForItemID(track *ExtTrackMetadata,
 	}
 
 	jsStartedAt := time.Now()
-	result, err := runGojaCallWithTimeoutAndRecover(p.vm, func() (goja.Value, error) {
+	result, err := runGojaCallWithTimeoutContextAndRecover(downloadCtx, p.vm, func() (goja.Value, error) {
 		return invokeExtensionMethod(p.vm, "enrichTrack", extensionTrackInput(track))
 	}, DefaultJSTimeout)
 	perf.recordJS(time.Since(jsStartedAt))
@@ -505,7 +506,7 @@ func (p *extensionProviderWrapper) EnrichTrackForItemID(track *ExtTrackMetadata,
 	return &enrichedTrack, nil
 }
 
-func (p *extensionProviderWrapper) CheckAvailabilityForItemID(isrc, trackName, artistName, spotifyID, deezerID, tidalID, qobuzID string, durationMS int, itemID string) (*ExtAvailabilityResult, error) {
+func (p *extensionProviderWrapper) CheckAvailabilityForItemID(isrc, trackName, artistName, spotifyID, deezerID, tidalID, qobuzID string, durationMS int, itemID string, trackContexts ...map[string]any) (*ExtAvailabilityResult, error) {
 	if !p.extension.Manifest.IsDownloadProvider() {
 		return nil, fmt.Errorf("extension '%s' is not a download provider", p.extension.ID)
 	}
@@ -519,6 +520,9 @@ func (p *extensionProviderWrapper) CheckAvailabilityForItemID(isrc, trackName, a
 		"tidal_id":    tidalID,
 		"qobuz_id":    qobuzID,
 		"duration_ms": durationMS,
+	}
+	if len(trackContexts) > 0 && len(trackContexts[0]) > 0 {
+		availabilityOptions["track"] = trackContexts[0]
 	}
 
 	return callExtension(p, extCallOpts{
@@ -620,8 +624,9 @@ func (p *extensionProviderWrapper) DownloadPrepared(
 		runtime.setActiveDownloadItemID(itemID)
 		defer runtime.clearActiveDownloadItemID()
 	}
+	downloadCtx := context.Background()
 	if itemID != "" {
-		initDownloadCancel(itemID)
+		downloadCtx = initDownloadCancel(itemID)
 		defer clearDownloadCancel(itemID)
 		SetItemPreparing(itemID)
 	}
@@ -653,7 +658,7 @@ func (p *extensionProviderWrapper) DownloadPrepared(
 	if len(preparedContext) > 0 {
 		downloadOptions["preparedContext"] = preparedContext
 	}
-	result, err := runGojaCallWithTimeoutAndRecover(vm, func() (goja.Value, error) {
+	result, err := runGojaCallWithTimeoutContextAndRecover(downloadCtx, vm, func() (goja.Value, error) {
 		return invokeExtensionMethod(
 			vm,
 			"download",
@@ -670,6 +675,9 @@ func (p *extensionProviderWrapper) DownloadPrepared(
 	cleanupSafe = !IsRuntimeUnsafeError(err)
 	unsafeDone = runtimeCompletion(err)
 	if err != nil {
+		if itemID != "" && isDownloadCancelled(itemID) {
+			return nil, ErrDownloadCancelled
+		}
 		errMsg := err.Error()
 		errType := "script_error"
 		if IsTimeoutError(err) {

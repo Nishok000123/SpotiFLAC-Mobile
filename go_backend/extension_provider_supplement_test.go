@@ -1,9 +1,64 @@
 package gobackend
 
 import (
+	"errors"
+	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
+
+func TestExtensionDownloadCancellationInterruptsBusyJavaScript(t *testing.T) {
+	ext := newTestLoadedExtension(t, ExtensionTypeDownloadProvider)
+	if err := os.WriteFile(filepath.Join(ext.SourceDir, "index.js"), []byte(`
+registerExtension({
+  download: function() {
+    while (true) {}
+  }
+});
+`), 0600); err != nil {
+		t.Fatalf("write busy extension: %v", err)
+	}
+	provider := newExtensionProviderWrapper(ext)
+	const itemID = "busy-download-cancel"
+	outputPath := filepath.Join(t.TempDir(), "busy.flac")
+	done := make(chan error, 1)
+	go func() {
+		_, err := provider.DownloadPrepared(
+			"track",
+			"best",
+			outputPath,
+			itemID,
+			nil,
+			nil,
+		)
+		done <- err
+	}()
+
+	deadline := time.Now().Add(time.Second)
+	for {
+		downloadCancels.mu.Lock()
+		entry := downloadCancels.entries[itemID]
+		ready := entry != nil && entry.refs > 0
+		downloadCancels.mu.Unlock()
+		if ready {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("download cancellation context was not initialized")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	cancelDownload(itemID)
+	select {
+	case err := <-done:
+		if !errors.Is(err, ErrDownloadCancelled) {
+			t.Fatalf("DownloadPrepared error = %v, want ErrDownloadCancelled", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("busy extension did not stop after cancellation")
+	}
+}
 
 func TestExtensionProviderWrapperFullSurface(t *testing.T) {
 	ext := newTestLoadedExtension(t, ExtensionTypeMetadataProvider, ExtensionTypeDownloadProvider, ExtensionTypeLyricsProvider)
