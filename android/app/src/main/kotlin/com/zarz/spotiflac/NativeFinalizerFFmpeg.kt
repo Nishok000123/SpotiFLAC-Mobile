@@ -87,12 +87,16 @@ internal fun NativeDownloadFinalizer.scanReplayGain(path: String, shouldCancel: 
 }
 
 internal fun NativeDownloadFinalizer.runFFmpeg(command: String, shouldCancel: () -> Boolean = { false }): Pair<Boolean, String> {
+    return runFFmpegArguments(FFmpegKitConfig.parseArguments(command), shouldCancel)
+}
+
+internal fun NativeDownloadFinalizer.runFFmpegArguments(arguments: Array<String>, shouldCancel: () -> Boolean = { false }): Pair<Boolean, String> {
     checkCancelled(shouldCancel)
     installNativeFFmpegCallbackFilter()
     val latch = CountDownLatch(1)
     var completedSession: FFmpegSession? = null
     val session = FFmpegSession.create(
-        FFmpegKitConfig.parseArguments(command),
+        arguments,
         { finishedSession ->
             completedSession = finishedSession
             latch.countDown()
@@ -158,8 +162,15 @@ internal fun NativeDownloadFinalizer.withFFmpegCommandPump(
                 for (index in 0 until commands.length()) {
                     val command = commands.optJSONObject(index) ?: continue
                     val id = command.optString("command_id", "")
-                    val commandLine = command.optString("command", "")
-                    if (id.isBlank() || commandLine.isBlank() || handled.contains(id)) {
+                    val rawArguments = command.optJSONArray("arguments")
+                    val arguments = if (rawArguments == null) {
+                        emptyArray()
+                    } else {
+                        Array(rawArguments.length()) { argumentIndex ->
+                            rawArguments.optString(argumentIndex, "")
+                        }
+                    }
+                    if (id.isBlank() || arguments.isEmpty() || arguments.any { it.isEmpty() } || handled.contains(id)) {
                         continue
                     }
                     handled.add(id)
@@ -172,7 +183,7 @@ internal fun NativeDownloadFinalizer.withFFmpegCommandPump(
                         if (shouldCancel()) {
                             Pair(false, "cancelled")
                         } else {
-                            runFFmpeg(commandLine, shouldCancel)
+                            runFFmpegArguments(arguments, shouldCancel)
                         }
                     } catch (e: Exception) {
                         Pair(false, e.message ?: "FFmpeg execution failed")

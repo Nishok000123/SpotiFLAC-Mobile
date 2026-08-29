@@ -702,7 +702,7 @@ func GetPendingFFmpegCommandJSON(commandID string) (string, error) {
 	result := map[string]any{
 		"command_id":   commandID,
 		"extension_id": cmd.ExtensionID,
-		"command":      cmd.Command,
+		"arguments":    cmd.Arguments,
 		"input_path":   cmd.InputPath,
 		"output_path":  cmd.OutputPath,
 	}
@@ -724,7 +724,7 @@ func GetAllPendingFFmpegCommandsJSON() (string, error) {
 			commands = append(commands, map[string]any{
 				"command_id":   cmdID,
 				"extension_id": cmd.ExtensionID,
-				"command":      cmd.Command,
+				"arguments":    cmd.Arguments,
 			})
 		}
 	}
@@ -754,7 +754,7 @@ func WaitForPendingFFmpegCommandsJSON(timeoutMillis int64) (string, error) {
 			commands = append(commands, map[string]any{
 				"command_id":   cmdID,
 				"extension_id": cmd.ExtensionID,
-				"command":      cmd.Command,
+				"arguments":    cmd.Arguments,
 			})
 		}
 		ffmpegCommandsMu.Unlock()

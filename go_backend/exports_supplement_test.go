@@ -403,7 +403,7 @@ func TestExportsJSONWrappersAndExtensionManagerSurface(t *testing.T) {
 	}
 
 	ffmpegCommandsMu.Lock()
-	ffmpegCommands["cmd-1"] = &FFmpegCommand{ExtensionID: ext.ID, Command: "ffmpeg -version", InputPath: "in", OutputPath: "out"}
+	ffmpegCommands["cmd-1"] = &FFmpegCommand{ExtensionID: ext.ID, Arguments: []string{"-version"}, InputPath: "in", OutputPath: "out"}
 	ffmpegCommandsMu.Unlock()
 	if cmdJSON, err := GetPendingFFmpegCommandJSON("cmd-1"); err != nil || !strings.Contains(cmdJSON, "cmd-1") {
 		t.Fatalf("GetPendingFFmpegCommandJSON = %q/%v", cmdJSON, err)
