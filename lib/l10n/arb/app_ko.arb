@@ -4016,7 +4016,7 @@
   "@downloadNetworkCompatibilityMode": {
     "description": "Setting for legacy TLS/network handling"
   },
-  "downloadNetworkCompatibilityModeEnabled": "이전 네트워크에 대한 레거시 TLS 설정 사용",
+  "downloadNetworkCompatibilityModeEnabled": "레거시 HTTP 엔드포인트 허용; TLS 검증은 계속 활성화됨",
   "@downloadNetworkCompatibilityModeEnabled": {
     "description": "Subtitle when network compatibility mode is on"
   },

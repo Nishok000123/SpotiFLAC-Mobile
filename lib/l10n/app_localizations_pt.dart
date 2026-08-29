@@ -3254,7 +3254,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get downloadNetworkCompatibilityModeEnabled =>
-      'Using legacy TLS settings for older networks';
+      'Allowing legacy HTTP endpoints; TLS verification remains enabled';
 
   @override
   String get downloadNetworkCompatibilityModeDisabled =>
@@ -8107,7 +8107,7 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
 
   @override
   String get downloadNetworkCompatibilityModeEnabled =>
-      'Using legacy TLS settings for older networks';
+      'Allowing legacy HTTP endpoints; TLS verification remains enabled';
 
   @override
   String get downloadNetworkCompatibilityModeDisabled =>

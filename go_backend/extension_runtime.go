@@ -536,6 +536,8 @@ func isPrivateIP(host string) bool {
 
 	ips, err := net.LookupIP(hostLower)
 	if err != nil {
+		// Defer the final decision to dialWithDoHFallback. It resolves and filters
+		// every concrete address (including DoH answers) before opening a socket.
 		setPrivateIPCache(hostLower, false, privateIPErrorCacheTTL)
 		return false
 	}

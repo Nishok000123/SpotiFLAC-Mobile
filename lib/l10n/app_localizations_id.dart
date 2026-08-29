@@ -3257,7 +3257,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get downloadNetworkCompatibilityModeEnabled =>
-      'Using legacy TLS settings for older networks';
+      'Mengizinkan endpoint HTTP lama; verifikasi TLS tetap aktif';
 
   @override
   String get downloadNetworkCompatibilityModeDisabled =>

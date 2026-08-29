@@ -234,7 +234,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     final compatibilityMode = state.networkCompatibilityMode;
     PlatformBridge.setNetworkCompatibilityOptions(
       allowHttp: compatibilityMode,
-      insecureTls: compatibilityMode,
+      insecureTls: false,
     ).catchError((Object e) {
       _log.w('Failed to sync network compatibility options to backend: $e');
     });

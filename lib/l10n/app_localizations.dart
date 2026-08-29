@@ -5501,7 +5501,7 @@ abstract class AppLocalizations {
   /// Subtitle when network compatibility mode is on
   ///
   /// In en, this message translates to:
-  /// **'Using legacy TLS settings for older networks'**
+  /// **'Allowing legacy HTTP endpoints; TLS verification remains enabled'**
   String get downloadNetworkCompatibilityModeEnabled;
 
   /// Subtitle when network compatibility mode is off

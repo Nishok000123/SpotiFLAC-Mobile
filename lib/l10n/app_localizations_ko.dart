@@ -3172,7 +3172,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get downloadNetworkCompatibilityModeEnabled =>
-      '이전 네트워크에 대한 레거시 TLS 설정 사용';
+      '레거시 HTTP 엔드포인트 허용; TLS 검증은 계속 활성화됨';
 
   @override
   String get downloadNetworkCompatibilityModeDisabled => '표준 ​​네트워크 설정 사용';

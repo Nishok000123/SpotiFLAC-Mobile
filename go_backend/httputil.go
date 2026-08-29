@@ -157,19 +157,22 @@ func CloseIdleConnections() {
 }
 
 func SetNetworkCompatibilityOptions(allowHTTP, insecureTLS bool) {
+	if insecureTLS {
+		GoLog("[HTTP] Ignoring insecure TLS compatibility request; certificate verification remains enabled\n")
+	}
 	networkCompatibilityMu.Lock()
 	networkCompatibilityOptions = NetworkCompatibilityOptions{
 		AllowHTTP:   allowHTTP,
-		InsecureTLS: insecureTLS,
+		InsecureTLS: false,
 	}
 	networkCompatibilityMu.Unlock()
 
-	applyTLSCompatibility(sharedTransport, insecureTLS)
-	applyTLSCompatibility(extensionAPITransport, insecureTLS)
-	applyTLSCompatibility(metadataTransport, insecureTLS)
+	applyTLSCompatibility(sharedTransport, false)
+	applyTLSCompatibility(extensionAPITransport, false)
+	applyTLSCompatibility(metadataTransport, false)
 	CloseIdleConnections()
 
-	GoLog("[HTTP] Network compatibility options updated: allow_http=%v insecure_tls=%v\n", allowHTTP, insecureTLS)
+	GoLog("[HTTP] Network compatibility options updated: allow_http=%v insecure_tls=false\n", allowHTTP)
 }
 
 func GetNetworkCompatibilityOptions() NetworkCompatibilityOptions {

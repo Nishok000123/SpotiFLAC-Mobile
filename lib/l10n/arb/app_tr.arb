@@ -3828,7 +3828,7 @@
   "@setupDownloadLocationTitle": {
     "description": "Download location dialog title"
   },
-  "downloadNetworkCompatibilityModeEnabled": "Using legacy TLS settings for older networks",
+  "downloadNetworkCompatibilityModeEnabled": "Allowing legacy HTTP endpoints; TLS verification remains enabled",
   "@downloadNetworkCompatibilityModeEnabled": {
     "description": "Subtitle when network compatibility mode is on"
   },

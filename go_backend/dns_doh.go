@@ -55,35 +55,63 @@ var (
 	dohCache = map[string]dohCacheEntry{}
 )
 
-// dialWithDoHFallback dials addr normally and, when the failure is a DNS
-// error, retries with DoH-resolved addresses. Non-DNS failures pass through
-// untouched.
+// dialWithDoHFallback resolves once, filters every answer, and then dials the
+// vetted IP directly. This closes the validation-to-dial DNS rebinding window:
+// TLS still receives the original hostname from net/http for SNI and hostname
+// verification, while the socket cannot be redirected to a private address.
 func dialWithDoHFallback(ctx context.Context, dialer *net.Dialer, network, addr string) (net.Conn, error) {
-	conn, err := dialer.DialContext(ctx, network, addr)
-	if err == nil {
-		return conn, nil
-	}
-	var dnsErr *net.DNSError
-	if !errors.As(err, &dnsErr) {
-		return nil, err
-	}
 	host, port, splitErr := net.SplitHostPort(addr)
-	if splitErr != nil || net.ParseIP(host) != nil {
-		return nil, err
+	if splitErr != nil {
+		return nil, splitErr
+	}
+	if literal := net.ParseIP(host); literal != nil {
+		if !IsPrivateNetworkAllowed() && isPrivateIPAddr(literal) {
+			return nil, fmt.Errorf("network access denied: private/local address %s", host)
+		}
+		return dialer.DialContext(ctx, network, addr)
+	}
+
+	ips, lookupErr := net.DefaultResolver.LookupIP(ctx, "ip", host)
+	if lookupErr == nil {
+		ips = filterDialableIPs(ips)
+		if len(ips) == 0 {
+			return nil, fmt.Errorf("network access denied: %s resolved only to private/local addresses", host)
+		}
+		return dialResolvedIPs(ctx, dialer, network, host, port, ips, nil)
+	}
+
+	var dnsErr *net.DNSError
+	if !errors.As(lookupErr, &dnsErr) {
+		return nil, lookupErr
 	}
 	ips, dohErr := dohResolve(ctx, host)
 	if dohErr != nil {
 		// Surface the OS resolver's error, not the fallback's.
-		return nil, err
+		return nil, lookupErr
 	}
-	GoLog("[DoH] OS resolver failed for %s (%v), dialing DoH answer\n", host, err)
-	lastErr := err
+	GoLog("[DoH] OS resolver failed for %s (%v), dialing DoH answer\n", host, lookupErr)
+	return dialResolvedIPs(ctx, dialer, network, host, port, ips, lookupErr)
+}
+
+func dialResolvedIPs(
+	ctx context.Context,
+	dialer *net.Dialer,
+	network string,
+	host string,
+	port string,
+	ips []net.IP,
+	initialErr error,
+) (net.Conn, error) {
+	lastErr := initialErr
 	for _, ip := range ips {
 		conn, dialErr := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
 		if dialErr == nil {
 			return conn, nil
 		}
 		lastErr = dialErr
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("no dialable address for %s", host)
 	}
 	return nil, lastErr
 }
@@ -197,8 +225,7 @@ func filterDialableIPs(ips []net.IP) []net.IP {
 	}
 	kept := ips[:0]
 	for _, ip := range ips {
-		if ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() ||
-			ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+		if isPrivateIPAddr(ip) {
 			continue
 		}
 		kept = append(kept, ip)

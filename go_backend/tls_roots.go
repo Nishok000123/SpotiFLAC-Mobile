@@ -80,10 +80,13 @@ func supplementalRootCAs() *x509.CertPool {
 // options does not drop accumulated sessions.
 var stdTLSSessionCache = tls.NewLRUClientSessionCache(64)
 
-func newTLSCompatibilityConfig(insecureTLS bool) *tls.Config {
+func newTLSCompatibilityConfig(_ bool) *tls.Config {
 	return &tls.Config{
-		RootCAs:            supplementalRootCAs(),
-		InsecureSkipVerify: insecureTLS,
+		RootCAs: supplementalRootCAs(),
+		// Hostname and certificate verification are never disabled globally.
+		// Compatibility fallbacks must not turn every API/download connection
+		// into an unauthenticated channel.
+		InsecureSkipVerify: false,
 		ClientSessionCache: stdTLSSessionCache,
 	}
 }

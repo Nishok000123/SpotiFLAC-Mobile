@@ -3335,7 +3335,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get downloadNetworkCompatibilityModeEnabled =>
-      'Utilisation des paramètres TLS hérités pour les réseaux plus anciens';
+      'Points de terminaison HTTP hérités autorisés ; la vérification TLS reste active';
 
   @override
   String get downloadNetworkCompatibilityModeDisabled =>

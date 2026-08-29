@@ -44,11 +44,11 @@ func TestHTTPUtilityHelpers(t *testing.T) {
 		t.Fatalf("ISRG Root X2 should verify with supplemental roots: %v", err)
 	}
 	SetNetworkCompatibilityOptions(true, true)
-	if opts := GetNetworkCompatibilityOptions(); !opts.AllowHTTP || !opts.InsecureTLS {
+	if opts := GetNetworkCompatibilityOptions(); !opts.AllowHTTP || opts.InsecureTLS {
 		t.Fatalf("network opts = %#v", opts)
 	}
-	if !sharedTransport.TLSClientConfig.InsecureSkipVerify {
-		t.Fatal("expected insecure TLS config to be applied")
+	if sharedTransport.TLSClientConfig.InsecureSkipVerify {
+		t.Fatal("TLS verification must remain enabled in compatibility mode")
 	}
 	SetNetworkCompatibilityOptions(false, false)
 	if sharedTransport.TLSClientConfig == nil || sharedTransport.TLSClientConfig.InsecureSkipVerify {

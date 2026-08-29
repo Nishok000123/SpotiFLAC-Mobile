@@ -3292,7 +3292,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get downloadNetworkCompatibilityModeEnabled =>
-      'Verwendung der Legacy-TLS-Einstellungen für ältere Netzwerke';
+      'Legacy-HTTP-Endpunkte erlaubt; TLS-Prüfung bleibt aktiviert';
 
   @override
   String get downloadNetworkCompatibilityModeDisabled =>

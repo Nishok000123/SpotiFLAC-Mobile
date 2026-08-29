@@ -164,6 +164,8 @@ func TestMoreSmallConstructorsRuntimeAndMetadataHelpers(t *testing.T) {
 		_, _ = w.Write([]byte("cover"))
 	}))
 	defer server.Close()
+	SetAllowPrivateNetwork(true)
+	defer SetAllowPrivateNetwork(false)
 	SetNetworkCompatibilityOptions(true, false)
 	defer SetNetworkCompatibilityOptions(false, false)
 	coverPath := filepath.Join(t.TempDir(), "cover.jpg")
