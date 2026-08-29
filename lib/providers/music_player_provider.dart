@@ -38,6 +38,26 @@ final playbackLoadingProvider = Provider<bool>((ref) {
   );
 });
 
+/// Transport state for one media item. Non-current Library cells only watch
+/// the current media ID; the active cell additionally follows play/loading so
+/// a transport toggle does not rebuild the entire Library grid.
+final mediaItemPlaybackUiProvider =
+    Provider.family<({bool isCurrent, bool isPlaying, bool isLoading}), String>(
+      (ref, mediaId) {
+        final currentId = ref.watch(
+          currentMediaItemProvider.select((state) => state.value?.id),
+        );
+        if (mediaId.isEmpty || currentId != mediaId) {
+          return (isCurrent: false, isPlaying: false, isLoading: false);
+        }
+        return (
+          isCurrent: true,
+          isPlaying: ref.watch(playbackPlayingProvider),
+          isLoading: ref.watch(playbackLoadingProvider),
+        );
+      },
+    );
+
 final playQueueProvider = StreamProvider<List<MediaItem>>((ref) {
   return musicPlayerQueueEvents();
 });

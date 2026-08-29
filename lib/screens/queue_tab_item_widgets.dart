@@ -567,20 +567,18 @@ extension _QueueTabItemWidgets on _QueueTabState {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (fileExists)
-                  IconButton(
-                    onPressed: () => _openFile(
+                  _LibraryPlaybackButton(
+                    mediaId: _cleanFilePath(item.filePath!),
+                    playTooltip: context.l10n.a11yPlayTrackByArtist(
+                      item.track.name,
+                      item.track.artistName,
+                    ),
+                    onPlay: () => _openFile(
                       item.filePath!,
                       title: item.track.name,
                       artist: item.track.artistName,
                       album: item.track.albumName,
                       coverUrl: item.track.coverUrl ?? '',
-                    ),
-                    icon: Icon(Icons.play_arrow, color: colorScheme.primary),
-                    tooltip: context.l10n.tooltipPlay,
-                    style: IconButton.styleFrom(
-                      backgroundColor: colorScheme.primaryContainer.withValues(
-                        alpha: 0.3,
-                      ),
                     ),
                   )
                 else
@@ -954,16 +952,13 @@ extension _QueueTabItemWidgets on _QueueTabState {
           valueListenable: fileExistsListenable,
           builder: (context, fileExists, child) {
             if (fileExists) {
-              return IconButton(
-                onPressed: () => _playLibraryItem(item, libraryItems),
-                icon: Icon(Icons.play_arrow, color: colorScheme.primary),
-                tooltip: context.l10n.tooltipPlay,
-                style: IconButton.styleFrom(
-                  minimumSize: Size.square(context.tokens.minTouchTarget),
-                  backgroundColor: colorScheme.primaryContainer.withValues(
-                    alpha: 0.3,
-                  ),
+              return _LibraryPlaybackButton(
+                mediaId: _libraryPlaybackMediaId(item),
+                playTooltip: context.l10n.a11yPlayTrackByArtist(
+                  item.trackName,
+                  item.artistName,
                 ),
+                onPlay: () => _playLibraryItem(item, libraryItems),
               );
             }
             return Tooltip(
@@ -1069,12 +1064,14 @@ extension _QueueTabItemWidgets on _QueueTabState {
               valueListenable: fileExistsListenable,
               builder: (context, fileExists, child) {
                 if (fileExists) {
-                  return TrackGridPlayButton(
-                    tooltip: context.l10n.a11yPlayTrackByArtist(
+                  return _LibraryPlaybackButton(
+                    mediaId: _libraryPlaybackMediaId(item),
+                    playTooltip: context.l10n.a11yPlayTrackByArtist(
                       item.trackName,
                       item.artistName,
                     ),
-                    onPressed: () => _playLibraryItem(item, libraryItems),
+                    onPlay: () => _playLibraryItem(item, libraryItems),
+                    grid: true,
                   );
                 }
                 return Tooltip(
@@ -1129,6 +1126,57 @@ extension _QueueTabItemWidgets on _QueueTabState {
         style: Theme.of(
           context,
         ).textTheme.labelSmall?.copyWith(color: colorScheme.onSurfaceVariant),
+      ),
+    );
+  }
+}
+
+class _LibraryPlaybackButton extends ConsumerWidget {
+  const _LibraryPlaybackButton({
+    required this.mediaId,
+    required this.playTooltip,
+    required this.onPlay,
+    this.grid = false,
+  });
+
+  final String mediaId;
+  final String playTooltip;
+  final VoidCallback onPlay;
+  final bool grid;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final playback = ref.watch(mediaItemPlaybackUiProvider(mediaId));
+    final icon = playback.isPlaying ? Icons.pause : Icons.play_arrow;
+    final tooltip = playback.isPlaying ? context.l10n.actionPause : playTooltip;
+    final onPressed = playback.isLoading
+        ? null
+        : () {
+            if (playback.isCurrent) {
+              ref
+                  .read(musicPlayerControllerProvider)
+                  .togglePlayPause(playback.isPlaying);
+            } else {
+              onPlay();
+            }
+          };
+
+    if (grid) {
+      return TrackGridPlayButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: icon,
+      );
+    }
+
+    final colorScheme = Theme.of(context).colorScheme;
+    return IconButton(
+      onPressed: onPressed,
+      icon: Icon(icon, color: colorScheme.primary),
+      tooltip: tooltip,
+      style: IconButton.styleFrom(
+        minimumSize: Size.square(context.tokens.minTouchTarget),
+        backgroundColor: colorScheme.primaryContainer.withValues(alpha: 0.3),
       ),
     );
   }

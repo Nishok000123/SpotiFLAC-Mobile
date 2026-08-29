@@ -278,12 +278,14 @@ class TrackGridPlayButton extends StatelessWidget {
     super.key,
     required this.tooltip,
     required this.onPressed,
+    this.icon = Icons.play_arrow,
   });
 
   static const double visualDiameter = 36;
 
   final String tooltip;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -307,7 +309,7 @@ class TrackGridPlayButton extends StatelessWidget {
           color: colorScheme.primary,
           shape: BoxShape.circle,
         ),
-        child: Icon(Icons.play_arrow, size: 18, color: colorScheme.onPrimary),
+        child: Icon(icon, size: 18, color: colorScheme.onPrimary),
       ),
     );
   }

@@ -1,6 +1,10 @@
 part of 'queue_tab.dart';
 
 extension _QueueTabNavigation on _QueueTabState {
+  String _libraryPlaybackMediaId(UnifiedLibraryItem item) {
+    return item.historyItem?.id ?? item.localItem?.id ?? item.id;
+  }
+
   Future<void> _openFile(
     String filePath, {
     String title = '',

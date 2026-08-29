@@ -192,18 +192,20 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
                 final resolvedPath = result.path;
                 if (result.status == CompletionBridgePlayableStatus.playable &&
                     resolvedPath != null) {
-                  return TrackGridPlayButton(
-                    tooltip: context.l10n.a11yPlayTrackByArtist(
+                  return _LibraryPlaybackButton(
+                    mediaId: _cleanFilePath(resolvedPath),
+                    playTooltip: context.l10n.a11yPlayTrackByArtist(
                       trackName,
                       artistName,
                     ),
-                    onPressed: () => _openFile(
+                    onPlay: () => _openFile(
                       resolvedPath,
                       title: trackName,
                       artist: artistName,
                       album: albumName,
                       coverUrl: coverUrl,
                     ),
+                    grid: true,
                   );
                 }
                 if (result.status == CompletionBridgePlayableStatus.checking) {
@@ -343,21 +345,18 @@ extension _QueueTabCollectionItemWidgets on _QueueTabState {
                 final resolvedPath = result.path;
                 if (result.status == CompletionBridgePlayableStatus.playable &&
                     resolvedPath != null) {
-                  return IconButton(
-                    onPressed: () => _openFile(
+                  return _LibraryPlaybackButton(
+                    mediaId: _cleanFilePath(resolvedPath),
+                    playTooltip: context.l10n.a11yPlayTrackByArtist(
+                      trackName,
+                      artistName,
+                    ),
+                    onPlay: () => _openFile(
                       resolvedPath,
                       title: trackName,
                       artist: artistName,
                       album: albumName,
                       coverUrl: coverUrl,
-                    ),
-                    icon: Icon(Icons.play_arrow, color: colorScheme.primary),
-                    tooltip: context.l10n.tooltipPlay,
-                    style: IconButton.styleFrom(
-                      minimumSize: Size.square(context.tokens.minTouchTarget),
-                      backgroundColor: colorScheme.primaryContainer.withValues(
-                        alpha: 0.3,
-                      ),
                     ),
                   );
                 }
