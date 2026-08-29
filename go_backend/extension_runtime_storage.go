@@ -316,6 +316,10 @@ func (r *extensionRuntime) getOrCreateSalt() ([]byte, error) {
 }
 
 func (r *extensionRuntime) getEncryptionKey() ([]byte, error) {
+	return deriveExtensionStorageKey(r.extensionID, "credentials")
+}
+
+func (r *extensionRuntime) getLegacyEncryptionKey() ([]byte, error) {
 	salt, err := r.getOrCreateSalt()
 	if err != nil {
 		return nil, err
@@ -340,7 +344,23 @@ func (r *extensionRuntime) readCredentialsFileLocked() (map[string]any, error) {
 	}
 	decrypted, err := decryptAES(data, key)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt credentials: %w", err)
+		legacyKey, legacyKeyErr := r.getLegacyEncryptionKey()
+		if legacyKeyErr != nil {
+			return nil, fmt.Errorf("failed to decrypt credentials: %w", err)
+		}
+		decrypted, legacyKeyErr = decryptAES(data, legacyKey)
+		if legacyKeyErr != nil {
+			return nil, fmt.Errorf("failed to decrypt credentials: %w", err)
+		}
+		// Transparently replace the legacy extension-id-derived ciphertext while
+		// the caller holds the per-file lock.
+		migrated, migrateErr := encryptAES(decrypted, key)
+		if migrateErr != nil {
+			return nil, fmt.Errorf("failed to migrate credentials: %w", migrateErr)
+		}
+		if migrateErr = writeExtensionFileLocked(r.getCredentialsPath(), migrated); migrateErr != nil {
+			return nil, fmt.Errorf("failed to migrate credentials: %w", migrateErr)
+		}
 	}
 	creds := make(map[string]any)
 	if err := json.Unmarshal(decrypted, &creds); err != nil {

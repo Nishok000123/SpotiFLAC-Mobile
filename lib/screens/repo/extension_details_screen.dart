@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/providers/repo_provider.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
+import 'package:spotiflac_android/services/extension_storage_service.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 import 'package:spotiflac_android/utils/nav_bar_inset.dart';
 
@@ -531,12 +532,11 @@ class _ExtensionDetailsScreenState
 
   Future<void> _installExtension(RepoExtension ext) async {
     final tempDir = await getTemporaryDirectory();
-    final appDir = await getApplicationDocumentsDirectory();
-    final extensionsDir = '${appDir.path}/extensions';
+    final storage = await ExtensionStorageService.prepare();
 
     final success = await ref
         .read(repoProvider.notifier)
-        .installExtension(ext.id, tempDir.path, extensionsDir);
+        .installExtension(ext.id, tempDir.path, storage.extensionsDir);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

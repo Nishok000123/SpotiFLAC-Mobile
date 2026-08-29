@@ -10,6 +10,7 @@ import 'package:spotiflac_android/providers/repo_provider.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
 import 'package:spotiflac_android/screens/repo/extension_details_screen.dart';
+import 'package:spotiflac_android/services/extension_storage_service.dart';
 import 'package:spotiflac_android/utils/nav_bar_inset.dart';
 
 class RepoTab extends ConsumerStatefulWidget {
@@ -532,12 +533,11 @@ class _RepoTabState extends ConsumerState<RepoTab> {
 
   Future<void> _installExtension(RepoExtension ext) async {
     final tempDir = await getTemporaryDirectory();
-    final appDir = await getApplicationDocumentsDirectory();
-    final extensionsDir = '${appDir.path}/extensions';
+    final storage = await ExtensionStorageService.prepare();
 
     final success = await ref
         .read(repoProvider.notifier)
-        .installExtension(ext.id, tempDir.path, extensionsDir);
+        .installExtension(ext.id, tempDir.path, storage.extensionsDir);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

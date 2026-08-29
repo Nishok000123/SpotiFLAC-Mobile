@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotiflac_android/app.dart';
 import 'package:spotiflac_android/models/settings.dart';
@@ -18,6 +17,7 @@ import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/services/share_intent_service.dart';
 import 'package:spotiflac_android/services/cover_cache_manager.dart';
 import 'package:spotiflac_android/services/app_state_database.dart';
+import 'package:spotiflac_android/services/extension_storage_service.dart';
 import 'package:spotiflac_android/utils/local_library_scan_prefs.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 
@@ -395,16 +395,15 @@ class _EagerInitializationState extends ConsumerState<_EagerInitialization>
 
   Future<void> _initializeExtensions() async {
     try {
-      final appDir = await getApplicationDocumentsDirectory();
-      final extensionsDir = '${appDir.path}/extensions';
-      final dataDir = '${appDir.path}/extension_data';
-
-      await Directory(extensionsDir).create(recursive: true);
-      await Directory(dataDir).create(recursive: true);
+      final storage = await ExtensionStorageService.prepare();
 
       await ref
           .read(extensionProvider.notifier)
-          .initialize(extensionsDir, dataDir);
+          .initialize(
+            storage.extensionsDir,
+            storage.dataDir,
+            masterKey: storage.masterKey,
+          );
     } catch (e) {
       debugPrint('Failed to initialize extensions: $e');
     }

@@ -67,7 +67,11 @@ class ExtensionNotifier extends Notifier<ExtensionState> {
     }
   }
 
-  Future<void> initialize(String extensionsDir, String dataDir) async {
+  Future<void> initialize(
+    String extensionsDir,
+    String dataDir, {
+    required String masterKey,
+  }) async {
     if (state.isInitialized) return;
     if (_initializationCompleter != null) {
       await _initializationCompleter!.future;
@@ -100,7 +104,11 @@ class ExtensionNotifier extends Notifier<ExtensionState> {
           _log.w('Runtime state restore unavailable: $e');
         }
       }
-      await PlatformBridge.initExtensionSystem(extensionsDir, dataDir);
+      await PlatformBridge.initExtensionSystem(
+        extensionsDir,
+        dataDir,
+        masterKey: masterKey,
+      );
       await loadExtensions(extensionsDir);
       await loadProviderPriority();
       await loadMetadataProviderPriority();

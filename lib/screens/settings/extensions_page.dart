@@ -4,7 +4,6 @@ import 'package:spotiflac_android/widgets/extension_row.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
@@ -14,6 +13,7 @@ import 'package:spotiflac_android/screens/settings/download_fallback_extensions_
 import 'package:spotiflac_android/screens/settings/extension_detail_page.dart';
 import 'package:spotiflac_android/screens/settings/metadata_provider_priority_page.dart';
 import 'package:spotiflac_android/screens/settings/provider_priority_page.dart';
+import 'package:spotiflac_android/services/extension_storage_service.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 
@@ -34,16 +34,14 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   Future<void> _initializeExtensions() async {
     final extState = ref.read(extensionProvider);
     if (!extState.isInitialized) {
-      final appDir = await getApplicationDocumentsDirectory();
-      final extensionsDir = '${appDir.path}/extensions';
-      final dataDir = '${appDir.path}/extension_data';
-
-      await Directory(extensionsDir).create(recursive: true);
-      await Directory(dataDir).create(recursive: true);
-
+      final storage = await ExtensionStorageService.prepare();
       await ref
           .read(extensionProvider.notifier)
-          .initialize(extensionsDir, dataDir);
+          .initialize(
+            storage.extensionsDir,
+            storage.dataDir,
+            masterKey: storage.masterKey,
+          );
     } else {
       ref.read(extensionProvider.notifier).refreshEnabledExtensionHealth();
     }

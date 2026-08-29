@@ -1446,12 +1446,14 @@ class PlatformBridge {
 
   static Future<void> initExtensionSystem(
     String extensionsDir,
-    String dataDir,
-  ) async {
+    String dataDir, {
+    required String masterKey,
+  }) async {
     _log.d('initExtensionSystem: $extensionsDir, $dataDir');
     await _channel.invokeMethod('initExtensionSystem', {
       'extensions_dir': extensionsDir,
       'data_dir': dataDir,
+      'master_key': masterKey,
     });
   }
 

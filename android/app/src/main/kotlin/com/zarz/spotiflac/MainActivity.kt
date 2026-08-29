@@ -1931,7 +1931,9 @@ class MainActivity: FlutterFragmentActivity() {
                         "initExtensionSystem" -> {
                             val extensionsDir = call.argument<String>("extensions_dir") ?: ""
                             val dataDir = call.argument<String>("data_dir") ?: ""
+                            val masterKey = call.argument<String>("master_key") ?: ""
                             withContext(Dispatchers.IO) {
+                                Gobackend.setExtensionStorageMasterKey(masterKey)
                                 Gobackend.initExtensionSystem(extensionsDir, dataDir)
                             }
                             result.success(null)

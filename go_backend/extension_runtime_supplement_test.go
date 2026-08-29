@@ -1,6 +1,7 @@
 package gobackend
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -660,6 +661,23 @@ func TestExtensionStoreSettingsAndRuntimeStorage(t *testing.T) {
 	}
 	if all := settingsStore.GetAll("ext"); all["a"] != float64(1) {
 		t.Fatalf("settings all = %#v", all)
+	}
+	settingsCiphertext, err := os.ReadFile(settingsStore.getSettingsPath("ext"))
+	if err != nil {
+		t.Fatalf("read encrypted settings: %v", err)
+	}
+	if bytes.Contains(settingsCiphertext, []byte("hidden")) || bytes.Contains(settingsCiphertext, []byte("quality")) {
+		t.Fatal("extension settings were stored as plaintext")
+	}
+	if _, err := os.Stat(settingsStore.getLegacySettingsPath("ext")); !os.IsNotExist(err) {
+		t.Fatalf("plaintext settings file still exists: %v", err)
+	}
+	reloadedWithData := &ExtensionSettingsStore{settings: map[string]map[string]any{}}
+	if err := reloadedWithData.SetDataDir(settingsStore.dataDir); err != nil {
+		t.Fatalf("reload encrypted settings: %v", err)
+	}
+	if reloadedWithData.GetAll("ext")["_secret"] != "hidden" {
+		t.Fatal("encrypted settings did not round-trip")
 	}
 	if err := settingsStore.Remove("ext", "a"); err != nil {
 		t.Fatalf("settings Remove: %v", err)

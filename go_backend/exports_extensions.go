@@ -282,6 +282,9 @@ func getEnabledExtensionProviderMetadataResponse(providerID, resourceType, resou
 }
 
 func InitExtensionSystem(extensionsDir, dataDir string) error {
+	if !extensionStorageKeyConfigured() {
+		return fmt.Errorf("extension storage master key is not configured")
+	}
 	manager := getExtensionManager()
 	if err := manager.SetDirectories(extensionsDir, dataDir); err != nil {
 		return err

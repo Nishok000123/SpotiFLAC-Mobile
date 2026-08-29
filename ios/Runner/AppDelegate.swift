@@ -711,6 +711,9 @@ import Gobackend
             let args = call.arguments as! [String: Any]
             let extensionsDir = args["extensions_dir"] as! String
             let dataDir = args["data_dir"] as! String
+            let masterKey = args["master_key"] as! String
+            GobackendSetExtensionStorageMasterKey(masterKey, &error)
+            if let error = error { throw error }
             GobackendInitExtensionSystem(extensionsDir, dataDir, &error)
             if let error = error { throw error }
             return nil

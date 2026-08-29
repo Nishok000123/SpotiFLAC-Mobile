@@ -31,9 +31,12 @@ func GetExtensionSettingsStore() *ExtensionSettingsStore {
 func (s *ExtensionSettingsStore) SetDataDir(dataDir string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if !extensionStorageKeyConfigured() {
+		return fmt.Errorf("extension storage master key is not configured")
+	}
 
 	s.dataDir = dataDir
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
+	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return fmt.Errorf("failed to create settings directory: %w", err)
 	}
 
@@ -41,6 +44,10 @@ func (s *ExtensionSettingsStore) SetDataDir(dataDir string) error {
 }
 
 func (s *ExtensionSettingsStore) getSettingsPath(extensionID string) string {
+	return filepath.Join(s.dataDir, extensionID, "settings.enc")
+}
+
+func (s *ExtensionSettingsStore) getLegacySettingsPath(extensionID string) string {
 	return filepath.Join(s.dataDir, extensionID, "settings.json")
 }
 
@@ -73,9 +80,17 @@ func (s *ExtensionSettingsStore) loadSettings(extensionID string) (map[string]an
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return make(map[string]any), nil
+			return s.migrateLegacySettings(extensionID)
 		}
 		return nil, err
+	}
+	key, err := deriveExtensionStorageKey(extensionID, "settings")
+	if err != nil {
+		return nil, err
+	}
+	data, err = decryptAES(data, key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt settings: %w", err)
 	}
 
 	var settings map[string]any
@@ -86,20 +101,53 @@ func (s *ExtensionSettingsStore) loadSettings(extensionID string) (map[string]an
 	return settings, nil
 }
 
+func (s *ExtensionSettingsStore) migrateLegacySettings(extensionID string) (map[string]any, error) {
+	legacyPath := s.getLegacySettingsPath(extensionID)
+	data, err := os.ReadFile(legacyPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return make(map[string]any), nil
+		}
+		return nil, err
+	}
+	settings := make(map[string]any)
+	if err := json.Unmarshal(data, &settings); err != nil {
+		return nil, fmt.Errorf("failed to read legacy settings: %w", err)
+	}
+	if err := s.saveSettings(extensionID, settings); err != nil {
+		return nil, fmt.Errorf("failed to encrypt legacy settings: %w", err)
+	}
+	if err := os.Remove(legacyPath); err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("failed to remove legacy settings: %w", err)
+	}
+	return settings, nil
+}
+
 func (s *ExtensionSettingsStore) saveSettings(extensionID string, settings map[string]any) error {
 	settingsPath := s.getSettingsPath(extensionID)
 
 	dir := filepath.Dir(settingsPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
 
-	data, err := json.MarshalIndent(settings, "", "  ")
+	data, err := json.Marshal(settings)
 	if err != nil {
 		return err
 	}
-
-	return os.WriteFile(settingsPath, data, 0644)
+	key, err := deriveExtensionStorageKey(extensionID, "settings")
+	if err != nil {
+		return err
+	}
+	data, err = encryptAES(data, key)
+	if err != nil {
+		return err
+	}
+	fileMu := extensionFileMu(settingsPath)
+	fileMu.Lock()
+	err = writeExtensionFileLocked(settingsPath, data)
+	fileMu.Unlock()
+	return err
 }
 
 func (s *ExtensionSettingsStore) Get(extensionID, key string) (any, error) {
@@ -179,6 +227,10 @@ func (s *ExtensionSettingsStore) RemoveAll(extensionID string) error {
 	settingsPath := s.getSettingsPath(extensionID)
 	if err := os.Remove(settingsPath); err != nil && !os.IsNotExist(err) {
 		return err
+	}
+	legacyPath := s.getLegacySettingsPath(extensionID)
+	if err := os.Remove(legacyPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove legacy extension settings: %w", err)
 	}
 
 	return nil
