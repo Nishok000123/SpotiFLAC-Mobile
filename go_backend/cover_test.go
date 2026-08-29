@@ -2,10 +2,14 @@ package gobackend
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
 	"image/png"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -148,6 +152,20 @@ func TestDownloadCoverUsesProviderURLUnchanged(t *testing.T) {
 	}
 	if string(got) != "provider-cover" {
 		t.Fatalf("downloaded cover = %q", got)
+	}
+}
+
+func TestFetchCoverBytesRejectsOversizedResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Content-Length", fmt.Sprintf("%d", maxCoverDownloadBytes+1))
+		writer.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	SetAllowPrivateNetwork(true)
+	defer SetAllowPrivateNetwork(false)
+
+	if _, err := fetchCoverBytes(server.URL); err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Fatalf("expected oversized cover rejection, got %v", err)
 	}
 }
 

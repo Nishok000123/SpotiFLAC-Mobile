@@ -36,6 +36,7 @@ func downloadCoverToMemory(coverURL string) ([]byte, error) {
 
 const (
 	embeddedCoverJPEGQuality = 88
+	maxCoverDownloadBytes    = 24 * 1024 * 1024
 	// Decoding arbitrary provider artwork allocates roughly four bytes per
 	// pixel. Refuse pathological images before Decode so a malicious extension
 	// cannot force an unbounded mobile allocation. Normal artwork through
@@ -298,10 +299,16 @@ func fetchCoverBytes(downloadURL string) ([]byte, error) {
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("cover download failed: HTTP %d", resp.StatusCode)
 	}
+	if resp.ContentLength > maxCoverDownloadBytes {
+		return nil, fmt.Errorf("cover download exceeds %d MiB limit", maxCoverDownloadBytes/(1024*1024))
+	}
 
-	data, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxCoverDownloadBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read cover data: %w", err)
+	}
+	if len(data) > maxCoverDownloadBytes {
+		return nil, fmt.Errorf("cover download exceeds %d MiB limit", maxCoverDownloadBytes/(1024*1024))
 	}
 
 	width, height := coverDimensions(data)
