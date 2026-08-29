@@ -112,6 +112,7 @@ type signedSessionCoordinator struct {
 
 	authURL             string
 	callbackURL         string
+	callbackState       string
 	challengeCreatedAt  time.Time
 	pendingExtensionIDs map[string]struct{}
 	completedGrantHash  string
@@ -172,16 +173,18 @@ func (c *signedSessionCoordinator) clearChallenge() {
 	}
 	c.authURL = ""
 	c.callbackURL = ""
+	c.callbackState = ""
 	c.challengeCreatedAt = time.Time{}
 	c.pendingExtensionIDs = nil
 }
 
-func (c *signedSessionCoordinator) rememberChallenge(extensionID, authURL, callbackURL string) {
+func (c *signedSessionCoordinator) rememberChallenge(extensionID, authURL, callbackURL, callbackState string) {
 	if c.pendingExtensionIDs == nil {
 		c.pendingExtensionIDs = make(map[string]struct{})
 	}
 	c.authURL = authURL
 	c.callbackURL = callbackURL
+	c.callbackState = callbackState
 	c.challengeCreatedAt = time.Now()
 	c.pendingExtensionIDs[extensionID] = struct{}{}
 }
@@ -1156,14 +1159,15 @@ func (r *extensionRuntime) startSignedSessionVerificationLocked(
 	reason string,
 ) (string, error) {
 	if coordinator.activeChallenge() {
-		pendingAuthRequestsMu.Lock()
-		pendingAuthRequests[r.extensionID] = &PendingAuthRequest{
+		if err := registerPendingAuthRequest(&PendingAuthRequest{
 			ExtensionID: r.extensionID,
 			AuthURL:     coordinator.authURL,
 			CallbackURL: coordinator.callbackURL,
+			State:       coordinator.callbackState,
 			CreatedAt:   coordinator.challengeCreatedAt,
+		}); err != nil {
+			return "", err
 		}
-		pendingAuthRequestsMu.Unlock()
 		coordinator.pendingExtensionIDs[r.extensionID] = struct{}{}
 		return coordinator.authURL, nil
 	}
@@ -1177,6 +1181,7 @@ func (r *extensionRuntime) startSignedSessionVerificationLocked(
 				r.extensionID,
 				pending.AuthURL,
 				pending.CallbackURL,
+				pending.State,
 			)
 			return pending.AuthURL, nil
 		}
@@ -1277,25 +1282,47 @@ func (r *extensionRuntime) startSignedSessionVerificationLocked(
 	if authURL == "" && boot.ChallengeURL != "" {
 		authURL = boot.ChallengeURL
 	}
+	// Preserve a server-provided state when present. Otherwise add a fresh
+	// host-generated nonce so the callback is bound to this one challenge.
+	callbackState, err := newExtensionCallbackState()
+	if err != nil {
+		return "", fmt.Errorf("prepare signed-session callback state: %w", err)
+	}
+	if parsedAuthURL, parseErr := url.Parse(authURL); parseErr == nil {
+		if serverState := strings.TrimSpace(parsedAuthURL.Query().Get("state")); serverState != "" {
+			callbackState = serverState
+		} else if authURL != "" {
+			authURL, err = setOAuthState(authURL, callbackState)
+			if err != nil {
+				return "", fmt.Errorf("prepare signed-session verification URL: %w", err)
+			}
+		}
+	}
+	callbackURL, err := setOAuthState(config.CallbackURL, callbackState)
+	if err != nil {
+		return "", fmt.Errorf("prepare signed-session callback: %w", err)
+	}
 	if authURL == "" && boot.ChallengeID != "" {
-		authURL = r.buildSignedSessionChallengeURL(config, boot.ChallengeID)
+		authURL = r.buildSignedSessionChallengeURL(config, boot.ChallengeID, callbackState)
 	}
 	if authURL == "" {
 		return "", fmt.Errorf("signed-session bootstrap did not return a session or verification challenge")
 	}
-	pendingAuthRequestsMu.Lock()
-	pendingAuthRequests[r.extensionID] = &PendingAuthRequest{
+	request := &PendingAuthRequest{
 		ExtensionID: r.extensionID,
 		AuthURL:     authURL,
-		CallbackURL: config.CallbackURL,
+		CallbackURL: callbackURL,
+		State:       callbackState,
 		CreatedAt:   time.Now(),
 	}
-	pendingAuthRequestsMu.Unlock()
-	coordinator.rememberChallenge(r.extensionID, authURL, config.CallbackURL)
+	if err := registerPendingAuthRequest(request); err != nil {
+		return "", err
+	}
+	coordinator.rememberChallenge(r.extensionID, authURL, callbackURL, callbackState)
 	return authURL, nil
 }
 
-func (r *extensionRuntime) buildSignedSessionChallengeURL(config SignedSessionConfig, challengeID string) string {
+func (r *extensionRuntime) buildSignedSessionChallengeURL(config SignedSessionConfig, challengeID, callbackState string) string {
 	challengeURL, err := signedSessionURL(config, config.Endpoints.Challenge)
 	if err != nil {
 		return ""
@@ -1310,7 +1337,7 @@ func (r *extensionRuntime) buildSignedSessionChallengeURL(config SignedSessionCo
 	}
 	q := callback.Query()
 	q.Set("cb_version", "v2grant")
-	q.Set("state", r.extensionID)
+	q.Set("state", callbackState)
 	callback.RawQuery = q.Encode()
 
 	query := parsed.Query()

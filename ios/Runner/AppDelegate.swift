@@ -104,25 +104,32 @@ import Gobackend
     }
 
     /// Extension return URLs:
-    /// - OAuth: spotiflac://callback?code=...&state=<extension_id>
-    /// - Signed session: spotiflac://session-grant?grant=...&state=<extension_id>
+    /// - OAuth: spotiflac://callback?code=...&state=<one_time_nonce>
+    /// - Signed session: spotiflac://session-grant?grant=...&state=<one_time_nonce>
     @discardableResult
     private func handleExtensionOAuthRedirect(url: URL) -> Bool {
         guard let route = ExtensionCallbackParser.parse(url) else { return false }
         streamQueue.async {
             var err: NSError?
             var response: String?
+            guard let extensionId = GobackendConsumeExtensionCallbackState(
+                route.state,
+                &err
+            ), err == nil else {
+                NSLog("SpotiFLAC Mobile: Rejected invalid or expired extension callback")
+                return
+            }
             if route.isSessionGrant {
-                GobackendSetExtensionSessionGrantByID(route.extensionId, route.code)
+                GobackendSetExtensionSessionGrantByID(extensionId, route.code)
                 response = GobackendInvokeExtensionActionJSON(
-                    route.extensionId,
+                    extensionId,
                     "completeGrant",
                     &err
                 )
             } else {
-                GobackendSetExtensionAuthCodeByID(route.extensionId, route.code)
+                GobackendSetExtensionAuthCodeByID(extensionId, route.code)
                 response = GobackendInvokeExtensionActionJSON(
-                    route.extensionId,
+                    extensionId,
                     "completeSpotifyLogin",
                     &err
                 )
@@ -130,7 +137,7 @@ import Gobackend
             if err == nil && route.isSessionGrant {
                 do {
                     try self.requireSuccessfulExtensionAction(
-                        extensionId: route.extensionId,
+                        extensionId: extensionId,
                         actionName: "completeGrant",
                         response: response
                     )
@@ -140,11 +147,11 @@ import Gobackend
             }
             if let err = err {
                 NSLog(
-                    "SpotiFLAC: Extension callback complete failed: \(err.localizedDescription)")
+                    "SpotiFLAC Mobile: Extension callback failed (code \(err.code))")
             } else if route.isSessionGrant {
                 DispatchQueue.main.async { [weak self] in
                     self?.notifySessionGrantCompleted(
-                        extensionId: route.extensionId
+                        extensionId: extensionId
                     )
                 }
             }

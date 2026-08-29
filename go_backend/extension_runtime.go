@@ -2,6 +2,8 @@ package gobackend
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/http"
@@ -62,6 +64,7 @@ type PendingAuthRequest struct {
 	ExtensionID string
 	AuthURL     string
 	CallbackURL string
+	State       string
 	CreatedAt   time.Time
 }
 
@@ -71,8 +74,101 @@ const pendingAuthRequestTTL = 5 * time.Minute
 
 var (
 	pendingAuthRequests   = make(map[string]*PendingAuthRequest)
+	pendingAuthStates     = make(map[string]string)
 	pendingAuthRequestsMu sync.RWMutex
 )
+
+func newExtensionCallbackState() (string, error) {
+	random := make([]byte, 32)
+	if _, err := rand.Read(random); err != nil {
+		return "", fmt.Errorf("generate callback state: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(random), nil
+}
+
+func registerPendingAuthRequest(request *PendingAuthRequest) error {
+	if request == nil || strings.TrimSpace(request.ExtensionID) == "" {
+		return fmt.Errorf("extension id is required")
+	}
+	if request.State == "" {
+		state, err := newExtensionCallbackState()
+		if err != nil {
+			return err
+		}
+		request.State = state
+	}
+	if request.CreatedAt.IsZero() {
+		request.CreatedAt = time.Now()
+	}
+
+	pendingAuthRequestsMu.Lock()
+	if owner := pendingAuthStates[request.State]; owner != "" && owner != request.ExtensionID {
+		ownerRequest := pendingAuthRequests[owner]
+		sameChallenge := ownerRequest != nil &&
+			ownerRequest.State == request.State &&
+			ownerRequest.AuthURL == request.AuthURL &&
+			ownerRequest.CallbackURL == request.CallbackURL &&
+			ownerRequest.CreatedAt.Equal(request.CreatedAt)
+		if !sameChallenge {
+			pendingAuthRequestsMu.Unlock()
+			return fmt.Errorf("callback state is already registered")
+		}
+	}
+	if previous := pendingAuthRequests[request.ExtensionID]; previous != nil && previous.State != request.State {
+		removePendingAuthRequestLocked(request.ExtensionID)
+	}
+	pendingAuthRequests[request.ExtensionID] = request
+	if pendingAuthStates[request.State] == "" {
+		pendingAuthStates[request.State] = request.ExtensionID
+	}
+	pendingAuthRequestsMu.Unlock()
+	return nil
+}
+
+func removePendingAuthRequestLocked(extensionID string) {
+	request := pendingAuthRequests[extensionID]
+	delete(pendingAuthRequests, extensionID)
+	if request == nil || pendingAuthStates[request.State] != extensionID {
+		return
+	}
+	delete(pendingAuthStates, request.State)
+	for candidateID, candidate := range pendingAuthRequests {
+		if candidate != nil && candidate.State == request.State &&
+			time.Since(candidate.CreatedAt) < pendingAuthRequestTTL {
+			pendingAuthStates[request.State] = candidateID
+			return
+		}
+	}
+}
+
+func removePendingAuthStateLocked(state string) {
+	delete(pendingAuthStates, state)
+	for extensionID, request := range pendingAuthRequests {
+		if request != nil && request.State == state {
+			delete(pendingAuthRequests, extensionID)
+		}
+	}
+}
+
+func ConsumeExtensionCallbackState(state string) (string, error) {
+	state = strings.TrimSpace(state)
+	if state == "" {
+		return "", fmt.Errorf("callback state is required")
+	}
+
+	pendingAuthRequestsMu.Lock()
+	extensionID := pendingAuthStates[state]
+	request := pendingAuthRequests[extensionID]
+	if extensionID == "" || request == nil || request.State != state ||
+		time.Since(request.CreatedAt) >= pendingAuthRequestTTL {
+		removePendingAuthStateLocked(state)
+		pendingAuthRequestsMu.Unlock()
+		return "", fmt.Errorf("callback state is invalid, expired, or already used")
+	}
+	removePendingAuthStateLocked(state)
+	pendingAuthRequestsMu.Unlock()
+	return extensionID, nil
+}
 
 func GetPendingAuthRequest(extensionID string) *PendingAuthRequest {
 	pendingAuthRequestsMu.RLock()
@@ -83,7 +179,7 @@ func GetPendingAuthRequest(extensionID string) *PendingAuthRequest {
 func ClearPendingAuthRequest(extensionID string) {
 	pendingAuthRequestsMu.Lock()
 	defer pendingAuthRequestsMu.Unlock()
-	delete(pendingAuthRequests, extensionID)
+	removePendingAuthRequestLocked(extensionID)
 }
 
 func SetExtensionAuthCode(extensionID string, authCode string) {

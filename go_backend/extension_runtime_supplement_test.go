@@ -79,9 +79,33 @@ func TestExtensionRuntimeAuthAndPolyfills(t *testing.T) {
 	if openResult["success"] != true {
 		t.Fatalf("authOpenUrl = %#v", openResult)
 	}
-	if pending := GetPendingAuthRequest("auth-ext"); pending == nil || pending.AuthURL == "" {
+	pending := GetPendingAuthRequest("auth-ext")
+	if pending == nil || pending.AuthURL == "" || pending.State == "" || !strings.Contains(pending.AuthURL, "state=") {
 		t.Fatalf("pending auth = %#v", pending)
 	}
+	if extensionID, err := ConsumeExtensionCallbackState(pending.State); err != nil || extensionID != "auth-ext" {
+		t.Fatalf("consume callback state = %q/%v", extensionID, err)
+	}
+	if _, err := ConsumeExtensionCallbackState(pending.State); err == nil {
+		t.Fatal("callback state replay should be rejected")
+	}
+	collisionState := "shared-callback-state"
+	collisionCreatedAt := time.Now()
+	if err := registerPendingAuthRequest(&PendingAuthRequest{
+		ExtensionID: "auth-ext",
+		State:       collisionState,
+		CreatedAt:   collisionCreatedAt,
+	}); err != nil {
+		t.Fatalf("register first callback state: %v", err)
+	}
+	if err := registerPendingAuthRequest(&PendingAuthRequest{
+		ExtensionID: "other-ext",
+		State:       collisionState,
+		CreatedAt:   collisionCreatedAt.Add(time.Second),
+	}); err == nil {
+		t.Fatal("callback state collision should be rejected")
+	}
+	ClearPendingAuthRequest("auth-ext")
 	if code := runtime.authGetCode(goja.FunctionCall{}); !goja.IsUndefined(code) {
 		t.Fatalf("expected undefined code, got %v", code)
 	}

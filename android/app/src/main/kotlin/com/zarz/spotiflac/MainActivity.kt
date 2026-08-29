@@ -701,7 +701,8 @@ class MainActivity: FlutterFragmentActivity() {
 
     /**
      * Deliver Spotify (or other) OAuth authorization code to the extension runtime
-     * and run its token exchange (e.g. completeSpotifyLogin). State must be the extension id.
+     * and run its token exchange (e.g. completeSpotifyLogin). State is a one-time
+     * host nonce resolved to the owning extension by the Go backend.
      */
     private fun handleExtensionOAuthIntent(intent: Intent?) {
         val uri = intent?.data ?: return
@@ -729,14 +730,17 @@ class MainActivity: FlutterFragmentActivity() {
         if (code.isEmpty()) {
             return
         }
-        val extId = uri.getQueryParameter("state")?.trim().orEmpty()
-        if (extId.isEmpty()) {
-            android.util.Log.w("SpotiFLAC", "Extension OAuth redirect missing state (extension id)")
+        val callbackState = uri.getQueryParameter("state")?.trim().orEmpty()
+        if (callbackState.isEmpty()) {
+            android.util.Log.w("SpotiFLAC", "Extension callback missing state")
             return
         }
         intent.data = null
+        var callbackExtensionId = ""
         scope.launch(Dispatchers.IO) {
             try {
+                val extId = Gobackend.consumeExtensionCallbackState(callbackState)
+                callbackExtensionId = extId
                 val json = if (isSessionGrant) {
                     Gobackend.setExtensionSessionGrantByID(extId, code)
                     Gobackend.invokeExtensionActionJSON(extId, "completeGrant")
@@ -747,17 +751,17 @@ class MainActivity: FlutterFragmentActivity() {
                 if (isSessionGrant) {
                     requireSuccessfulExtensionAction(extId, "completeGrant", json)
                 }
-                android.util.Log.i("SpotiFLAC", "Extension callback complete for $extId: $json")
+                android.util.Log.i("SpotiFLAC", "Extension callback completed")
                 if (isSessionGrant) {
                     withContext(Dispatchers.Main) {
                         notifySessionGrantCompleted(extId, true)
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.w("SpotiFLAC", "Extension callback failed: ${e.message}")
-                if (isSessionGrant) {
+                android.util.Log.w("SpotiFLAC", "Extension callback failed (${e.javaClass.simpleName})")
+                if (isSessionGrant && callbackExtensionId.isNotEmpty()) {
                     withContext(Dispatchers.Main) {
-                        notifySessionGrantCompleted(extId, false)
+                        notifySessionGrantCompleted(callbackExtensionId, false)
                     }
                 }
             }

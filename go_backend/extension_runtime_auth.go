@@ -52,6 +52,17 @@ func summarizeURLForLog(urlStr string) string {
 	return fmt.Sprintf("%s://%s%s", parsed.Scheme, parsed.Host, parsed.Path)
 }
 
+func setOAuthState(urlStr, state string) (string, error) {
+	parsed, err := url.Parse(urlStr)
+	if err != nil {
+		return "", err
+	}
+	query := parsed.Query()
+	query.Set("state", state)
+	parsed.RawQuery = query.Encode()
+	return parsed.String(), nil
+}
+
 func (r *extensionRuntime) authOpenUrl(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		return r.jsError("auth URL is required")
@@ -66,15 +77,23 @@ func (r *extensionRuntime) authOpenUrl(call goja.FunctionCall) goja.Value {
 	if err := validateExtensionAuthURL(authURL); err != nil {
 		return r.jsError("%s", err.Error())
 	}
-
-	pendingAuthRequestsMu.Lock()
-	pendingAuthRequests[r.extensionID] = &PendingAuthRequest{
+	callbackState, err := newExtensionCallbackState()
+	if err != nil {
+		return r.jsError("%s", err.Error())
+	}
+	authURL, err = setOAuthState(authURL, callbackState)
+	if err != nil {
+		return r.jsError("invalid auth URL: %v", err)
+	}
+	if err := registerPendingAuthRequest(&PendingAuthRequest{
 		ExtensionID: r.extensionID,
 		AuthURL:     authURL,
 		CallbackURL: callbackURL,
+		State:       callbackState,
 		CreatedAt:   time.Now(),
+	}); err != nil {
+		return r.jsError("%s", err.Error())
 	}
-	pendingAuthRequestsMu.Unlock()
 
 	extensionAuthStateMu.Lock()
 	state, exists := extensionAuthState[r.extensionID]
@@ -148,9 +167,7 @@ func (r *extensionRuntime) authClear(call goja.FunctionCall) goja.Value {
 	delete(extensionAuthState, r.extensionID)
 	extensionAuthStateMu.Unlock()
 
-	pendingAuthRequestsMu.Lock()
-	delete(pendingAuthRequests, r.extensionID)
-	pendingAuthRequestsMu.Unlock()
+	ClearPendingAuthRequest(r.extensionID)
 
 	GoLog("[Extension:%s] Auth state cleared\n", r.extensionID)
 	return r.vm.ToValue(true)
@@ -336,18 +353,25 @@ func (r *extensionRuntime) authStartOAuthWithPKCE(call goja.FunctionCall) goja.V
 	for k, v := range extraParams {
 		query.Set(k, fmt.Sprintf("%v", v))
 	}
+	callbackState, err := newExtensionCallbackState()
+	if err != nil {
+		return r.jsError("failed to generate OAuth state: %v", err)
+	}
+	// Host-generated state always wins over extension-supplied extraParams.
+	query.Set("state", callbackState)
 
 	parsedURL.RawQuery = query.Encode()
 	fullAuthURL := parsedURL.String()
 
-	pendingAuthRequestsMu.Lock()
-	pendingAuthRequests[r.extensionID] = &PendingAuthRequest{
+	if err := registerPendingAuthRequest(&PendingAuthRequest{
 		ExtensionID: r.extensionID,
 		AuthURL:     fullAuthURL,
 		CallbackURL: redirectURI,
+		State:       callbackState,
 		CreatedAt:   time.Now(),
+	}); err != nil {
+		return r.jsError("failed to register OAuth callback: %v", err)
 	}
-	pendingAuthRequestsMu.Unlock()
 
 	GoLog("[Extension:%s] PKCE OAuth started: %s\n", r.extensionID, summarizeURLForLog(fullAuthURL))
 

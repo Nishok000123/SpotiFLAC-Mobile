@@ -2,7 +2,7 @@ import Foundation
 
 struct ExtensionCallbackRoute: Equatable {
     let code: String
-    let extensionId: String
+    let state: String
     let isSessionGrant: Bool
 }
 
@@ -36,17 +36,17 @@ enum ExtensionCallbackParser {
             ?? queryItems.first { $0.name == "code" }?.value?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             ?? ""
-        let extensionId =
+        let state =
             queryItems.first { $0.name == "state" }?.value?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             ?? ""
 
-        guard !code.isEmpty, !extensionId.isEmpty else {
+        guard !code.isEmpty, !state.isEmpty else {
             return nil
         }
         return ExtensionCallbackRoute(
             code: code,
-            extensionId: extensionId,
+            state: state,
             isSessionGrant: isSessionGrant
         )
     }

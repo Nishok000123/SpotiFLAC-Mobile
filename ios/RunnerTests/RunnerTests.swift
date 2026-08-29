@@ -12,7 +12,7 @@ class RunnerTests: XCTestCase {
             route,
             ExtensionCallbackRoute(
                 code: "auth-code",
-                extensionId: "spotify-web",
+                state: "spotify-web",
                 isSessionGrant: false
             )
         )
@@ -30,7 +30,7 @@ class RunnerTests: XCTestCase {
             route,
             ExtensionCallbackRoute(
                 code: "session-token",
-                extensionId: "provider",
+                state: "provider",
                 isSessionGrant: true
             )
         )

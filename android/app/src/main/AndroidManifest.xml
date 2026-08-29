@@ -91,7 +91,7 @@
                 <data android:scheme="https" android:host="music.youtube.com" />
             </intent-filter>
 
-            <!-- Extension OAuth (PKCE) redirect: spotiflac://callback?code=...&state=<extension_id> -->
+            <!-- Extension OAuth (PKCE) redirect with host-generated one-time state. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

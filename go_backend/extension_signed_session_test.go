@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	goruntime "runtime"
@@ -913,7 +914,8 @@ func TestSignedSessionFetchUnauthenticatedTriggersVerification(t *testing.T) {
 	if result["needsVerification"] != true {
 		t.Fatalf("expected needsVerification=true, got %+v", result)
 	}
-	if result["auth_url"] != "https://auth.example.com/login?state=abc" {
+	authURL, err := url.Parse(result["auth_url"].(string))
+	if err != nil || authURL.Scheme != "https" || authURL.Host != "auth.example.com" || authURL.Path != "/login" || authURL.Query().Get("state") == "" {
 		t.Fatalf("unexpected auth_url: %+v", result)
 	}
 }
@@ -1153,7 +1155,8 @@ func TestSignedSessionFetchCanonicalVerifyDoesNotClearSession(t *testing.T) {
 		runtime.vm.ToValue("/tracks/search"),
 	}}
 	result := runtime.signedSessionFetch(call).Export().(map[string]any)
-	if result["needsVerification"] != true || result["auth_url"] != "https://auth.example.com/verify" {
+	authURL, err := url.Parse(result["auth_url"].(string))
+	if result["needsVerification"] != true || err != nil || authURL.Path != "/verify" || authURL.Query().Get("state") == "" {
 		t.Fatalf("canonical VERIFY_REQUIRED did not open verification: %+v", result)
 	}
 	if calls != 2 {
@@ -2004,7 +2007,7 @@ func TestBuildSignedSessionChallengeURL(t *testing.T) {
 	})
 	runtime := newSignedSessionTestRuntime(t, "tidal-ext", nil)
 
-	got := runtime.buildSignedSessionChallengeURL(config, "chal-123")
+	got := runtime.buildSignedSessionChallengeURL(config, "chal-123", "state-123")
 
 	if !strings.HasPrefix(got, "https://auth.example.com/challenge?") {
 		t.Fatalf("unexpected base URL: %q", got)
