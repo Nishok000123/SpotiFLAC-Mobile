@@ -20,6 +20,26 @@ class _ProgressUpdate {
 }
 
 extension _DownloadQueueProgress on DownloadQueueNotifier {
+  bool _shouldLogDownloadProgress(
+    String itemId,
+    double progress, {
+    bool preparing = false,
+  }) {
+    final bucket = preparing
+        ? -1
+        : (() {
+            final percent = (progress * 100).floor().clamp(0, 100).toInt();
+            if (percent == 100) return 100;
+            return (percent ~/ DownloadQueueNotifier._progressLogStepPercent) *
+                DownloadQueueNotifier._progressLogStepPercent;
+          })();
+    if (_lastProgressLogBucketByItem[itemId] == bucket) {
+      return false;
+    }
+    _lastProgressLogBucketByItem[itemId] = bucket;
+    return true;
+  }
+
   double _normalizeProgressForUi(double value) {
     final clamped = value.clamp(0.0, 1.0).toDouble();
     if (clamped <= 0) return 0;
@@ -106,6 +126,13 @@ extension _DownloadQueueProgress on DownloadQueueNotifier {
         : const <String, dynamic>{};
     final currentItems = state.items;
     final lookup = state.lookup;
+    _lastProgressLogBucketByItem.removeWhere((itemId, _) {
+      final item = lookup.byItemId[itemId];
+      return item == null ||
+          item.status == DownloadStatus.completed ||
+          item.status == DownloadStatus.failed ||
+          item.status == DownloadStatus.skipped;
+    });
     final queuedCount = lookup.queuedCount;
     final downloadingCount = lookup.activeDownloadsCount;
     DownloadItem? firstDownloading;
@@ -195,7 +222,8 @@ extension _DownloadQueueProgress on DownloadQueueNotifier {
           preparationStage: itemProgress['stage']?.toString() ?? '',
         );
 
-        if (LogBuffer.loggingEnabled) {
+        if (LogBuffer.loggingEnabled &&
+            _shouldLogDownloadProgress(itemId, 0, preparing: true)) {
           _log.d('Preparing [$itemId]: waiting for real download bytes');
         }
         continue;
@@ -220,7 +248,8 @@ extension _DownloadQueueProgress on DownloadQueueNotifier {
           bytesTotal: bytesTotal,
         );
 
-        if (LogBuffer.loggingEnabled) {
+        if (LogBuffer.loggingEnabled &&
+            _shouldLogDownloadProgress(itemId, percentage)) {
           final mbReceived = bytesReceived / (1024 * 1024);
           final mbTotal = bytesTotal / (1024 * 1024);
           if (bytesTotal > 0) {
@@ -439,6 +468,7 @@ extension _DownloadQueueProgress on DownloadQueueNotifier {
   void _stopProgressPolling() {
     _progressPoller.stop();
     _idleProgressPollTick = 0;
+    _lastProgressLogBucketByItem.clear();
     _lastServiceTrackName = null;
     _lastServiceArtistName = null;
     _lastServiceStatus = null;

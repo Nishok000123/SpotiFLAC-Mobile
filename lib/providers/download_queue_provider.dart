@@ -328,6 +328,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       'download_queue_native_worker_run_id';
   static const _userPausedQueuePrefsKey = 'download_queue_user_paused_v1';
   static const _bytesUiStep = 104857; // ~0.1 MiB, matches one-decimal MB UI.
+  static const _progressLogStepPercent = 5;
   static const _serviceProgressStepPercent = 2;
   static const _decryptStageSafAccess = 'safAccess';
   static const _decryptStageDecrypt = 'decrypt';
@@ -369,6 +370,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
   Future<String>? _appFolderStorageFallback;
   final Set<String> _rejectedAppFolderRoots = {};
   int _idleProgressPollTick = 0;
+  final Map<String, int> _lastProgressLogBucketByItem = {};
 
   Future<T> _withQualityVariantFileLock<T>(
     String path,
