@@ -3,7 +3,7 @@ module github.com/zarz/spotiflac_android/go_backend
 // Needs >= 1.26.3: fixes the cgo "bulkBarrierPreWrite" crash (golang/go#46893)
 // without the 1.26.0-1.26.2 arm32 SIGSYS regression (golang/go#78936).
 // Full patch version here because gomobile's bind module inherits it.
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/dop251/goja v0.0.0-20260826204918-8f1c0696a37b
