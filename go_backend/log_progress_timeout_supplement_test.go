@@ -26,6 +26,8 @@ func TestLogBufferExportedHelpersAndRedaction(t *testing.T) {
 	LogDebug("debug", "client_secret=secret")
 	LogWarn("warn", "warning password=secret")
 	GoLog("[GoTag] success token=abc")
+	LogError("json", `{"access_token":"json-secret","session_secret":"session-secret"}`)
+	LogError("query", "https://example.test/?X-Amz-Signature=signed-secret&X-Amz-Security-Token=session-token")
 
 	var entries []LogEntry
 	if err := json.Unmarshal([]byte(GetLogBuffer().GetAll()), &entries); err != nil {
@@ -35,7 +37,7 @@ func TestLogBufferExportedHelpersAndRedaction(t *testing.T) {
 		t.Fatalf("expected log entries, got %#v", entries)
 	}
 	for _, entry := range entries {
-		if strings.Contains(entry.Message, "secret-token") || strings.Contains(entry.Message, "api_key=value") || strings.Contains(entry.Message, "password=secret") {
+		if strings.Contains(entry.Message, "secret-token") || strings.Contains(entry.Message, "api_key=value") || strings.Contains(entry.Message, "password=secret") || strings.Contains(entry.Message, "json-secret") || strings.Contains(entry.Message, "session-secret") || strings.Contains(entry.Message, "signed-secret") || strings.Contains(entry.Message, "session-token") {
 			t.Fatalf("log was not redacted: %#v", entry)
 		}
 	}

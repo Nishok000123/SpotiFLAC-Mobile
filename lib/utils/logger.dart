@@ -16,12 +16,12 @@ final RegExp _authorizationBearerPattern = RegExp(
 );
 
 final RegExp _genericSensitiveKeyValuePattern = RegExp(
-  r'\b(access[_\s-]?token|refresh[_\s-]?token|id[_\s-]?token|client[_\s-]?secret|authorization|password|api[_\s-]?key)\b(\s*[:=]\s*)([^\s,;]+)',
+  r'("?(?:access[_\s-]?token|refresh[_\s-]?token|id[_\s-]?token|client[_\s-]?secret|authorization|password|api[_\s-]?key|session[_\s-]?secret|cookie|set-cookie)"?)(\s*[:=]\s*)("(?:\\.|[^"\\])*"|[^\s,;}\]]+)',
   caseSensitive: false,
 );
 
 final RegExp _sensitiveQueryPattern = RegExp(
-  r'([?&](?:access_token|refresh_token|id_token|token|client_secret|api_key|apikey|password)=)[^&\s]+',
+  r'([?&](?:access_token|refresh_token|id_token|token|client_secret|api_key|apikey|password|code|grant|sig|signature|x-amz-signature|x-amz-credential|x-amz-security-token|awsaccesskeyid|googleaccessid|policy|key-pair-id)=)[^&\s]+',
   caseSensitive: false,
 );
 

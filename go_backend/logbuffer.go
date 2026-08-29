@@ -35,8 +35,8 @@ var (
 	logBufferOnce   sync.Once
 
 	authorizationBearerPattern = regexp.MustCompile(`(?i)\bAuthorization\b\s*[:=]\s*Bearer\s+[A-Za-z0-9._~+/\-]+=*`)
-	genericKeyValuePattern     = regexp.MustCompile(`(?i)\b(access[_\s-]?token|refresh[_\s-]?token|id[_\s-]?token|client[_\s-]?secret|authorization|password|api[_\s-]?key)\b(\s*[:=]\s*)([^\s,;]+)`)
-	queryTokenPattern          = regexp.MustCompile(`(?i)([?&](?:access_token|refresh_token|id_token|token|client_secret|api_key|apikey|password)=)[^&\s]+`)
+	genericKeyValuePattern     = regexp.MustCompile(`(?i)("?(?:access[_\s-]?token|refresh[_\s-]?token|id[_\s-]?token|client[_\s-]?secret|authorization|password|api[_\s-]?key|session[_\s-]?secret|cookie|set-cookie)"?)(\s*[:=]\s*)("(?:\\.|[^"\\])*"|[^\s,;}\]]+)`)
+	queryTokenPattern          = regexp.MustCompile(`(?i)([?&](?:access_token|refresh_token|id_token|token|client_secret|api_key|apikey|password|code|grant|sig|signature|x-amz-signature|x-amz-credential|x-amz-security-token|awsaccesskeyid|googleaccessid|policy|key-pair-id)=)[^&\s]+`)
 	bearerTokenPattern         = regexp.MustCompile(`(?i)\bBearer\s+[A-Za-z0-9._~+/\-]+=*`)
 )
 
