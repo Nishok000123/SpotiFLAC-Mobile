@@ -1,6 +1,7 @@
 package gobackend
 
 import (
+	"context"
 	"sync"
 	"time"
 )
@@ -21,31 +22,43 @@ func NewRateLimiter(maxRequests int, window time.Duration) *RateLimiter {
 }
 
 func (r *RateLimiter) WaitForSlot() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	_ = r.WaitForSlotContext(context.Background())
 
-	now := time.Now()
+}
 
-	r.cleanOldTimestamps(now)
-
-	if len(r.timestamps) < r.maxRequests {
-		r.timestamps = append(r.timestamps, now)
-		return
+// WaitForSlotContext reserves exactly one slot, rechecking the window after
+// every wake-up. Multiple waiters may wake together, but only the first one
+// that reacquires the mutex can consume the newly available slot.
+func (r *RateLimiter) WaitForSlotContext(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
 	}
-
-	oldestTimestamp := r.timestamps[0]
-	waitUntil := oldestTimestamp.Add(r.window)
-	waitDuration := waitUntil.Sub(now)
-
-	if waitDuration > 0 {
-		r.mu.Unlock()
-		time.Sleep(waitDuration)
+	for {
 		r.mu.Lock()
+		now := time.Now()
+		r.cleanOldTimestamps(now)
+		if len(r.timestamps) < r.maxRequests {
+			r.timestamps = append(r.timestamps, now)
+			r.mu.Unlock()
+			return nil
+		}
 
-		r.cleanOldTimestamps(time.Now())
+		waitDuration := r.timestamps[0].Add(r.window).Sub(now)
+		r.mu.Unlock()
+		if waitDuration <= 0 {
+			continue
+		}
+
+		timer := time.NewTimer(waitDuration)
+		select {
+		case <-ctx.Done():
+			if !timer.Stop() {
+				<-timer.C
+			}
+			return ctx.Err()
+		case <-timer.C:
+		}
 	}
-
-	r.timestamps = append(r.timestamps, time.Now())
 }
 
 func (r *RateLimiter) cleanOldTimestamps(now time.Time) {

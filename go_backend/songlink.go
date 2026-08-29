@@ -9,10 +9,16 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 type SongLinkClient struct {
-	client *http.Client
+	client              *http.Client
+	requestFlight       singleflight.Group
+	resolutionFlight    singleflight.Group
+	availabilityFlight  singleflight.Group
+	platformLinksFlight singleflight.Group
 }
 
 type songLinkPlatformLink struct {
@@ -102,6 +108,16 @@ func (s *SongLinkClient) resolveTrackPlatforms(inputURL string) (map[string]song
 // SongLink is rate-limited or unavailable. IDHS accepts the same source URL and
 // returns a smaller but still useful set of verified platform links.
 func (s *SongLinkClient) resolveTrackPlatformsWithIDHS(inputURL string) (map[string]songLinkPlatformLink, error) {
+	value, err, _ := s.resolutionFlight.Do(inputURL, func() (any, error) {
+		return s.resolveTrackPlatformsWithIDHSUncoalesced(inputURL)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cloneSongLinkPlatformLinks(value.(map[string]songLinkPlatformLink)), nil
+}
+
+func (s *SongLinkClient) resolveTrackPlatformsWithIDHSUncoalesced(inputURL string) (map[string]songLinkPlatformLink, error) {
 	links, songLinkErr := s.resolveTrackPlatforms(inputURL)
 	if songLinkErr == nil {
 		return links, nil
@@ -157,8 +173,6 @@ func (s *SongLinkClient) resolveTrackPlatformsByPlatform(platform, entityType, e
 
 // songLinkByTargetURL calls the SongLink API with a target URL.
 func (s *SongLinkClient) songLinkByTargetURL(targetURL string) (map[string]songLinkPlatformLink, error) {
-	songLinkRateLimiter.WaitForSlot()
-
 	apiURL := fmt.Sprintf("%s?url=%s&userCountry=%s",
 		songLinkBaseURL(),
 		url.QueryEscape(targetURL),
@@ -169,8 +183,6 @@ func (s *SongLinkClient) songLinkByTargetURL(targetURL string) (map[string]songL
 
 // songLinkByPlatform calls the SongLink API with platform + type + id (for non-Spotify platforms).
 func (s *SongLinkClient) songLinkByPlatform(platform, entityType, entityID string) (map[string]songLinkPlatformLink, error) {
-	songLinkRateLimiter.WaitForSlot()
-
 	apiURL := fmt.Sprintf("%s?platform=%s&type=%s&id=%s&userCountry=%s",
 		songLinkBaseURL(),
 		url.QueryEscape(platform),
@@ -183,6 +195,20 @@ func (s *SongLinkClient) songLinkByPlatform(platform, entityType, entityID strin
 
 // doSongLinkRequest calls the SongLink API and parses the response.
 func (s *SongLinkClient) doSongLinkRequest(apiURL string) (map[string]songLinkPlatformLink, error) {
+	value, err, _ := s.requestFlight.Do(apiURL, func() (any, error) {
+		return s.doSongLinkRequestUncoalesced(apiURL)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cloneSongLinkPlatformLinks(value.(map[string]songLinkPlatformLink)), nil
+}
+
+func (s *SongLinkClient) doSongLinkRequestUncoalesced(apiURL string) (map[string]songLinkPlatformLink, error) {
+	// Reserve the rate-limit slot inside the singleflight owner. Waiters for an
+	// identical URL share this request without consuming the remaining budget.
+	songLinkRateLimiter.WaitForSlot()
+
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create SongLink request: %w", err)
@@ -219,6 +245,17 @@ func (s *SongLinkClient) doSongLinkRequest(apiURL string) (map[string]songLinkPl
 	}
 
 	return songLinkResp.LinksByPlatform, nil
+}
+
+func cloneSongLinkPlatformLinks(links map[string]songLinkPlatformLink) map[string]songLinkPlatformLink {
+	if links == nil {
+		return nil
+	}
+	cloned := make(map[string]songLinkPlatformLink, len(links))
+	for platform, link := range links {
+		cloned[platform] = link
+	}
+	return cloned
 }
 
 const (
@@ -265,20 +302,31 @@ func (s *SongLinkClient) CheckTrackAvailability(spotifyTrackID string, isrc stri
 		return cloneTrackAvailability(cached), nil
 	}
 
-	var availability *TrackAvailability
-	var err error
-	switch {
-	case spotifyTrackID != "":
-		availability, err = s.checkTrackAvailabilityFromSpotify(spotifyTrackID)
-	default:
-		availability, err = s.checkTrackAvailabilityFromISRC(isrc)
-	}
+	value, err, _ := s.availabilityFlight.Do(key, func() (any, error) {
+		// Another caller may have populated the cache while this caller was
+		// waiting to become the singleflight owner.
+		if cached, hit, cachedErr := trackAvailabilityCacheLookup(key); hit {
+			if cachedErr {
+				return nil, fmt.Errorf("track availability unavailable (cached)")
+			}
+			return cached, nil
+		}
 
-	trackAvailabilityCacheStore(key, availability, err)
+		var availability *TrackAvailability
+		var resolveErr error
+		switch {
+		case spotifyTrackID != "":
+			availability, resolveErr = s.checkTrackAvailabilityFromSpotify(spotifyTrackID)
+		default:
+			availability, resolveErr = s.checkTrackAvailabilityFromISRC(isrc)
+		}
+		trackAvailabilityCacheStore(key, availability, resolveErr)
+		return availability, resolveErr
+	})
 	if err != nil {
 		return nil, err
 	}
-	return cloneTrackAvailability(availability), nil
+	return cloneTrackAvailability(value.(*TrackAvailability)), nil
 }
 
 const trackPlatformLinksCacheMax = 200
@@ -319,12 +367,21 @@ func (s *SongLinkClient) GetTrackPlatformLinks(spotifyTrackID string, isrc strin
 		return links, nil
 	}
 
-	links, err := s.fetchTrackPlatformLinks(spotifyTrackID, isrc)
-	trackPlatformLinksCacheStore(key, links, err)
+	value, err, _ := s.platformLinksFlight.Do(key, func() (any, error) {
+		if links, hit, cachedErr := trackPlatformLinksCacheLookup(key); hit {
+			if cachedErr {
+				return nil, fmt.Errorf("track platform links unavailable (cached)")
+			}
+			return links, nil
+		}
+		links, fetchErr := s.fetchTrackPlatformLinks(spotifyTrackID, isrc)
+		trackPlatformLinksCacheStore(key, links, fetchErr)
+		return links, fetchErr
+	})
 	if err != nil {
 		return nil, err
 	}
-	return links, nil
+	return cloneStringMap(value.(map[string]string)), nil
 }
 
 func (s *SongLinkClient) fetchTrackPlatformLinks(spotifyTrackID string, isrc string) (map[string]string, error) {

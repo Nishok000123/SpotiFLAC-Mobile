@@ -4,10 +4,142 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
+
+func TestSongLinkIdenticalRequestsAreCoalesced(t *testing.T) {
+	origRateLimiter := songLinkRateLimiter
+	// A single slot proves duplicate waiters join singleflight before reserving
+	// rate-limit capacity. Reserving first would block 15 workers for an hour.
+	songLinkRateLimiter = NewRateLimiter(1, time.Hour)
+	defer func() { songLinkRateLimiter = origRateLimiter }()
+
+	var calls int32
+	release := make(chan struct{})
+	client := &SongLinkClient{client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		atomic.AddInt32(&calls, 1)
+		<-release
+		body := `{"linksByPlatform":{"deezer":{"url":"https://www.deezer.com/track/123"}}}`
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(body)),
+			Request:    req,
+		}, nil
+	})}}
+
+	const workers = 16
+	start := make(chan struct{})
+	errs := make(chan error, workers)
+	var wg sync.WaitGroup
+	wg.Add(workers)
+	for range workers {
+		go func() {
+			defer wg.Done()
+			<-start
+			links, err := client.resolveTrackPlatforms("https://open.spotify.com/track/coalesced")
+			if err == nil && links["deezer"].URL == "" {
+				err = io.ErrUnexpectedEOF
+			}
+			errs <- err
+		}()
+	}
+	close(start)
+
+	deadline := time.Now().Add(time.Second)
+	for atomic.LoadInt32(&calls) == 0 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	time.Sleep(20 * time.Millisecond)
+	close(release)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("coalesced request failed: %v", err)
+		}
+	}
+	if got := atomic.LoadInt32(&calls); got != 1 {
+		t.Fatalf("network calls = %d, want 1", got)
+	}
+}
+
+func TestSongLinkIdenticalFallbacksShareOneIDHSRequest(t *testing.T) {
+	origSongLinkLimiter := songLinkRateLimiter
+	origIDHSLimiter := idhsRateLimiter
+	origIDHSClient := NewIDHSClient()
+	songLinkRateLimiter = NewRateLimiter(1, time.Hour)
+	idhsRateLimiter = NewRateLimiter(1, time.Hour)
+	defer func() {
+		songLinkRateLimiter = origSongLinkLimiter
+		idhsRateLimiter = origIDHSLimiter
+		globalIDHSClient = origIDHSClient
+	}()
+
+	var songLinkCalls atomic.Int32
+	var idhsCalls atomic.Int32
+	idhsStarted := make(chan struct{})
+	releaseIDHS := make(chan struct{})
+	globalIDHSClient = &IDHSClient{client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if idhsCalls.Add(1) == 1 {
+			close(idhsStarted)
+		}
+		<-releaseIDHS
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body: io.NopCloser(strings.NewReader(
+				`{"type":"song","links":[{"type":"deezer","url":"https://www.deezer.com/track/123"}]}`,
+			)),
+			Request: req,
+		}, nil
+	})}}
+	client := &SongLinkClient{client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		songLinkCalls.Add(1)
+		return &http.Response{
+			StatusCode: http.StatusUnauthorized,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(`{}`)),
+			Request:    req,
+		}, nil
+	})}}
+
+	const workers = 16
+	start := make(chan struct{})
+	errs := make(chan error, workers)
+	for range workers {
+		go func() {
+			<-start
+			links, err := client.resolveTrackPlatformsWithIDHS("https://open.spotify.com/track/fallback-coalesced")
+			if err == nil && links["deezer"].URL == "" {
+				err = io.ErrUnexpectedEOF
+			}
+			errs <- err
+		}()
+	}
+	close(start)
+	select {
+	case <-idhsStarted:
+	case <-time.After(time.Second):
+		t.Fatal("IDHS fallback did not start")
+	}
+	time.Sleep(20 * time.Millisecond)
+	close(releaseIDHS)
+	for range workers {
+		if err := <-errs; err != nil {
+			t.Fatalf("coalesced fallback failed: %v", err)
+		}
+	}
+	if got := songLinkCalls.Load(); got != 1 {
+		t.Fatalf("SongLink calls = %d, want 1", got)
+	}
+	if got := idhsCalls.Load(); got != 1 {
+		t.Fatalf("IDHS calls = %d, want 1", got)
+	}
+}
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
 

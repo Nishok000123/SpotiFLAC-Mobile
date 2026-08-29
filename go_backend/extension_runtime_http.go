@@ -63,7 +63,10 @@ func (r *extensionRuntime) validateDomain(urlStr string) error {
 		return fmt.Errorf("invalid URL: hostname is required")
 	}
 
-	if isPrivateIP(domain) {
+	// Hostname answers are filtered and pinned by transportDialContext. Avoid a
+	// second net.LookupIP here: it was uncancellable and the answer was discarded
+	// before the transport resolved the same host again.
+	if isPrivateIPLiteralOrLocal(domain) {
 		return fmt.Errorf("network access denied: private/local network '%s' not allowed", domain)
 	}
 

@@ -486,7 +486,10 @@ func newExtensionHTTPClient(ext *loadedExtension, jar http.CookieJar, timeout ti
 			GoLog("[Extension:%s] Redirect blocked: domain '%s' not in allowed list\n", ext.ID, domain)
 			return &RedirectBlockedError{Domain: domain}
 		}
-		if isPrivateIP(domain) {
+		// The transport resolves and pins every redirect target before dialing.
+		// Reject literals/local aliases here without doing a second, uncancellable
+		// DNS lookup on the redirect path.
+		if isPrivateIPLiteralOrLocal(domain) {
 			GoLog("[Extension:%s] Redirect blocked: private IP '%s'\n", ext.ID, domain)
 			return &RedirectBlockedError{Domain: domain, IsPrivate: true}
 		}
@@ -521,13 +524,8 @@ func isPrivateIP(host string) bool {
 	if hostLower == "" {
 		return false
 	}
-
-	if hostLower == "localhost" || strings.HasSuffix(hostLower, ".local") {
+	if isPrivateIPLiteralOrLocal(hostLower) {
 		return true
-	}
-
-	if ip := net.ParseIP(hostLower); ip != nil {
-		return isPrivateIPAddr(ip)
 	}
 
 	if cached, ok := getPrivateIPCache(hostLower); ok {
@@ -546,6 +544,28 @@ func isPrivateIP(host string) bool {
 
 	setPrivateIPCache(hostLower, isPrivate, privateIPCacheTTL)
 	return isPrivate
+}
+
+// isPrivateIPLiteralOrLocal performs the validation that does not require DNS.
+// Extension HTTP requests use this before dispatch; dialWithDoHFallback remains
+// the authoritative hostname check because it filters and pins the exact DNS
+// answers used by the socket, closing the rebinding window without a duplicate
+// lookup.
+func isPrivateIPLiteralOrLocal(host string) bool {
+	if allowPrivateNetworkAccess.Load() {
+		return false
+	}
+	host = strings.ToLower(strings.TrimSpace(host))
+	if host == "" {
+		return false
+	}
+	if host == "localhost" || strings.HasSuffix(host, ".local") {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return isPrivateIPAddr(ip)
+	}
+	return false
 }
 
 func getPrivateIPCache(host string) (bool, bool) {

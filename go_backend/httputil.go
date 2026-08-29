@@ -52,6 +52,11 @@ const (
 	DefaultMaxRetries = 3
 	DefaultRetryDelay = 1 * time.Second
 	Second            = time.Second
+	// Error responses are diagnostic data, not media payloads. Keeping this
+	// bounded prevents a hostile intermediary from turning a retry/status path
+	// into a large allocation while still allowing small bodies to be drained
+	// for HTTP keep-alive reuse.
+	maxRetryResponseBodyBytes = int64(64 << 10)
 )
 
 type NetworkCompatibilityOptions struct {
@@ -310,7 +315,7 @@ func DoRequestWithRetry(client *http.Client, req *http.Request, config RetryConf
 		}
 
 		if resp.StatusCode == 429 {
-			resp.Body.Close()
+			drainAndCloseResponseBody(resp.Body, maxRetryResponseBodyBytes)
 			retryAfter := getRetryAfterDuration(resp)
 			if retryAfter > 0 {
 				delay = retryAfter
@@ -327,8 +332,11 @@ func DoRequestWithRetry(client *http.Client, req *http.Request, config RetryConf
 		}
 
 		if resp.StatusCode == 403 || resp.StatusCode == 451 {
-			body, _ := io.ReadAll(resp.Body)
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, maxRetryResponseBodyBytes+1))
 			resp.Body.Close()
+			if int64(len(body)) > maxRetryResponseBodyBytes {
+				body = body[:maxRetryResponseBodyBytes]
+			}
 			bodyStr := strings.ToLower(string(body))
 
 			ispBlockingIndicators := []string{
@@ -352,7 +360,7 @@ func DoRequestWithRetry(client *http.Client, req *http.Request, config RetryConf
 		}
 
 		if resp.StatusCode >= 500 {
-			resp.Body.Close()
+			drainAndCloseResponseBody(resp.Body, maxRetryResponseBodyBytes)
 			if retryAfter := getRetryAfterDuration(resp); retryAfter > 0 {
 				delay = retryAfter
 			}
@@ -371,6 +379,16 @@ func DoRequestWithRetry(client *http.Client, req *http.Request, config RetryConf
 	}
 
 	return nil, fmt.Errorf("request failed after %d retries: %w", config.MaxRetries+1, lastErr)
+}
+
+func drainAndCloseResponseBody(body io.ReadCloser, limit int64) {
+	if body == nil {
+		return
+	}
+	if limit > 0 {
+		_, _ = io.Copy(io.Discard, io.LimitReader(body, limit))
+	}
+	_ = body.Close()
 }
 
 // sleepRetry waits out a retry delay, aborting early when the request context
