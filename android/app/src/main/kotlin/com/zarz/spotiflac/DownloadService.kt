@@ -89,10 +89,14 @@ class DownloadService : Service() {
         internal const val NATIVE_REPLAYGAIN_JOURNAL_FILE = "native_replaygain_journal.json"
         internal const val NATIVE_WORKER_CONTRACT_VERSION = NativeDownloadFinalizer.NATIVE_WORKER_CONTRACT_VERSION
         internal const val NOTIFICATION_PERCENT_TOTAL = 10_000L
+        private const val LEGACY_NOTIFICATION_PERCENT_TOTAL = 100L
         internal val NATIVE_WORKER_STATE_FILE_LOCK = Any()
         internal val NATIVE_REPLAYGAIN_JOURNAL_FILE_LOCK = Any()
         
         private var isRunning = false
+
+        internal fun isPercentOnlyNotificationTotal(total: Long): Boolean =
+            total == NOTIFICATION_PERCENT_TOTAL || total == LEGACY_NOTIFICATION_PERCENT_TOTAL
         
         fun isServiceRunning(): Boolean = isRunning
         
@@ -1818,7 +1822,7 @@ class DownloadService : Service() {
 
         val visibleProgress = when {
             total <= 0L -> "indeterminate"
-            total == NOTIFICATION_PERCENT_TOTAL ->
+            isPercentOnlyNotificationTotal(total) ->
                 "percent:${(progress * 100 / total).toInt()}"
             else -> {
                 // buildNotification renders one decimal place for MB and an
@@ -1909,7 +1913,7 @@ class DownloadService : Service() {
             "Preparing download..."
         } else if (currentArtistName.isNotEmpty() && queueCount <= 1) {
             currentArtistName
-        } else if (total == NOTIFICATION_PERCENT_TOTAL) {
+        } else if (isPercentOnlyNotificationTotal(total)) {
             val progressPercent = (progress * 100 / total).toInt()
             "$progressPercent%"
         } else if (total > 0) {

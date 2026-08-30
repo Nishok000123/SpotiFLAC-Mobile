@@ -7,6 +7,14 @@ import org.junit.Test
 
 class NativeWorkerPolicyTest {
     @Test
+    fun percentOnlyNotificationTotalsDoNotRenderAsBytes() {
+        assertTrue(DownloadService.isPercentOnlyNotificationTotal(10_000L))
+        assertTrue(DownloadService.isPercentOnlyNotificationTotal(100L))
+        assertFalse(DownloadService.isPercentOnlyNotificationTotal(72L * 1024L * 1024L))
+        assertFalse(DownloadService.isPercentOnlyNotificationTotal(0L))
+    }
+
+    @Test
     fun rateLimitRetriesExactlyOnce() {
         assertTrue(
             NativeWorkerPolicy.shouldRetryRateLimit(

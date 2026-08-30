@@ -373,8 +373,11 @@ extension _DownloadQueueProgress on DownloadQueueNotifier {
           notifProgress = 0;
           notifTotal = 0;
         } else if (bytesTotal <= 0) {
-          notifProgress = (progressPercent * 100).toInt();
-          notifTotal = 100;
+          notifTotal = PlatformBridge.notificationPercentTotal;
+          notifProgress = (progressPercent * notifTotal)
+              .round()
+              .clamp(0, notifTotal)
+              .toInt();
         }
         final serviceStatus = notifTotal <= 0 ? 'preparing' : 'downloading';
 

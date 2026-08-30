@@ -145,6 +145,10 @@ class _BridgeInFlight<T> {
 }
 
 class PlatformBridge {
+  /// Sentinel shared with Android's foreground service for progress reports
+  /// that contain a percentage but no byte counts.
+  static const int notificationPercentTotal = 10000;
+
   static const _channel = MethodChannel('com.zarz.spotiflac/backend');
   static const _jsonResultFileKey = '__json_file';
   static const _backgroundJsonDecodeThresholdBytes = 128 * 1024;
