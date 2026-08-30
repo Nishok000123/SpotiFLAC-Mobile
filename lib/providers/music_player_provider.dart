@@ -69,6 +69,8 @@ class MusicPlayerController {
 
   bool get isAvailable => _handler != null;
 
+  DateTime? get sleepTimerEndsAt => _handler?.sleepTimerEndsAt;
+
   Future<MusicPlayerHandler?> ensureInitialized() async {
     try {
       return await initMusicPlayer();
@@ -117,6 +119,10 @@ class MusicPlayerController {
   Future<void> seek(Duration position) async => _handler?.seek(position);
   Future<void> next() async => _handler?.skipToNext();
   Future<void> previous() async => _handler?.skipToPrevious();
+
+  void setSleepTimer(Duration duration) => _handler?.setSleepTimer(duration);
+
+  void cancelSleepTimer() => _handler?.cancelSleepTimer();
 
   Future<void> togglePlayPause(bool isPlaying) async {
     final handler = _handler;

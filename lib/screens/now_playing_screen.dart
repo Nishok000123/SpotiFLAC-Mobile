@@ -735,6 +735,15 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     required String source,
     required ColorScheme colorScheme,
   }) async {
+    final controller = ref.read(musicPlayerControllerProvider);
+    final sleepTimerEndsAt = controller.sleepTimerEndsAt;
+    final sleepTimerSubtitle = sleepTimerEndsAt == null
+        ? null
+        : context.l10n.nowPlayingSleepTimerActive(
+            MaterialLocalizations.of(
+              context,
+            ).formatTimeOfDay(TimeOfDay.fromDateTime(sleepTimerEndsAt)),
+          );
     final action = await showAppBottomSheet<String>(
       context: context,
       useRootNavigator: true,
@@ -755,6 +764,12 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               icon: Icons.info_outline,
               title: sheetContext.l10n.nowPlayingDetails,
               onTap: () => Navigator.of(sheetContext).pop('details'),
+            ),
+            SettingsItem(
+              icon: Icons.bedtime_outlined,
+              title: sheetContext.l10n.nowPlayingSleepTimer,
+              subtitle: sleepTimerSubtitle,
+              onTap: () => Navigator.of(sheetContext).pop('sleepTimer'),
             ),
             SettingsItem(
               icon: Icons.open_in_new,
@@ -779,10 +794,70 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       case 'details':
         _showDetailsSheet(colorScheme);
         break;
+      case 'sleepTimer':
+        await _showSleepTimerSheet(controller, colorScheme);
+        break;
       case 'external':
         await _openExternally(source);
         break;
     }
+  }
+
+  Future<void> _showSleepTimerSheet(
+    MusicPlayerController controller,
+    ColorScheme colorScheme,
+  ) async {
+    const durations = [15, 30, 45, 60];
+    final isActive = controller.sleepTimerEndsAt != null;
+    final selection = await showAppBottomSheet<String>(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: colorScheme.surfaceContainerHigh,
+      title: context.l10n.nowPlayingSleepTimer,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: SettingsGroup(
+          children: [
+            for (final minutes in durations)
+              SettingsItem(
+                icon: Icons.timer_outlined,
+                title: sheetContext.l10n.nowPlayingSleepTimerMinutes(minutes),
+                showDivider: isActive || minutes != durations.last,
+                onTap: () => Navigator.of(sheetContext).pop('$minutes'),
+              ),
+            if (isActive)
+              SettingsItem(
+                icon: Icons.timer_off_outlined,
+                title: sheetContext.l10n.nowPlayingSleepTimerOff,
+                showDivider: false,
+                onTap: () => Navigator.of(sheetContext).pop('off'),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || selection == null) return;
+
+    if (selection == 'off') {
+      controller.cancelSleepTimer();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.nowPlayingSleepTimerCancelled)),
+      );
+      return;
+    }
+
+    final minutes = int.tryParse(selection);
+    if (minutes == null) return;
+    controller.setSleepTimer(Duration(minutes: minutes));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.l10n.nowPlayingSleepTimerSet(
+            context.l10n.nowPlayingSleepTimerMinutes(minutes),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _goToCurrentAlbum({

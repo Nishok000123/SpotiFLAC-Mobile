@@ -277,6 +277,8 @@ class MusicPlayerHandler extends BaseAudioHandler
   bool _initialized = false;
   bool _sourceReady = false;
   Future<void>? _activePlayOperation;
+  Timer? _sleepTimer;
+  DateTime? _sleepTimerEndsAt;
 
   bool _shuffle = false;
   AudioServiceRepeatMode _repeatMode = AudioServiceRepeatMode.none;
@@ -304,6 +306,8 @@ class MusicPlayerHandler extends BaseAudioHandler
   );
   static const Duration _positionPersistInterval = Duration(seconds: 10);
   static const int _maxResolvedPathCacheEntries = 64;
+
+  DateTime? get sleepTimerEndsAt => _sleepTimerEndsAt;
 
   MusicPlayerHandler() {
     _activeMusicPlayerHandler = this;
@@ -421,6 +425,25 @@ class MusicPlayerHandler extends BaseAudioHandler
     // not emit a state-change event on focus loss.
     _broadcastState(playerState: PlayerState.paused);
     await _persistSession(position: await _currentPositionForPersist());
+  }
+
+  void setSleepTimer(Duration duration) {
+    if (duration <= Duration.zero) return;
+    _sleepTimer?.cancel();
+    _sleepTimerEndsAt = DateTime.now().add(duration);
+    _sleepTimer = Timer(duration, () {
+      _sleepTimer = null;
+      _sleepTimerEndsAt = null;
+      if (_disposed) return;
+      _log.i('Sleep timer elapsed; pausing playback');
+      unawaited(pause());
+    });
+  }
+
+  void cancelSleepTimer() {
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+    _sleepTimerEndsAt = null;
   }
 
   Future<void> _activateAudioSession() async {
@@ -1215,6 +1238,7 @@ class MusicPlayerHandler extends BaseAudioHandler
 
   @override
   Future<void> stop() async {
+    cancelSleepTimer();
     _playRequestGeneration++;
     _switchingGeneration = 0;
     _userPaused = true;
@@ -1362,6 +1386,7 @@ class MusicPlayerHandler extends BaseAudioHandler
 
   Future<void> dispose() async {
     _disposed = true;
+    cancelSleepTimer();
     _playRequestGeneration++;
     for (final sub in _subscriptions) {
       await sub.cancel();

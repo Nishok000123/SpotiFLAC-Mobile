@@ -120,4 +120,23 @@ void main() {
     expect(find.text('Go to Album'), findsOneWidget);
     expect(find.byIcon(Icons.album_outlined), findsOneWidget);
   });
+
+  testWidgets('Now Playing menu exposes sleep timer duration choices', (
+    tester,
+  ) async {
+    await pumpNowPlaying(tester);
+    mediaItems.add(item('first'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sleep timer'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('15 minutes'), findsOneWidget);
+    expect(find.text('30 minutes'), findsOneWidget);
+    expect(find.text('45 minutes'), findsOneWidget);
+    expect(find.text('60 minutes'), findsOneWidget);
+    expect(find.text('Turn off sleep timer'), findsNothing);
+  });
 }
