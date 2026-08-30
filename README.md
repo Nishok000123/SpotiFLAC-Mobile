@@ -184,7 +184,7 @@ Interested in contributing? Check out the [Contributing Guide](CONTRIBUTING.md) 
 | | | | | |
 |---|---|---|---|---|
 | [MusicDL](https://www.musicdl.me) | [LRCLib](https://lrclib.net) | [Paxsenix](https://lyrics.paxsenix.org) | [Cobalt](https://cobalt.tools) | [Song.link](https://song.link) |
-| [IDHS](https://github.com/sjdonado/idonthavespotify) |  |  |  |  |
+| [UniTune](https://github.com/FlazeIGuess/unitune-api) | [MusicBrainz](https://musicbrainz.org) | [Squigly](https://squigly.link) |  |  |
 
 ---
 

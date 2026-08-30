@@ -214,10 +214,6 @@
   "@searchSortDateOldest": {
     "description": "Sort option - oldest release first"
   },
-  "aboutSjdonadoDesc": "Créateur de « I Don't Have Spotify » (IDHS). Le résolveur de liens de secours qui sauve la mise !",
-  "@aboutSjdonadoDesc": {
-    "description": "Credit description for sjdonado"
-  },
   "nowPlayingShuffleOn": "Lecture aléatoire activée",
   "@nowPlayingShuffleOn": {
     "description": "Tooltip when shuffle mode is enabled"

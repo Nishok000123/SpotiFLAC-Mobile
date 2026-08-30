@@ -461,10 +461,6 @@
   "@aboutSachinsenalDesc": {
     "description": "Credit description for sachinsenal0x64"
   },
-  "aboutSjdonadoDesc": "Creador de I No tengo Spotify (IDHS). ¡La solución de enlace de reserva que salva el día!",
-  "@aboutSjdonadoDesc": {
-    "description": "Credit description for sjdonado"
-  },
   "aboutAppDescription": "Busca información musical, gestiona extensiones y organiza tu biblioteca.",
   "@aboutAppDescription": {
     "description": "App description in header card"

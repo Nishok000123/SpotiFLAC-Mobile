@@ -100,6 +100,3 @@ func (r *RateLimiter) Available() int {
 	r.cleanOldTimestamps(time.Now())
 	return r.maxRequests - len(r.timestamps)
 }
-
-// Global SongLink rate limiter - 9 requests per minute (to be safe, limit is 10)
-var songLinkRateLimiter = NewRateLimiter(9, time.Minute)

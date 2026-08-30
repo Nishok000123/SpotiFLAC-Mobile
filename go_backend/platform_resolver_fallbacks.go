@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"golang.org/x/net/html"
 )
 
 const (
@@ -34,12 +36,17 @@ type platformFallbackResolver interface {
 }
 
 type platformResolverChain struct {
+	songLinkWeb platformFallbackResolver
 	unitune     platformFallbackResolver
 	musicBrainz platformFallbackResolver
 	squigly     platformFallbackResolver
 }
 
 var defaultPlatformResolverFallbacks platformFallbackResolver = &platformResolverChain{
+	songLinkWeb: &songLinkWebResolver{
+		client:      NewMetadataHTTPClient(6 * time.Second),
+		rateLimiter: NewRateLimiter(20, time.Minute),
+	},
 	unitune: &unituneResolver{
 		client:      NewMetadataHTTPClient(6 * time.Second),
 		rateLimiter: NewRateLimiter(30, time.Minute),
@@ -66,6 +73,7 @@ func (c *platformResolverChain) Resolve(
 		name     string
 		resolver platformFallbackResolver
 	}{
+		{name: "Song.link Web", resolver: c.songLinkWeb},
 		{name: "UniTune", resolver: c.unitune},
 		{name: "MusicBrainz", resolver: c.musicBrainz},
 		{name: "Squigly", resolver: c.squigly},
@@ -78,7 +86,7 @@ func (c *platformResolverChain) Resolve(
 		resolved, err := candidate.resolver.Resolve(ctx, inputURL, result.Metadata)
 		if err != nil {
 			resolverErrors = append(resolverErrors, fmt.Errorf("%s: %w", candidate.name, err))
-			LogDebug("SongLink", "%s fallback failed: %v", candidate.name, err)
+			LogDebug("PlatformResolver", "%s resolver failed: %v", candidate.name, err)
 			continue
 		}
 
@@ -89,7 +97,7 @@ func (c *platformResolverChain) Resolve(
 		if result.Metadata.Artist == "" {
 			result.Metadata.Artist = strings.TrimSpace(resolved.Metadata.Artist)
 		}
-		LogInfo("SongLink", "%s fallback contributed %d direct platform links", candidate.name, len(resolved.Links))
+		LogInfo("PlatformResolver", "%s contributed %d direct platform links", candidate.name, len(resolved.Links))
 
 		if hasUsefulResolverCoverage(result.Links) {
 			break
@@ -104,6 +112,92 @@ func (c *platformResolverChain) Resolve(
 		return resolverResult{}, fmt.Errorf("no additional resolver was available")
 	}
 	return resolverResult{}, errors.Join(resolverErrors...)
+}
+
+type songLinkWebResolver struct {
+	client      *http.Client
+	rateLimiter *RateLimiter
+}
+
+func (r *songLinkWebResolver) Resolve(
+	ctx context.Context,
+	inputURL string,
+	_ resolverMetadata,
+) (resolverResult, error) {
+	platform := resolverPlatformFromURL(inputURL)
+	if directResolverURL(platform, inputURL) == "" {
+		return resolverResult{}, fmt.Errorf("unsupported source URL")
+	}
+	if err := r.rateLimiter.WaitForSlotContext(ctx); err != nil {
+		return resolverResult{}, err
+	}
+
+	endpoint := "https://song.link/" + url.PathEscape(inputURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return resolverResult{}, err
+	}
+	req.Header.Set("Accept", "text/html,application/xhtml+xml")
+	req.Header.Set("User-Agent", getRandomUserAgent())
+	resp, err := r.client.Do(req)
+	if err != nil {
+		return resolverResult{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return resolverResult{}, fmt.Errorf("web page returned status %d", resp.StatusCode)
+	}
+	if resp.Request == nil || resp.Request.URL == nil || !isSongLinkLandingHost(resp.Request.URL.Hostname()) {
+		return resolverResult{}, fmt.Errorf("web page redirected to an unexpected host")
+	}
+
+	body, err := readResolverResponse(resp, squiglyPageLimit)
+	if err != nil {
+		return resolverResult{}, err
+	}
+	document, err := html.Parse(bytes.NewReader(body))
+	if err != nil {
+		return resolverResult{}, fmt.Errorf("failed to parse web page: %w", err)
+	}
+
+	result := resolverResult{Links: make(map[string]songLinkPlatformLink)}
+	var visit func(*html.Node)
+	visit = func(node *html.Node) {
+		if node.Type == html.ElementNode && node.Data == "a" {
+			for _, attr := range node.Attr {
+				if attr.Key != "href" {
+					continue
+				}
+				platform := resolverPlatformFromURL(attr.Val)
+				if _, exists := result.Links[platform]; exists {
+					break
+				}
+				if directURL := directResolverURL(platform, attr.Val); directURL != "" {
+					result.Links[platform] = songLinkPlatformLink{URL: directURL}
+				}
+				break
+			}
+		}
+		for child := node.FirstChild; child != nil; child = child.NextSibling {
+			visit(child)
+		}
+	}
+	visit(document)
+	addResolverSourceLink(result.Links, inputURL)
+	if len(result.Links) < 2 {
+		return resolverResult{}, fmt.Errorf("web page returned no cross-platform links")
+	}
+	return result, nil
+}
+
+func isSongLinkLandingHost(host string) bool {
+	host = strings.ToLower(strings.TrimSpace(host))
+	switch host {
+	case "song.link", "album.link", "artist.link", "odesli.co", "www.odesli.co":
+		return true
+	default:
+		return false
+	}
 }
 
 func mergeResolverLinks(dst, src map[string]songLinkPlatformLink) {
@@ -145,6 +239,47 @@ func canonicalResolverPlatform(platform string) string {
 		return "youtubeMusic"
 	default:
 		return ""
+	}
+}
+
+func resolverURLFromPlatformID(platform, entityType, entityID string) (string, error) {
+	platform = canonicalResolverPlatform(platform)
+	entityID = strings.TrimSpace(entityID)
+	if platform == "" || entityID == "" {
+		return "", fmt.Errorf("invalid platform or entity ID")
+	}
+
+	entityType = strings.ToLower(strings.TrimSpace(entityType))
+	if entityType == "song" {
+		entityType = "track"
+	}
+	if entityType != "track" && entityType != "album" && entityType != "artist" {
+		return "", fmt.Errorf("unsupported entity type %q", entityType)
+	}
+
+	id := url.PathEscape(entityID)
+	switch platform {
+	case "spotify":
+		return fmt.Sprintf("https://open.spotify.com/%s/%s", entityType, id), nil
+	case "deezer":
+		return fmt.Sprintf("https://www.deezer.com/%s/%s", entityType, id), nil
+	case "tidal":
+		return fmt.Sprintf("https://tidal.com/browse/%s/%s", entityType, id), nil
+	case "qobuz":
+		return fmt.Sprintf("https://open.qobuz.com/%s/%s", entityType, id), nil
+	case "amazonMusic":
+		return fmt.Sprintf("https://music.amazon.com/%ss/%s", entityType, id), nil
+	case "youtube", "youtubeMusic":
+		if entityType != "track" {
+			return "", fmt.Errorf("unsupported %s entity type %q", platform, entityType)
+		}
+		host := "www.youtube.com"
+		if platform == "youtubeMusic" {
+			host = "music.youtube.com"
+		}
+		return fmt.Sprintf("https://%s/watch?v=%s", host, url.QueryEscape(entityID)), nil
+	default:
+		return "", fmt.Errorf("cannot build a direct %s URL from an ID", platform)
 	}
 }
 

@@ -1646,10 +1646,6 @@
   "@aboutSocial": {
     "description": "Section for social links"
   },
-  "aboutSjdonadoDesc": "Creator of I Don't Have Spotify (IDHS). The fallback link resolver that saves the day!",
-  "@aboutSjdonadoDesc": {
-    "description": "Credit description for sjdonado"
-  },
   "artistPopular": "Popular",
   "@artistPopular": {
     "description": "Section header for popular/top tracks"

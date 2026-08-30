@@ -101,10 +101,6 @@ func TestMoreSmallConstructorsRuntimeAndMetadataHelpers(t *testing.T) {
 	if NewAppleMusicClient().httpClient == nil || NewNeteaseClient().httpClient == nil || NewMusixmatchClient().httpClient == nil || NewQQMusicClient().httpClient == nil {
 		t.Fatal("expected lyric provider HTTP clients")
 	}
-	if NewIDHSClient().client == nil {
-		t.Fatal("expected IDHS HTTP client")
-	}
-
 	vm := goja.New()
 	runtime := &extensionRuntime{extensionID: "misc-runtime", vm: vm, settings: map[string]any{}}
 	if parseExtensionTimeoutSeconds(" 42 ") != 42 || parseExtensionTimeoutSeconds("bad") != 0 || parseExtensionTimeoutSeconds(float64(7)) != 7 {

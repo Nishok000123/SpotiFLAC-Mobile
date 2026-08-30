@@ -98,12 +98,6 @@ class AboutPage extends StatelessWidget {
                     githubUsername: 'sachinsenal0x64',
                     showDivider: true,
                   ),
-                  _ContributorItem(
-                    name: 'sjdonado',
-                    description: context.l10n.aboutSjdonadoDesc,
-                    githubUsername: 'sjdonado',
-                    showDivider: true,
-                  ),
                   _AboutSettingsItem(
                     icon: Icons.swap_horiz_rounded,
                     title: 'UniTune',

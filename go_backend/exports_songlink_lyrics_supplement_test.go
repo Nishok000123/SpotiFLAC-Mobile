@@ -80,22 +80,20 @@ func TestLyricsExportWrappersRejectMetadataOnlySidecar(t *testing.T) {
 
 func TestSongLinkExportWrappersWithFakeClient(t *testing.T) {
 	origClient := globalSongLinkClient
-	origRetryConfig := songLinkRetryConfig
 	defer func() {
 		globalSongLinkClient = origClient
-		songLinkRetryConfig = origRetryConfig
 		SetSongLinkNetworkOptions(false, false)
 	}()
-	songLinkRetryConfig = func() RetryConfig {
-		return RetryConfig{MaxRetries: 0, InitialDelay: 0, MaxDelay: 0, BackoffFactor: 1}
-	}
-	globalSongLinkClient = &SongLinkClient{client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		if req.URL.Host != "api.song.link" {
-			t.Fatalf("unexpected SongLink request: %s", req.URL.String())
-		}
-		body := `{"linksByPlatform":{"spotify":{"url":"https://open.spotify.com/track/spotify-1"},"deezer":{"url":"https://www.deezer.com/track/101"},"tidal":{"url":"https://listen.tidal.com/track/202"},"youtubeMusic":{"url":"https://music.youtube.com/watch?v=ytm1"},"amazonMusic":{"url":"https://music.amazon.com/tracks/amz1"},"qobuz":{"url":"https://open.qobuz.com/track/303"}}}`
-		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), Request: req}, nil
-	})}}
+	globalSongLinkClient = &SongLinkClient{fallbackResolver: &stubPlatformResolver{result: resolverResult{
+		Links: map[string]songLinkPlatformLink{
+			"spotify":      {URL: "https://open.spotify.com/track/spotify-1"},
+			"deezer":       {URL: "https://www.deezer.com/track/101"},
+			"tidal":        {URL: "https://listen.tidal.com/track/202"},
+			"youtubeMusic": {URL: "https://music.youtube.com/watch?v=ytm1"},
+			"amazonMusic":  {URL: "https://music.amazon.com/tracks/amz1"},
+			"qobuz":        {URL: "https://open.qobuz.com/track/303"},
+		},
+	}}}
 	songLinkClientOnce.Do(func() {})
 
 	SetSongLinkNetworkOptions(true, true)

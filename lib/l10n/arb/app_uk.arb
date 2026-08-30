@@ -214,10 +214,6 @@
   "@searchSortDateOldest": {
     "description": "Sort option - oldest release first"
   },
-  "aboutSjdonadoDesc": "Творець I Don't Have Spotify (IDHS). Резервний розв'язувач посилань, який рятує становище!",
-  "@aboutSjdonadoDesc": {
-    "description": "Credit description for sjdonado"
-  },
   "nowPlayingShuffleOn": "Shuffle on",
   "@nowPlayingShuffleOn": {
     "description": "Tooltip when shuffle mode is enabled"

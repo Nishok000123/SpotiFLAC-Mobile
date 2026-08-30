@@ -461,10 +461,6 @@
   "@aboutSachinsenalDesc": {
     "description": "Credit description for sachinsenal0x64"
   },
-  "aboutSjdonadoDesc": "منشئ ل I Don't Have Spotify (IHDS). محلل الروابط الذي ينقذ اليوم!",
-  "@aboutSjdonadoDesc": {
-    "description": "Credit description for sjdonado"
-  },
   "aboutAppDescription": "البحث عن بيانات التعريف الموسيقي، وإدارة الملحقات، وتنظيم مكتبتك.",
   "@aboutAppDescription": {
     "description": "App description in header card"

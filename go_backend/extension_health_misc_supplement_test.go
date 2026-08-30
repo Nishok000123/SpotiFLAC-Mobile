@@ -3,9 +3,7 @@ package gobackend
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net"
-	"net/http"
 	"strings"
 	"testing"
 )
@@ -71,42 +69,8 @@ func TestExtensionHealthClassificationAndValidation(t *testing.T) {
 	}
 }
 
-func TestCoverAndIDHSHelpers(t *testing.T) {
+func TestCoverHelpersRejectEmptyURL(t *testing.T) {
 	if data, err := downloadCoverToMemory(""); err == nil || data != nil {
 		t.Fatalf("expected empty cover error")
-	}
-
-	client := &IDHSClient{client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		if req.Method != http.MethodPost {
-			t.Fatalf("method = %s", req.Method)
-		}
-		body := `{"id":"1","type":"song","title":"Song","links":[{"type":"tidal","url":"https://tidal.com/browse/track/7"},{"type":"deezer","url":"https://www.deezer.com/track/9"},{"type":"spotify","url":"https://open.spotify.com/track/abc"}]}`
-		return &http.Response{
-			StatusCode: 200,
-			Header:     make(http.Header),
-			Body:       io.NopCloser(strings.NewReader(body)),
-			Request:    req,
-		}, nil
-	})}}
-	availability, err := client.GetAvailabilityFromSpotify("spotify-track")
-	if err != nil {
-		t.Fatalf("GetAvailabilityFromSpotify: %v", err)
-	}
-	if !availability.Tidal || !availability.Deezer || availability.DeezerID != "9" {
-		t.Fatalf("spotify availability = %#v", availability)
-	}
-	deezerAvailability, err := client.GetAvailabilityFromDeezer("9")
-	if err != nil {
-		t.Fatalf("GetAvailabilityFromDeezer: %v", err)
-	}
-	if deezerAvailability.SpotifyID != "abc" || !deezerAvailability.Tidal {
-		t.Fatalf("deezer availability = %#v", deezerAvailability)
-	}
-
-	errorClient := &IDHSClient{client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: 429, Body: io.NopCloser(strings.NewReader("")), Request: req}, nil
-	})}}
-	if _, err := errorClient.Search("bad", nil); err == nil {
-		t.Fatal("expected rate limit error")
 	}
 }

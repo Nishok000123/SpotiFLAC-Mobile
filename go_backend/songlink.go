@@ -2,9 +2,7 @@ package gobackend
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -14,9 +12,7 @@ import (
 )
 
 type SongLinkClient struct {
-	client              *http.Client
 	fallbackResolver    platformFallbackResolver
-	requestFlight       singleflight.Group
 	resolutionFlight    singleflight.Group
 	availabilityFlight  singleflight.Group
 	platformLinksFlight singleflight.Group
@@ -55,13 +51,11 @@ var (
 	songLinkCheckAvailabilityFromDeezer = func(s *SongLinkClient, deezerTrackID string) (*TrackAvailability, error) {
 		return s.CheckAvailabilityFromDeezer(deezerTrackID)
 	}
-	songLinkRetryConfig = DefaultRetryConfig
 )
 
 func NewSongLinkClient() *SongLinkClient {
 	songLinkClientOnce.Do(func() {
 		globalSongLinkClient = &SongLinkClient{
-			client:           NewMetadataHTTPClient(SongLinkTimeout),
 			fallbackResolver: defaultPlatformResolverFallbacks,
 		}
 	})
@@ -95,24 +89,12 @@ func GetSongLinkRegion() string {
 	return region
 }
 
-func songLinkBaseURL() string {
-	return "https://api.song.link/v1-alpha.1/links"
-}
-
-// resolveTrackPlatforms resolves a music URL to all platforms. The retired
-// Zarz v1 resolver must not be consulted here; SongLink is canonical for every
-// source URL.
+// resolveTrackPlatforms resolves a music URL through the active resolver
+// chain. SongLinkClient remains as the compatibility facade used by the Dart
+// and native bridges, but retired resolver services are not contacted.
 func (s *SongLinkClient) resolveTrackPlatforms(inputURL string) (map[string]songLinkPlatformLink, error) {
-	return s.songLinkByTargetURL(inputURL)
-}
-
-// resolveTrackPlatformsWithIDHS keeps cross-platform lookups available when
-// SongLink is rate-limited or unavailable. The established IDHS fallback keeps
-// priority; UniTune, MusicBrainz, and Squigly are only consulted when IDHS also
-// fails or returns no usable platform links.
-func (s *SongLinkClient) resolveTrackPlatformsWithIDHS(inputURL string) (map[string]songLinkPlatformLink, error) {
 	value, err, _ := s.resolutionFlight.Do(inputURL, func() (any, error) {
-		return s.resolveTrackPlatformsWithIDHSUncoalesced(inputURL)
+		return s.resolveTrackPlatformsUncoalesced(inputURL)
 	})
 	if err != nil {
 		return nil, err
@@ -120,33 +102,7 @@ func (s *SongLinkClient) resolveTrackPlatformsWithIDHS(inputURL string) (map[str
 	return cloneSongLinkPlatformLinks(value.(map[string]songLinkPlatformLink)), nil
 }
 
-func (s *SongLinkClient) resolveTrackPlatformsWithIDHSUncoalesced(inputURL string) (map[string]songLinkPlatformLink, error) {
-	links, songLinkErr := s.resolveTrackPlatforms(inputURL)
-	if songLinkErr == nil {
-		return links, nil
-	}
-
-	LogWarn("SongLink", "SongLink failed for %s, trying IDHS fallback: %v", inputURL, songLinkErr)
-	idhsResult, idhsErr := NewIDHSClient().Search(inputURL, nil)
-	if idhsErr == nil {
-		links = make(map[string]songLinkPlatformLink)
-		for _, link := range idhsResult.Links {
-			if link.NotAvailable || strings.TrimSpace(link.URL) == "" {
-				continue
-			}
-			platform := songLinkPlatformKeyFromIDHS(link.Type)
-			if directURL := directResolverURL(platform, link.URL); directURL != "" {
-				links[platform] = songLinkPlatformLink{URL: directURL}
-			}
-		}
-		if len(links) > 0 {
-			LogInfo("SongLink", "IDHS fallback returned %d platform links", len(links))
-			return links, nil
-		}
-		idhsErr = fmt.Errorf("IDHS returned no direct platform links")
-	}
-
-	LogWarn("SongLink", "IDHS failed for %s, trying additional resolvers: %v", inputURL, idhsErr)
+func (s *SongLinkClient) resolveTrackPlatformsUncoalesced(inputURL string) (map[string]songLinkPlatformLink, error) {
 	fallbackResolver := s.fallbackResolver
 	if fallbackResolver == nil {
 		fallbackResolver = defaultPlatformResolverFallbacks
@@ -155,119 +111,23 @@ func (s *SongLinkClient) resolveTrackPlatformsWithIDHSUncoalesced(inputURL strin
 	defer cancel()
 	additional, additionalErr := fallbackResolver.Resolve(ctx, inputURL, resolverMetadata{})
 	if additionalErr == nil && len(additional.Links) > 0 {
-		LogInfo("SongLink", "Additional resolver fallback returned %d platform links", len(additional.Links))
+		LogInfo("PlatformResolver", "Resolver chain returned %d platform links", len(additional.Links))
 		return additional.Links, nil
 	}
 	if additionalErr == nil {
 		additionalErr = fmt.Errorf("additional resolvers returned no platform links")
 	}
 
-	return nil, fmt.Errorf(
-		"SongLink failed: %v; IDHS failed: %v; additional resolvers failed: %w",
-		songLinkErr,
-		idhsErr,
-		additionalErr,
-	)
-}
-
-func songLinkPlatformKeyFromIDHS(platform string) string {
-	normalized := strings.ToLower(strings.NewReplacer("-", "", "_", "", " ", "").Replace(strings.TrimSpace(platform)))
-	switch normalized {
-	case "spotify", "deezer", "tidal", "qobuz":
-		return normalized
-	case "youtube", "youtubemusic":
-		return "youtubeMusic"
-	case "applemusic":
-		return "appleMusic"
-	case "amazonmusic":
-		return "amazonMusic"
-	case "soundcloud":
-		return "soundcloud"
-	default:
-		return ""
-	}
+	return nil, fmt.Errorf("platform resolvers failed: %w", additionalErr)
 }
 
 // resolveTrackPlatformsByPlatform resolves using platform + type + id.
-// SongLink accepts platform identifiers directly, including Spotify.
 func (s *SongLinkClient) resolveTrackPlatformsByPlatform(platform, entityType, entityID string) (map[string]songLinkPlatformLink, error) {
-	return s.songLinkByPlatform(platform, entityType, entityID)
-}
-
-// songLinkByTargetURL calls the SongLink API with a target URL.
-func (s *SongLinkClient) songLinkByTargetURL(targetURL string) (map[string]songLinkPlatformLink, error) {
-	apiURL := fmt.Sprintf("%s?url=%s&userCountry=%s",
-		songLinkBaseURL(),
-		url.QueryEscape(targetURL),
-		url.QueryEscape(GetSongLinkRegion()))
-
-	return s.doSongLinkRequest(apiURL)
-}
-
-// songLinkByPlatform calls the SongLink API with platform + type + id (for non-Spotify platforms).
-func (s *SongLinkClient) songLinkByPlatform(platform, entityType, entityID string) (map[string]songLinkPlatformLink, error) {
-	apiURL := fmt.Sprintf("%s?platform=%s&type=%s&id=%s&userCountry=%s",
-		songLinkBaseURL(),
-		url.QueryEscape(platform),
-		url.QueryEscape(entityType),
-		url.QueryEscape(entityID),
-		url.QueryEscape(GetSongLinkRegion()))
-
-	return s.doSongLinkRequest(apiURL)
-}
-
-// doSongLinkRequest calls the SongLink API and parses the response.
-func (s *SongLinkClient) doSongLinkRequest(apiURL string) (map[string]songLinkPlatformLink, error) {
-	value, err, _ := s.requestFlight.Do(apiURL, func() (any, error) {
-		return s.doSongLinkRequestUncoalesced(apiURL)
-	})
+	inputURL, err := resolverURLFromPlatformID(platform, entityType, entityID)
 	if err != nil {
 		return nil, err
 	}
-	return cloneSongLinkPlatformLinks(value.(map[string]songLinkPlatformLink)), nil
-}
-
-func (s *SongLinkClient) doSongLinkRequestUncoalesced(apiURL string) (map[string]songLinkPlatformLink, error) {
-	// Reserve the rate-limit slot inside the singleflight owner. Waiters for an
-	// identical URL share this request without consuming the remaining budget.
-	songLinkRateLimiter.WaitForSlot()
-
-	req, err := http.NewRequest("GET", apiURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create SongLink request: %w", err)
-	}
-
-	retryConfig := songLinkRetryConfig()
-	resp, err := DoRequestWithRetry(s.client, req, retryConfig)
-	if err != nil {
-		return nil, fmt.Errorf("SongLink request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 429 {
-		return nil, fmt.Errorf("SongLink rate limit exceeded")
-	}
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("SongLink returned status %d", resp.StatusCode)
-	}
-
-	body, err := ReadResponseBody(resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read SongLink response: %w", err)
-	}
-
-	var songLinkResp struct {
-		LinksByPlatform map[string]songLinkPlatformLink `json:"linksByPlatform"`
-	}
-	if err := json.Unmarshal(body, &songLinkResp); err != nil {
-		return nil, fmt.Errorf("failed to decode SongLink response: %w", err)
-	}
-
-	if len(songLinkResp.LinksByPlatform) == 0 {
-		return nil, fmt.Errorf("SongLink returned no platform links")
-	}
-
-	return songLinkResp.LinksByPlatform, nil
+	return s.resolveTrackPlatforms(inputURL)
 }
 
 func cloneSongLinkPlatformLinks(links map[string]songLinkPlatformLink) map[string]songLinkPlatformLink {
@@ -411,7 +271,7 @@ func (s *SongLinkClient) fetchTrackPlatformLinks(spotifyTrackID string, isrc str
 	var raw map[string]songLinkPlatformLink
 	var err error
 	if spotifyTrackID != "" {
-		raw, err = s.resolveTrackPlatformsWithIDHS(
+		raw, err = s.resolveTrackPlatforms(
 			fmt.Sprintf("https://open.spotify.com/track/%s", spotifyTrackID),
 		)
 	} else {
@@ -425,7 +285,7 @@ func (s *SongLinkClient) fetchTrackPlatformLinks(spotifyTrackID string, isrc str
 		if deezerTrackID == "" {
 			return nil, fmt.Errorf("failed to resolve Deezer track ID from ISRC %s", isrc)
 		}
-		raw, err = s.resolveTrackPlatformsWithIDHS(
+		raw, err = s.resolveTrackPlatforms(
 			fmt.Sprintf("https://www.deezer.com/track/%s", deezerTrackID),
 		)
 	}
@@ -544,7 +404,7 @@ func trackAvailabilityCacheStore(key string, availability *TrackAvailability, er
 
 func (s *SongLinkClient) checkTrackAvailabilityFromSpotify(spotifyTrackID string) (*TrackAvailability, error) {
 	spotifyURL := fmt.Sprintf("https://open.spotify.com/track/%s", spotifyTrackID)
-	links, err := s.resolveTrackPlatformsWithIDHS(spotifyURL)
+	links, err := s.resolveTrackPlatforms(spotifyURL)
 	if err != nil {
 		return nil, fmt.Errorf("platform resolution failed for Spotify %s: %w", spotifyTrackID, err)
 	}
@@ -778,7 +638,7 @@ type AlbumAvailability struct {
 
 func (s *SongLinkClient) CheckAlbumAvailability(spotifyAlbumID string) (*AlbumAvailability, error) {
 	spotifyURL := fmt.Sprintf("https://open.spotify.com/album/%s", spotifyAlbumID)
-	links, err := s.resolveTrackPlatformsWithIDHS(spotifyURL)
+	links, err := s.resolveTrackPlatforms(spotifyURL)
 	if err != nil {
 		return nil, fmt.Errorf("platform resolution failed for album %s: %w", spotifyAlbumID, err)
 	}
@@ -815,18 +675,7 @@ func (s *SongLinkClient) CheckAvailabilityFromDeezer(deezerTrackID string) (*Tra
 		return nil, fmt.Errorf("deezer track ID is empty")
 	}
 
-	availability, err := s.checkAvailabilityFromDeezerSongLink(deezerTrackID)
-	if err != nil {
-		LogWarn("SongLink", "SongLink failed for Deezer, trying IDHS fallback: %v", err)
-		idhsClient := NewIDHSClient()
-		availability, err = idhsClient.GetAvailabilityFromDeezer(deezerTrackID)
-		if err != nil {
-			return nil, fmt.Errorf("both SongLink and IDHS failed: %w", err)
-		}
-		LogInfo("SongLink", "IDHS fallback successful for Deezer %s", deezerTrackID)
-	}
-
-	return availability, nil
+	return s.checkAvailabilityFromDeezerSongLink(deezerTrackID)
 }
 
 func (s *SongLinkClient) checkAvailabilityFromDeezerSongLink(deezerTrackID string) (*TrackAvailability, error) {
@@ -972,7 +821,7 @@ func (s *SongLinkClient) GetYouTubeURLFromDeezer(deezerTrackID string) (string, 
 }
 
 func (s *SongLinkClient) CheckAvailabilityFromURL(inputURL string) (*TrackAvailability, error) {
-	links, err := s.resolveTrackPlatformsWithIDHS(inputURL)
+	links, err := s.resolveTrackPlatforms(inputURL)
 	if err != nil {
 		return nil, fmt.Errorf("resolve failed for URL %s: %w", inputURL, err)
 	}

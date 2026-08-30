@@ -18,6 +18,35 @@ func resolverTestResponse(req *http.Request, status int, body string) *http.Resp
 	}
 }
 
+func TestSongLinkWebResolverParsesServerRenderedLinks(t *testing.T) {
+	resolver := &songLinkWebResolver{
+		client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			if req.URL.Host != "song.link" || !strings.Contains(req.URL.EscapedPath(), "https:%2F%2Fopen.spotify.com") {
+				t.Fatalf("unexpected Song.link web request: %s", req.URL.String())
+			}
+			return resolverTestResponse(req, http.StatusOK, `<html><body>
+				<a href="https://open.spotify.com/track/source">Spotify</a>
+				<a href="https://www.deezer.com/track/101">Deezer</a>
+				<a href="https://listen.tidal.com/track/202">Tidal</a>
+				<a href="https://music.amazon.com/tracks/TESTASIN?ref=x&amp;tag=y">Amazon</a>
+				<a href="https://evil.example/track/ignored">Untrusted</a>
+			</body></html>`), nil
+		})},
+		rateLimiter: NewRateLimiter(100, time.Minute),
+	}
+
+	result, err := resolver.Resolve(context.Background(), "https://open.spotify.com/track/source", resolverMetadata{})
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+	if len(result.Links) != 4 || result.Links["deezer"].URL == "" || result.Links["amazonMusic"].URL == "" {
+		t.Fatalf("Song.link web links = %#v", result.Links)
+	}
+	if strings.Contains(result.Links["amazonMusic"].URL, "&amp;") {
+		t.Fatalf("HTML entity was not decoded: %s", result.Links["amazonMusic"].URL)
+	}
+}
+
 func TestUnituneResolverKeepsOnlyDirectTrustedLinks(t *testing.T) {
 	resolver := &unituneResolver{
 		client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -171,38 +200,46 @@ func TestPlatformResolverChainMergesFallbacksWithoutReplacingEarlierLinks(t *tes
 	}
 }
 
-func TestAdditionalResolversRunOnlyAfterSongLinkAndIDHSFail(t *testing.T) {
-	originalIDHSClient := NewIDHSClient()
-	originalIDHSLimiter := idhsRateLimiter
-	originalRetryConfig := songLinkRetryConfig
-	defer func() {
-		globalIDHSClient = originalIDHSClient
-		idhsRateLimiter = originalIDHSLimiter
-		songLinkRetryConfig = originalRetryConfig
-	}()
-
-	idhsRateLimiter = NewRateLimiter(100, time.Minute)
-	globalIDHSClient = &IDHSClient{client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		return resolverTestResponse(req, http.StatusBadGateway, `{"error":"unavailable"}`), nil
-	})}}
-	songLinkRetryConfig = func() RetryConfig {
-		return RetryConfig{MaxRetries: 0, BackoffFactor: 1}
+func TestPlatformResolverChainPrefersSongLinkWeb(t *testing.T) {
+	songLinkWeb := &stubPlatformResolver{result: resolverResult{Links: map[string]songLinkPlatformLink{
+		"spotify":     {URL: "https://open.spotify.com/track/source"},
+		"deezer":      {URL: "https://www.deezer.com/track/101"},
+		"tidal":       {URL: "https://listen.tidal.com/track/202"},
+		"amazonMusic": {URL: "https://music.amazon.com/tracks/TESTASIN"},
+	}}}
+	unitune := &stubPlatformResolver{}
+	musicBrainz := &stubPlatformResolver{}
+	squigly := &stubPlatformResolver{}
+	chain := &platformResolverChain{
+		songLinkWeb: songLinkWeb,
+		unitune:     unitune,
+		musicBrainz: musicBrainz,
+		squigly:     squigly,
 	}
-	additional := &stubPlatformResolver{result: resolverResult{Links: map[string]songLinkPlatformLink{
+
+	result, err := chain.Resolve(context.Background(), "https://open.spotify.com/track/source", resolverMetadata{})
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+	if songLinkWeb.calls != 1 || unitune.calls != 0 || musicBrainz.calls != 0 || squigly.calls != 0 {
+		t.Fatalf("resolver calls = %d/%d/%d/%d, want 1/0/0/0", songLinkWeb.calls, unitune.calls, musicBrainz.calls, squigly.calls)
+	}
+	if len(result.Links) != 4 {
+		t.Fatalf("Song.link web links = %#v", result.Links)
+	}
+}
+
+func TestActiveResolversRunWithoutRetiredNetworkHop(t *testing.T) {
+	active := &stubPlatformResolver{result: resolverResult{Links: map[string]songLinkPlatformLink{
 		"deezer": {URL: "https://www.deezer.com/track/123"},
 	}}}
-	client := &SongLinkClient{
-		client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			return resolverTestResponse(req, http.StatusUnauthorized, `{"error":"deprecated"}`), nil
-		})},
-		fallbackResolver: additional,
-	}
+	client := &SongLinkClient{fallbackResolver: active}
 
-	links, err := client.resolveTrackPlatformsWithIDHSUncoalesced("https://open.spotify.com/track/source")
+	links, err := client.resolveTrackPlatformsUncoalesced("https://open.spotify.com/track/source")
 	if err != nil {
-		t.Fatalf("resolveTrackPlatformsWithIDHSUncoalesced() error = %v", err)
+		t.Fatalf("resolveTrackPlatformsUncoalesced() error = %v", err)
 	}
-	if additional.calls != 1 || links["deezer"].URL == "" {
-		t.Fatalf("additional resolver calls/links = %d/%#v", additional.calls, links)
+	if active.calls != 1 || links["deezer"].URL == "" {
+		t.Fatalf("active resolver calls/links = %d/%#v", active.calls, links)
 	}
 }

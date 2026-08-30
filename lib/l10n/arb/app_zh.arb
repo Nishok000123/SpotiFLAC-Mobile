@@ -461,10 +461,6 @@
   "@aboutSachinsenalDesc": {
     "description": "Credit description for sachinsenal0x64"
   },
-  "aboutSjdonadoDesc": "I Don't Have Spotify (IDHS) 的创建者。备用链接解析器很有帮助！",
-  "@aboutSjdonadoDesc": {
-    "description": "Credit description for sjdonado"
-  },
   "aboutAppDescription": "搜索音乐元数据、管理扩展并整理你的乐库。",
   "@aboutAppDescription": {
     "description": "App description in header card"

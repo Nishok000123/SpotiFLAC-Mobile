@@ -214,10 +214,6 @@
   "@searchSortDateOldest": {
     "description": "Sort option - oldest release first"
   },
-  "aboutSjdonadoDesc": "Pencipta I Don't Have Spotify (IDHS). Penyelesai tautan cadangan yang menyelamatkan keadaan!",
-  "@aboutSjdonadoDesc": {
-    "description": "Credit description for sjdonado"
-  },
   "nowPlayingShuffleOn": "Shuffle on",
   "@nowPlayingShuffleOn": {
     "description": "Tooltip when shuffle mode is enabled"
