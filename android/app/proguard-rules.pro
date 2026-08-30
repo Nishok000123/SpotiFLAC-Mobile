@@ -1,12 +1,3 @@
-# Flutter specific rules
--keep class io.flutter.app.** { *; }
--keep class io.flutter.plugin.** { *; }
--keep class io.flutter.util.** { *; }
--keep class io.flutter.view.** { *; }
--keep class io.flutter.** { *; }
--keep class io.flutter.plugins.** { *; }
--keep class io.flutter.embedding.** { *; }
-
 # Ignore missing Play Core classes (not used, but referenced by Flutter)
 -dontwarn com.google.android.play.core.splitcompat.**
 -dontwarn com.google.android.play.core.splitinstall.**
@@ -15,25 +6,7 @@
 # Ignore missing javax.xml.stream (not used on Android)
 -dontwarn javax.xml.stream.**
 
-# Go backend (gobackend.aar) - CRITICAL for release builds
--keep class gobackend.** { *; }
--keep class go.** { *; }
--keep interface gobackend.** { *; }
--keepclassmembers class gobackend.** { *; }
-
-# Go mobile binding internals
--keep class org.golang.** { *; }
--dontwarn org.golang.**
-
-# FFmpeg Kit
--keep class com.arthenica.ffmpegkit.** { *; }
--keep class com.arthenica.smartexception.** { *; }
-# FFmpeg Kit (new fork package)
--keep class com.antonkarpenko.ffmpegkit.** { *; }
--keep class com.antonkarpenko.smartexception.** { *; }
-
-# Apache Tika (if used by FFmpeg)
--dontwarn org.apache.tika.**
+# The Go backend and FFmpeg plugin ship their JNI keep rules in their AARs.
 
 # Keep native methods
 -keepclasseswithmembernames class * {
@@ -51,14 +24,27 @@
 }
 -dontwarn kotlinx.coroutines.**
 
-# Kotlin serialization
+# Runtime annotations used by serializers and generated bindings.
 -keepattributes RuntimeVisibleAnnotations,AnnotationDefault
 -dontwarn kotlin.**
--keep class kotlin.** { *; }
--keep class kotlin.Metadata { *; }
 
-# Keep MainActivity and related classes
--keep class com.zarz.spotiflac.** { *; }
+# Android instantiates these components from the manifest. Preserve only their
+# names and constructors; normal reachability can now shrink/optimize helpers,
+# coroutine state machines, and unused members in the rest of the app package.
+-keep,allowoptimization class com.zarz.spotiflac.MainActivity {
+    public <init>();
+}
+-keep,allowoptimization class com.zarz.spotiflac.DownloadService {
+    public <init>();
+}
+-keep,allowoptimization class com.zarz.spotiflac.DownloadQueueWidgetProvider {
+    public <init>();
+}
+
+# Flutter's fragment builders instantiate this class through reflection.
+-keep,allowoptimization class com.zarz.spotiflac.MainActivity$ImpellerAwareFlutterFragment {
+    public <init>();
+}
 
 # Prevent R8 from removing metadata
 -keepattributes *Annotation*
@@ -68,49 +54,6 @@
 -keepattributes InnerClasses
 -keepattributes EnclosingMethod
 
-# JSON parsing (used by Go backend responses)
--keep class org.json.** { *; }
-
-# Shared Preferences
--keep class androidx.datastore.** { *; }
--dontwarn androidx.datastore.**
-
-# Flutter Plugins - CRITICAL: Prevent R8 from removing plugin implementations
-# Path Provider
--keep class io.flutter.plugins.pathprovider.** { *; }
--keep class dev.flutter.pigeon.** { *; }
-
-# Local Notifications
--keep class com.dexterous.** { *; }
--keep class com.dexterous.flutterlocalnotifications.** { *; }
-
-# Receive Sharing Intent
--keep class com.kasem.receive_sharing_intent.** { *; }
-
-# Permission Handler
--keep class com.baseflow.permissionhandler.** { *; }
-
-# File Picker
--keep class com.mr.flutter.plugin.filepicker.** { *; }
-
-# URL Launcher
--keep class io.flutter.plugins.urllauncher.** { *; }
-
-# Share Plus
--keep class dev.fluttercommunity.plus.share.** { *; }
-
-# Device Info Plus
--keep class dev.fluttercommunity.plus.device_info.** { *; }
-
-# Open File
--keep class com.crazecoder.openfile.** { *; }
-
-# Sqflite
--keep class com.tekartik.sqflite.** { *; }
-
-# Dynamic Color
--keep class io.material.** { *; }
-
-# Keep all Flutter plugin registrants
+# Flutter invokes the generated registrant by name. Individual plugins are
+# referenced by this class and retain their own consumer rules.
 -keep class io.flutter.plugins.GeneratedPluginRegistrant { *; }
--keep class ** extends io.flutter.embedding.engine.plugins.FlutterPlugin { *; }
