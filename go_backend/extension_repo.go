@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 const (
@@ -133,12 +135,15 @@ func (e *repoExtension) toResponse() repoExtensionResponse {
 }
 
 type extensionRepo struct {
-	registryURL string
-	cacheDir    string
-	cache       *repoRegistry
-	cacheMu     sync.RWMutex
-	cacheTime   time.Time
-	cacheTTL    time.Duration
+	registryURL  string
+	cacheDir     string
+	cache        *repoRegistry
+	cacheMu      sync.RWMutex
+	cacheTime    time.Time
+	cacheTTL     time.Duration
+	etag         string
+	lastModified string
+	fetchGroup   singleflight.Group
 }
 
 var (
@@ -147,8 +152,10 @@ var (
 )
 
 const (
-	cacheTTL      = 30 * time.Minute
-	cacheFileName = "store_cache.json"
+	cacheTTL              = 30 * time.Minute
+	cacheFileName         = "store_cache.json"
+	maxRegistryBodyBytes  = 4 << 20
+	registryRequestTimout = 30 * time.Second
 )
 
 func initExtensionRepo(cacheDir string) *extensionRepo {
@@ -177,6 +184,8 @@ func (s *extensionRepo) setRegistryURL(registryURL string) {
 	s.registryURL = registryURL
 	s.cache = nil
 	s.cacheTime = time.Time{}
+	s.etag = ""
+	s.lastModified = ""
 
 	if s.cacheDir != "" {
 		cachePath := filepath.Join(s.cacheDir, cacheFileName)
@@ -210,9 +219,11 @@ func (s *extensionRepo) loadDiskCache() {
 	}
 
 	var cacheData struct {
-		RegistryURL string       `json:"registry_url"`
-		Registry    repoRegistry `json:"registry"`
-		CacheTime   int64        `json:"cache_time"`
+		RegistryURL  string       `json:"registry_url"`
+		Registry     repoRegistry `json:"registry"`
+		CacheTime    int64        `json:"cache_time"`
+		ETag         string       `json:"etag,omitempty"`
+		LastModified string       `json:"last_modified,omitempty"`
 	}
 
 	if err := json.Unmarshal(data, &cacheData); err != nil {
@@ -221,6 +232,8 @@ func (s *extensionRepo) loadDiskCache() {
 
 	s.cache = &cacheData.Registry
 	s.cacheTime = time.Unix(cacheData.CacheTime, 0)
+	s.etag = cacheData.ETag
+	s.lastModified = cacheData.LastModified
 	if s.registryURL == "" {
 		// Restore the URL that produced this cache so a later setRegistryURL
 		// with the same URL keeps the cache instead of wiping it.
@@ -230,18 +243,31 @@ func (s *extensionRepo) loadDiskCache() {
 }
 
 func (s *extensionRepo) saveDiskCache() {
-	if s.cacheDir == "" || s.cache == nil {
+	s.cacheMu.RLock()
+	cacheDir := s.cacheDir
+	registryURL := s.registryURL
+	registry := s.cache
+	cacheTime := s.cacheTime
+	etag := s.etag
+	lastModified := s.lastModified
+	s.cacheMu.RUnlock()
+
+	if cacheDir == "" || registry == nil {
 		return
 	}
 
 	cacheData := struct {
-		RegistryURL string       `json:"registry_url"`
-		Registry    repoRegistry `json:"registry"`
-		CacheTime   int64        `json:"cache_time"`
+		RegistryURL  string       `json:"registry_url"`
+		Registry     repoRegistry `json:"registry"`
+		CacheTime    int64        `json:"cache_time"`
+		ETag         string       `json:"etag,omitempty"`
+		LastModified string       `json:"last_modified,omitempty"`
 	}{
-		RegistryURL: s.registryURL,
-		Registry:    *s.cache,
-		CacheTime:   s.cacheTime.Unix(),
+		RegistryURL:  registryURL,
+		Registry:     *registry,
+		CacheTime:    cacheTime.Unix(),
+		ETag:         etag,
+		LastModified: lastModified,
 	}
 
 	data, err := json.Marshal(cacheData)
@@ -249,74 +275,144 @@ func (s *extensionRepo) saveDiskCache() {
 		return
 	}
 
-	cachePath := filepath.Join(s.cacheDir, cacheFileName)
-	os.WriteFile(cachePath, data, 0644)
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		return
+	}
+	cachePath := filepath.Join(cacheDir, cacheFileName)
+	tempPath := cachePath + ".tmp"
+	if err := os.WriteFile(tempPath, data, 0600); err != nil {
+		return
+	}
+	if err := os.Rename(tempPath, cachePath); err != nil {
+		_ = os.Remove(tempPath)
+	}
 }
 
 func (s *extensionRepo) fetchRegistry(forceRefresh bool) (*repoRegistry, error) {
-	s.cacheMu.Lock()
-	defer s.cacheMu.Unlock()
+	s.cacheMu.RLock()
+	registryURL := s.registryURL
+	cached := s.cache
+	cacheTime := s.cacheTime
+	s.cacheMu.RUnlock()
 
-	if s.registryURL == "" {
+	if registryURL == "" {
 		return nil, fmt.Errorf("no registry URL configured. Please add a repository URL first")
 	}
 
-	if !forceRefresh && s.cache != nil && time.Since(s.cacheTime) < s.cacheTTL {
-		LogDebug("ExtensionRepo", "Using cached registry (%d extensions)", len(s.cache.Extensions))
-		return s.cache, nil
+	if !forceRefresh && cached != nil && time.Since(cacheTime) < s.cacheTTL {
+		LogDebug("ExtensionRepo", "Using cached registry (%d extensions)", len(cached.Extensions))
+		return cached, nil
 	}
 
-	if err := requireHTTPSURL(s.registryURL, "registry"); err != nil {
+	if err := requireHTTPSURL(registryURL, "registry"); err != nil {
 		return nil, err
 	}
 
-	LogInfo("ExtensionRepo", "Fetching registry from %s", s.registryURL)
-
-	client := NewHTTPClientWithTimeout(30 * time.Second)
-	req, err := http.NewRequest(http.MethodGet, s.registryURL, nil)
+	value, err, _ := s.fetchGroup.Do(registryURL, func() (any, error) {
+		return s.fetchRegistryUncoalesced(registryURL, forceRefresh)
+	})
 	if err != nil {
-		if s.cache != nil {
+		return nil, err
+	}
+	registry, _ := value.(*repoRegistry)
+	if registry == nil {
+		return nil, fmt.Errorf("registry request returned no data")
+	}
+	return registry, nil
+}
+
+func (s *extensionRepo) fetchRegistryUncoalesced(registryURL string, forceRefresh bool) (*repoRegistry, error) {
+	s.cacheMu.RLock()
+	if s.registryURL != registryURL {
+		s.cacheMu.RUnlock()
+		return nil, fmt.Errorf("registry URL changed while refreshing")
+	}
+	cached := s.cache
+	cacheTime := s.cacheTime
+	etag := s.etag
+	lastModified := s.lastModified
+	s.cacheMu.RUnlock()
+
+	if !forceRefresh && cached != nil && time.Since(cacheTime) < s.cacheTTL {
+		return cached, nil
+	}
+
+	LogInfo("ExtensionRepo", "Fetching registry from %s", registryURL)
+
+	client := NewHTTPClientWithTimeout(registryRequestTimout)
+	req, err := http.NewRequest(http.MethodGet, registryURL, nil)
+	if err != nil {
+		if cached != nil {
 			LogWarn("ExtensionRepo", "Failed to build registry request, using cached registry: %v", err)
-			return s.cache, nil
+			return cached, nil
 		}
 		return nil, fmt.Errorf("failed to build registry request: %w", err)
 	}
-	req.Header.Set("Cache-Control", "no-cache")
-	req.Header.Set("Pragma", "no-cache")
+	if etag != "" {
+		req.Header.Set("If-None-Match", etag)
+	}
+	if lastModified != "" {
+		req.Header.Set("If-Modified-Since", lastModified)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
-		if s.cache != nil {
+		if cached != nil {
 			LogWarn("ExtensionRepo", "Network error, using cached registry: %v", err)
-			return s.cache, nil
+			return cached, nil
 		}
 		return nil, fmt.Errorf("failed to fetch registry: %w", err)
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusNotModified && cached != nil {
+		s.cacheMu.Lock()
+		if s.registryURL == registryURL && s.cache == cached {
+			s.cacheTime = time.Now()
+		}
+		s.cacheMu.Unlock()
+		s.saveDiskCache()
+		return cached, nil
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		if s.cache != nil {
+		if cached != nil {
 			LogWarn("ExtensionRepo", "HTTP %d, using cached registry", resp.StatusCode)
-			return s.cache, nil
+			return cached, nil
 		}
 		return nil, fmt.Errorf("registry returned HTTP %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxRegistryBodyBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read registry: %w", err)
+	}
+	if len(body) > maxRegistryBodyBytes {
+		if cached != nil {
+			LogWarn("ExtensionRepo", "Registry response exceeded %d bytes, using cached registry", maxRegistryBodyBytes)
+			return cached, nil
+		}
+		return nil, fmt.Errorf("registry response exceeds %d bytes", maxRegistryBodyBytes)
 	}
 
 	registry, err := parseRegistryBody(body)
 	if err != nil {
-		if s.cache != nil {
+		if cached != nil {
 			LogWarn("ExtensionRepo", "Failed to parse registry, using cached registry: %v", err)
-			return s.cache, nil
+			return cached, nil
 		}
 		return nil, err
 	}
 
+	s.cacheMu.Lock()
+	if s.registryURL != registryURL {
+		s.cacheMu.Unlock()
+		return registry, nil
+	}
 	s.cache = registry
 	s.cacheTime = time.Now()
+	s.etag = strings.TrimSpace(resp.Header.Get("ETag"))
+	s.lastModified = strings.TrimSpace(resp.Header.Get("Last-Modified"))
+	s.cacheMu.Unlock()
 	s.saveDiskCache()
 
 	LogInfo("ExtensionRepo", "Fetched %d extensions from registry", len(registry.Extensions))
@@ -662,6 +758,8 @@ func (s *extensionRepo) clearCache() {
 
 	s.cache = nil
 	s.cacheTime = time.Time{}
+	s.etag = ""
+	s.lastModified = ""
 
 	if s.cacheDir != "" {
 		cachePath := filepath.Join(s.cacheDir, cacheFileName)

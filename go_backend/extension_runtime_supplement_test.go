@@ -522,7 +522,9 @@ func TestExtensionStoreDiskCacheSurvivesRestart(t *testing.T) {
 			Version:    1,
 			Extensions: []repoExtension{{ID: "ext", Name: "ext", Version: "1.0.0"}},
 		},
-		cacheTime: time.Now(),
+		cacheTime:    time.Now(),
+		etag:         `"registry-v1"`,
+		lastModified: "Sun, 30 Aug 2026 00:00:00 GMT",
 	}
 	store.saveDiskCache()
 
@@ -532,6 +534,9 @@ func TestExtensionStoreDiskCacheSurvivesRestart(t *testing.T) {
 	restarted.loadDiskCache()
 	if restarted.getRegistryURL() != registryURL {
 		t.Fatalf("registry URL after restart = %q", restarted.getRegistryURL())
+	}
+	if restarted.etag != `"registry-v1"` || restarted.lastModified == "" {
+		t.Fatalf("conditional cache metadata was not restored: %q / %q", restarted.etag, restarted.lastModified)
 	}
 	restarted.setRegistryURL(registryURL)
 	if restarted.cache == nil || len(restarted.cache.Extensions) != 1 {
