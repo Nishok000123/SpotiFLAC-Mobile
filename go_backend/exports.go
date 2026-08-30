@@ -51,7 +51,7 @@ func releaseMemory(underPressure bool) {
 	CloseIdleConnections()
 	if underPressure {
 		clearCoverMemoryCache()
-		globalLyricsCache.ClearAll()
+		globalLyricsCache.DropMemory()
 		clearPrivateIPCache()
 		clearExtensionHealthCache()
 	}

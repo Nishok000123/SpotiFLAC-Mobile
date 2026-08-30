@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -294,6 +295,7 @@ func InitExtensionSystem(extensionsDir, dataDir string) error {
 	if err := settingsStore.SetDataDir(dataDir); err != nil {
 		return err
 	}
+	globalLyricsCache.SetPersistencePath(filepath.Join(dataDir, ".lyrics_cache.json"))
 
 	return nil
 }

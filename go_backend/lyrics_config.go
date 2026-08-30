@@ -1,9 +1,10 @@
 package gobackend
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
-	"math"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -310,9 +311,9 @@ func SetLyricsFetchOptions(opts LyricsFetchOptions) {
 	normalized := normalizeLyricsFetchOptions(opts)
 
 	lyricsFetchOptionsMu.Lock()
-	defer lyricsFetchOptionsMu.Unlock()
 	changed := lyricsFetchOptions != normalized
 	lyricsFetchOptions = normalized
+	lyricsFetchOptionsMu.Unlock()
 
 	if changed {
 		globalLyricsCache.ClearAll()
@@ -339,8 +340,11 @@ type lyricsCacheEntry struct {
 }
 
 type lyricsCache struct {
-	mu    sync.RWMutex
-	cache map[string]*lyricsCacheEntry
+	mu                 sync.RWMutex
+	cache              map[string]*lyricsCacheEntry
+	persistencePath    string
+	persistGeneration  uint64
+	persistencePending bool
 }
 
 var globalLyricsCache = &lyricsCache{
@@ -348,17 +352,14 @@ var globalLyricsCache = &lyricsCache{
 }
 
 func (c *lyricsCache) generateKey(artist, track string, durationSec float64) string {
-	normalizedArtist := strings.ToLower(strings.TrimSpace(artist))
-	normalizedTrack := strings.ToLower(strings.TrimSpace(track))
-	roundedDuration := math.Round(durationSec/10) * 10
-	return fmt.Sprintf("%s|%s|%.0f", normalizedArtist, normalizedTrack, roundedDuration)
+	return lyricsFetchCacheKey("", track, artist, durationSec)
 }
 
 func (c *lyricsCache) Get(artist, track string, durationSec float64) (*LyricsResponse, bool) {
+	key := c.generateKey(artist, track, durationSec)
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	key := c.generateKey(artist, track, durationSec)
 	entry, exists := c.cache[key]
 	if !exists {
 		return nil, false
@@ -368,12 +369,15 @@ func (c *lyricsCache) Get(artist, track string, durationSec float64) (*LyricsRes
 		return nil, false
 	}
 
-	return entry.response, true
+	responseCopy := *entry.response
+	responseCopy.Lines = append([]LyricsLine(nil), entry.response.Lines...)
+	return &responseCopy, true
 }
 
 const lyricsCacheMaxEntries = 500
 
 func (c *lyricsCache) Set(artist, track string, durationSec float64, response *LyricsResponse) {
+	key := c.generateKey(artist, track, durationSec)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -399,11 +403,11 @@ func (c *lyricsCache) Set(artist, track string, durationSec float64, response *L
 		}
 	}
 
-	key := c.generateKey(artist, track, durationSec)
 	c.cache[key] = &lyricsCacheEntry{
-		response:  response,
+		response:  cloneLyricsResponse(response),
 		expiresAt: time.Now().Add(lyricsCacheTTL),
 	}
+	c.schedulePersistenceLocked()
 }
 
 func (c *lyricsCache) CleanExpired() int {
@@ -433,5 +437,126 @@ func (c *lyricsCache) ClearAll() int {
 
 	cleared := len(c.cache)
 	c.cache = make(map[string]*lyricsCacheEntry)
+	c.schedulePersistenceLocked()
 	return cleared
+}
+
+// DropMemory releases the in-memory snapshot without deleting the persistent
+// cache. It is used for OS memory-pressure handling; a later app start can
+// still restore successful lyrics lookups from disk.
+func (c *lyricsCache) DropMemory() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	cleared := len(c.cache)
+	c.cache = make(map[string]*lyricsCacheEntry)
+	return cleared
+}
+
+type persistedLyricsCacheEntry struct {
+	Response  *LyricsResponse `json:"response"`
+	ExpiresAt int64           `json:"expires_at"`
+}
+
+type persistedLyricsCache struct {
+	Version int                                  `json:"version"`
+	Entries map[string]persistedLyricsCacheEntry `json:"entries"`
+}
+
+func cloneLyricsResponse(response *LyricsResponse) *LyricsResponse {
+	if response == nil {
+		return nil
+	}
+	copy := *response
+	copy.Lines = append([]LyricsLine(nil), response.Lines...)
+	return &copy
+}
+
+func (c *lyricsCache) SetPersistencePath(path string) {
+	path = filepath.Clean(strings.TrimSpace(path))
+	if path == "." || path == "" {
+		return
+	}
+
+	data, err := os.ReadFile(path)
+	loaded := make(map[string]*lyricsCacheEntry)
+	if err == nil {
+		var persisted persistedLyricsCache
+		if json.Unmarshal(data, &persisted) == nil && persisted.Version == 1 {
+			now := time.Now()
+			for key, entry := range persisted.Entries {
+				expiresAt := time.Unix(entry.ExpiresAt, 0)
+				if entry.Response == nil || !now.Before(expiresAt) {
+					continue
+				}
+				loaded[key] = &lyricsCacheEntry{
+					response:  cloneLyricsResponse(entry.Response),
+					expiresAt: expiresAt,
+				}
+				if len(loaded) >= lyricsCacheMaxEntries {
+					break
+				}
+			}
+		}
+	}
+
+	c.mu.Lock()
+	c.persistencePath = path
+	for key, entry := range loaded {
+		if _, exists := c.cache[key]; !exists {
+			c.cache[key] = entry
+		}
+	}
+	c.mu.Unlock()
+}
+
+func (c *lyricsCache) schedulePersistenceLocked() {
+	if c.persistencePath == "" {
+		return
+	}
+	c.persistGeneration++
+	if c.persistencePending {
+		return
+	}
+	c.persistencePending = true
+	go c.persistAfterDebounce()
+}
+
+func (c *lyricsCache) persistAfterDebounce() {
+	time.Sleep(500 * time.Millisecond)
+	for {
+		c.mu.RLock()
+		path := c.persistencePath
+		generation := c.persistGeneration
+		snapshot := persistedLyricsCache{
+			Version: 1,
+			Entries: make(map[string]persistedLyricsCacheEntry, len(c.cache)),
+		}
+		for key, entry := range c.cache {
+			snapshot.Entries[key] = persistedLyricsCacheEntry{
+				Response:  cloneLyricsResponse(entry.response),
+				ExpiresAt: entry.expiresAt.Unix(),
+			}
+		}
+		c.mu.RUnlock()
+
+		if data, err := json.Marshal(snapshot); err == nil {
+			if err := os.MkdirAll(filepath.Dir(path), 0700); err == nil {
+				tempPath := path + ".tmp"
+				if os.WriteFile(tempPath, data, 0600) == nil {
+					if err := os.Rename(tempPath, path); err != nil {
+						_ = os.Remove(tempPath)
+					}
+				}
+			}
+		}
+
+		c.mu.Lock()
+		if generation == c.persistGeneration {
+			c.persistencePending = false
+			c.mu.Unlock()
+			return
+		}
+		c.mu.Unlock()
+		time.Sleep(100 * time.Millisecond)
+	}
 }

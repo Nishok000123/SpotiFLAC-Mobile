@@ -39,8 +39,9 @@ type extCallOpts struct {
 	perfName  string
 	invoke    func(vm *goja.Runtime) (goja.Value, error)
 	timeout   time.Duration
-	itemID    string // optional: binds download-cancel + active-item tracking
-	requestID string // optional: binds request-cancel via context (customSearch only)
+	itemID    string          // optional: binds download-cancel + active-item tracking
+	requestID string          // optional: binds request-cancel via context (customSearch only)
+	context   context.Context // optional: caller lifecycle for non-download work
 	// beforeRun runs after lock+cancel setup, right before the invocation. Its
 	// returned cleanup, if any, runs after the call.
 	beforeRun func() func()
@@ -58,7 +59,10 @@ type extCallOpts struct {
 // any ProviderID stamping.
 func callExtension[T any](p *extensionProviderWrapper, opts extCallOpts, parse func(perf *extensionCallPerf, result goja.Value) (T, error)) (T, error) {
 	var zero T
-	ctx := context.Background()
+	ctx := opts.context
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
 	perf := newExtensionCallPerf(p.extension.ID, opts.perfName)
 	defer perf.finish()
@@ -959,6 +963,10 @@ type ExtLyricsLine struct {
 }
 
 func (p *extensionProviderWrapper) FetchLyrics(trackName, artistName, albumName string, durationSec float64) (*LyricsResponse, error) {
+	return p.FetchLyricsContext(context.Background(), trackName, artistName, albumName, durationSec)
+}
+
+func (p *extensionProviderWrapper) FetchLyricsContext(ctx context.Context, trackName, artistName, albumName string, durationSec float64) (*LyricsResponse, error) {
 	if !p.extension.Manifest.IsLyricsProvider() {
 		return nil, fmt.Errorf("extension '%s' is not a lyrics provider", p.extension.ID)
 	}
@@ -970,6 +978,7 @@ func (p *extensionProviderWrapper) FetchLyrics(trackName, artistName, albumName 
 		perfName: "fetchLyrics",
 		invoke:   extensionMethodInvocation("fetchLyrics", trackName, artistName, albumName, durationSec),
 		timeout:  DefaultJSTimeout,
+		context:  ctx,
 	}, func(perf *extensionCallPerf, result goja.Value) (*LyricsResponse, error) {
 		if result == nil || goja.IsUndefined(result) || goja.IsNull(result) {
 			return nil, fmt.Errorf("fetchLyrics returned null")

@@ -5,11 +5,73 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
+
+func TestLyricsLookupSingleflightAndPersistentCache(t *testing.T) {
+	SetLyricsProviderOrder([]string{LyricsProviderLRCLIB})
+	defer SetLyricsProviderOrder(nil)
+	clearLyricsProviderHealth()
+	globalLyricsCache.ClearAll()
+
+	var calls atomic.Int32
+	client := &LyricsClient{httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		calls.Add(1)
+		time.Sleep(25 * time.Millisecond)
+		return &http.Response{
+			StatusCode: 200,
+			Header:     make(http.Header),
+			Body: io.NopCloser(strings.NewReader(
+				`{"id":1,"trackName":"Singleflight Song","artistName":"Cache Artist","duration":180,"plainLyrics":"Cached lyric"}`,
+			)),
+			Request: req,
+		}, nil
+	})}}
+
+	var wait sync.WaitGroup
+	for range 8 {
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			lyrics, err := client.FetchLyricsAllSources("", "Singleflight Song", "Cache Artist", 180)
+			if err != nil || lyrics == nil {
+				t.Errorf("FetchLyricsAllSources = %#v/%v", lyrics, err)
+			}
+		}()
+	}
+	wait.Wait()
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("identical lyrics lookups made %d HTTP calls, want 1", got)
+	}
+
+	path := filepath.Join(t.TempDir(), "lyrics-cache.json")
+	cache := &lyricsCache{cache: make(map[string]*lyricsCacheEntry)}
+	cache.SetPersistencePath(path)
+	cache.Set("Cache Artist", "Persistent Song", 180, &LyricsResponse{PlainLyrics: "Persisted", Source: "test"})
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if _, err := os.Stat(path); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("persistent lyrics cache was not written")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	reloaded := &lyricsCache{cache: make(map[string]*lyricsCacheEntry)}
+	reloaded.SetPersistencePath(path)
+	lyrics, ok := reloaded.Get("Cache Artist", "Persistent Song", 180)
+	if !ok || lyrics.PlainLyrics != "Persisted" {
+		t.Fatalf("reloaded persistent lyrics = %#v/%v", lyrics, ok)
+	}
+}
 
 func TestLyricsCacheParsingAndLRCLibClient(t *testing.T) {
 	SetAppVersion("4.5.0")
