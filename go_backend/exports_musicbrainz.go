@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/singleflight"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -34,6 +35,7 @@ type musicBrainzCacheEntry struct {
 var (
 	musicBrainzCacheMu sync.Mutex
 	musicBrainzCache   = make(map[string]musicBrainzCacheEntry)
+	musicBrainzFlight  singleflight.Group
 )
 
 func musicBrainzCached(key string, fetch func() (string, error)) (string, error) {
@@ -44,42 +46,50 @@ func musicBrainzCached(key string, fetch func() (string, error)) (string, error)
 	}
 	musicBrainzCacheMu.Unlock()
 
-	value, err := fetch()
+	result, err, _ := musicBrainzFlight.Do(key, func() (any, error) {
+		// A waiter can reach the flight after the leader populated the cache.
+		musicBrainzCacheMu.Lock()
+		if entry, ok := musicBrainzCache[key]; ok && time.Now().Before(entry.expiresAt) {
+			musicBrainzCacheMu.Unlock()
+			return entry.value, entry.err
+		}
+		musicBrainzCacheMu.Unlock()
 
-	ttl := musicBrainzCachePositiveTTL
-	if err != nil || value == "" {
-		ttl = musicBrainzCacheNegativeTTL
-	}
-	musicBrainzCacheMu.Lock()
-	if len(musicBrainzCache) >= musicBrainzCacheMaxEntries {
-		now := time.Now()
-		for k, e := range musicBrainzCache {
-			if now.After(e.expiresAt) {
-				delete(musicBrainzCache, k)
+		value, fetchErr := fetch()
+		ttl := musicBrainzCachePositiveTTL
+		if fetchErr != nil || value == "" {
+			ttl = musicBrainzCacheNegativeTTL
+		}
+		musicBrainzCacheMu.Lock()
+		if len(musicBrainzCache) >= musicBrainzCacheMaxEntries {
+			now := time.Now()
+			for k, e := range musicBrainzCache {
+				if now.After(e.expiresAt) {
+					delete(musicBrainzCache, k)
+				}
+			}
+			if len(musicBrainzCache) >= musicBrainzCacheMaxEntries {
+				musicBrainzCache = make(map[string]musicBrainzCacheEntry)
 			}
 		}
-		if len(musicBrainzCache) >= musicBrainzCacheMaxEntries {
-			musicBrainzCache = make(map[string]musicBrainzCacheEntry)
+		musicBrainzCache[key] = musicBrainzCacheEntry{
+			value:     value,
+			err:       fetchErr,
+			expiresAt: time.Now().Add(ttl),
 		}
+		musicBrainzCacheMu.Unlock()
+		return value, fetchErr
+	})
+	if err != nil {
+		return "", err
 	}
-	musicBrainzCache[key] = musicBrainzCacheEntry{
-		value:     value,
-		err:       err,
-		expiresAt: time.Now().Add(ttl),
-	}
-	musicBrainzCacheMu.Unlock()
-	return value, err
+	value, _ := result.(string)
+	return value, nil
 }
 
 type musicBrainzTag struct {
 	Count int    `json:"count"`
 	Name  string `json:"name"`
-}
-
-type musicBrainzRecordingResponse struct {
-	Recordings []struct {
-		Tags []musicBrainzTag `json:"tags"`
-	} `json:"recordings"`
 }
 
 type musicBrainzArtistCredit struct {
@@ -92,10 +102,47 @@ type musicBrainzRelease struct {
 	ArtistCredit []musicBrainzArtistCredit `json:"artist-credit"`
 }
 
-type musicBrainzAlbumArtistResponse struct {
+type musicBrainzCombinedResponse struct {
 	Recordings []struct {
+		Tags     []musicBrainzTag     `json:"tags"`
 		Releases []musicBrainzRelease `json:"releases"`
 	} `json:"recordings"`
+}
+
+// fetchMusicBrainzCombinedByISRC is the shared recording snapshot used by
+// both genre and album-artist lookups. MusicBrainz accepts all includes in a
+// single request, so two native calls for the same ISRC still cost one HTTP
+// request and concurrent callers share that request through singleflight.
+func fetchMusicBrainzCombinedByISRC(isrc string) (*musicBrainzCombinedResponse, string, error) {
+	normalizedISRC := strings.ToUpper(strings.TrimSpace(isrc))
+	key := "recording\x00" + normalizedISRC
+	encoded, err := musicBrainzCached(key, func() (string, error) {
+		var payload musicBrainzCombinedResponse
+		normalized, fetchErr := fetchMusicBrainzRecordingByISRC(
+			isrc,
+			"tags+releases+artist-credits",
+			&payload,
+		)
+		if fetchErr != nil {
+			return "", fetchErr
+		}
+		data, marshalErr := json.Marshal(payload)
+		if marshalErr != nil {
+			return "", marshalErr
+		}
+		if normalizedISRC == "" {
+			normalizedISRC = normalized
+		}
+		return string(data), nil
+	})
+	if err != nil {
+		return nil, normalizedISRC, err
+	}
+	var payload musicBrainzCombinedResponse
+	if err := json.Unmarshal([]byte(encoded), &payload); err != nil {
+		return nil, normalizedISRC, err
+	}
+	return &payload, normalizedISRC, nil
 }
 
 func formatMusicBrainzGenre(tags []musicBrainzTag) string {
@@ -227,40 +274,31 @@ func fetchMusicBrainzRecordingByISRC(isrc string, inc string, payload any) (stri
 }
 
 func FetchMusicBrainzAlbumArtistByISRC(isrc string, albumName string) (string, error) {
-	key := "albumartist\x00" + strings.ToUpper(strings.TrimSpace(isrc)) +
-		"\x00" + strings.ToLower(strings.TrimSpace(albumName))
-	return musicBrainzCached(key, func() (string, error) {
-		var payload musicBrainzAlbumArtistResponse
-		normalizedISRC, err := fetchMusicBrainzRecordingByISRC(isrc, "releases+artist-credits", &payload)
-		if err != nil {
-			return "", err
+	payload, normalizedISRC, err := fetchMusicBrainzCombinedByISRC(isrc)
+	if err != nil {
+		return "", err
+	}
+	for _, recording := range payload.Recordings {
+		if albumArtist := selectMusicBrainzAlbumArtist(recording.Releases, albumName); albumArtist != "" {
+			return albumArtist, nil
 		}
-		for _, recording := range payload.Recordings {
-			if albumArtist := selectMusicBrainzAlbumArtist(recording.Releases, albumName); albumArtist != "" {
-				return albumArtist, nil
-			}
-		}
+	}
 
-		return "", fmt.Errorf("no MusicBrainz album artist found for ISRC: %s", normalizedISRC)
-	})
+	return "", fmt.Errorf("no MusicBrainz album artist found for ISRC: %s", normalizedISRC)
 }
 
 func FetchMusicBrainzGenreByISRC(isrc string) (string, error) {
-	key := "genre\x00" + strings.ToUpper(strings.TrimSpace(isrc))
-	return musicBrainzCached(key, func() (string, error) {
-		var payload musicBrainzRecordingResponse
-		normalizedISRC, err := fetchMusicBrainzRecordingByISRC(isrc, "tags", &payload)
-		if err != nil {
-			return "", err
-		}
-		if len(payload.Recordings) == 0 {
-			return "", fmt.Errorf("no recordings found for ISRC: %s", normalizedISRC)
-		}
+	payload, normalizedISRC, err := fetchMusicBrainzCombinedByISRC(isrc)
+	if err != nil {
+		return "", err
+	}
+	if len(payload.Recordings) == 0 {
+		return "", fmt.Errorf("no recordings found for ISRC: %s", normalizedISRC)
+	}
 
-		genre := formatMusicBrainzGenre(payload.Recordings[0].Tags)
-		if genre == "" {
-			return "", fmt.Errorf("no MusicBrainz genre tags found for ISRC: %s", normalizedISRC)
-		}
-		return genre, nil
-	})
+	genre := formatMusicBrainzGenre(payload.Recordings[0].Tags)
+	if genre == "" {
+		return "", fmt.Errorf("no MusicBrainz genre tags found for ISRC: %s", normalizedISRC)
+	}
+	return genre, nil
 }
