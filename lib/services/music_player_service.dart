@@ -266,6 +266,7 @@ class MusicPlayerHandler extends BaseAudioHandler
   final List<PlayableMedia> _media = [];
   final List<MediaItem> _queueItems = [];
   final Map<String, String> _resolvedPathCache = {};
+  final Map<String, int> _resolvedPathSizes = {};
   final Map<String, Future<String?>> _pendingSourceResolutions = {};
   final List<String> _resolvedPathOrder = [];
   final Set<String> _pendingResolvedPathDeletes = {};
@@ -305,7 +306,8 @@ class MusicPlayerHandler extends BaseAudioHandler
     milliseconds: 500,
   );
   static const Duration _positionPersistInterval = Duration(seconds: 10);
-  static const int _maxResolvedPathCacheEntries = 64;
+  static const int _maxResolvedPathCacheEntries = 3;
+  static const int _maxResolvedPathCacheBytes = 256 * 1024 * 1024;
 
   DateTime? get sleepTimerEndsAt => _sleepTimerEndsAt;
 
@@ -556,9 +558,13 @@ class MusicPlayerHandler extends BaseAudioHandler
   /// album gain fallback; Opus R128 tags are converted to ReplayGain dB by
   /// the Go reader). 1.0 when disabled, untagged, or unreadable. Positive
   /// gains clamp at 1.0 — setVolume can only attenuate.
-  Future<double> _normalizationVolumeFor(String path) async {
+  Future<double> _normalizationVolumeFor(
+    String path, {
+    String? cacheKey,
+  }) async {
     if (!_playbackNormalizationEnabled) return 1.0;
-    final cached = _normalizationVolumeCache[path];
+    final effectiveCacheKey = cacheKey ?? path;
+    final cached = _normalizationVolumeCache[effectiveCacheKey];
     if (cached != null) return cached;
 
     var volume = 1.0;
@@ -576,7 +582,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     if (_normalizationVolumeCache.length > 128) {
       _normalizationVolumeCache.clear();
     }
-    _normalizationVolumeCache[path] = volume;
+    _normalizationVolumeCache[effectiveCacheKey] = volume;
     return volume;
   }
 
@@ -594,11 +600,27 @@ class MusicPlayerHandler extends BaseAudioHandler
     if (index < 0 || index >= _media.length) return;
     unawaited(() async {
       final media = _media[index];
-      final resolved = media.isContentUri
+      var resolved = media.isContentUri
           ? _resolvedPathCache[media.source]
           : media.source;
+      ContentUriPlaybackLease? playbackLease;
+      if (resolved == null && media.isContentUri) {
+        try {
+          playbackLease = await PlatformBridge.openContentUriPlaybackLease(
+            media.source,
+          );
+          resolved = playbackLease?.path;
+        } catch (_) {}
+        resolved ??= await _resolveSource(media);
+      }
       if (resolved == null) return;
-      final volume = await _normalizationVolumeFor(resolved);
+      final volume = await _normalizationVolumeFor(
+        resolved,
+        cacheKey: media.isContentUri ? media.source : null,
+      );
+      if (playbackLease != null) {
+        await PlatformBridge.closeContentUriPlaybackLease(playbackLease.token);
+      }
       if (_index != index || generation != _playRequestGeneration) return;
       try {
         await _player.setVolume(volume);
@@ -612,7 +634,12 @@ class MusicPlayerHandler extends BaseAudioHandler
     if (!media.isContentUri) return media.source;
 
     final cached = _resolvedPathCache[media.source];
-    if (cached != null) return cached;
+    if (cached != null) {
+      if (await File(cached).exists()) return cached;
+      _resolvedPathCache.remove(media.source);
+      _resolvedPathSizes.remove(media.source);
+      _resolvedPathOrder.remove(media.source);
+    }
     final inFlight = _pendingSourceResolutions[media.source];
     if (inFlight != null) return inFlight;
 
@@ -628,12 +655,20 @@ class MusicPlayerHandler extends BaseAudioHandler
         }
 
         _resolvedPathCache[media.source] = tempPath;
+        _resolvedPathSizes[media.source] = await File(tempPath).length();
         _resolvedPathOrder
           ..remove(media.source)
           ..add(media.source);
-        while (_resolvedPathOrder.length > _maxResolvedPathCacheEntries) {
+        while (_resolvedPathOrder.length > _maxResolvedPathCacheEntries ||
+            (_resolvedPathOrder.length > 1 &&
+                _resolvedPathSizes.values.fold<int>(
+                      0,
+                      (sum, size) => sum + size,
+                    ) >
+                    _maxResolvedPathCacheBytes)) {
           final evictedSource = _resolvedPathOrder.removeAt(0);
           final evictedPath = _resolvedPathCache.remove(evictedSource);
+          _resolvedPathSizes.remove(evictedSource);
           if (evictedPath != null) {
             unawaited(_discardResolvedPath(evictedPath));
           }
@@ -993,8 +1028,27 @@ class MusicPlayerHandler extends BaseAudioHandler
     await _claimHardwareMediaButtons();
     if (!_isCurrentPlayRequest(generation, media)) return;
 
-    final resolved = await _resolveSource(media);
-    if (!_isCurrentPlayRequest(generation, media)) return;
+    // Android opens SAF files through a short-lived file-descriptor lease.
+    // MediaPlayer duplicates that descriptor, so the original can be closed
+    // immediately after play() without retaining a full-file cache copy.
+    ContentUriPlaybackLease? playbackLease;
+    if (Platform.isAndroid && media.isContentUri) {
+      try {
+        playbackLease = await PlatformBridge.openContentUriPlaybackLease(
+          media.source,
+        );
+      } catch (e) {
+        _log.w('Failed to open direct SAF playback lease: $e');
+      }
+    }
+    var resolved = playbackLease?.path ?? await _resolveSource(media);
+    var usingLocalSafCopy = media.isContentUri && playbackLease == null;
+    if (!_isCurrentPlayRequest(generation, media)) {
+      if (playbackLease != null) {
+        await PlatformBridge.closeContentUriPlaybackLease(playbackLease.token);
+      }
+      return;
+    }
     if (resolved == null) {
       _log.e('No playable source for ${media.title}');
       _broadcastState(playerState: PlayerState.stopped);
@@ -1004,14 +1058,22 @@ class MusicPlayerHandler extends BaseAudioHandler
     try {
       await musicPlayerExclusiveAudioHook?.call();
     } catch (_) {}
-    if (!_isCurrentPlayRequest(generation, media)) return;
+    if (!_isCurrentPlayRequest(generation, media)) {
+      if (playbackLease != null) {
+        await PlatformBridge.closeContentUriPlaybackLease(playbackLease.token);
+      }
+      return;
+    }
 
     _switchingGeneration = generation;
     try {
       // Set before play() so the track never starts at the wrong loudness;
       // always set (1.0 when disabled/untagged) so a previous track's
       // attenuation can't leak into the next one.
-      final normalizationVolume = await _normalizationVolumeFor(resolved);
+      var normalizationVolume = await _normalizationVolumeFor(
+        resolved,
+        cacheKey: media.isContentUri ? media.source : null,
+      );
       if (!_isCurrentPlayRequest(generation, media)) return;
       await _player.setAudioContext(_musicAudioContext);
       if (!_isCurrentPlayRequest(generation, media)) return;
@@ -1022,22 +1084,51 @@ class MusicPlayerHandler extends BaseAudioHandler
       if (!_isCurrentPlayRequest(generation, media)) return;
       await _player.setVolume(normalizationVolume);
       if (!_isCurrentPlayRequest(generation, media)) return;
-      await _player.play(
-        DeviceFileSource(resolved),
-        position: effectiveStartPosition > Duration.zero
-            ? effectiveStartPosition
-            : null,
-      );
+      final startAt = effectiveStartPosition > Duration.zero
+          ? effectiveStartPosition
+          : null;
+      try {
+        await _player.play(DeviceFileSource(resolved), position: startAt);
+        if (playbackLease != null) {
+          await PlatformBridge.closeContentUriPlaybackLease(
+            playbackLease.token,
+          );
+          playbackLease = null;
+        }
+      } catch (directError) {
+        if (playbackLease == null ||
+            !_isCurrentPlayRequest(generation, media)) {
+          rethrow;
+        }
+        await PlatformBridge.closeContentUriPlaybackLease(playbackLease.token);
+        playbackLease = null;
+        _log.w(
+          'Direct SAF playback unavailable; using bounded local fallback: '
+          '$directError',
+        );
+        final fallback = await _resolveSource(media);
+        if (fallback == null || !_isCurrentPlayRequest(generation, media)) {
+          rethrow;
+        }
+        resolved = fallback;
+        usingLocalSafCopy = true;
+        normalizationVolume = await _normalizationVolumeFor(
+          fallback,
+          cacheKey: media.source,
+        );
+        await _player.setVolume(normalizationVolume);
+        await _player.play(DeviceFileSource(fallback), position: startAt);
+      }
       if (!_isCurrentPlayRequest(generation, media)) return;
       _sourceReady = true;
       _pendingRestorePosition = null;
-      _activeResolvedPath = media.isContentUri ? resolved : null;
+      _activeResolvedPath = usingLocalSafCopy ? resolved : null;
       await _cleanupPendingResolvedPaths();
       // Plain file paths were already published before loading. Re-publishing
       // them with an identical resolved path made Now Playing clear and probe
       // the same metadata twice on every Next. SAF needs this second event so
       // the UI can inspect its temporary local copy.
-      if (media.isContentUri) {
+      if (usingLocalSafCopy) {
         mediaItem.add(media.toMediaItem(resolvedSource: resolved));
       }
       _broadcastPosition(effectiveStartPosition, force: true);
@@ -1054,6 +1145,9 @@ class MusicPlayerHandler extends BaseAudioHandler
       _log.e('Playback failed for ${media.title}: $e');
       _broadcastState(playerState: PlayerState.stopped);
     } finally {
+      if (playbackLease != null) {
+        await PlatformBridge.closeContentUriPlaybackLease(playbackLease.token);
+      }
       if (_switchingGeneration == generation) {
         _switchingGeneration = 0;
       }
@@ -1400,6 +1494,7 @@ class MusicPlayerHandler extends BaseAudioHandler
       ..._pendingResolvedPathDeletes,
     };
     _resolvedPathCache.clear();
+    _resolvedPathSizes.clear();
     _resolvedPathOrder.clear();
     _pendingResolvedPathDeletes.clear();
     for (final path in tempPaths) {

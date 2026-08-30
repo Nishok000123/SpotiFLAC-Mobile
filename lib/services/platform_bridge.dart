@@ -79,6 +79,13 @@ class IosSecurityScopedAccess {
   const IosSecurityScopedAccess({required this.path, required this.token});
 }
 
+class ContentUriPlaybackLease {
+  final String path;
+  final String token;
+
+  const ContentUriPlaybackLease({required this.path, required this.token});
+}
+
 class InstallationState {
   final bool markerExisted;
   final bool markerCreated;
@@ -812,6 +819,30 @@ class PlatformBridge {
   static Future<String?> copyContentUriToTemp(String uri) async {
     final result = await _channel.invokeMethod('safCopyToTemp', {'uri': uri});
     return result as String?;
+  }
+
+  static Future<ContentUriPlaybackLease?> openContentUriPlaybackLease(
+    String uri,
+  ) async {
+    if (!Platform.isAndroid || !uri.startsWith('content://')) return null;
+    final result = await _channel.invokeMethod('safOpenPlaybackLease', {
+      'uri': uri,
+    });
+    if (result is! Map) return null;
+    final map = Map<String, dynamic>.from(result);
+    final path = map['path']?.toString() ?? '';
+    final token = map['token']?.toString() ?? '';
+    if (path.isEmpty || token.isEmpty) return null;
+    return ContentUriPlaybackLease(path: path, token: token);
+  }
+
+  static Future<void> closeContentUriPlaybackLease(String token) async {
+    if (!Platform.isAndroid || token.isEmpty) return;
+    try {
+      await _channel.invokeMethod('safClosePlaybackLease', {'token': token});
+    } catch (e) {
+      _log.w('Failed to close SAF playback lease: $e');
+    }
   }
 
   static Future<String?> createSafFileFromPath({

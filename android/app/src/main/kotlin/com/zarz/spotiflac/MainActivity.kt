@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.ParcelFileDescriptor
 import android.os.storage.StorageManager
 import android.provider.DocumentsContract
 import androidx.activity.OnBackPressedCallback
@@ -40,7 +41,9 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.util.LinkedHashMap
 import java.util.Locale
+import java.util.UUID
 
 class MainActivity: FlutterFragmentActivity() {
     // Mirrors audio_service's AudioServiceFragmentActivity: the shared engine
@@ -86,6 +89,8 @@ class MainActivity: FlutterFragmentActivity() {
     private var libraryScanProgressEventSink: EventChannel.EventSink? = null
     private var lastLibraryScanProgressPayload: String? = null
     private var flutterBackCallback: OnBackPressedCallback? = null
+    private val playbackLeaseLock = Any()
+    private val playbackLeases = LinkedHashMap<String, ParcelFileDescriptor>()
     @Volatile internal var safScanCancel = false
     @Volatile internal var safScanActive = false
     /** Tri-state: null = untested, true = works, false = fails (Samsung SELinux). */
@@ -804,6 +809,61 @@ class MainActivity: FlutterFragmentActivity() {
         channel.invokeMethod("extensionSessionGrantCompleted", payload)
     }
 
+    /**
+     * Opens a short-lived descriptor lease for zero-copy SAF playback. The
+     * returned proc path has no URI scheme, so MediaPlayer opens it in this
+     * process and duplicates the descriptor before the Dart side closes the
+     * lease. A small hard cap protects against abandoned method calls.
+     */
+    private fun openSafPlaybackLease(uriStr: String): Map<String, String>? {
+        if (!uriStr.startsWith("content://")) return null
+        val descriptor = try {
+            contentResolver.openFileDescriptor(Uri.parse(uriStr), "r")
+        } catch (e: Exception) {
+            android.util.Log.w("SpotiFLAC", "Failed to open SAF playback descriptor: ${e.message}")
+            null
+        } ?: return null
+
+        val token = UUID.randomUUID().toString()
+        synchronized(playbackLeaseLock) {
+            while (playbackLeases.size >= 4) {
+                val oldest = playbackLeases.entries.firstOrNull() ?: break
+                playbackLeases.remove(oldest.key)
+                try {
+                    oldest.value.close()
+                } catch (_: Exception) {}
+            }
+            playbackLeases[token] = descriptor
+        }
+        return mapOf(
+            "token" to token,
+            "path" to "/proc/self/fd/${descriptor.fd}",
+        )
+    }
+
+    private fun closeSafPlaybackLease(token: String) {
+        if (token.isBlank()) return
+        val descriptor = synchronized(playbackLeaseLock) {
+            playbackLeases.remove(token)
+        } ?: return
+        try {
+            descriptor.close()
+        } catch (_: Exception) {}
+    }
+
+    private fun closeAllSafPlaybackLeases() {
+        val descriptors = synchronized(playbackLeaseLock) {
+            val openDescriptors = playbackLeases.values.toList()
+            playbackLeases.clear()
+            openDescriptors
+        }
+        descriptors.forEach { descriptor ->
+            try {
+                descriptor.close()
+            } catch (_: Exception) {}
+        }
+    }
+
     override fun onDestroy() {
         libraryStorageReceiver?.let {
             try {
@@ -818,6 +878,7 @@ class MainActivity: FlutterFragmentActivity() {
         }
         stopDownloadProgressStream()
         stopLibraryScanProgressStream()
+        closeAllSafPlaybackLeases()
         super.onDestroy()
     }
 
@@ -1122,6 +1183,18 @@ class MainActivity: FlutterFragmentActivity() {
                                 copyUriToTemp(Uri.parse(uriStr))
                             }
                             result.success(tempPath)
+                        }
+                        "safOpenPlaybackLease" -> {
+                            val uriStr = call.argument<String>("uri") ?: ""
+                            val lease = withContext(Dispatchers.IO) {
+                                openSafPlaybackLease(uriStr)
+                            }
+                            result.success(lease)
+                        }
+                        "safClosePlaybackLease" -> {
+                            val token = call.argument<String>("token") ?: ""
+                            closeSafPlaybackLease(token)
+                            result.success(null)
                         }
                         "safCreateFromPath" -> {
                             val treeUriStr = call.argument<String>("tree_uri") ?: ""
