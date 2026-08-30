@@ -357,18 +357,14 @@ class ExploreNotifier extends Notifier<ExploreState> {
       });
       await prefs.setString(_cacheKey, encoded);
       await prefs.setInt(_cacheTsKey, DateTime.now().millisecondsSinceEpoch);
-      _log.d('Saved ${normalizedSections.length} explore sections to cache');
     } catch (e) {
       _log.w('Failed to save explore cache: $e');
     }
   }
 
   Future<void> fetchHomeFeed({bool forceRefresh = false}) async {
-    _log.i('fetchHomeFeed called, forceRefresh=$forceRefresh');
-
     if (ref.read(settingsProvider).homeFeedProvider ==
         AppSettings.homeFeedProviderOff) {
-      _log.d('Home feed disabled by user setting');
       _homeFeedRequestId++;
       PlatformBridge.cancelExtensionHomeFeedRequests();
       state = const ExploreState();
@@ -393,13 +389,6 @@ class ExploreNotifier extends Notifier<ExploreState> {
     state = state.copyWith(isLoading: showLoading, error: null);
 
     try {
-      final extState = ref.read(extensionProvider);
-      final settings = ref.read(settingsProvider);
-      final preferredId = settings.homeFeedProvider;
-      _log.d(
-        'Extensions count: ${extState.extensions.length}, preferred home feed: $preferredId',
-      );
-
       final targetExt = _resolveHomeFeedExtension();
 
       if (targetExt == null) {
@@ -412,7 +401,6 @@ class ExploreNotifier extends Notifier<ExploreState> {
         return;
       }
 
-      _log.i('Fetching home feed from ${targetExt.id}...');
       final result = await PlatformBridge.getExtensionHomeFeed(
         targetExt.id,
         cancelPrevious: forceRefresh,
@@ -428,14 +416,12 @@ class ExploreNotifier extends Notifier<ExploreState> {
       }
 
       final success = result['success'] as bool? ?? false;
-      _log.d('getExtensionHomeFeed success=$success');
       if (!success) {
         final error = result['error'] as String? ?? 'Unknown error';
         state = state.copyWith(isLoading: false, error: error);
         return;
       }
 
-      final greeting = result['greeting'] as String?;
       final sectionsData = result['sections'] as List<dynamic>? ?? [];
       final normalizedSectionsWithoutProvider = await compute(
         _normalizeExploreSectionsPayload,
@@ -450,17 +436,11 @@ class ExploreNotifier extends Notifier<ExploreState> {
         normalizedSections,
       );
 
-      _log.i('Fetched ${sections.length} sections');
-
-      if (sections.isNotEmpty && sections.first.items.isNotEmpty) {
-        final firstItem = sections.first.items.first;
-        _log.d(
-          'First item: name=${firstItem.name}, artists=${firstItem.artists}, type=${firstItem.type}',
-        );
-      }
-
       final localGreeting = _getLocalGreeting();
-      _log.d('Greeting from extension: $greeting, using local: $localGreeting');
+      _log.i(
+        'Home feed updated: provider=${targetExt.id}, '
+        'sections=${sections.length}',
+      );
 
       state = ExploreState(
         isLoading: false,

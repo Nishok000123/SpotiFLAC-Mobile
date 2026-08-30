@@ -472,11 +472,6 @@ enum SettingsChipLayout {
 }
 
 /// Single-select chip used across the settings pages.
-///
-/// Five private copies of this existed (theme mode, view mode, update channel,
-/// download service, generic choice), each re-deriving the same unselected
-/// fill and re-declaring radius 12. They now share one implementation, so the
-/// selected/unselected treatment is identical everywhere.
 class SettingsChoiceChip extends StatelessWidget {
   const SettingsChoiceChip({
     super.key,
@@ -604,9 +599,6 @@ class SettingsChoiceGrid extends StatelessWidget {
 enum SettingsInfoTone { neutral, warning, error }
 
 /// Inline explanatory or warning callout inside a settings page.
-///
-/// The `Container` + icon + text combination was inlined at a dozen call sites
-/// with three different radii and four different container colours.
 class SettingsInfoCard extends StatelessWidget {
   const SettingsInfoCard({
     super.key,

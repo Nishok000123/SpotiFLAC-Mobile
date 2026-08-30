@@ -8,7 +8,6 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Load keystore properties for local builds
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
@@ -119,7 +118,6 @@ repositories {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     
-    // Include all AAR and JAR files from libs folder
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar"))))
     
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")

@@ -2,7 +2,6 @@ package com.zarz.spotiflac
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import org.json.JSONObject
 import java.io.File
@@ -117,7 +116,6 @@ object SafDownloadHandler {
             deleteStaleStagedFiles(targetDir, fileName, outputExt)
             val workingExt = outputExt.ifBlank { ".tmp" }
             val workingFile = File.createTempFile("native_saf_work_", workingExt, context.cacheDir)
-            Log.i("SpotiFLAC", "SAF deferred native output: target=$fileName working=${workingFile.name}")
             return try {
                 req.put("output_path", workingFile.absolutePath)
                 req.put("output_ext", outputExt)

@@ -175,7 +175,7 @@ class TrackNotifier extends Notifier<TrackState> {
         return;
       }
 
-      _log.i('Found extension URL handler: $extensionHandler for URL: $url');
+      _log.i('Found extension URL handler: $extensionHandler');
 
       Map<String, dynamic>? result;
       for (int attempt = 1; attempt <= 3; attempt++) {
@@ -368,21 +368,12 @@ class TrackNotifier extends Notifier<TrackState> {
     try {
       final includeExtensions = settings.useExtensionProviders;
 
-      _log.i(
-        'Search started: provider=metadata_extensions, query="$query", includeExtensions=$includeExtensions, filter=$requestFilter',
-      );
-
-      _log.d('Calling metadata provider track search API...');
       final metadataTrackResults =
           await PlatformBridge.searchTracksWithMetadataProviders(
             query,
             limit: 20,
             includeExtensions: includeExtensions,
           );
-      _log.i(
-        'metadata_extensions returned ${metadataTrackResults.length} tracks',
-      );
-
       if (!_isRequestValid(requestId)) {
         _log.w('Search request cancelled (requestId=$requestId)');
         return;
@@ -398,7 +389,11 @@ class TrackNotifier extends Notifier<TrackState> {
         }
       }
 
-      _log.i('Search complete: ${tracks.length} tracks parsed successfully');
+      _log.i(
+        'Search completed: provider=metadata_extensions, '
+        'tracks=${tracks.length}, extensions=$includeExtensions, '
+        'filter=$requestFilter',
+      );
 
       state = TrackState(
         tracks: tracks,
@@ -439,8 +434,6 @@ class TrackNotifier extends Notifier<TrackState> {
     );
 
     try {
-      _log.i('Custom search started: extension=$extensionId, query="$query"');
-
       final results = await PlatformBridge.customSearchWithExtension(
         extensionId,
         query,
@@ -453,8 +446,6 @@ class TrackNotifier extends Notifier<TrackState> {
         return;
       }
 
-      _log.i('Custom search returned ${results.length} tracks');
-
       final tracks = <Track>[];
       for (int i = 0; i < results.length; i++) {
         final t = results[i];
@@ -466,13 +457,8 @@ class TrackNotifier extends Notifier<TrackState> {
       }
 
       _log.i(
-        'Custom search complete: ${tracks.length} tracks parsed (source=$extensionId)',
-      );
-
-      final previewCount = tracks.where((t) => t.hasPreview).length;
-      _log.d(
-        'Custom search preview availability: $previewCount/${tracks.length} tracks have preview_url'
-        '${results.isNotEmpty ? '; first raw keys=${(results.first).keys.toList()}' : ''}',
+        'Custom search completed: extension=$extensionId, '
+        'tracks=${tracks.length}',
       );
 
       state = TrackState(

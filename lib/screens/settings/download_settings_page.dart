@@ -961,10 +961,6 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
 }
 
 /// Searchable region list.
-///
-/// The picker previously rendered ~190 ISO codes as a flat list with no filter,
-/// so finding a country meant scrolling blind — only a handful of codes have a
-/// localized name to recognize them by.
 class _RegionPickerSheet extends StatefulWidget {
   const _RegionPickerSheet({
     required this.regions,

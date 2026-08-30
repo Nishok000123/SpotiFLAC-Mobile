@@ -1045,7 +1045,17 @@ func (m *extensionManager) InvokeAction(extensionID string, actionName string) (
 
 	exported := result.Export()
 	if resultMap, ok := exported.(map[string]any); ok {
-		GoLog("[Extension] InvokeAction %s.%s result: %v\n", extensionID, actionName, resultMap)
+		status := "unspecified"
+		if success, present := resultMap["success"].(bool); present {
+			status = strconv.FormatBool(success)
+		}
+		GoLog(
+			"[Extension] InvokeAction %s.%s completed (success=%s, fields=%d)\n",
+			extensionID,
+			actionName,
+			status,
+			len(resultMap),
+		)
 		return resultMap, nil
 	}
 

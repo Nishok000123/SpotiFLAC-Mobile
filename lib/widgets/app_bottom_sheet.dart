@@ -3,10 +3,7 @@ import 'package:spotiflac_android/theme/app_tokens.dart';
 
 /// The drag handle shown at the top of every modal sheet.
 ///
-/// Seventeen copies of this container existed across the app in two sizes
-/// (40x4 tinted `onSurfaceVariant`, 32x4 tinted `outlineVariant`) with four
-/// different margins. Sheets that opt into Material's own `showDragHandle`
-/// get an equivalent affordance from the framework and should not add this.
+/// Sheets using Material's `showDragHandle` should not add this handle.
 class AppSheetHandle extends StatelessWidget {
   const AppSheetHandle({super.key, this.margin});
 

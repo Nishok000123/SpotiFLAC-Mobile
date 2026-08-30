@@ -329,7 +329,6 @@ class MusicPlayerHandler extends BaseAudioHandler
             (state == PlayerState.stopped ||
                 state == PlayerState.completed ||
                 state == PlayerState.disposed)) {
-          _log.d('Ignoring transient $state event while switching tracks');
           return;
         }
         if (state == PlayerState.completed && _shouldIgnoreComplete) {
@@ -1135,7 +1134,6 @@ class MusicPlayerHandler extends BaseAudioHandler
       _broadcastState(playerState: PlayerState.playing);
       _lastPeriodicPersistAt = DateTime.now();
       unawaited(_persistSession(position: effectiveStartPosition));
-      _log.i('Playing: ${media.title}');
       // Some files do not emit onDurationChanged reliably (stuck at 0:00);
       // poll the engine for the real duration as a fallback.
       unawaited(_ensureDurationKnown(index, generation));
@@ -1175,7 +1173,7 @@ class MusicPlayerHandler extends BaseAudioHandler
           return;
         }
       } catch (_) {
-        // ignore and retry
+        // Duration probing is best-effort; retry until the bounded loop ends.
       }
       await Future<void>.delayed(const Duration(milliseconds: 300));
     }
@@ -1220,7 +1218,6 @@ class MusicPlayerHandler extends BaseAudioHandler
 
   Future<void> _handlePlayerComplete() async {
     if (_shouldIgnoreComplete) {
-      _log.d('Ignoring non-terminal player complete event');
       if (_userPaused || _interruptionActive) {
         _broadcastState(playerState: PlayerState.paused);
       }
@@ -1273,7 +1270,6 @@ class MusicPlayerHandler extends BaseAudioHandler
 
   @override
   Future<void> click([MediaButton button = MediaButton.media]) async {
-    _log.d('Hardware media button: ${button.name}');
     switch (button) {
       case MediaButton.media:
         if (playbackState.value.playing) {
@@ -1293,7 +1289,6 @@ class MusicPlayerHandler extends BaseAudioHandler
 
   @override
   Future<void> pause() async {
-    _log.i('Pausing internal player by user/control request');
     _playRequestGeneration++;
     _switchingGeneration = 0;
     _userPaused = true;
@@ -1450,7 +1445,7 @@ class MusicPlayerHandler extends BaseAudioHandler
       kept.add(_media[i]);
     }
 
-    if (kept.length == _media.length) return; // nothing matched
+    if (kept.length == _media.length) return;
 
     _media
       ..clear()

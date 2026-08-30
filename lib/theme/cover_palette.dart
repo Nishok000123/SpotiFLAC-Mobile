@@ -5,12 +5,8 @@ import 'package:spotiflac_android/widgets/cached_cover_image.dart';
 
 /// Colour scheme derived from cover art, used to theme detail-screen headers.
 ///
-/// The headers used to hardcode `Colors.white` text over a `Colors.black`
-/// scrim, so they looked identical in light and dark mode and ignored dynamic
-/// colour entirely — and white-on-pale-cover was hard to read. Deriving a
-/// scheme from the artwork keeps the header tinted by the album while still
-/// following the app's brightness, and guarantees the on-colours contrast with
-/// whatever surface ends up behind them.
+/// The generated scheme follows app brightness and supplies contrasting
+/// on-colours for the artwork-derived surface.
 class CoverPalette {
   const CoverPalette._();
 

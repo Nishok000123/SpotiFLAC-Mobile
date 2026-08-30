@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 type LogEntry struct {
@@ -28,6 +29,7 @@ type LogBuffer struct {
 
 const (
 	defaultLogBufferSize = 500
+	maxLogMessageLength  = 4000
 )
 
 var (
@@ -35,9 +37,10 @@ var (
 	logBufferOnce   sync.Once
 
 	authorizationBearerPattern = regexp.MustCompile(`(?i)\bAuthorization\b\s*[:=]\s*Bearer\s+[A-Za-z0-9._~+/\-]+=*`)
-	genericKeyValuePattern     = regexp.MustCompile(`(?i)("?(?:access[_\s-]?token|refresh[_\s-]?token|id[_\s-]?token|client[_\s-]?secret|authorization|password|api[_\s-]?key|session[_\s-]?secret|cookie|set-cookie)"?)(\s*[:=]\s*)("(?:\\.|[^"\\])*"|[^\s,;}\]]+)`)
+	genericKeyValuePattern     = regexp.MustCompile(`(?i)("?(?:access[_\s-]?token|refresh[_\s-]?token|id[_\s-]?token|client[_\s-]?secret|authorization|password|api[_\s-]?key|session[_\s-]?secret|decryption[_\s-]?key|cookie|set-cookie)"?)(\s*[:=]\s*)("(?:\\.|[^"\\])*"|[^\s,;}\]]+)`)
 	queryTokenPattern          = regexp.MustCompile(`(?i)([?&](?:access_token|refresh_token|id_token|token|client_secret|api_key|apikey|password|code|grant|sig|signature|x-amz-signature|x-amz-credential|x-amz-security-token|awsaccesskeyid|googleaccessid|policy|key-pair-id)=)[^&\s]+`)
 	bearerTokenPattern         = regexp.MustCompile(`(?i)\bBearer\s+[A-Za-z0-9._~+/\-]+=*`)
+	decryptionKeyFlagPattern   = regexp.MustCompile(`(?i)(-decryption_key\s+)[^\s]+`)
 )
 
 func sanitizeSensitiveLogText(message string) string {
@@ -46,7 +49,19 @@ func sanitizeSensitiveLogText(message string) string {
 	redacted = genericKeyValuePattern.ReplaceAllString(redacted, `${1}${2}[REDACTED]`)
 	redacted = queryTokenPattern.ReplaceAllString(redacted, `${1}[REDACTED]`)
 	redacted = bearerTokenPattern.ReplaceAllString(redacted, "Bearer [REDACTED]")
+	redacted = decryptionKeyFlagPattern.ReplaceAllString(redacted, `${1}[REDACTED]`)
 	return redacted
+}
+
+func truncateLogMessage(message string) string {
+	if len(message) <= maxLogMessageLength {
+		return message
+	}
+	truncated := message[:maxLogMessageLength]
+	for !utf8.ValidString(truncated) {
+		truncated = truncated[:len(truncated)-1]
+	}
+	return truncated + "...[truncated]"
 }
 
 func GetLogBuffer() *LogBuffer {
@@ -80,7 +95,7 @@ func (lb *LogBuffer) Add(level, tag, message string) {
 		return
 	}
 
-	message = sanitizeSensitiveLogText(message)
+	message = truncateLogMessage(sanitizeSensitiveLogText(message))
 
 	entry := LogEntry{
 		Timestamp: time.Now().Format("15:04:05.000"),

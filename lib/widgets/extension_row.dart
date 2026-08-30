@@ -4,10 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:spotiflac_android/theme/app_tokens.dart';
 
 /// Square extension icon with a tinted fallback.
-///
-/// Both the store and the installed-extensions page drew this by hand with the
-/// same 44dp box, radius and fallback-icon logic, differing only in whether the
-/// image came from a file or the network.
 class ExtensionAvatar extends StatelessWidget {
   const ExtensionAvatar({
     super.key,

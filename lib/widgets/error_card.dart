@@ -94,10 +94,7 @@ class ErrorCard extends StatelessWidget {
 }
 
 /// Empty-state block with an optional call to action.
-///
-/// Screens used to render a bare icon plus a sentence, leaving the user with
-/// nothing to tap. [action] is the way forward (search, pick a folder, install
-/// an extension, ...).
+/// [action] provides an optional recovery path.
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,

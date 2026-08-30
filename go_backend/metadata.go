@@ -287,14 +287,12 @@ func EmbedMetadata(filePath string, metadata Metadata, coverPath string) error {
 			if fileExists(coverPath) {
 				coverData, err := os.ReadFile(coverPath)
 				if err != nil {
-					fmt.Printf("[Metadata] Warning: Failed to read cover file %s: %v\n", coverPath, err)
+					LogWarn("Metadata", "Failed to read cover file: %v", err)
 				} else if err := replaceFlacPictures(f, coverPath, coverData); err != nil {
-					fmt.Printf("[Metadata] Warning: skipping cover art: %v\n", err)
-				} else {
-					fmt.Printf("[Metadata] Cover art embedded successfully (%d bytes)\n", len(coverData))
+					LogWarn("Metadata", "Skipping cover art: %v", err)
 				}
 			} else {
-				fmt.Printf("[Metadata] Warning: Cover file does not exist: %s\n", coverPath)
+				LogWarn("Metadata", "Cover file does not exist")
 			}
 		}
 		return nil
@@ -307,9 +305,7 @@ func EmbedMetadataWithCoverData(filePath string, metadata Metadata, coverData []
 
 		if len(coverData) > 0 {
 			if err := replaceFlacPictures(f, "", coverData); err != nil {
-				fmt.Printf("[Metadata] Warning: skipping cover art: %v\n", err)
-			} else {
-				fmt.Printf("[Metadata] Cover art embedded successfully (%d bytes)\n", len(coverData))
+				LogWarn("Metadata", "Skipping cover art: %v", err)
 			}
 		}
 		return nil

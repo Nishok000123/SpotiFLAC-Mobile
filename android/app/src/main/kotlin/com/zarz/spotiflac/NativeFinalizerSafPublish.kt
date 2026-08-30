@@ -135,7 +135,6 @@ internal fun NativeDownloadFinalizer.publishDeferredSafOutput(
     val newUri = published.uri
     val publishedName = published.fileName
 
-    Log.i(TAG, "Published deferred SAF output once: file=$publishedName bytes=${outputFile.length()}")
     outputFile.delete()
     state.filePath = newUri
     state.fileName = publishedName

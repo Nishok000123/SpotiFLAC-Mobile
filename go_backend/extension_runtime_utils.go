@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"reflect"
 	"strings"
 	"time"
 
@@ -365,11 +366,43 @@ func (r *extensionRuntime) logError(call goja.FunctionCall) goja.Value {
 }
 
 func (r *extensionRuntime) formatLogArgs(args []goja.Value) string {
-	parts := make([]string, len(args))
-	for i, arg := range args {
-		parts[i] = fmt.Sprintf("%v", arg.Export())
+	return formatExtensionLogArgs(args)
+}
+
+const (
+	maxExtensionLogArgs      = 8
+	maxExtensionLogArgLength = 512
+)
+
+func formatExtensionLogArgs(args []goja.Value) string {
+	limit := len(args)
+	if limit > maxExtensionLogArgs {
+		limit = maxExtensionLogArgs
 	}
-	return strings.Join(parts, " ")
+	parts := make([]string, 0, limit+1)
+	for _, arg := range args[:limit] {
+		value := "<value>"
+		if exportType := arg.ExportType(); exportType != nil {
+			switch exportType.Kind() {
+			case reflect.Bool,
+				reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+				reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+				reflect.Float32, reflect.Float64,
+				reflect.String:
+				value = arg.String()
+			default:
+				value = "<" + exportType.String() + ">"
+			}
+		}
+		if len(value) > maxExtensionLogArgLength {
+			value = value[:maxExtensionLogArgLength] + "...[truncated]"
+		}
+		parts = append(parts, value)
+	}
+	if len(args) > limit {
+		parts = append(parts, fmt.Sprintf("...[%d more args]", len(args)-limit))
+	}
+	return truncateLogMessage(sanitizeSensitiveLogText(strings.Join(parts, " ")))
 }
 
 func (r *extensionRuntime) RegisterGoBackendAPIs(vm *goja.Runtime) {

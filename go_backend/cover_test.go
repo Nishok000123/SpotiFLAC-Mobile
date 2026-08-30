@@ -110,7 +110,6 @@ func TestFetchCoverCachedTTLExpiry(t *testing.T) {
 	if _, err := fetchCoverCached(url); err != nil {
 		t.Fatalf("first fetch error: %v", err)
 	}
-	// second call served from cache
 	if _, err := fetchCoverCached(url); err != nil {
 		t.Fatalf("second fetch error: %v", err)
 	}
@@ -118,7 +117,6 @@ func TestFetchCoverCachedTTLExpiry(t *testing.T) {
 		t.Fatalf("expected cache hit, got %d fetches", got)
 	}
 
-	// expire the entry and confirm a refetch
 	coverMu.Lock()
 	coverCache[url].expiresAt = time.Now().Add(-time.Minute)
 	coverMu.Unlock()

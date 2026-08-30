@@ -638,24 +638,11 @@ class PlatformBridge {
       useExtensions: useExtensions,
       useFallback: useFallback,
     );
-    _log.i(
-      'downloadByStrategy: "${payload.trackName}" by ${payload.artistName} '
-      '(service: ${payload.service}, ext: ${routedPayload.useExtensions}, fallback: ${routedPayload.useFallback})',
-    );
     final response = await _invokeDownloadMethod(
       'downloadByStrategy',
       routedPayload,
     );
-    if (response['success'] == true) {
-      final service = response['service'] ?? payload.service;
-      final filePath = response['file_path'] ?? '';
-      final bitDepth = response['actual_bit_depth'] as num?;
-      final sampleRate = response['actual_sample_rate'] as num?;
-      final qualityStr = bitDepth != null && sampleRate != null
-          ? ' ($bitDepth-bit/${(sampleRate / 1000).toStringAsFixed(1)}kHz)'
-          : '';
-      _log.i('Download success via $service$qualityStr: $filePath');
-    } else {
+    if (response['success'] != true) {
       final error = response['error'] ?? 'Unknown error';
       final errorType = response['error_type'] ?? '';
       _log.e('Download failed: $error (type: $errorType)');
@@ -2057,7 +2044,6 @@ class PlatformBridge {
   }
 
   static Future<void> setLibraryCoverCacheDir(String cacheDir) async {
-    _log.i('setLibraryCoverCacheDir: $cacheDir');
     await _channel.invokeMethod('setLibraryCoverCacheDir', {
       'cache_dir': cacheDir,
     });
@@ -2066,7 +2052,6 @@ class PlatformBridge {
   static Future<List<Map<String, dynamic>>> scanLibraryFolder(
     String folderPath,
   ) async {
-    _log.i('scanLibraryFolder: $folderPath');
     final result = await _channel.invokeMethod('scanLibraryFolder', {
       'folder_path': folderPath,
     });
@@ -2088,9 +2073,6 @@ class PlatformBridge {
     String folderPath,
     Map<String, int> existingFiles,
   ) async {
-    _log.i(
-      'scanLibraryFolderIncremental: $folderPath (${existingFiles.length} existing files)',
-    );
     final result = await _channel.invokeMethod('scanLibraryFolderIncremental', {
       'folder_path': folderPath,
       'existing_files': jsonEncode(existingFiles),
@@ -2116,7 +2098,6 @@ class PlatformBridge {
   }
 
   static Future<List<Map<String, dynamic>>> scanSafTree(String treeUri) async {
-    _log.i('scanSafTree: $treeUri');
     final result = await _channel.invokeMethod('scanSafTree', {
       'tree_uri': treeUri,
     });
@@ -2188,9 +2169,6 @@ class PlatformBridge {
     String treeUri,
     Map<String, int> existingFiles,
   ) async {
-    _log.i(
-      'scanSafTreeIncremental: $treeUri (${existingFiles.length} existing files)',
-    );
     final result = await _channel.invokeMethod('scanSafTreeIncremental', {
       'tree_uri': treeUri,
       'existing_files': jsonEncode(existingFiles),

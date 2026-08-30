@@ -68,7 +68,7 @@ class ShareIntentService {
       for (final textToCheck in textsToCheck) {
         final url = _extractMusicUrl(textToCheck);
         if (url != null) {
-          _log.i('Received music URL: $url (initial: $isInitial)');
+          _log.i('Received supported music link (initial=$isInitial)');
           if (isInitial) {
             _pendingUrl = url;
           }

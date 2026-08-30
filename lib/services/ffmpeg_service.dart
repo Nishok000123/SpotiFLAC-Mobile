@@ -1335,9 +1335,7 @@ class FFmpegService {
       localUrl,
     ];
 
-    _log.d(
-      'Starting live decrypt tunnel: ${_previewCommandForLog(commandArguments.join(' '))}',
-    );
+    _log.d('Starting live decrypt tunnel (format=$ext)');
 
     final session = await FFmpegKit.executeWithArgumentsAsync(commandArguments);
     final isReady = await _awaitLiveTunnelReady(session);

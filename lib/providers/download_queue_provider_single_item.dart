@@ -76,11 +76,8 @@ extension _SingleItemDownload on DownloadQueueNotifier {
 
 /// One download attempt for a single queue item.
 ///
-/// What used to be the ~35 locals of a 1,700-line method live here as fields
-/// so the pipeline reads as stage methods: enrich -> resolve output ->
-/// resolve identifiers -> download (with SAF fallback) -> decrypt / convert /
-/// embed -> publish to history. `n` is the owning notifier; queue state and
-/// shared helpers stay there.
+/// The stage order is enrich -> resolve output -> resolve identifiers ->
+/// download -> decrypt/convert/embed -> publish. `n` owns shared queue state.
 class _DownloadRun {
   _DownloadRun(this.n, this.item);
 
@@ -157,7 +154,6 @@ class _DownloadRun {
     }
 
     _log.d('Processing: ${item.track.name} by ${item.track.artistName}');
-    _log.d('Cover URL: ${item.track.coverUrl}');
 
     final currentItem = n._findItemById(item.id) ?? item;
     if (n._isLocallyCancelled(item.id, item: currentItem)) {
@@ -210,7 +206,12 @@ class _DownloadRun {
 
       if (!await _downloadAndMaybeFallback()) return;
 
-      _log.d('Result: $result');
+      _log.d(
+        'Native download result: success=${result['success'] == true}, '
+        'service=${result['service'] ?? item.service}, '
+        'errorType=${result['error_type'] ?? 'none'}, '
+        'filePresent=${(result['file_path'] as String?)?.isNotEmpty == true}',
+      );
 
       final extendedMetadata = await extendedMetadataFuture;
       if (extendedMetadata != null) {
@@ -663,11 +664,7 @@ class _DownloadRun {
     }
 
     wasExisting = result['already_exists'] == true;
-    if (wasExisting) {
-      _log.i('File already exists in library: $filePath');
-    }
-
-    _log.i('Download success, file: $filePath');
+    _log.i('Download completed (existing=$wasExisting)');
 
     final actualBitDepth = result['actual_bit_depth'] as int?;
     final actualSampleRate = result['actual_sample_rate'] as int?;
@@ -716,8 +713,6 @@ class _DownloadRun {
       result,
       resolvedAlbumArtist,
     );
-    _log.d('Track coverUrl after download result: ${trackToDownload.coverUrl}');
-
     if (!await _decryptIfNeeded()) {
       return false;
     }
@@ -1804,8 +1799,6 @@ class _DownloadRun {
           _log.d('Final audio metadata probe failed for $path: $e');
         }
       }
-
-      _log.d('Saving to history - coverUrl: ${trackToDownload.coverUrl}');
 
       final isLossyOutput =
           isLossyAudioFormat(finalFormat) ||

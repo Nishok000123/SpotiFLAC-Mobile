@@ -1132,12 +1132,8 @@ final downloadHistoryExistsProvider = FutureProvider.autoDispose
       );
     });
 
-// Deliberately no per-row verifyOrRepairHistoryItem here (issue #495): on a
-// >500-track playlist that verify pass meant one SAF stat round-trip per
-// already-downloaded track, and any loadedIndexVersion bump mid-pass restarted
-// it from zero — above ~500 tracks the future never settled and "Download all"
-// silently did nothing. Stale rows are reconciled by the startup repair and
-// orphan-cleanup passes; the single-track provider above keeps the verify.
+// Batch lookups deliberately avoid per-row SAF verification. Startup repair
+// reconciles stale rows; the single-track provider above keeps strict checks.
 final downloadHistoryBatchExistsProvider = FutureProvider.autoDispose
     .family<Set<String>, HistoryBatchLookupRequest>((ref, request) async {
       ref.watch(

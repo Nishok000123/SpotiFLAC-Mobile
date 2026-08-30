@@ -110,7 +110,6 @@ class PreviewPlayerController extends Notifier<PreviewPlayerState> {
     );
     _subscriptions.add(
       player.onPlayerComplete.listen((_) {
-        _log.d('Preview playback completed');
         state = const PreviewPlayerState();
       }),
     );
@@ -178,7 +177,6 @@ class PreviewPlayerController extends Notifier<PreviewPlayerState> {
     );
 
     try {
-      _log.i('Starting preview playback');
       await _playOnPlayer(_ensurePlayer(), trimmed);
     } catch (e) {
       _log.w('Preview playback failed, recreating player and retrying: $e');

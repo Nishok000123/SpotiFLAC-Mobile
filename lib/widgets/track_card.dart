@@ -17,12 +17,8 @@ enum TrackCardStyle {
 
 /// The one track row in the app.
 ///
-/// Six near-identical implementations existed before this
-/// (`TrackListTile`, `AlbumTrackTile`, the queue item, the bridge item, the
-/// unified library item and the folder tile), each with its own radius,
-/// padding, title style and selection treatment. Screens now supply only the
-/// parts that genuinely differ: [leading], [subtitle], [trailing] and an
-/// optional [background] layer for download progress.
+/// Screens provide [leading], [subtitle], [trailing], and an optional
+/// [background] layer for download progress.
 class TrackCard extends StatelessWidget {
   const TrackCard({
     super.key,
@@ -172,10 +168,6 @@ class TrackCard extends StatelessWidget {
 
 /// Grid counterpart of [TrackCard]: square artwork with overlays, then the
 /// title and subtitle underneath.
-///
-/// Replaces three copies that each re-declared the radius, the overlay stack
-/// and the label typography, and used a bare `GestureDetector` (no ripple, no
-/// semantics).
 class TrackGridCard extends StatelessWidget {
   const TrackGridCard({
     super.key,
@@ -316,9 +308,6 @@ class TrackGridPlayButton extends StatelessWidget {
 }
 
 /// Square artwork placeholder shared by every track row and grid cell.
-///
-/// The `Container` + `surfaceContainerHighest` + `music_note` combination was
-/// repeated at roughly a dozen call sites with four different radii.
 class TrackCoverPlaceholder extends StatelessWidget {
   const TrackCoverPlaceholder({super.key, this.size, this.borderRadius});
 

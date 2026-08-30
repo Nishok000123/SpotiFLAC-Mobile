@@ -4,12 +4,6 @@ import 'package:spotiflac_android/widgets/selection_bottom_bar.dart';
 /// Shared shell for every track-collection screen: album, playlist, local
 /// album, downloaded album and library folders.
 ///
-/// Before this existed each of those screens built its own `Scaffold` +
-/// `PopScope` + selection plumbing, which is why the same four screens had three
-/// different selection-bar mechanisms and why the playlist screen ended up with
-/// none at all. Screens now supply their header, their content slivers and the
-/// bar contents; everything else is shared:
-///
 /// * back gesture exits selection mode instead of popping the route,
 /// * the selection bar is mounted in the root overlay so it floats above the
 ///   shell navigation bar,

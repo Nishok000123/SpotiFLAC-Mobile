@@ -15,13 +15,11 @@ subprojects {
                     targetCompatibility = JavaVersion.VERSION_25
                 }
                 
-                // Enable multidex for all subprojects
                 defaultConfig {
                     multiDexEnabled = true
                 }
             }
             
-            // Add desugaring dependency to all Android subprojects
             project.dependencies.add("coreLibraryDesugaring", "com.android.tools:desugar_jdk_libs:2.1.5")
         }
         

@@ -1057,7 +1057,6 @@ extension _DownloadQueueEmbedding on DownloadQueueNotifier {
         _log.w('Failed to download cover: ${result['error']}');
         return null;
       }
-      _log.d('Cover downloaded for embedding: $coverPath');
       return coverPath;
     } catch (e) {
       _log.e('Failed to download cover for embedding: $e');

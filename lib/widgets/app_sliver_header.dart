@@ -5,11 +5,7 @@ import 'package:spotiflac_android/utils/app_bar_layout.dart';
 /// The collapsing header used by every top-level tab and every settings-style
 /// sub-page.
 ///
-/// This replaces five hand-rolled copies of the same `SliverAppBar` +
-/// `LayoutBuilder` + `FlexibleSpaceBar` block. Those copies had drifted into two
-/// type ramps (tab roots expanded the title to 34pt, sub-pages to 28pt); both
-/// now expand to [AppTokens.headerExpandedTitleSize], which matches the
-/// Material 3 large top app bar headline.
+/// Expanded titles use [AppTokens.headerExpandedTitleSize].
 class AppSliverHeader extends StatelessWidget {
   /// Root of a navigation tab: no back button, and the title stays aligned with
   /// the content margin at every collapse ratio.

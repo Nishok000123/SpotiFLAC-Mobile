@@ -28,6 +28,8 @@ func TestLogBufferExportedHelpersAndRedaction(t *testing.T) {
 	GoLog("[GoTag] success token=abc")
 	LogError("json", `{"access_token":"json-secret","session_secret":"session-secret"}`)
 	LogError("query", "https://example.test/?X-Amz-Signature=signed-secret&X-Amz-Security-Token=session-token")
+	LogError("ffmpeg", "-decryption_key raw-media-key -i https://example.test/audio")
+	LogError("bounded", "%s", strings.Repeat("x", maxLogMessageLength+500))
 
 	var entries []LogEntry
 	if err := json.Unmarshal([]byte(GetLogBuffer().GetAll()), &entries); err != nil {
@@ -37,8 +39,11 @@ func TestLogBufferExportedHelpersAndRedaction(t *testing.T) {
 		t.Fatalf("expected log entries, got %#v", entries)
 	}
 	for _, entry := range entries {
-		if strings.Contains(entry.Message, "secret-token") || strings.Contains(entry.Message, "api_key=value") || strings.Contains(entry.Message, "password=secret") || strings.Contains(entry.Message, "json-secret") || strings.Contains(entry.Message, "session-secret") || strings.Contains(entry.Message, "signed-secret") || strings.Contains(entry.Message, "session-token") {
+		if strings.Contains(entry.Message, "secret-token") || strings.Contains(entry.Message, "api_key=value") || strings.Contains(entry.Message, "password=secret") || strings.Contains(entry.Message, "json-secret") || strings.Contains(entry.Message, "session-secret") || strings.Contains(entry.Message, "signed-secret") || strings.Contains(entry.Message, "session-token") || strings.Contains(entry.Message, "raw-media-key") {
 			t.Fatalf("log was not redacted: %#v", entry)
+		}
+		if len(entry.Message) > maxLogMessageLength+len("...[truncated]") {
+			t.Fatalf("log was not bounded: %d bytes", len(entry.Message))
 		}
 	}
 

@@ -1145,6 +1145,12 @@ func TestExtensionRuntimeUtilityAPIs(t *testing.T) {
 	if msg := runtime.formatLogArgs([]goja.Value{vm.ToValue("a"), vm.ToValue(1)}); msg != "a 1" {
 		t.Fatalf("formatLogArgs = %q", msg)
 	}
+	objectLog := runtime.formatLogArgs([]goja.Value{
+		vm.ToValue(map[string]any{"access_token": "must-not-be-exported"}),
+	})
+	if strings.Contains(objectLog, "must-not-be-exported") || !strings.HasPrefix(objectLog, "<") {
+		t.Fatalf("object log was not summarized: %q", objectLog)
+	}
 	runtime.logDebug(goja.FunctionCall{Arguments: []goja.Value{vm.ToValue("debug")}})
 	runtime.logInfo(goja.FunctionCall{Arguments: []goja.Value{vm.ToValue("info")}})
 	runtime.logWarn(goja.FunctionCall{Arguments: []goja.Value{vm.ToValue("warn")}})

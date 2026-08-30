@@ -651,7 +651,7 @@ func ReEnrichFile(requestJSON string) (string, error) {
 		return "", fmt.Errorf("file_path is required")
 	}
 
-	GoLog("[ReEnrich] Starting re-enrichment for: %s\n", req.FilePath)
+	GoLog("[ReEnrich] Starting re-enrichment\n")
 
 	if req.SearchOnline {
 		found := false
@@ -659,21 +659,19 @@ func ReEnrichFile(requestJSON string) (string, error) {
 		GoLog("[ReEnrich] Trying metadata providers in configured priority...\n")
 		manager := getExtensionManager()
 		if identifierTrack, err := resolveReEnrichTrackFromIdentifiers(req); err == nil && identifierTrack != nil {
-			GoLog("[ReEnrich] Identifier-first metadata match (%s): %s - %s (album: %s, date: %s)\n",
-				identifierTrack.ProviderID, identifierTrack.Name, identifierTrack.Artists, identifierTrack.AlbumName, identifierTrack.ReleaseDate)
+			GoLog("[ReEnrich] Identifier-first metadata match via %s\n", identifierTrack.ProviderID)
 			applyReEnrichTrackMetadata(&req, *identifierTrack)
 			found = true
 		}
 
 		searchQuery := buildReEnrichSearchQuery(req)
 		if searchQuery != "" {
-			GoLog("[ReEnrich] Searching online metadata for query: %s\n", searchQuery)
+			GoLog("[ReEnrich] Searching online metadata\n")
 			tracks, searchErr := manager.SearchTracksWithMetadataProviders(searchQuery, 5, true)
 			if searchErr == nil && len(tracks) > 0 {
 				track := selectBestReEnrichTrack(req, tracks)
 				if track != nil {
-					GoLog("[ReEnrich] Metadata match (%s): %s - %s (album: %s, date: %s)\n",
-						track.ProviderID, track.Name, track.Artists, track.AlbumName, track.ReleaseDate)
+					GoLog("[ReEnrich] Metadata match via %s\n", track.ProviderID)
 					applyReEnrichTrackMetadata(&req, *track)
 					found = true
 				}
@@ -690,7 +688,7 @@ func ReEnrichFile(requestJSON string) (string, error) {
 				GoLog("[ReEnrich] Failed to get album artist from MusicBrainz: %v\n", err)
 			} else if strings.TrimSpace(albumArtist) != "" {
 				req.AlbumArtist = strings.TrimSpace(albumArtist)
-				GoLog("[ReEnrich] Album artist fallback from MusicBrainz: %s\n", req.AlbumArtist)
+				GoLog("[ReEnrich] Applied album artist fallback from MusicBrainz\n")
 				found = true
 			}
 		}
@@ -704,11 +702,6 @@ func ReEnrichFile(requestJSON string) (string, error) {
 			GoLog("[ReEnrich] No online match found, using existing metadata\n")
 		}
 	}
-
-	GoLog("[ReEnrich] Metadata to embed: title=%s, artist=%s, album=%s, albumArtist=%s\n",
-		req.TrackName, req.ArtistName, req.AlbumName, req.AlbumArtist)
-	GoLog("[ReEnrich] track=%d, disc=%d, date=%s, isrc=%s, genre=%s, label=%s\n",
-		req.TrackNumber, req.DiscNumber, req.ReleaseDate, req.ISRC, req.Genre, req.Label)
 
 	enrichedMeta := buildReEnrichResultMetadata(&req)
 	if req.PreviewOnly {

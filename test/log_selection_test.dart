@@ -31,6 +31,26 @@ void main() {
     );
   });
 
+  test('log buffer redacts media keys and bounds exported payloads', () {
+    final buffer = LogBuffer()..clear();
+    addTearDown(buffer.clear);
+    buffer.add(
+      LogEntry(
+        timestamp: DateTime(2026, 8, 31),
+        level: 'ERROR',
+        tag: 'FFmpeg',
+        message:
+            '-decryption_key raw-media-key ${List.filled(5000, 'x').join()}',
+      ),
+    );
+
+    final stored = buffer.entries.single.message;
+    expect(stored, isNot(contains('raw-media-key')));
+    expect(stored, contains('[REDACTED]'));
+    expect(stored, endsWith('...[truncated]'));
+    expect(stored.length, lessThan(4100));
+  });
+
   testWidgets('long press selects multiple log rows for copying', (
     tester,
   ) async {

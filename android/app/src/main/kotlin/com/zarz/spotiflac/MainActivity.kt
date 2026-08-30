@@ -321,8 +321,6 @@ class MainActivity: FlutterFragmentActivity() {
                 android.util.Log.w("SpotiFLAC", "Device: ${Build.MANUFACTURER} ${Build.MODEL}, SDK: ${Build.VERSION.SDK_INT}")
                 android.util.Log.w("SpotiFLAC", "Hardware: ${Build.HARDWARE}, Board: ${Build.BOARD}")
                 args.add("--enable-impeller=false")
-            } else {
-                android.util.Log.i("SpotiFLAC", "Using Impeller renderer for ${Build.MODEL}")
             }
             return args
         }

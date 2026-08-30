@@ -2,8 +2,7 @@ import 'package:flutter/widgets.dart';
 
 /// Widest content span for a surface of [maxWidth]: content is never narrower
 /// than [contentMaxWidth], and the centering margin never exceeds 80dp per
-/// side — so tablets keep near-full-width rows (issue #493) instead of a
-/// fixed 720dp column floating in whitespace.
+/// side so tablets retain near-full-width rows.
 double adaptiveContentMaxWidth(
   double maxWidth, {
   double contentMaxWidth = 720,

@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Single source of truth for the app's visual scale.
 ///
-/// Before this existed, radii, cover sizes, badge metrics and motion durations
-/// were written literally at every call site (300+ `BorderRadius.circular`
-/// calls across 70 files, with five different radii for what is visually the
-/// same thumbnail). Anything reused across more than one screen belongs here so
-/// a design change is a one-line edit instead of a grep-and-replace campaign.
+/// Reusable radii, spacing, artwork metrics and motion durations belong here.
 ///
 /// Read it through [AppTokensContext.tokens] rather than
 /// `Theme.of(context).extension<AppTokens>()`, so a widget rendered outside a
@@ -118,9 +114,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
 
   final double headerCollapsedTitleSize;
 
-  /// Expanded title size for every collapsing header in the app. Tab roots used
-  /// to expand to 34 while sub-pages expanded to 28; both now follow this one
-  /// value, which matches the Material 3 large top app bar headline.
+  /// Material 3 large top app bar headline size used by collapsing headers.
   final double headerExpandedTitleSize;
 
   final Duration motionFast;

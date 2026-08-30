@@ -82,11 +82,7 @@ func initializeVMLocked(ext *loadedExtension) error {
 
 	console := vm.NewObject()
 	console.Set("log", func(call goja.FunctionCall) goja.Value {
-		args := make([]any, len(call.Arguments))
-		for i, arg := range call.Arguments {
-			args[i] = arg.Export()
-		}
-		GoLog("[Extension:%s] %v\n", ext.ID, args)
+		GoLog("[Extension:%s] %s\n", ext.ID, formatExtensionLogArgs(call.Arguments))
 		return goja.Undefined()
 	})
 	vm.Set("console", console)
@@ -153,11 +149,7 @@ func newIsolatedExtensionRuntime(ext *loadedExtension) (*goja.Runtime, *extensio
 
 	console := vm.NewObject()
 	console.Set("log", func(call goja.FunctionCall) goja.Value {
-		args := make([]any, len(call.Arguments))
-		for i, arg := range call.Arguments {
-			args[i] = arg.Export()
-		}
-		GoLog("[Extension:%s] %v\n", ext.ID, args)
+		GoLog("[Extension:%s] %s\n", ext.ID, formatExtensionLogArgs(call.Arguments))
 		return goja.Undefined()
 	})
 	vm.Set("console", console)

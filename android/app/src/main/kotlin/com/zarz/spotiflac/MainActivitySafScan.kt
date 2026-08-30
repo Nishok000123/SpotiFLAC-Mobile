@@ -774,10 +774,6 @@ internal fun MainActivity.scanSafTree(
                     putResult(cueArray.getJSONObject(j))
                 }
 
-                android.util.Log.d(
-                    "SpotiFLAC",
-                    "SAF scan: CUE $cueName -> ${cueArray.length()} tracks"
-                )
             } catch (e: Exception) {
                 errors++
                 android.util.Log.w("SpotiFLAC", "SAF scan: error processing CUE $cueName: ${e.message}")
@@ -1154,10 +1150,6 @@ internal fun MainActivity.scanSafTreeIncremental(
                     }
                 }
 
-                android.util.Log.d(
-                    "SpotiFLAC",
-                    "SAF incremental scan: CUE $cueName -> ${cueArray.length()} tracks"
-                )
             } catch (e: Exception) {
                 errors++
                 android.util.Log.w("SpotiFLAC", "SAF incremental scan: error processing CUE $cueName: ${e.message}")

@@ -328,7 +328,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       'download_queue_native_worker_run_id';
   static const _userPausedQueuePrefsKey = 'download_queue_user_paused_v1';
   static const _bytesUiStep = 104857; // ~0.1 MiB, matches one-decimal MB UI.
-  static const _progressLogStepPercent = 5;
+  static const _progressLogStepPercent = 10;
   static const _serviceProgressStepPercent = 2;
   static const _decryptStageSafAccess = 'safAccess';
   static const _decryptStageDecrypt = 'decrypt';
@@ -735,10 +735,6 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         ..clear()
         ..addAll(currentItemsById);
       _nonCanonicalPersistedQueueIds.clear();
-      _log.d(
-        'Persisted ${upserts.length} changed and removed '
-        '${deletedIds.length} queue items',
-      );
     } catch (e) {
       _log.e('Failed to save queue to storage: $e');
     }
@@ -1525,7 +1521,6 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         await failedDir.create(recursive: true);
       }
 
-      // Use date-only format for daily grouping (YYYY-MM-DD)
       final now = DateTime.now();
       final dateStr =
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -1816,11 +1811,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       state = state.copyWith(outputDir: musicDir.path);
     }
 
-    if (!isSafMode) {
-      _log.d('Output directory: ${state.outputDir}');
-    } else {
-      _log.d('Output directory: SAF (tree_uri=${settings.downloadTreeUri})');
-    }
+    _log.d('Download storage mode: ${isSafMode ? 'SAF' : 'filesystem'}');
 
     if (!isSafMode &&
         Platform.isIOS &&
@@ -1957,7 +1948,6 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
           _log.d('Queue is paused and no active download remains');
           break;
         }
-        _log.d('Queue is paused, waiting for active download...');
         await Future.any([
           Future.wait(activeDownloads.values),
           Future<void>.delayed(_queueSchedulingInterval),

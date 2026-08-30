@@ -551,7 +551,6 @@ func DownloadCoverToFileSized(coverURL string, outputPath string, maxDimension i
 		return fmt.Errorf("failed to write cover file: %w", err)
 	}
 
-	GoLog("[Cover] Downloaded cover to: %s (%d KB)\n", outputPath, len(data)/1024)
 	return nil
 }
 
@@ -586,6 +585,5 @@ func ExtractCoverToFile(audioPath string, outputPath string) error {
 		return fmt.Errorf("failed to write cover file: %w", err)
 	}
 
-	GoLog("[Cover] Extracted cover art to: %s (%d KB)\n", outputPath, len(coverData)/1024)
 	return nil
 }

@@ -8,6 +8,7 @@ import 'package:spotiflac_android/constants/app_info.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 
 const int _maxLogMessageLength = 500;
+const int _maxBufferedLogMessageLength = 4000;
 const String _redactedValue = '[REDACTED]';
 
 final RegExp _authorizationBearerPattern = RegExp(
@@ -16,7 +17,7 @@ final RegExp _authorizationBearerPattern = RegExp(
 );
 
 final RegExp _genericSensitiveKeyValuePattern = RegExp(
-  r'("?(?:access[_\s-]?token|refresh[_\s-]?token|id[_\s-]?token|client[_\s-]?secret|authorization|password|api[_\s-]?key|session[_\s-]?secret|cookie|set-cookie)"?)(\s*[:=]\s*)("(?:\\.|[^"\\])*"|[^\s,;}\]]+)',
+  r'("?(?:access[_\s-]?token|refresh[_\s-]?token|id[_\s-]?token|client[_\s-]?secret|authorization|password|api[_\s-]?key|session[_\s-]?secret|decryption[_\s-]?key|cookie|set-cookie)"?)(\s*[:=]\s*)("(?:\\.|[^"\\])*"|[^\s,;}\]]+)',
   caseSensitive: false,
 );
 
@@ -27,6 +28,11 @@ final RegExp _sensitiveQueryPattern = RegExp(
 
 final RegExp _bearerTokenPattern = RegExp(
   r'\bBearer\s+[A-Za-z0-9._~+/\-]+=*',
+  caseSensitive: false,
+);
+
+final RegExp _decryptionKeyFlagPattern = RegExp(
+  r'(-decryption_key\s+)[^\s]+',
   caseSensitive: false,
 );
 
@@ -59,6 +65,10 @@ String _redactSensitiveText(String value) {
 
   redacted = redacted.replaceAllMapped(_bearerTokenPattern, (_) {
     return 'Bearer $_redactedValue';
+  });
+
+  redacted = redacted.replaceAllMapped(_decryptionKeyFlagPattern, (match) {
+    return '${match.group(1) ?? '-decryption_key '}$_redactedValue';
   });
 
   return redacted;
@@ -136,9 +146,15 @@ class LogBuffer extends ChangeNotifier {
       return;
     }
 
-    final sanitizedMessage = _redactSensitiveText(entry.message);
+    final sanitizedMessage = _truncateLogText(
+      _redactSensitiveText(entry.message),
+      maxLength: _maxBufferedLogMessageLength,
+    );
     final sanitizedError = entry.error != null
-        ? _redactSensitiveText(entry.error!)
+        ? _truncateLogText(
+            _redactSensitiveText(entry.error!),
+            maxLength: _maxBufferedLogMessageLength,
+          )
         : null;
     final sanitizedEntry =
         (sanitizedMessage == entry.message && sanitizedError == entry.error)
@@ -380,7 +396,11 @@ class BufferedOutput extends LogOutput {
 
   @override
   void output(OutputEvent event) {
-    if (kDebugMode) {
+    if (kDebugMode &&
+        (LogBuffer.loggingEnabled ||
+            event.level == Level.warning ||
+            event.level == Level.error ||
+            event.level == Level.fatal)) {
       for (final line in event.lines) {
         debugPrint(_truncateLogText(_redactSensitiveText(line)));
       }

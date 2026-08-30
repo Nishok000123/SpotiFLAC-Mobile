@@ -370,7 +370,6 @@ func (c *LyricsClient) fetchLyricsAllSourcesUncoalesced(spotifyID, trackName, ar
 			}
 		}
 		if (!isExtensionCache && selectedExtensionCount == 0) || cachedProviderSelected {
-			fmt.Printf("[Lyrics] Cache hit for: %s - %s\n", artistName, trackName)
 			cachedCopy := *cached
 			cachedCopy.Source = cached.Source + " (cached)"
 			return &cachedCopy, nil

@@ -258,13 +258,11 @@ class _MainShellState extends ConsumerState<MainShell>
   void _setupShareListener() {
     final pendingUrl = ShareIntentService().consumePendingUrl();
     if (pendingUrl != null) {
-      _log.d('Processing pending shared URL: $pendingUrl');
       _handleSharedUrl(pendingUrl);
     }
 
     _shareSubscription = ShareIntentService().sharedUrlStream.listen(
       (url) {
-        _log.d('Received shared URL from stream: $url');
         _handleSharedUrl(url);
       },
       onError: (Object error) {
@@ -540,7 +538,6 @@ class _MainShellState extends ConsumerState<MainShell>
     final rootNavigator = Navigator.of(context, rootNavigator: true);
     final handledByRootNavigator = await rootNavigator.maybePop();
     if (handledByRootNavigator) {
-      _log.i('Back: step 1 - root navigator handled back');
       _lastBackPress = null;
       return;
     }
@@ -552,7 +549,6 @@ class _MainShellState extends ConsumerState<MainShell>
     final handledByCurrentNavigator =
         await currentNavigator?.maybePop() ?? false;
     if (handledByCurrentNavigator) {
-      _log.i('Back: step 2 - tab navigator handled back (tab=$_currentIndex)');
       _lastBackPress = null;
       return;
     }
@@ -563,23 +559,10 @@ class _MainShellState extends ConsumerState<MainShell>
 
     final isKeyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
 
-    _log.d(
-      'Back: state check - tab=$_currentIndex, '
-      'isShowingRecentAccess=${trackState.isShowingRecentAccess}, '
-      'hasSearchText=${trackState.hasSearchText}, '
-      'hasContent=${trackState.hasContent}, '
-      'isLoading=${trackState.isLoading}, '
-      'isKeyboardVisible=$isKeyboardVisible',
-    );
-
     if (_currentIndex == 0 &&
         trackState.isShowingRecentAccess &&
         !trackState.isLoading &&
         (trackState.hasSearchText || trackState.hasContent)) {
-      _log.i(
-        'Back: step 3a - dismiss recent access + clear search/content '
-        '(hasSearchText=${trackState.hasSearchText}, hasContent=${trackState.hasContent})',
-      );
       FocusManager.instance.primaryFocus?.unfocus();
       ref.read(previewPlayerProvider.notifier).stop();
       ref.read(trackProvider.notifier).clear();
@@ -588,7 +571,6 @@ class _MainShellState extends ConsumerState<MainShell>
     }
 
     if (_currentIndex == 0 && trackState.isShowingRecentAccess) {
-      _log.i('Back: step 3b - dismiss recent access only');
       ref.read(trackProvider.notifier).setShowingRecentAccess(false);
       FocusManager.instance.primaryFocus?.unfocus();
       _lastBackPress = null;
@@ -598,10 +580,6 @@ class _MainShellState extends ConsumerState<MainShell>
     if (_currentIndex == 0 &&
         !trackState.isLoading &&
         (trackState.hasSearchText || trackState.hasContent)) {
-      _log.i(
-        'Back: step 4 - clear search/content '
-        '(hasSearchText=${trackState.hasSearchText}, hasContent=${trackState.hasContent})',
-      );
       // Unfocus BEFORE clear so _onTrackStateChanged can properly
       // clear _urlController (it checks !_searchFocusNode.hasFocus)
       FocusManager.instance.primaryFocus?.unfocus();
@@ -612,31 +590,26 @@ class _MainShellState extends ConsumerState<MainShell>
     }
 
     if (_currentIndex == 0 && isKeyboardVisible) {
-      _log.i('Back: step 5 - dismiss keyboard');
       FocusManager.instance.primaryFocus?.unfocus();
       _lastBackPress = null;
       return;
     }
 
     if (_currentIndex != 0) {
-      _log.i('Back: step 6 - switch to home tab from tab=$_currentIndex');
       _onNavTap(0);
       _lastBackPress = null;
       return;
     }
 
     if (trackState.isLoading) {
-      _log.i('Back: blocked - loading in progress');
       return;
     }
 
     final now = DateTime.now();
     if (_lastBackPress != null &&
         now.difference(_lastBackPress!) < const Duration(seconds: 2)) {
-      _log.i('Back: step 8 - double-tap exit');
       unawaited(PlatformBridge.exitApp());
     } else {
-      _log.i('Back: step 7 - first tap, showing exit snackbar');
       _lastBackPress = now;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

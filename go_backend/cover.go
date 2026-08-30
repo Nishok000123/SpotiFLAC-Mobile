@@ -24,7 +24,6 @@ func downloadCoverToMemory(coverURL string) ([]byte, error) {
 		return nil, fmt.Errorf("no cover URL provided")
 	}
 
-	GoLog("[Cover] Provider URL: %s", coverURL)
 	data, err := fetchCoverCached(coverURL)
 	if err != nil {
 		return nil, err
