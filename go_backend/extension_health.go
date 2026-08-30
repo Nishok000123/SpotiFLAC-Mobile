@@ -48,14 +48,87 @@ type cachedExtensionHealthResult struct {
 }
 
 var (
-	extensionHealthCacheMu sync.Mutex
-	extensionHealthCache   = map[string]cachedExtensionHealthResult{}
+	extensionHealthCacheMu    sync.Mutex
+	extensionHealthCache      = map[string]cachedExtensionHealthResult{}
+	extensionHealthRefresh    = map[string]struct{}{}
+	extensionHealthGeneration uint64
 )
 
 func clearExtensionHealthCache() {
 	extensionHealthCacheMu.Lock()
 	extensionHealthCache = map[string]cachedExtensionHealthResult{}
+	extensionHealthRefresh = map[string]struct{}{}
+	extensionHealthGeneration++
 	extensionHealthCacheMu.Unlock()
+}
+
+// PeekExtensionHealthCached returns only an already-computed, unexpired
+// health snapshot. It never performs network I/O. Download provider ordering
+// uses this path so an informational health endpoint can never delay the real
+// provider attempt.
+func PeekExtensionHealthCached(ext *loadedExtension) (ExtensionHealthResult, bool) {
+	if ext == nil || ext.Manifest == nil || len(ext.Manifest.ServiceHealth) == 0 {
+		return ExtensionHealthResult{}, false
+	}
+	cacheKey := strings.TrimSpace(ext.ID)
+	if cacheKey == "" {
+		return ExtensionHealthResult{}, false
+	}
+
+	now := time.Now()
+	extensionHealthCacheMu.Lock()
+	defer extensionHealthCacheMu.Unlock()
+	cached, ok := extensionHealthCache[cacheKey]
+	if !ok || !now.Before(cached.expiresAt) {
+		return ExtensionHealthResult{}, false
+	}
+	return cached.result, true
+}
+
+func peekExtensionHealthStale(ext *loadedExtension) (ExtensionHealthResult, bool) {
+	if ext == nil {
+		return ExtensionHealthResult{}, false
+	}
+	cacheKey := strings.TrimSpace(ext.ID)
+	if cacheKey == "" {
+		return ExtensionHealthResult{}, false
+	}
+	extensionHealthCacheMu.Lock()
+	defer extensionHealthCacheMu.Unlock()
+	cached, ok := extensionHealthCache[cacheKey]
+	return cached.result, ok
+}
+
+// RefreshExtensionHealthAsync coalesces background refreshes per extension.
+// Callers deliberately do not wait: stale or missing health data must not be
+// on the latency-critical download path.
+func RefreshExtensionHealthAsync(ext *loadedExtension) {
+	if ext == nil || ext.Manifest == nil || len(ext.Manifest.ServiceHealth) == 0 {
+		return
+	}
+	cacheKey := strings.TrimSpace(ext.ID)
+	if cacheKey == "" {
+		return
+	}
+
+	extensionHealthCacheMu.Lock()
+	if _, refreshing := extensionHealthRefresh[cacheKey]; refreshing {
+		extensionHealthCacheMu.Unlock()
+		return
+	}
+	extensionHealthRefresh[cacheKey] = struct{}{}
+	generation := extensionHealthGeneration
+	extensionHealthCacheMu.Unlock()
+
+	go func() {
+		result := CheckExtensionHealth(ext)
+		extensionHealthCacheMu.Lock()
+		if generation == extensionHealthGeneration {
+			cacheExtensionHealthResultLocked(ext, result)
+			delete(extensionHealthRefresh, cacheKey)
+		}
+		extensionHealthCacheMu.Unlock()
+	}()
 }
 
 func CheckExtensionHealthJSON(extensionID string) (string, error) {
@@ -84,14 +157,9 @@ func CheckExtensionHealthCached(ext *loadedExtension) ExtensionHealthResult {
 		return CheckExtensionHealth(ext)
 	}
 
-	now := time.Now()
-	extensionHealthCacheMu.Lock()
-	cached, ok := extensionHealthCache[cacheKey]
-	if ok && now.Before(cached.expiresAt) {
-		extensionHealthCacheMu.Unlock()
-		return cached.result
+	if cached, ok := PeekExtensionHealthCached(ext); ok {
+		return cached
 	}
-	extensionHealthCacheMu.Unlock()
 
 	result := CheckExtensionHealth(ext)
 	cacheExtensionHealthResult(ext, result)
@@ -108,17 +176,26 @@ func cacheExtensionHealthResult(ext *loadedExtension, result ExtensionHealthResu
 		return
 	}
 
+	extensionHealthCacheMu.Lock()
+	cacheExtensionHealthResultLocked(ext, result)
+	extensionHealthCacheMu.Unlock()
+}
+
+// cacheExtensionHealthResultLocked stores a result while the caller owns
+// extensionHealthCacheMu. Keeping this small helper avoids a clear-vs-refresh
+// race without taking the same mutex recursively.
+func cacheExtensionHealthResultLocked(ext *loadedExtension, result ExtensionHealthResult) {
+	cacheKey := strings.TrimSpace(ext.ID)
+
 	ttl := extensionHealthCacheTTL(ext.Manifest.ServiceHealth)
 	if result.Status == "unknown" && ttl > extensionHealthUnknownCache {
 		ttl = extensionHealthUnknownCache
 	}
 
-	extensionHealthCacheMu.Lock()
 	extensionHealthCache[cacheKey] = cachedExtensionHealthResult{
 		result:    result,
 		expiresAt: time.Now().Add(ttl),
 	}
-	extensionHealthCacheMu.Unlock()
 }
 
 func CheckExtensionHealth(ext *loadedExtension) ExtensionHealthResult {

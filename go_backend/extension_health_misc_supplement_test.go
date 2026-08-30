@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestExtensionHealthClassificationAndValidation(t *testing.T) {
@@ -72,5 +73,41 @@ func TestExtensionHealthClassificationAndValidation(t *testing.T) {
 func TestCoverHelpersRejectEmptyURL(t *testing.T) {
 	if data, err := downloadCoverToMemory(""); err == nil || data != nil {
 		t.Fatalf("expected empty cover error")
+	}
+}
+
+func TestPeekExtensionHealthCachedNeverRefreshesSynchronously(t *testing.T) {
+	clearExtensionHealthCache()
+	ext := &loadedExtension{
+		ID: "cached-health-ext",
+		Manifest: &ExtensionManifest{ServiceHealth: []ExtensionHealthCheck{{
+			ID: "main", URL: "https://status.example.com",
+		}}},
+	}
+	if _, ok := PeekExtensionHealthCached(ext); ok {
+		t.Fatal("unexpected cache hit")
+	}
+
+	want := ExtensionHealthResult{ExtensionID: ext.ID, Status: "degraded"}
+	extensionHealthCacheMu.Lock()
+	extensionHealthCache[ext.ID] = cachedExtensionHealthResult{
+		result: want, expiresAt: time.Now().Add(time.Minute),
+	}
+	extensionHealthCacheMu.Unlock()
+	got, ok := PeekExtensionHealthCached(ext)
+	if !ok || got.Status != want.Status {
+		t.Fatalf("cached health = %#v/%v", got, ok)
+	}
+
+	extensionHealthCacheMu.Lock()
+	entry := extensionHealthCache[ext.ID]
+	entry.expiresAt = time.Now().Add(-time.Second)
+	extensionHealthCache[ext.ID] = entry
+	extensionHealthCacheMu.Unlock()
+	if _, ok := PeekExtensionHealthCached(ext); ok {
+		t.Fatal("expired cache entry was returned")
+	}
+	if stale, ok := peekExtensionHealthStale(ext); !ok || stale.Status != want.Status {
+		t.Fatalf("stale health snapshot = %#v/%v", stale, ok)
 	}
 }

@@ -182,11 +182,20 @@ func TestPrioritizeFallbackProvidersByHealthPrefersOnlineAndSkipsOffline(t *test
 		manager.mu.Unlock()
 
 		extensionHealthCacheMu.Lock()
+		delete(extensionHealthCache, amazon.ID)
 		delete(extensionHealthCache, deezer.ID)
 		extensionHealthCacheMu.Unlock()
 	}()
 
 	extensionHealthCacheMu.Lock()
+	extensionHealthCache[amazon.ID] = cachedExtensionHealthResult{
+		result: ExtensionHealthResult{
+			ExtensionID: amazon.ID,
+			Status:      "offline",
+			CheckedAt:   time.Now().UTC().Format(time.RFC3339),
+		},
+		expiresAt: time.Now().Add(time.Minute),
+	}
 	extensionHealthCache[deezer.ID] = cachedExtensionHealthResult{
 		result: ExtensionHealthResult{
 			ExtensionID: deezer.ID,

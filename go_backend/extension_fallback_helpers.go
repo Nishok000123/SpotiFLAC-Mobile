@@ -381,7 +381,21 @@ func fallbackRuntimeHealthStatus(ext *loadedExtension) string {
 		return "unknown"
 	}
 
-	status := strings.ToLower(strings.TrimSpace(CheckExtensionHealthCached(ext).Status))
+	health, cached := PeekExtensionHealthCached(ext)
+	if !cached {
+		staleHealth, hasStale := peekExtensionHealthStale(ext)
+		RefreshExtensionHealthAsync(ext)
+		if !hasStale {
+			return "unknown"
+		}
+		// An expired offline verdict must not keep suppressing a recovered
+		// provider while its refresh runs in the background.
+		if strings.EqualFold(staleHealth.Status, "offline") {
+			return "unknown"
+		}
+		health = staleHealth
+	}
+	status := strings.ToLower(strings.TrimSpace(health.Status))
 	switch status {
 	case "online", "degraded", "offline":
 		return status
