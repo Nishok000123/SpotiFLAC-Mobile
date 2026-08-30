@@ -10,6 +10,7 @@ import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/services/app_navigation_service.dart';
 import 'package:spotiflac_android/theme/dynamic_color_wrapper.dart';
 import 'package:spotiflac_android/l10n/app_localizations.dart';
+import 'package:spotiflac_android/l10n/supported_locales.dart';
 
 String initialLocationForAppState({
   required bool isFirstLaunch,
@@ -227,7 +228,10 @@ class SpotiFLACApp extends ConsumerWidget {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: AppLocalizations.supportedLocales,
+          // ARB files below the translation threshold remain bundled so
+          // translators can test them, but production users should only be
+          // offered locales selected by the completion checker.
+          supportedLocales: filteredSupportedLocales,
         );
       },
     );

@@ -6,16 +6,22 @@ files:
         # Keys MUST be the project's Crowdin language ids; values are the
         # %locale% suffix used in app_%locale%.arb (underscores so Flutter
         # gen-l10n parses them — hyphenated filenames break gen-l10n).
-        # Locales below the 70% translation threshold (ar, hi, nl,
-        # zh-CN, zh-TW) are unmapped so `crowdin pull` doesn't recreate
-        # their arb files; re-add a mapping line when one qualifies.
+        # Keep every Crowdin locale mapped even while it is below the UI's
+        # 70% threshold. This lets translators keep making progress without
+        # exposing incomplete locales in production builds.
+        ar: ar
         de: de
         es-ES: es_ES
         fr: fr
+        hi: hi
         id: id
+        it: it
         ja: ja
         ko: ko
+        nl: nl
         pt-PT: pt_PT
         ru: ru
         tr: tr
         uk: uk
+        zh-CN: zh_CN
+        zh-TW: zh_TW

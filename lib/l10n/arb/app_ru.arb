@@ -89,7 +89,7 @@
       }
     }
   },
-  "selectionShareCount": "Share {count} {count, plural, =1{track} other{tracks}}",
+  "selectionShareCount": "Отправить {count} {count, plural, one {трек} few {трека} many {треков} =1{трек} other{треков}}",
   "@selectionShareCount": {
     "description": "Share button text with count in selection mode",
     "placeholders": {
@@ -149,7 +149,7 @@
   "@extensionsInstallButton": {
     "description": "Button to install extension from file"
   },
-  "replayGainBatchSuccess": "ReplayGain added to {success} of {total} tracks",
+  "replayGainBatchSuccess": "ReplayGain добавлен к {success} треков {total}",
   "@replayGainBatchSuccess": {
     "description": "Snackbar after batch ReplayGain completes",
     "placeholders": {
@@ -292,7 +292,7 @@
   "@bulkDownloadSelectPlaylists": {
     "description": "Button label when no playlists are selected for download"
   },
-  "artistOptionAddToFavorites": "Add to Favorite Artists",
+  "artistOptionAddToFavorites": "Добавить в избранные исполнители",
   "@artistOptionAddToFavorites": {
     "description": "Action label - add artist to favorite artists"
   },
@@ -359,7 +359,7 @@
   "@nowPlayingTabLyrics": {
     "description": "Tab label for the lyrics view"
   },
-  "selectionConvertCount": "Convert {count} {count, plural, =1{track} other{tracks}}",
+  "selectionConvertCount": "Конвертировать {count} {count, plural, one {трек} few {трека} many {треков} =1{трек} other{треков}}",
   "@selectionConvertCount": {
     "description": "Convert button text with count in selection mode",
     "placeholders": {
@@ -382,7 +382,7 @@
   "@trackReEnrichFieldCover": {
     "description": "Checkbox label for cover art field in re-enrich"
   },
-  "tutorialExtensionsTip3": "Получайте тексты песен, улучшенные метаданные и другие возможности",
+  "tutorialExtensionsTip3": "Connect accounts when required and keep extensions up to date",
   "@tutorialExtensionsTip3": {
     "description": "Tutorial extensions tip 3"
   },
@@ -708,7 +708,7 @@
   "@trackAlbum": {
     "description": "Metadata label - album name"
   },
-  "dialogDeleteSelectedMessage": "Delete {count} {count, plural, =1{track} other{tracks}} from history?\n\nThis will also delete the files from storage.",
+  "dialogDeleteSelectedMessage": "Удалить {count} {count, plural, one {трек} few {трека} many {треков} =1{трек} other{треков}} из истории?\n\nЭто также удалит файлы из хранилища.",
   "@dialogDeleteSelectedMessage": {
     "description": "Dialog message - delete selected tracks",
     "placeholders": {
@@ -770,7 +770,7 @@
   "@tutorialWelcomeTitle": {
     "description": "Tutorial welcome page title"
   },
-  "collectionFavoriteArtists": "Favorite Artists",
+  "collectionFavoriteArtists": "Избранный исполнитель",
   "audioAnalysisRescanning": "Re-analyzing audio...",
   "@audioAnalysisRescanning": {
     "description": "Loading text while audio is being re-analyzed after an explicit refresh"
@@ -866,7 +866,7 @@
       }
     }
   },
-  "previewUnavailable": "Preview unavailable",
+  "previewUnavailable": "Предпросмотр недоступен",
   "@previewUnavailable": {
     "description": "Snackbar shown when a track preview snippet cannot be played"
   },
@@ -891,7 +891,7 @@
   "@trackTrackNumber": {
     "description": "Metadata label - track number"
   },
-  "trackReplayGainScanning": "Analyzing loudness...",
+  "trackReplayGainScanning": "Анализ громкости...",
   "@trackReplayGainScanning": {
     "description": "Snackbar/progress message while scanning ReplayGain for a single track"
   },
@@ -1047,7 +1047,7 @@
   "@trackCopiedToClipboard": {
     "description": "Snackbar - content copied"
   },
-  "aboutKeepAndroidOpen": "Keep Android Open",
+  "aboutKeepAndroidOpen": "Сохранить Android открытым",
   "@aboutKeepAndroidOpen": {
     "description": "Link to Keep Android Open campaign website"
   },
@@ -1178,7 +1178,7 @@
   "@editMetadataAutoFill": {
     "description": "Section title for selective online metadata auto-fill in the edit metadata sheet"
   },
-  "snackbarDeletedTracks": "Deleted {count} {count, plural, =1{track} other{tracks}}",
+  "snackbarDeletedTracks": "Удалено {count} {count, plural, one {трек} few {трека} many {треков} =1{трек} other{треков}}",
   "@snackbarDeletedTracks": {
     "description": "Snackbar - tracks deleted",
     "placeholders": {
@@ -1430,7 +1430,7 @@
       }
     }
   },
-  "replayGainBatchConfirmTitle": "Add ReplayGain",
+  "replayGainBatchConfirmTitle": "Добавить ReplayGain",
   "@replayGainBatchConfirmTitle": {
     "description": "Title of the batch ReplayGain confirmation dialog"
   },
@@ -1532,7 +1532,7 @@
   "@searchSortTitleZA": {
     "description": "Sort option - title descending"
   },
-  "tutorialLibraryTip2": "Нажмите на любой трек, чтобы воспроизвести его с помощью вашего музыкального плеера",
+  "tutorialLibraryTip2": "Tap a track to play it with the built-in player",
   "@tutorialLibraryTip2": {
     "description": "Tutorial library tip 2"
   },
@@ -1565,7 +1565,7 @@
   "@recentShowAllDownloads": {
     "description": "Button label to unhide hidden downloads in recent access"
   },
-  "artistOptionRemoveFromFavorites": "Remove from Favorite Artists",
+  "artistOptionRemoveFromFavorites": "Удалить из избранных исполнителей",
   "@artistOptionRemoveFromFavorites": {
     "description": "Action label - remove artist from favorite artists"
   },
@@ -1873,7 +1873,7 @@
   "@downloadAskQualitySubtitle": {
     "description": "Subtitle for ask quality toggle"
   },
-  "setupLanguageSystemDefault": "System Default",
+  "setupLanguageSystemDefault": "Системные настройки",
   "@setupLanguageSystemDefault": {
     "description": "Option to use the system language"
   },
@@ -2151,7 +2151,7 @@
       }
     }
   },
-  "collectionFavoriteArtistsEmptyTitle": "No favorite artists yet",
+  "collectionFavoriteArtistsEmptyTitle": "Нет избранных исполнителей",
   "@collectionFavoriteArtistsEmptyTitle": {
     "description": "Favorite artists empty state title"
   },
@@ -2211,7 +2211,7 @@
   "@discographySelectAlbums": {
     "description": "Option - manually select albums to download"
   },
-  "aboutAppDescription": "Search music metadata, manage extensions, and organize your library.",
+  "aboutAppDescription": "Ищите метаданных музыки, управляйте расширениями и организуйте свою библиотеку.",
   "@aboutAppDescription": {
     "description": "App description in header card"
   },
@@ -2269,7 +2269,7 @@
   "@nowPlayingNothingPlaying": {
     "description": "Empty state when no track is currently playing"
   },
-  "tutorialDownloadDesc": "Скачивание музыки просто и быстро. Вот как это работает.",
+  "tutorialDownloadDesc": "Pick an available quality, start the download, and follow its progress in the queue.",
   "@tutorialDownloadDesc": {
     "description": "Tutorial download page description"
   },
@@ -2382,7 +2382,7 @@
       }
     }
   },
-  "editMetadataAutoFillDesc": "Select fields to fill automatically from online metadata",
+  "editMetadataAutoFillDesc": "Choose a metadata extension, select fields, then review its data before applying",
   "@editMetadataAutoFillDesc": {
     "description": "Description for the auto-fill section"
   },
@@ -2518,7 +2518,7 @@
   "@settingsLogsSubtitle": {
     "description": "Logs settings description"
   },
-  "storeNewRepoUrlLabel": "New Repository URL",
+  "storeNewRepoUrlLabel": "Новый URL репозитория",
   "@storeNewRepoUrlLabel": {
     "description": "Label for the new repository URL field inside the dialog"
   },
@@ -2669,7 +2669,7 @@
   "@trackConvertDithering": {
     "description": "Section label for lossless conversion dithering options"
   },
-  "settingsDownloadSubtitle": "Service, quality, fallback",
+  "settingsDownloadSubtitle": "Сервис, качество, откат",
   "@settingsDownloadSubtitle": {
     "description": "Download settings description"
   },
@@ -2868,7 +2868,7 @@
     }
   },
   "dialogDisableHistoryTitle": "Turn off download history?",
-  "tutorialWelcomeTip3": "Автоматическое встраивание метаданных, обложек и текстов песен",
+  "tutorialWelcomeTip3": "Embed metadata, cover art, lyrics, and release information automatically",
   "@tutorialWelcomeTip3": {
     "description": "Tutorial welcome tip 3"
   },
@@ -2912,11 +2912,11 @@
     "description": "Status label when primary-artist-only folder naming is enabled"
   },
   "lyricsProvidersDiscardContent": "У вас есть несохранённые изменения, которые будут потеряны.",
-  "previewStop": "Stop preview",
+  "previewStop": "Остановить предпросмотр",
   "@previewStop": {
     "description": "Tooltip for the button that stops the playing track preview snippet"
   },
-  "trackConvertConfirmMessageLossless": "Convert from {sourceFormat} to {targetFormat}? (Lossless — no quality loss)\n\nThe original file will be deleted after conversion.",
+  "trackConvertConfirmMessageLossless": "Конвертировать {sourceFormat}  в {targetFormat}? (Lossless — Без потери качества)\n\nОригинальные файлы будут удалены после конвертации.",
   "discographyAlbumsOnly": "Только альбомы",
   "@discographyAlbumsOnly": {
     "description": "Option - download only albums"
@@ -2938,7 +2938,7 @@
   "@downloadDeduplicationEnabled": {
     "description": "Subtitle when deduplication is on"
   },
-  "homeEmptyTitle": "No search providers yet",
+  "homeEmptyTitle": "Нет поставщиков поиска",
   "@homeEmptyTitle": {
     "description": "Title shown on home when no providers are available yet"
   },
@@ -2949,7 +2949,7 @@
   "@storeInstalled": {
     "description": "Already installed badge"
   },
-  "trackReplayGainSuccess": "ReplayGain tags added",
+  "trackReplayGainSuccess": "Добавлены теги ReplayGain",
   "@trackReplayGainSuccess": {
     "description": "Snackbar message after ReplayGain tags written for a single track"
   },
@@ -3003,7 +3003,7 @@
       }
     }
   },
-  "homeEmptySubtitle": "Install an extension to continue.",
+  "homeEmptySubtitle": "Установите расширение, чтобы продолжить.",
   "@settingsTitle": {
     "description": "Settings screen title"
   },
@@ -3326,7 +3326,7 @@
   "@aboutApp": {
     "description": "Section for app info"
   },
-  "optionsReplayGainSubtitleOff": "Disabled: no loudness normalization tags",
+  "optionsReplayGainSubtitleOff": "Выключено: нет тегов нормализации громкости",
   "@optionsReplayGainSubtitleOff": {
     "description": "Subtitle when ReplayGain is disabled"
   },
@@ -3351,7 +3351,7 @@
   "trackDownloaded": "Скачано",
   "extensionVerificationHelpMessageManual": "SpotiFLAC Mobile could not open the browser automatically. Open this link in your browser, or copy it manually.",
   "setupDownloadLocationIosMessage": "В iOS загрузки сохраняются в папке Документы приложения. Вы можете получить к ним доступ через приложение Файлы.",
-  "optionsArtistTagModeDescription": "Choose how multiple artists are written into embedded tags.",
+  "optionsArtistTagModeDescription": "Выберите, как несколько исполнителей записываются встроенные теги.",
   "@optionsArtistTagModeDescription": {
     "description": "Bottom-sheet description for artist tag mode setting"
   },
@@ -3391,7 +3391,7 @@
   "@dialogDelete": {
     "description": "Dialog button - delete item"
   },
-  "tutorialLibraryDesc": "Вся скачанная музыка организована во вкладке Библиотека.",
+  "tutorialLibraryDesc": "Downloaded and locally scanned music is organized in your Library.",
   "@tutorialLibraryDesc": {
     "description": "Tutorial library page description"
   },
@@ -3454,7 +3454,7 @@
   "@extensionsHomeFeedAutoSubtitle": {
     "description": "Extensions page - subtitle for auto home feed option"
   },
-  "setupLanguageDescription": "Select your preferred language for the app. You can change this later in Settings.",
+  "setupLanguageDescription": "Выберите язык для приложения. Вы можете изменить его позже в настройках.",
   "settingsBackupSubtitle": "Move your library, history and settings to a new device",
   "@settingsBackupSubtitle": {
     "description": "Subtitle for backup and restore settings item"
@@ -3505,7 +3505,7 @@
   },
   "libraryFilterMetadataMissingAlbumArtist": "Missing album artist",
   "audioAnalysisNoClipping": "No clipping",
-  "tutorialSettingsDesc": "Персонализируйте приложение в Настройках, чтобы оно соответствовало вашим предпочтениям.",
+  "tutorialSettingsDesc": "Fine-tune downloads, playback, Library behavior, appearance, and storage.",
   "@tutorialSettingsDesc": {
     "description": "Tutorial settings page description"
   },
@@ -3561,7 +3561,7 @@
   "@dialogClearAll": {
     "description": "Dialog title - clear all items"
   },
-  "tutorialExtensionsDesc": "Расширьте возможности приложения с расширениями от сообщества.",
+  "tutorialExtensionsDesc": "Extensions add search, download, metadata, lyrics, and other integrations.",
   "@tutorialExtensionsDesc": {
     "description": "Tutorial extensions page description"
   },
@@ -3592,7 +3592,7 @@
   "@downloadAlbumFolderStructure": {
     "description": "Setting - album folder organization"
   },
-  "lyricsProvidersAtLeastOne": "At least one provider must remain enabled",
+  "lyricsProvidersAtLeastOne": "По крайней мере один провайдер должен оставаться включенным",
   "@notifDownloadCompleteCount": {
     "description": "Notification title when download is complete, with count",
     "placeholders": {
@@ -3701,11 +3701,11 @@
   "@snackbarPlayingNext": {
     "description": "Snackbar when a track is inserted as the next queue item"
   },
-  "optionsDefaultSearchTabSubtitle": "Choose which tab opens first for new search results.",
+  "optionsDefaultSearchTabSubtitle": "Выберите, какая вкладка открывает новые результаты поиска.",
   "@editMetadataAutoFillFetch": {
     "description": "Button label to fetch online metadata and fill selected fields"
   },
-  "tutorialSearchDesc": "Есть два простых способа найти музыку, которую вы хотите скачать.",
+  "tutorialSearchDesc": "Search with your selected extension or paste a supported music link.",
   "@sectionService": {
     "description": "Settings section header"
   },
@@ -3735,7 +3735,7 @@
   "@dialogDone": {
     "description": "Dialog button - action completed"
   },
-  "storeRepoUrlLabel": "Repository URL",
+  "storeRepoUrlLabel": "Ссылка на репозиторий",
   "downloadSelectServiceToEnable": "Select a provider with quality options to enable this option",
   "@logIssueRateLimitedSuggestion": {
     "description": "Diagnostic badge suggestion for rate limiting"
@@ -3786,7 +3786,7 @@
   "@replayGainBatchAnalyzing": {
     "description": "Progress dialog title while batch scanning ReplayGain"
   },
-  "setupLanguageTitle": "Choose Language",
+  "setupLanguageTitle": "Выберите язык",
   "extensionId": "ID",
   "@extensionId": {
     "description": "Extension detail - unique ID"
@@ -3843,7 +3843,7 @@
   "@cacheAppDirectory": {
     "description": "Cache item title for app cache directory"
   },
-  "lyricsProviderMusixmatchDesc": "Largest lyrics database (multi-language)",
+  "lyricsProviderMusixmatchDesc": "Крупнейшая база данных текстов песен (мультиязычная)",
   "@navStore": {
     "description": "Bottom navigation - Extension repo tab"
   },
@@ -3944,7 +3944,7 @@
   "@errorRateLimited": {
     "description": "Error title - too many requests"
   },
-  "setupDownloadInFlac": "Скачивайте музыку в качестве Lossless и Hi-Res",
+  "setupDownloadInFlac": "Download music in lossless and Hi-Res quality",
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
@@ -3997,7 +3997,7 @@
   "@downloadFilenameInsertTag": {
     "description": "Label above filename tag chips"
   },
-  "collectionRemovedFromFavoriteArtists": "\"{artistName}\" removed from Favorite Artists",
+  "collectionRemovedFromFavoriteArtists": "\"{artistName}\" удалено из избранных исполнителей",
   "@collectionRemovedFromFavoriteArtists": {
     "description": "Snackbar after removing artist from favorite artists",
     "placeholders": {
@@ -4247,7 +4247,7 @@
       }
     }
   },
-  "homeImportCsvTooltip": "Import CSV",
+  "homeImportCsvTooltip": "Import playlist (CSV, M3U)",
   "@homeImportCsvTooltip": {
     "description": "Tooltip for importing a CSV file into Home search"
   },
@@ -4344,7 +4344,7 @@
   "@regionCountryKR": {
     "description": "Country name for SongLink region picker"
   },
-  "trackLyricsNotInFile": "No lyrics found in this file",
+  "trackLyricsNotInFile": "В этом файле не найдено текстов песен",
   "@trackLyricsNotInFile": {
     "description": "Message when no embedded lyrics in audio file"
   },
@@ -4391,8 +4391,8 @@
   "@nowPlayingUpNext": {
     "description": "Title for the playback queue sheet"
   },
-  "nowPlayingPreviousTrack": "Предыдущий трек",
-  "nowPlayingNextTrack": "Следующий трек",
+  "nowPlayingPreviousTrack": "Previous track",
+  "nowPlayingNextTrack": "Next track",
   "logAutoScrollOff": "Auto-scroll OFF",
   "trackConvertFailed": "Ошибка конвертации",
   "@trackConvertFailed": {
@@ -4600,7 +4600,7 @@
   "@libraryScanCancelled": {
     "description": "Library scan status when a scan was cancelled"
   },
-  "tracksCount": "{count, plural, =1{1 track} other{{count} tracks}}",
+  "tracksCount": "{count, plural, one {{count} трек} few {{count} трека} many {{count} треков} =1 {1 трек} other {{count} треков}}",
   "@snackbarFailedToUpdateNamed": {
     "description": "Snackbar when extension update fails in the repo tab",
     "placeholders": {
@@ -4646,7 +4646,7 @@
   "@downloadNativeWorker": {
     "description": "Setting title for Android native download worker"
   },
-  "optionsArtistTagModeSplitVorbis": "Split tags for FLAC/Opus",
+  "optionsArtistTagModeSplitVorbis": "Разделить теги для FLAC/Opus",
   "extensionsHomeFeedUse": "Use {extensionName} home feed",
   "@cacheAppDirectoryDesc": {
     "description": "Description of what app cache directory contains"
@@ -4731,7 +4731,7 @@
     "description": "Subtitle when Netease translation is off"
   },
   "optionsCheckUpdates": "Проверить обновления",
-  "replayGainBatchAnalyzing": "Analyzing ReplayGain...",
+  "replayGainBatchAnalyzing": "Анализ ReplayGain...",
   "recentTypeAlbum": "Альбом",
   "providerExtension": "Расширение",
   "@providerExtension": {
@@ -4811,7 +4811,7 @@
   "@extensionVerificationBrowserSubtitleExternal": {
     "description": "Subtitle when external browser is preferred for extension verification"
   },
-  "optionsArtistTagMode": "Artist Tag Mode",
+  "optionsArtistTagMode": "Режим тега исполнителя",
   "libraryFilterMetadataComplete": "Complete metadata",
   "@libraryFilterMetadataComplete": {
     "description": "Filter option - items with complete metadata"
@@ -4827,7 +4827,7 @@
   "@downloadNetworkAnySubtitle": {
     "description": "Subtitle for any-network option in picker"
   },
-  "optionsReplayGainSubtitleOn": "Scan loudness and embed ReplayGain tags (EBU R128)",
+  "optionsReplayGainSubtitleOn": "Сканировать громкость и вставить теги ReplayGain (EBU R128)",
   "libraryScanning": "Сканирование...",
   "@libraryScanning": {
     "description": "Status during scan"
@@ -4849,7 +4849,7 @@
   "@collectionLoved": {
     "description": "Custom folder for favorite tracks"
   },
-  "storeAddRepoTitle": "Add Extension Repository",
+  "storeAddRepoTitle": "Добавить репозиторий расширения",
   "@storeAddRepoTitle": {
     "description": "Store setup screen - heading when no repo is configured"
   },
@@ -4913,8 +4913,8 @@
     }
   },
   "setupStorageDescription": "SpotiFLAC требуется разрешение на хранение для сохранения скачанных файлов.",
-  "tutorialReadyMessage": "Всё готово! Начните загружать любимую музыку прямо сейчас.",
-  "tutorialLibraryTip3": "Переключение между списком и сеткой для лучшего просмотра",
+  "tutorialReadyMessage": "You're ready. Select your extensions, then search or paste a supported link.",
+  "tutorialLibraryTip3": "Browse tracks, albums, and playlists in list or grid views",
   "selectionDeletePlaylistsCount": "Delete {count} {count, plural, =1{playlist} other{playlists}}",
   "appearanceThemeLight": "Светлая",
   "queueEmptyHistorySubtitle": "Скачанные треки появятся здесь",
@@ -5074,11 +5074,11 @@
     "description": "Chip label for date field in auto-fill selector"
   },
   "downloadUsePrimaryArtistOnly": "Основной исполнитель только для папок",
-  "tutorialExtensionsTip2": "Добавить новых поставщиков загрузок или поиска",
+  "tutorialExtensionsTip2": "Choose providers for search, downloads, metadata, and fallbacks",
   "@setupStorageGranted": {
     "description": "Success message for storage permission"
   },
-  "tutorialWelcomeTitle": "Добро пожаловать в SpotiFLAC Mobile!",
+  "tutorialWelcomeTitle": "Welcome to SpotiFLAC Mobile!",
   "a11ySelectAlbum": "Select album {albumName}",
   "@a11ySelectAlbum": {
     "description": "Accessibility label for selecting an album",
@@ -5138,7 +5138,7 @@
   "setupFolderDescription": "Выберите папку, в которой будет сохраняться скачанная музыка.",
   "extensionDetailsTags": "Tags",
   "unknownArtist": "Unknown Artist",
-  "trackFetchOnlineLyrics": "Fetch from Online",
+  "trackFetchOnlineLyrics": "Поиск в сети",
   "snackbarNoActionDefined": "No action defined for this button",
   "@snackbarNoActionDefined": {
     "description": "Snackbar when an extension button has no action configured"
@@ -5192,7 +5192,7 @@
   "@selectionSelectPlaylistsToDelete": {
     "description": "Hint shown when no playlists are selected for deletion"
   },
-  "storeAddRepoDescription": "Enter a GitHub repository URL that contains a registry.json file to browse and install extensions.",
+  "storeAddRepoDescription": "Введите URL-адрес репозитория GitHub, который содержит файл registry.json для просмотра и установки расширений.",
   "appearanceThemeDark": "Тёмная",
   "downloadedAlbumTapToSelect": "Нажмите на треки для выбора",
   "@collectionAddedToFavoriteArtists": {
@@ -5212,7 +5212,7 @@
   },
   "editMetadataAutoFillNoResults": "No matching metadata found online",
   "updateDownloading": "Скачивание...",
-  "trackLyricsSource": "Source: {source}",
+  "trackLyricsSource": "Источник: {source}",
   "logFilterLevel": "Уровень",
   "logNoLogsYet": "Логов нет",
   "cacheSizeOnly": "{size}",
@@ -5246,7 +5246,7 @@
     }
   },
   "extensionsHomeFeedAuto": "Авто",
-  "searchEmptyResultSubtitle": "Try another keyword",
+  "searchEmptyResultSubtitle": "Попробуйте другое ключевое слово",
   "@searchEmptyResultSubtitle": {
     "description": "Subtitle shown under the empty search result state on the home screen"
   },
@@ -5271,7 +5271,7 @@
   "@editMetadataFieldDiscTotal": {
     "description": "Label for total discs field in the edit metadata sheet"
   },
-  "replayGainBatchConfirmMessage": "Analyze loudness and write ReplayGain tags to {count} track(s)?",
+  "replayGainBatchConfirmMessage": "Проанализировать громкость и записать ReplayGain теги на {count} трек(-а)?",
   "downloadUseAlbumArtistForFoldersAlbumSubtitle": "Папка названная в честь тега Альбома Артиста",
   "@notifDownloadingUpdate": {
     "description": "Notification title while downloading an app update",
@@ -5328,7 +5328,7 @@
   "actionSelectAll": "Выбрать все",
   "settingsDownloadNetworkSubtitle": "Выберите, какую сеть использовать для скачивания. Когда установлено значение только WiFi — скачивания через мобильную сеть будут приостановлены.",
   "downloadFolderOrganization": "Организация папок",
-  "tutorialWelcomeTip2": "Get FLAC quality audio from installed download extensions",
+  "tutorialWelcomeTip2": "Choose from the audio qualities offered by your download provider",
   "@tutorialWelcomeTip2": {
     "description": "Tutorial welcome tip 2"
   },
@@ -5384,7 +5384,7 @@
     "description": "Subtitle when all files access is enabled"
   },
   "extensionsSearchProvider": "Провайдер поиска",
-  "tutorialWelcomeDesc": "Давайте научимся скачивать свою любимую музыку в качестве без потерь. В этом кратком руководстве мы покажем вам основы.",
+  "tutorialWelcomeDesc": "Learn how to find music with extensions, choose the quality you want, and manage downloads in SpotiFLAC Mobile.",
   "selectionBatchConvertConfirmTitle": "Пакетная конвертация",
   "extensionMetadataProvider": "Провайдер метаданных",
   "queueDownloadedFileMissing": "Downloaded file missing",
@@ -5392,7 +5392,7 @@
   "@downloadAppleQqMultiPerson": {
     "description": "Setting for word-by-word multi-person lyrics from Apple Music and QQ Music"
   },
-  "tutorialWelcomeTip1": "Ищите через установленное расширение или вставьте поддерживаемую ссылку",
+  "tutorialWelcomeTip1": "Search with an installed extension or paste a supported music link",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
@@ -5521,7 +5521,7 @@
     "description": "Snackbar - lyrics saved to file"
   },
   "editMetadataFieldDiscTotal": "Disc Total",
-  "tutorialLibraryTip1": "Просмотр прогресса загрузки и очереди на вкладке Библиотека",
+  "tutorialLibraryTip1": "Manage active, pending, and completed downloads from the Library queue",
   "playlistsCount": "{count, plural, =1{1 playlist} other{{count} playlists}}",
   "downloadCreatePlaylistSourceFolderDisabled": "All tracks saved directly to download folder",
   "@downloadFallbackExtensionsSubtitle": {
@@ -5543,7 +5543,7 @@
   "@homeAlbumInfoUnavailable": {
     "description": "Snackbar when album info cannot be loaded"
   },
-  "trackReplayGain": "Rescan ReplayGain",
+  "trackReplayGain": "Пересканировать ReplayGain",
   "downloadSeparateSinglesFolder": "Отдельная папка для синглов",
   "trackAlbumArtist": "Исполнитель альбома",
   "qualityFlacLossless": "FLAC Lossless",
@@ -5610,7 +5610,7 @@
   "@audioAnalysisPeak": {
     "description": "Peak amplitude metric label"
   },
-  "optionsExtensionStoreSubtitle": "Show Repo tab in navigation",
+  "optionsExtensionStoreSubtitle": "Показывать вкладку репозитория в навигации",
   "settingsTitle": "Настройки",
   "@settingsAbout": {
     "description": "Settings section - app info"
@@ -5724,7 +5724,7 @@
   "@noTracksFoundForAlbum": {
     "description": "Empty state message when an album has no tracks"
   },
-  "previewPlay": "Play preview",
+  "previewPlay": "Предпросмотр проигрывания",
   "setupPermissionRequiredMessage": "Для оптимальной работы требуется разрешение {permissionType}. Вы можете изменить это позже в настройках.",
   "aboutVersion": "Версия",
   "qualityHiResFlacSubtitle": "24-бит / до 96кГц",
@@ -5766,7 +5766,7 @@
   "downloadFilterContributingDisabled": "Full Album Artist string used",
   "albumFolderArtistAlbumSinglesSubtitle": "Исполнитель/Альбом и Исполнитель/Сингл/",
   "collectionDeletePlaylistsMessage": "Delete {count} {count, plural, =1{playlist} other{playlists}}?",
-  "lyricsProvidersSaved": "Lyrics provider priority saved",
+  "lyricsProvidersSaved": "Приоритетный провайдер текстов песен сохранен",
   "@trackReplayGainFailed": {
     "description": "Snackbar message when ReplayGain scan/write fails"
   },
@@ -5785,15 +5785,15 @@
   "backupContentsSettings": "App settings",
   "trackLyricsEmbedded": "Текст успешно добавлен",
   "optionsUpdateChannelPreview": "Предварительные версии",
-  "collectionAddedToFavoriteArtists": "\"{artistName}\" added to Favorite Artists",
+  "collectionAddedToFavoriteArtists": "\"{artistName}\" добавлен в избранные исполнители",
   "libraryForceFullScan": "Полное сканирование",
   "snackbarProviderPrioritySaved": "Приоритет провайдера сохранён",
-  "collectionFavoriteArtistsEmptySubtitle": "Tap the heart on an artist page to keep them here",
+  "collectionFavoriteArtistsEmptySubtitle": "Нажмите на сердце на странице исполнителя, чтобы сохранить его здесь",
   "libraryBuiltInPlayerInfo": "The built-in player is a preview tool for checking local tracks quickly. Use an external music player for actual listening.",
   "extensionServiceStatus": "Service Status",
   "dateWeeksAgo": "{count} недель назад",
   "historyFilterSingles": "Синглы",
-  "tutorialSettingsTip2": "Настройте качество и формата аудиофайла по умолчанию",
+  "tutorialSettingsTip2": "Set quality, concurrency, filenames, and conversion preferences",
   "trackLyricsSaved": "Текст песни сохранен в {fileName}",
   "cacheClearAllConfirmTitle": "Очистить весь кэш?",
   "noTracksFoundForAlbum": "No tracks found for this album",
@@ -5808,7 +5808,7 @@
   "libraryScanCancelled": "Scan cancelled",
   "appearanceLanguage": "Язык приложения",
   "extensionsTitle": "Расширения",
-  "dialogImportPlaylistMessage": "Найдено {count} треков в CSV. Добавить их в очередь загрузки?",
+  "dialogImportPlaylistMessage": "Found {count} tracks in the playlist file. Add them to download queue?",
   "permissionNotification": "Notification",
   "notifUpdateReady": "Обновление готово",
   "lyricsModeDescription": "Выберите как сохранить тексты песен при скачивании",
@@ -5821,14 +5821,14 @@
   "notifDownloadCompleteCount": "Загрузка завершена ({completed}/{total})",
   "extensionsNoDownloadProvider": "Нет расширений с провайдером загрузки",
   "libraryFilterSortGenreAsc": "Жанр (А-Я)",
-  "trackReplayGainFailed": "Failed to add ReplayGain tags",
+  "trackReplayGainFailed": "Не удалось добавить теги ReplayGain",
   "collectionPlaylistRemoveCover": "Удалить обложку",
   "storeEmptyNoResults": "Расширения не найдены",
   "logIssueTrackNotFoundDescription": "Some tracks could not be found on download services",
   "editMetadataFieldComment": "Comment",
   "settingsMetadata": "Metadata",
   "settingsCache": "Хранилище и кэш",
-  "providerPriorityFallbackExtensionsHint": "Only enabled extensions with download-provider capability are listed here.",
+  "providerPriorityFallbackExtensionsHint": "Здесь перечислены только включенные расширения с возможностями поставщика загрузок.",
   "libraryFilterAll": "Все",
   "notifDownloadingUpdate": "Downloading SpotiFLAC Mobile v{version}",
   "extensionsProviderPrioritySection": "Приоритет провайдера",
@@ -5869,16 +5869,16 @@
   "extensionQualityOptions": "Параметры качества",
   "extensionVerificationBrowserSubtitleExternal": "Open challenges in the default browser first",
   "backupInvalidFile": "This file is not a valid SpotiFLAC backup",
-  "storeRepoDialogTitle": "Extension Repository",
+  "storeRepoDialogTitle": "Репозиторий расширения",
   "extensionsSearchProviderDescription": "Выберите, какой сервис использовать для поиска треков",
   "albumFolderAlbumOnly": "Только альбом",
   "nowPlayingOpenInExternalPlayer": "Open in external player",
   "cueSplitButton": "Разделить на Треки",
-  "updateRequiredTitle": "Update required",
+  "updateRequiredTitle": "Требуется обновление",
   "@updateRequiredTitle": {
     "description": "Title of the mandatory update dialog shown when the installed version is too old"
   },
-  "updateRequiredNotice": "This version is {count} releases behind and is no longer supported. Update to keep using the app.",
+  "updateRequiredNotice": "Эта версия {count} больше не поддерживается. Обновите, чтобы продолжить использовать приложение.",
   "@updateRequiredNotice": {
     "description": "Subtitle of the mandatory update dialog; explains why the dialog cannot be dismissed",
     "placeholders": {
@@ -5952,7 +5952,7 @@
       }
     }
   },
-  "selectionBatchConvertConfirmKeepOriginal": "Convert {count} {count, plural, =1{track} other{tracks}} to {format}?\n\nOriginal files will be kept and converted files will be added as separate library entries.",
+  "selectionBatchConvertConfirmKeepOriginal": "Конвертировать {count} {count, plural, one {трек} few {трека} many {треков} =1{трек} other{треков}} в {format}?\n\nОригинальные файлы будут храниться и преобразовываться как отдельные элементы библиотеки.",
   "@selectionBatchConvertConfirmKeepOriginal": {
     "description": "Batch conversion confirmation when source files will be preserved",
     "placeholders": {
@@ -6000,7 +6000,7 @@
   "@downloadQualityVariants": {
     "description": "Setting to retain multiple quality versions of the same track"
   },
-  "downloadQualityVariantsDescription": "Сохранять каждую версию качества; добавлять измеренное качество к имени файла, только если имя уже занято",
+  "downloadQualityVariantsDescription": "Keep every quality version; add its measured quality to the filename only when the name is already used",
   "@downloadQualityVariantsDescription": {
     "description": "Description for retaining multiple quality versions"
   },
@@ -6013,11 +6013,94 @@
   "queueResolvingDownloadStream": "Preparing audio stream...",
   "queueWaitingForVerification": "Waiting for verification...",
   "queueResumingAfterVerification": "Resuming after verification...",
-  "settingsSearchHint": "Поиск в настройках",
-  "settingsSearchNoResults": "Нет настроек, соответствующих запросу «{query}»",
-  "settingsGroupInterface": "Расширения и внешний вид",
-  "settingsGroupContent": "Контент и метаданные",
-  "settingsGroupDownloads": "Загрузки и файлы",
-  "settingsGroupSystem": "Система",
-  "settingsGroupHelp": "О приложении и поддержка"
+  "settingsSearchHint": "Search settings",
+  "settingsSearchNoResults": "No settings match \"{query}\"",
+  "settingsGroupInterface": "Extensions & appearance",
+  "settingsGroupContent": "Content & metadata",
+  "settingsGroupDownloads": "Downloads & files",
+  "settingsGroupSystem": "System",
+  "settingsGroupHelp": "About & support",
+  "collectionExportM3u": "Export as M3U8",
+  "collectionExportM3uDone": "Exported {exported} of {total} tracks",
+  "collectionExportM3uNone": "No downloaded files to export",
+  "collectionExportM3uFailed": "Export failed",
+  "trackOpenOn": "Open on...",
+  "trackOpenOnNoLinks": "No platform links found for this track.",
+  "libraryReviewDuplicates": "Review duplicates",
+  "libraryReviewDuplicatesSubtitle": "Find tracks stored more than once",
+  "duplicatesTitle": "Duplicates",
+  "duplicatesEmpty": "No duplicate tracks found.",
+  "duplicatesKeepBest": "Keep best",
+  "duplicatesKeepBestMessage": "Delete {count} lower-quality copies of \"{trackName}\"?",
+  "duplicatesDeleteCopyMessage": "Delete this copy of \"{trackName}\"?",
+  "downloadAutoConvert": "Auto-convert after download",
+  "downloadAutoConvertSubtitle": "Convert completed downloads to a smaller lossy format. The original is replaced only after conversion succeeds.",
+  "downloadAutoConvertFormat": "Output format",
+  "downloadAutoConvertFormatSubtitle": "Choose the lossy format used for newly completed downloads.",
+  "downloadAutoConvertBitrate": "Output quality",
+  "downloadAutoConvertBitrateSubtitle": "Higher bitrates preserve more detail but create larger files.",
+  "downloadAutoConvertMp3Subtitle": "Best compatibility across players and devices",
+  "downloadAutoConvertM4aSubtitle": "Efficient AAC audio in an M4A container",
+  "downloadAutoConvertOpusSubtitle": "Best efficiency for modern players",
+  "appearanceForceBlur": "Always use blur effects",
+  "appearanceForceBlurSubtitle": "Enable the navigation bar blur even on devices where it is off by default. May cost performance.",
+  "recentClearAllMessage": "Clear all recent activity? Download history and music files will not be deleted.",
+  "libraryAddFolder": "Add library folder",
+  "libraryAddFolderSubtitle": "Internal storage, SD card, SSD, or another external drive",
+  "librarySourceOnline": "Online",
+  "librarySourceOffline": "Offline. Reconnect the storage to restore these tracks",
+  "librarySourceDisabled": "Disabled",
+  "librarySourceScanCount": "{scanned} of {total} files scanned ({progress}%)",
+  "libraryExternalStorage": "External storage",
+  "libraryRemoveFolder": "Remove library folder",
+  "libraryRemoveFolderMessage": "Remove this folder and its indexed tracks from SpotiFLAC Mobile? Audio files on the storage will not be deleted.",
+  "trackReEnrichModeIsrc": "ISRC only",
+  "trackReEnrichModeIsrcSubtitle": "Find and add the recording identifier without changing other tags",
+  "trackReEnrichModeMissing": "Fill missing tags",
+  "trackReEnrichModeMissingSubtitle": "Keep existing values and fill only fields that are empty",
+  "trackReEnrichModeReplace": "Update selected tags",
+  "trackReEnrichModeReplaceSubtitle": "Choose which existing values may be replaced by online metadata",
+  "trackReEnrichFieldsTitle": "Tags to update",
+  "trackReEnrichReview": "Review changes",
+  "trackReEnrichReviewTitle": "Review metadata changes",
+  "trackReEnrichReviewSubtitle": "{changeCount} proposed changes across {trackCount} tracks",
+  "trackReEnrichNoChanges": "No metadata changes were found for the selected tracks.",
+  "trackReEnrichApplyChanges": "Apply changes",
+  "trackReEnrichRefreshOnline": "Refresh from online",
+  "editMetadataAutoFillSource": "Metadata source",
+  "editMetadataAutoFillSourceAutomatic": "Automatic (provider priority)",
+  "editMetadataAutoFillFind": "Find metadata",
+  "editMetadataAutoFillPreview": "Data from {source}",
+  "editMetadataAutoFillCoverAvailable": "Cover artwork available",
+  "editMetadataAutoFillApply": "Apply selected data",
+  "editMetadataAutoFillDoneFromSource": "Filled {count} {count, plural, =1{field} other{fields}} from {source}",
+  "queuePlaylistCount": "{count, plural, =1{1 playlist} other{{count} playlists}}",
+  "queueEmptyPlaylistsSubtitle": "Create a playlist to organize your tracks",
+  "libraryDefaultView": "Default view",
+  "libraryDefaultViewLastUsed": "Last used",
+  "audioAnalysisCutoffNotDetected": "Not detected",
+  "queueCancelledTitle": "Download cancelled",
+  "queueCancelledMessage": "This download was cancelled. Retry it or remove it from the queue.",
+  "trackCoverResolution": "Cover resolution",
+  "trackCoverResolutionHint": "Sets the longest edge when saved. Enlarging does not add image detail.",
+  "trackCoverResizeFailed": "The cover image could not be resized. Please try another size or image.",
+  "queueDownloadNext": "Download next",
+  "queueMoveUp": "Move up",
+  "queueMoveDown": "Move down",
+  "editMetadataMusicBrainzButton": "Fetch from MusicBrainz",
+  "editMetadataMusicBrainzFilled": "Updated from MusicBrainz",
+  "editMetadataMusicBrainzNothing": "Nothing found on MusicBrainz",
+  "editMetadataMusicBrainzNeedsIsrc": "Requires an ISRC tag",
+  "nowPlayingRepeatOff": "Repeat off",
+  "nowPlayingRepeatAll": "Repeat all",
+  "nowPlayingRepeatOne": "Repeat one",
+  "queueNetworkFailedOffline": "{count} downloads failed while offline",
+  "trackAlbumType": "Release Type",
+  "editMetadataFieldAlbumTypeHint": "Album, single, EP, compilation...",
+  "editMetadataFieldExplicit": "Explicit",
+  "editMetadataFieldExplicitHint": "Mark this track as containing explicit content",
+  "metadataExplicitValue": "Explicit",
+  "editMetadataFieldUpc": "UPC / Barcode",
+  "editMetadataFieldUpcHint": "Numeric UPC, EAN, or GTIN",
+  "libraryFilterMetadataMissingIsrc": "Missing ISRC"
 }
