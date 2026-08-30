@@ -69,6 +69,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
     final filePath = await ApkDownloader.downloadApk(
       url: apkUrl,
       version: widget.updateInfo.version,
+      expectedSha256: widget.updateInfo.apkSha256,
       onProgress: (received, total) {
         if (mounted) {
           setState(() {

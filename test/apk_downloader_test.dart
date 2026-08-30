@@ -1,0 +1,71 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:crypto/crypto.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:path/path.dart' as p;
+import 'package:spotiflac_android/services/apk_downloader.dart';
+
+void main() {
+  test('APK updater resumes a matching partial and verifies SHA-256', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'spotiflac-updater-test-',
+    );
+    addTearDown(() async {
+      if (await directory.exists()) await directory.delete(recursive: true);
+    });
+    final payload = <int>[
+      0x50,
+      0x4b,
+      0x03,
+      0x04,
+      ...List.generate(64, (i) => i),
+    ];
+    const version = '5.0.0';
+    const url = 'https://updates.example.test/SpotiFLAC-Mobile.apk';
+    final finalPath = p.join(directory.path, 'SpotiFLAC-Mobile-$version.apk');
+    final part = File('$finalPath.part');
+    await part.writeAsBytes(payload.sublist(0, 12));
+    await File(
+      '$finalPath.part.json',
+    ).writeAsString(jsonEncode({'url': url, 'etag': '"release-1"'}));
+
+    final client = MockClient((request) async {
+      expect(request.headers['range'], 'bytes=12-');
+      expect(request.headers['if-range'], '"release-1"');
+      return http.Response.bytes(
+        payload.sublist(12),
+        206,
+        headers: {
+          'content-range': 'bytes 12-${payload.length - 1}/${payload.length}',
+          'content-length': '${payload.length - 12}',
+          'etag': '"release-1"',
+        },
+        request: request,
+      );
+    });
+    var lastReceived = 0;
+    var lastTotal = 0;
+
+    final downloaded = await ApkDownloader.downloadApk(
+      url: url,
+      version: version,
+      expectedSha256: sha256.convert(payload).toString(),
+      client: client,
+      downloadDirectory: directory,
+      onProgress: (received, total) {
+        lastReceived = received;
+        lastTotal = total;
+      },
+    );
+
+    expect(downloaded, finalPath);
+    expect(await File(finalPath).readAsBytes(), payload);
+    expect(lastReceived, payload.length);
+    expect(lastTotal, payload.length);
+    expect(await part.exists(), isFalse);
+    expect(await File('$finalPath.part.json').exists(), isFalse);
+  });
+}

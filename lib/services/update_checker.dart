@@ -14,11 +14,13 @@ class _ApkAsset {
   final String name;
   final String url;
   final _ApkVariant variant;
+  final String? sha256;
 
   const _ApkAsset({
     required this.name,
     required this.url,
     required this.variant,
+    this.sha256,
   });
 }
 
@@ -27,6 +29,7 @@ class UpdateInfo {
   final String changelog;
   final String downloadUrl;
   final String? apkDownloadUrl;
+  final String? apkSha256;
   final DateTime publishedAt;
   final bool isPrerelease;
 
@@ -39,6 +42,7 @@ class UpdateInfo {
     required this.changelog,
     required this.downloadUrl,
     this.apkDownloadUrl,
+    this.apkSha256,
     required this.publishedAt,
     this.isPrerelease = false,
     this.releasesBehind = 0,
@@ -182,6 +186,7 @@ class UpdateChecker {
         changelog: body,
         downloadUrl: htmlUrl,
         apkDownloadUrl: apkUrl,
+        apkSha256: selectedAsset?.sha256,
         publishedAt: publishedAt,
         isPrerelease: isPrerelease,
         releasesBehind: releasesBehind,
@@ -251,11 +256,25 @@ class UpdateChecker {
       }
 
       apkAssets.add(
-        _ApkAsset(name: name, url: uri.toString(), variant: variant),
+        _ApkAsset(
+          name: name,
+          url: uri.toString(),
+          variant: variant,
+          sha256: _normalizeAssetDigest(assetMap['digest']?.toString()),
+        ),
       );
     }
 
     return apkAssets;
+  }
+
+  static String? _normalizeAssetDigest(String? digest) {
+    if (digest == null) return null;
+    final normalized = digest.trim().toLowerCase().replaceFirst(
+      RegExp(r'^sha256:'),
+      '',
+    );
+    return RegExp(r'^[a-f0-9]{64}$').hasMatch(normalized) ? normalized : null;
   }
 
   static _ApkVariant? _apkVariantFromName(String name) {
