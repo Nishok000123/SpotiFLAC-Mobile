@@ -33,7 +33,7 @@ dependencies:
   connectivity_plus: ^7.3.1
 
   # UI Components
-  cached_network_image: ^3.4.1
+  cached_network_image: ^4.0.0
   flutter_cache_manager: ^3.4.2
 
   # Material Expressive 3 / Dynamic Color
@@ -79,6 +79,10 @@ dev_dependencies:
   riverpod_lint: ^3.1.8
   json_serializable: ^6.14.1
   flutter_launcher_icons: ^0.14.4
+
+dependency_overrides:
+  # 2.12.1 generates a duplicate Kotlin codec declaration on Android.
+  video_player_android: 2.12.0
 
 flutter_launcher_icons:
   android: true
