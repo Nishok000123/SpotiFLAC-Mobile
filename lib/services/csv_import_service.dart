@@ -1,5 +1,8 @@
 import 'dart:convert';
+import 'dart:math' as math;
+
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/services/m3u_playlist_service.dart';
@@ -27,7 +30,7 @@ class CsvImportService {
             : _parseCsv(content);
 
         if (tracks.isNotEmpty) {
-          return await _enrichTracksMetadata(tracks, onProgress: onProgress);
+          return await enrichTracksMetadata(tracks, onProgress: onProgress);
         }
         return tracks;
       }
@@ -37,106 +40,159 @@ class CsvImportService {
     return [];
   }
 
-  static Future<List<Track>> _enrichTracksMetadata(
+  @visibleForTesting
+  static Future<List<Track>> enrichTracksMetadata(
     List<Track> tracks, {
     void Function(int current, int total)? onProgress,
+    Future<List<Map<String, dynamic>>> Function(String query, int limit)?
+    lookup,
+    int concurrency = 3,
   }) async {
-    _log.i('Enriching metadata for ${tracks.length} tracks from Deezer...');
-    final enrichedTracks = <Track>[];
-
-    for (int i = 0; i < tracks.length; i++) {
-      final track = tracks[i];
-      onProgress?.call(i + 1, tracks.length);
-
-      if (track.coverUrl == null || track.duration == 0) {
-        Map<String, dynamic>? trackData;
-
-        if (track.isrc != null && track.isrc!.isNotEmpty) {
-          try {
-            trackData = await PlatformBridge.searchDeezerByISRC(track.isrc!);
-            _log.d('ISRC enrichment success for ${track.name}');
-          } catch (e) {
-            _log.w(
-              'ISRC search failed for ${track.name}, trying text search...',
-            );
-          }
-        }
-
-        if (trackData == null) {
-          try {
-            final query = '${track.artistName} ${track.name}';
-            final searchResult = await PlatformBridge.customSearchWithExtension(
-              'deezer',
+    if (tracks.isEmpty) return const [];
+    final providerLookup =
+        lookup ??
+        (String query, int limit) =>
+            PlatformBridge.searchTracksWithMetadataProviders(
               query,
-              options: {'filter': 'track', 'limit': 5},
+              limit: limit,
+              includeExtensions: true,
             );
+    final results = List<Track?>.filled(tracks.length, null);
+    var nextIndex = 0;
+    var completed = 0;
+    final workerCount = math.min(math.max(1, concurrency), tracks.length);
 
-            if (searchResult.isNotEmpty) {
-              for (final resultMap in searchResult) {
-                final resultName =
-                    (resultMap['name'] as String?)?.toLowerCase() ?? '';
-                final trackNameLower = track.name.toLowerCase();
+    _log.i(
+      'Enriching ${tracks.length} imported tracks with configured metadata providers ($workerCount workers)',
+    );
 
-                if (resultName.contains(trackNameLower) ||
-                    trackNameLower.contains(resultName)) {
-                  trackData = resultMap;
-                  _log.d('Text search match for ${track.name}: $resultName');
-                  break;
-                }
-              }
-
-              if (trackData == null) {
-                trackData = searchResult.first;
-                _log.d('Using first search result for ${track.name}');
-              }
-            }
-          } catch (e) {
-            _log.w('Text search also failed for ${track.name}: $e');
-          }
-        }
-
-        if (trackData != null) {
-          final coverUrl = trackData['images'] as String?;
-          final durationMs = trackData['duration_ms'] as int? ?? 0;
-          final deezerIdRaw = trackData['spotify_id'] as String?;
-
-          enrichedTracks.add(
-            Track(
-              id: deezerIdRaw ?? track.id,
-              name: trackData['name'] as String? ?? track.name,
-              artistName: trackData['artists'] as String? ?? track.artistName,
-              albumName: trackData['album_name'] as String? ?? track.albumName,
-              albumArtist: trackData['album_artist'] as String?,
-              artistId: trackData['artist_id']?.toString(),
-              albumId: trackData['album_id']?.toString(),
-              coverUrl: coverUrl ?? track.coverUrl,
-              isrc: trackData['isrc'] as String? ?? track.isrc,
-              duration: durationMs > 0 ? durationMs ~/ 1000 : track.duration,
-              trackNumber:
-                  trackData['track_number'] as int? ?? track.trackNumber,
-              discNumber: trackData['disc_number'] as int? ?? track.discNumber,
-              releaseDate:
-                  trackData['release_date'] as String? ?? track.releaseDate,
-            ),
-          );
-
-          _log.d(
-            'Enriched: ${track.name} - cover: ${coverUrl != null}, duration: ${durationMs ~/ 1000}s',
-          );
-
-          if (i < tracks.length - 1) {
-            await Future<void>.delayed(const Duration(milliseconds: 100));
-          }
-          continue;
-        }
+    Future<void> worker() async {
+      while (true) {
+        final index = nextIndex++;
+        if (index >= tracks.length) return;
+        final track = tracks[index];
+        results[index] = await _enrichTrack(track, providerLookup);
+        completed++;
+        onProgress?.call(completed, tracks.length);
       }
-
-      enrichedTracks.add(track);
     }
 
-    _log.i('Enrichment complete: ${enrichedTracks.length} tracks');
-    return enrichedTracks;
+    await Future.wait(List.generate(workerCount, (_) => worker()));
+    final enriched = results.cast<Track>();
+    _log.i('Enrichment complete: ${enriched.length} tracks');
+    return enriched;
   }
+
+  static Future<Track> _enrichTrack(
+    Track track,
+    Future<List<Map<String, dynamic>>> Function(String query, int limit) lookup,
+  ) async {
+    if (track.coverUrl != null && track.duration > 0) return track;
+
+    Map<String, dynamic>? selected;
+    final isrc = track.isrc?.trim().toUpperCase() ?? '';
+    if (isrc.isNotEmpty) {
+      try {
+        final candidates = await lookup(isrc, 5);
+        selected = _bestCandidate(track, candidates, requireExactIsrc: true);
+      } catch (e) {
+        _log.w('ISRC provider lookup failed for ${track.name}: $e');
+      }
+    }
+
+    if (selected == null) {
+      try {
+        final candidates = await lookup('${track.artistName} ${track.name}', 5);
+        selected = _bestCandidate(track, candidates);
+      } catch (e) {
+        _log.w('Metadata provider lookup failed for ${track.name}: $e');
+      }
+    }
+    if (selected == null) return track;
+
+    final candidate = Track.fromBackendMap(selected);
+    _log.d(
+      'Enriched ${track.name} via ${selected['provider_id'] ?? selected['source'] ?? 'metadata provider'}',
+    );
+    return track.copyWith(
+      name: candidate.name.isEmpty ? track.name : candidate.name,
+      artistName: candidate.artistName.isEmpty
+          ? track.artistName
+          : candidate.artistName,
+      albumName: candidate.albumName.isEmpty
+          ? track.albumName
+          : candidate.albumName,
+      albumArtist: candidate.albumArtist,
+      artistId: candidate.artistId,
+      albumId: candidate.albumId,
+      coverUrl: candidate.coverUrl,
+      isrc: candidate.isrc,
+      duration: candidate.duration > 0 ? candidate.duration : track.duration,
+      trackNumber: candidate.trackNumber,
+      discNumber: candidate.discNumber,
+      totalDiscs: candidate.totalDiscs,
+      totalTracks: candidate.totalTracks,
+      releaseDate: candidate.releaseDate,
+      genre: candidate.genre,
+      label: candidate.label,
+      copyright: candidate.copyright,
+      composer: candidate.composer,
+      explicit: candidate.explicit,
+      upc: candidate.upc,
+    );
+  }
+
+  static Map<String, dynamic>? _bestCandidate(
+    Track track,
+    List<Map<String, dynamic>> candidates, {
+    bool requireExactIsrc = false,
+  }) {
+    if (candidates.isEmpty) return null;
+    final targetIsrc = track.isrc?.trim().toUpperCase() ?? '';
+    final targetName = _normalizeMatchText(track.name);
+    final targetArtist = _normalizeMatchText(track.artistName);
+    Map<String, dynamic>? best;
+    var bestScore = -1;
+    for (final candidate in candidates) {
+      final candidateIsrc =
+          candidate['isrc']?.toString().trim().toUpperCase() ?? '';
+      if (requireExactIsrc &&
+          (targetIsrc.isEmpty || candidateIsrc != targetIsrc)) {
+        continue;
+      }
+      var score = candidateIsrc.isNotEmpty && candidateIsrc == targetIsrc
+          ? 100
+          : 0;
+      final name = _normalizeMatchText(candidate['name']?.toString() ?? '');
+      final artist = _normalizeMatchText(
+        (candidate['artists'] ?? candidate['artist'])?.toString() ?? '',
+      );
+      if (targetName.isNotEmpty && name == targetName) {
+        score += 30;
+      } else if (targetName.isNotEmpty &&
+          name.isNotEmpty &&
+          (name.contains(targetName) || targetName.contains(name))) {
+        score += 15;
+      }
+      if (targetArtist.isNotEmpty && artist == targetArtist) {
+        score += 20;
+      } else if (targetArtist.isNotEmpty &&
+          artist.isNotEmpty &&
+          (artist.contains(targetArtist) || targetArtist.contains(artist))) {
+        score += 10;
+      }
+      if (score > bestScore) {
+        best = candidate;
+        bestScore = score;
+      }
+    }
+    return bestScore >= (requireExactIsrc ? 100 : 20) ? best : null;
+  }
+
+  static String _normalizeMatchText(String value) => value
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), ' ')
+      .trim();
 
   static List<Track> _parseCsv(String content) {
     final List<Track> tracks = [];
