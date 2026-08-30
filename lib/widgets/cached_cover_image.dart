@@ -254,13 +254,3 @@ void precacheCoverImage(BuildContext context, String? url) {
     context,
   );
 }
-
-int coverImageCacheExtent(
-  BuildContext context,
-  double logicalSize, {
-  int min = 64,
-  int max = 512,
-}) {
-  final dpr = MediaQuery.devicePixelRatioOf(context).clamp(1.0, 3.0).toDouble();
-  return (logicalSize * dpr).round().clamp(min, max).toInt();
-}

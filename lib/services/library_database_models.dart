@@ -240,8 +240,6 @@ class LocalLibrarySource {
 
 enum LocalLibrarySortMode { album, title, artist, latest, quality }
 
-enum LocalLibraryFilterMode { all, albums, singles }
-
 class LocalLibraryLookupIndex {
   final Set<String> isrcs;
   final Set<String> matchKeys;

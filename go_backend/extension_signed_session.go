@@ -36,13 +36,9 @@ const (
 )
 
 var (
-	pendingSignedSessionGrants   = make(map[string]string)
-	pendingSignedSessionGrantsMu sync.Mutex
-	signedSessionCoordinators    sync.Map
-	// signedSessionRetryWait is retained as a test hook for callers that used
-	// the old duration-only seam. Production waits use the context-aware hook
-	// below; a non-nil legacy hook short-circuits the delay in tests.
-	signedSessionRetryWait        func(time.Duration)
+	pendingSignedSessionGrants    = make(map[string]string)
+	pendingSignedSessionGrantsMu  sync.Mutex
+	signedSessionCoordinators     sync.Map
 	signedSessionRetryWaitContext = sleepRetry
 	signedSessionProviderWait     = sleepRetry
 	signedSessionRequestNow       = time.Now
@@ -653,22 +649,6 @@ func (r *extensionRuntime) signedSessionExchangeContext() (context.Context, cont
 func waitSignedSessionRetry(ctx context.Context, delay time.Duration) error {
 	if ctx == nil {
 		ctx = context.Background()
-	}
-	// Keep the old duration-only hook useful for existing package tests without
-	// allowing production to fall back to an uninterruptible time.Sleep. The
-	// default hook is nil; tests install an immediate recorder/no-op here.
-	if legacyWait := signedSessionRetryWait; legacyWait != nil {
-		done := make(chan struct{})
-		go func() {
-			legacyWait(delay)
-			close(done)
-		}()
-		select {
-		case <-done:
-			return nil
-		case <-ctx.Done():
-			return ctx.Err()
-		}
 	}
 	return signedSessionRetryWaitContext(ctx, delay)
 }

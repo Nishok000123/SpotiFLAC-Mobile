@@ -1144,9 +1144,6 @@ func TestExtensionRuntimeUtilityAPIs(t *testing.T) {
 	runtime.logInfo(goja.FunctionCall{Arguments: []goja.Value{vm.ToValue("info")}})
 	runtime.logWarn(goja.FunctionCall{Arguments: []goja.Value{vm.ToValue("warn")}})
 	runtime.logError(goja.FunctionCall{Arguments: []goja.Value{vm.ToValue("error")}})
-	if clean := runtime.sanitizeFilenameWrapper(goja.FunctionCall{Arguments: []goja.Value{vm.ToValue("A/B?")}}).String(); strings.ContainsAny(clean, "/?") {
-		t.Fatalf("sanitize wrapper = %q", clean)
-	}
 }
 
 func TestClassifySignedSessionExpiredAsVerification(t *testing.T) {

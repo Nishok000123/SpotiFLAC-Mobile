@@ -1836,12 +1836,13 @@ func TestExchangeSignedSessionGrant(t *testing.T) {
 		pendingSignedSessionGrantsMu.Lock()
 		pendingSignedSessionGrants = make(map[string]string)
 		pendingSignedSessionGrantsMu.Unlock()
-		previousWait := signedSessionRetryWait
+		previousWait := signedSessionRetryWaitContext
 		var waits []time.Duration
-		signedSessionRetryWait = func(delay time.Duration) {
+		signedSessionRetryWaitContext = func(_ context.Context, delay time.Duration) error {
 			waits = append(waits, delay)
+			return nil
 		}
-		t.Cleanup(func() { signedSessionRetryWait = previousWait })
+		t.Cleanup(func() { signedSessionRetryWaitContext = previousWait })
 
 		calls := 0
 		transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -1895,9 +1896,11 @@ func TestExchangeSignedSessionGrant(t *testing.T) {
 		pendingSignedSessionGrantsMu.Lock()
 		pendingSignedSessionGrants = make(map[string]string)
 		pendingSignedSessionGrantsMu.Unlock()
-		previousWait := signedSessionRetryWait
-		signedSessionRetryWait = func(time.Duration) {}
-		t.Cleanup(func() { signedSessionRetryWait = previousWait })
+		previousWait := signedSessionRetryWaitContext
+		signedSessionRetryWaitContext = func(context.Context, time.Duration) error {
+			return nil
+		}
+		t.Cleanup(func() { signedSessionRetryWaitContext = previousWait })
 
 		calls := 0
 		transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {

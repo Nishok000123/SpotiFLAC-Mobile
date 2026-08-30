@@ -118,16 +118,11 @@ func TestLifecycleTimeoutQuarantinesUnresponsiveCleanupVM(t *testing.T) {
 
 func TestSignedSessionGrantRetryHonorsCancellationAndReleasesCoordinator(t *testing.T) {
 	previousWait := signedSessionRetryWaitContext
-	previousLegacyWait := signedSessionRetryWait
-	signedSessionRetryWait = nil
 	signedSessionRetryWaitContext = func(ctx context.Context, _ time.Duration) error {
 		<-ctx.Done()
 		return ctx.Err()
 	}
-	t.Cleanup(func() {
-		signedSessionRetryWait = previousLegacyWait
-		signedSessionRetryWaitContext = previousWait
-	})
+	t.Cleanup(func() { signedSessionRetryWaitContext = previousWait })
 
 	var calls atomic.Int32
 	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {

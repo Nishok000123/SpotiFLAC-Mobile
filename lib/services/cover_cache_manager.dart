@@ -216,16 +216,4 @@ class CacheStats {
   final int totalSizeBytes;
 
   const CacheStats({required this.fileCount, required this.totalSizeBytes});
-
-  String get formattedSize {
-    if (totalSizeBytes < 1024) {
-      return '$totalSizeBytes B';
-    } else if (totalSizeBytes < 1024 * 1024) {
-      return '${(totalSizeBytes / 1024).toStringAsFixed(1)} KB';
-    } else if (totalSizeBytes < 1024 * 1024 * 1024) {
-      return '${(totalSizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    } else {
-      return '${(totalSizeBytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
-    }
-  }
 }

@@ -372,14 +372,6 @@ func (r *extensionRuntime) formatLogArgs(args []goja.Value) string {
 	return strings.Join(parts, " ")
 }
 
-func (r *extensionRuntime) sanitizeFilenameWrapper(call goja.FunctionCall) goja.Value {
-	if len(call.Arguments) < 1 {
-		return r.vm.ToValue("")
-	}
-	input := call.Arguments[0].String()
-	return r.vm.ToValue(sanitizeFilename(input))
-}
-
 func (r *extensionRuntime) RegisterGoBackendAPIs(vm *goja.Runtime) {
 	gobackendObj := vm.Get("gobackend")
 	if gobackendObj == nil || goja.IsUndefined(gobackendObj) {

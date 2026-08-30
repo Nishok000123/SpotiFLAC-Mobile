@@ -780,10 +780,6 @@ func (r *extensionRuntime) RegisterAPIs(vm *goja.Runtime) {
 	logObj.Set("error", r.logError)
 	vm.Set("log", logObj)
 
-	gobackendObj := vm.NewObject()
-	gobackendObj.Set("sanitizeFilename", r.sanitizeFilenameWrapper)
-	vm.Set("gobackend", gobackendObj)
-
 	vm.Set("fetch", r.fetchPolyfill)
 
 	vm.Set("atob", r.atobPolyfill)

@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotiflac_android/services/sqlite_helpers.dart' as sqlite;
+import 'package:spotiflac_android/utils/isrc_utils.dart' as isrc;
 import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/utils/path_match_keys.dart';
 
@@ -286,9 +287,7 @@ class HistoryDatabase {
   static String normalizeLookupText(String? value) =>
       sqlite.normalizeLookupText(value);
 
-  static String normalizeIsrc(String? value) {
-    return (value ?? '').trim().toUpperCase().replaceAll(RegExp(r'[-\s]'), '');
-  }
+  static String normalizeIsrc(String? value) => isrc.normalizeIsrc(value);
 
   static String normalizeSpotifyId(String? value) {
     return (value ?? '').trim().toLowerCase();
