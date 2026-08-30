@@ -436,6 +436,16 @@ class MusicPlayerHandler extends BaseAudioHandler
     }
   }
 
+  // Required on some Android builds because audio_session manages focus.
+  Future<void> _claimHardwareMediaButtons() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await AudioService.androidForceEnableMediaButtons();
+    } catch (e) {
+      _log.w('Failed to claim Android media-button routing: $e');
+    }
+  }
+
   AudioProcessingState _mapProcessingState(PlayerState state) {
     switch (state) {
       case PlayerState.playing:
@@ -957,6 +967,8 @@ class MusicPlayerHandler extends BaseAudioHandler
     // foreground window) so audio_service can start its foreground service
     // before the async source resolve below.
     _broadcastState(playerState: PlayerState.playing, loading: true);
+    await _claimHardwareMediaButtons();
+    if (!_isCurrentPlayRequest(generation, media)) return;
 
     final resolved = await _resolveSource(media);
     if (!_isCurrentPlayRequest(generation, media)) return;
@@ -1137,8 +1149,29 @@ class MusicPlayerHandler extends BaseAudioHandler
       return;
     }
     await _activateAudioSession();
+    await _claimHardwareMediaButtons();
     await _player.resume();
     _broadcastState(playerState: PlayerState.playing);
+  }
+
+  @override
+  Future<void> click([MediaButton button = MediaButton.media]) async {
+    _log.d('Hardware media button: ${button.name}');
+    switch (button) {
+      case MediaButton.media:
+        if (playbackState.value.playing) {
+          await pause();
+        } else {
+          await play();
+        }
+        break;
+      case MediaButton.next:
+        await skipToNext();
+        break;
+      case MediaButton.previous:
+        await skipToPrevious();
+        break;
+    }
   }
 
   @override
