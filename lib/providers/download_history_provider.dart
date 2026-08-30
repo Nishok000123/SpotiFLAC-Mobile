@@ -1064,6 +1064,23 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
     }
     await reloadFromStorage();
   }
+
+  /// Restores a large v2 backup without retaining the complete history in
+  /// Dart memory. SQLite writes are grouped to keep JNI/channel overhead low.
+  Future<void> restoreFromBackupStream(
+    Stream<Map<String, dynamic>> items,
+  ) async {
+    await _db.clearAll();
+    var batch = <Map<String, dynamic>>[];
+    await for (final item in items) {
+      batch.add(item);
+      if (batch.length < 500) continue;
+      await _db.upsertBatch(batch);
+      batch = <Map<String, dynamic>>[];
+    }
+    if (batch.isNotEmpty) await _db.upsertBatch(batch);
+    await reloadFromStorage();
+  }
 }
 
 final downloadHistoryProvider =

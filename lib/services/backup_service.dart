@@ -1,32 +1,29 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:spotiflac_android/constants/app_info.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 
-/// Parsed contents of a backup file.
+typedef BackupHistoryPageLoader =
+    Future<List<Map<String, dynamic>>> Function(int limit, int offset);
+
+/// Parsed contents of a backup file. Version 2 keeps large history and cover
+/// payloads on disk until restore consumes them.
 class BackupBundle {
   final int formatVersion;
   final String appVersion;
   final DateTime? createdAt;
-
-  /// Raw `AppSettings.toJson()` map, or null when not present.
   final Map<String, dynamic>? settings;
-
-  /// History items in `DownloadHistoryItem.toJson()` shape.
   final List<Map<String, dynamic>> history;
-
-  /// Collections in `LibraryCollectionsState.toJson()` shape
-  /// (wishlist / loved / playlists / favoriteArtists).
   final Map<String, dynamic> collections;
-
-  /// Playlist cover images keyed by playlist id: `{ id: { ext, data } }`.
   final Map<String, dynamic> playlistCovers;
-
-  /// Extensions section: `{ registry_url, items: [ {id, version, enabled, settings} ] }`.
   final Map<String, dynamic> extensions;
+  final String? _historyNdjsonPath;
+  final int? _historyCount;
+  final String? _temporaryDirectoryPath;
 
   const BackupBundle({
     required this.formatVersion,
@@ -37,11 +34,38 @@ class BackupBundle {
     required this.collections,
     required this.playlistCovers,
     required this.extensions,
-  });
+    String? historyNdjsonPath,
+    int? historyCount,
+    String? temporaryDirectoryPath,
+  }) : _historyNdjsonPath = historyNdjsonPath,
+       _historyCount = historyCount,
+       _temporaryDirectoryPath = temporaryDirectoryPath;
 
   bool get hasSettings => settings != null && settings!.isNotEmpty;
+  int get historyCount => _historyCount ?? history.length;
 
-  int get historyCount => history.length;
+  Stream<Map<String, dynamic>> streamHistory() async* {
+    if (_historyNdjsonPath == null) {
+      yield* Stream.fromIterable(history);
+      return;
+    }
+    await for (final line in File(
+      _historyNdjsonPath,
+    ).openRead().transform(utf8.decoder).transform(const LineSplitter())) {
+      if (line.trim().isEmpty) continue;
+      final decoded = jsonDecode(line);
+      if (decoded is Map) yield Map<String, dynamic>.from(decoded);
+    }
+  }
+
+  Future<void> cleanup() async {
+    final path = _temporaryDirectoryPath;
+    if (path == null || path.isEmpty) return;
+    try {
+      final directory = Directory(path);
+      if (await directory.exists()) await directory.delete(recursive: true);
+    } catch (_) {}
+  }
 
   int _collectionListCount(String key) {
     final value = collections[key];
@@ -59,7 +83,6 @@ class BackupBundle {
   }
 
   bool get hasExtensions => extensionCount > 0;
-
   bool get isEmpty =>
       !hasSettings &&
       historyCount == 0 &&
@@ -70,19 +93,23 @@ class BackupBundle {
       extensionCount == 0;
 }
 
-/// Builds and parses SpotiFLAC backup files (a single JSON document containing
-/// settings, download history and the user library).
 class BackupService {
   static final _log = AppLogger('BackupService');
 
   static const String magic = 'spotiflac-backup';
-  static const int formatVersion = 1;
-  static const String fileExtension = 'json';
+  static const int formatVersion = 2;
+  static const String fileExtension = 'sflbackup';
+  static const int _historyPageSize = 500;
+  static const int _maxMetadataBytes = 8 << 20;
+  static const int _maxHistoryBytes = 512 << 20;
+  static const int _maxCoverBytes = 20 << 20;
+  static const int _maxAllCoversBytes = 256 << 20;
 
   static String encode(Map<String, dynamic> envelope) =>
       const JsonEncoder.withIndent('  ').convert(envelope);
 
-  /// Builds the backup envelope written to disk.
+  /// Legacy JSON envelope retained so backups from earlier releases and unit
+  /// tests remain readable. New backups are written by [writeBackupArchive].
   static Map<String, dynamic> buildEnvelope({
     required Map<String, dynamic>? settings,
     required List<Map<String, dynamic>> history,
@@ -92,7 +119,7 @@ class BackupService {
   }) {
     return {
       'magic': magic,
-      'format_version': formatVersion,
+      'format_version': 1,
       'app': 'SpotiFLAC Mobile',
       'app_version': AppInfo.displayVersion,
       'created_at': DateTime.now().toIso8601String(),
@@ -106,29 +133,248 @@ class BackupService {
     };
   }
 
-  /// Writes [envelope] to a timestamped file under the app documents directory
-  /// and returns the created file.
-  static Future<File> writeBackupFile(Map<String, dynamic> envelope) async {
-    final dir = await getApplicationDocumentsDirectory();
-    final backupsDir = Directory(p.join(dir.path, 'backups'));
-    if (!await backupsDir.exists()) {
-      await backupsDir.create(recursive: true);
+  static Future<File> writeBackupArchive({
+    required Map<String, dynamic>? settings,
+    required BackupHistoryPageLoader loadHistoryPage,
+    required Map<String, dynamic> collections,
+    required Map<String, Map<String, String>> playlistCoverFiles,
+    required Map<String, dynamic> extensions,
+    Directory? outputDirectory,
+    Directory? temporaryDirectory,
+  }) async {
+    final output = await _newBackupFile(outputDirectory);
+    final tempRoot = temporaryDirectory ?? await getTemporaryDirectory();
+    final staging = await Directory(
+      p.join(
+        tempRoot.path,
+        'spotiflac_backup_${DateTime.now().microsecondsSinceEpoch}',
+      ),
+    ).create(recursive: true);
+    final historyFile = File(p.join(staging.path, 'history.ndjson'));
+    final metadataFile = File(p.join(staging.path, 'metadata.json'));
+    final partFile = File('${output.path}.part');
+    ZipFileEncoder? encoder;
+
+    try {
+      var historyCount = 0;
+      var offset = 0;
+      final historySink = historyFile.openWrite();
+      try {
+        while (true) {
+          final page = await loadHistoryPage(_historyPageSize, offset);
+          for (final item in page) {
+            historySink.writeln(jsonEncode(item));
+          }
+          historyCount += page.length;
+          offset += page.length;
+          if (page.length < _historyPageSize) break;
+        }
+        await historySink.flush();
+      } finally {
+        await historySink.close();
+      }
+
+      final coverManifest = <String, Map<String, String>>{};
+      var coverIndex = 0;
+      for (final entry in playlistCoverFiles.entries) {
+        final sourcePath = entry.value['path'] ?? '';
+        final source = File(sourcePath);
+        if (sourcePath.isEmpty || !await source.exists()) continue;
+        var ext = (entry.value['ext'] ?? p.extension(sourcePath)).toLowerCase();
+        if (!RegExp(r'^\.[a-z0-9]{1,8}$').hasMatch(ext)) ext = '.jpg';
+        final archiveName = 'covers/cover_${coverIndex++}$ext';
+        coverManifest[entry.key] = {'ext': ext, 'file': archiveName};
+      }
+
+      final metadata = {
+        'magic': magic,
+        'format_version': formatVersion,
+        'app': 'SpotiFLAC Mobile',
+        'app_version': AppInfo.displayVersion,
+        'created_at': DateTime.now().toIso8601String(),
+        'history_count': historyCount,
+        'data': {
+          'settings': settings,
+          'collections': collections,
+          'playlist_covers': coverManifest,
+          'extensions': extensions,
+        },
+      };
+      await metadataFile.writeAsString(jsonEncode(metadata), flush: true);
+
+      if (await partFile.exists()) await partFile.delete();
+      encoder = ZipFileEncoder()..create(partFile.path);
+      await encoder.addFile(metadataFile, 'metadata.json');
+      await encoder.addFile(historyFile, 'history.ndjson');
+      for (final entry in coverManifest.entries) {
+        final sourcePath = playlistCoverFiles[entry.key]?['path'];
+        if (sourcePath == null) continue;
+        await encoder.addFile(
+          File(sourcePath),
+          entry.value['file'],
+          ZipFileEncoder.store,
+        );
+      }
+      await encoder.close();
+      encoder = null;
+      if (await output.exists()) await output.delete();
+      await partFile.rename(output.path);
+      _log.i('Streaming backup written to ${output.path}');
+      return output;
+    } finally {
+      if (encoder != null) {
+        try {
+          await encoder.close();
+        } catch (_) {}
+      }
+      try {
+        if (await staging.exists()) await staging.delete(recursive: true);
+      } catch (_) {}
     }
-
-    final now = DateTime.now();
-    String two(int v) => v.toString().padLeft(2, '0');
-    final stamp =
-        '${now.year}${two(now.month)}${two(now.day)}_${two(now.hour)}${two(now.minute)}${two(now.second)}';
-    final fileName = 'spotiflac_backup_$stamp.$fileExtension';
-    final file = File(p.join(backupsDir.path, fileName));
-
-    await file.writeAsString(encode(envelope), flush: true);
-    _log.i('Backup written to ${file.path}');
-    return file;
   }
 
-  /// Parses and validates a backup file's contents. Returns null when the
-  /// content is not a recognizable SpotiFLAC backup.
+  static Future<File> _newBackupFile([Directory? outputDirectory]) async {
+    final dir = outputDirectory ?? await getApplicationDocumentsDirectory();
+    final backupsDir =
+        outputDirectory ?? Directory(p.join(dir.path, 'backups'));
+    await backupsDir.create(recursive: true);
+    final now = DateTime.now();
+    String two(int value) => value.toString().padLeft(2, '0');
+    final stamp =
+        '${now.year}${two(now.month)}${two(now.day)}_'
+        '${two(now.hour)}${two(now.minute)}${two(now.second)}';
+    return File(
+      p.join(backupsDir.path, 'spotiflac_mobile_backup_$stamp.$fileExtension'),
+    );
+  }
+
+  /// Legacy JSON writer retained for compatibility with callers outside the
+  /// settings UI. It no longer defines the default backup format.
+  static Future<File> writeBackupFile(Map<String, dynamic> envelope) async {
+    final output = await _newBackupFile();
+    await output.writeAsString(encode(envelope), flush: true);
+    return output;
+  }
+
+  static Future<BackupBundle?> parseFile(
+    String path, {
+    Directory? temporaryDirectory,
+  }) async {
+    final file = File(path);
+    final header = await file
+        .openRead(0, 4)
+        .fold<List<int>>(<int>[], (bytes, chunk) => bytes..addAll(chunk));
+    final isZip =
+        header.length == 4 &&
+        header[0] == 0x50 &&
+        header[1] == 0x4b &&
+        header[2] == 0x03 &&
+        header[3] == 0x04;
+    return isZip
+        ? _parseArchive(file, temporaryDirectory: temporaryDirectory)
+        : parse(await file.readAsString());
+  }
+
+  static Future<BackupBundle?> _parseArchive(
+    File file, {
+    Directory? temporaryDirectory,
+  }) async {
+    InputFileStream? input;
+    Archive? archive;
+    Directory? extractionDir;
+    try {
+      input = InputFileStream(file.path);
+      archive = ZipDecoder().decodeStream(input);
+      final metadataEntry = archive.find('metadata.json');
+      final historyEntry = archive.find('history.ndjson');
+      if (metadataEntry == null ||
+          metadataEntry.size > _maxMetadataBytes ||
+          historyEntry == null ||
+          historyEntry.size > _maxHistoryBytes) {
+        return null;
+      }
+      final rootRaw = jsonDecode(utf8.decode(metadataEntry.content));
+      if (rootRaw is! Map) return null;
+      final root = Map<String, dynamic>.from(rootRaw);
+      if (root['magic'] != magic || root['format_version'] != formatVersion) {
+        return null;
+      }
+      final dataRaw = root['data'];
+      if (dataRaw is! Map) return null;
+      final data = Map<String, dynamic>.from(dataRaw);
+
+      final tempRoot = temporaryDirectory ?? await getTemporaryDirectory();
+      extractionDir = await Directory(
+        p.join(
+          tempRoot.path,
+          'spotiflac_restore_${DateTime.now().microsecondsSinceEpoch}',
+        ),
+      ).create(recursive: true);
+      final historyPath = p.join(extractionDir.path, 'history.ndjson');
+      final historyOutput = OutputFileStream(historyPath);
+      historyEntry.writeContent(historyOutput);
+      historyOutput.closeSync();
+
+      final restoredCovers = <String, dynamic>{};
+      final coverManifest = data['playlist_covers'];
+      if (coverManifest is Map) {
+        var index = 0;
+        var extractedCoverBytes = 0;
+        for (final manifestEntry in coverManifest.entries) {
+          if (manifestEntry.value is! Map) continue;
+          final cover = Map<String, dynamic>.from(manifestEntry.value as Map);
+          final archiveName = cover['file']?.toString() ?? '';
+          if (!archiveName.startsWith('covers/') ||
+              archiveName.contains('..')) {
+            continue;
+          }
+          final archiveEntry = archive.find(archiveName);
+          if (archiveEntry == null || archiveEntry.size > _maxCoverBytes) {
+            continue;
+          }
+          if (extractedCoverBytes + archiveEntry.size > _maxAllCoversBytes) {
+            break;
+          }
+          var ext = cover['ext']?.toString() ?? '.jpg';
+          if (!RegExp(r'^\.[a-z0-9]{1,8}$').hasMatch(ext)) ext = '.jpg';
+          final coverPath = p.join(extractionDir.path, 'cover_${index++}$ext');
+          final output = OutputFileStream(coverPath);
+          archiveEntry.writeContent(output);
+          output.closeSync();
+          extractedCoverBytes += archiveEntry.size;
+          restoredCovers[manifestEntry.key.toString()] = {
+            'ext': ext,
+            'path': coverPath,
+          };
+        }
+      }
+
+      return BackupBundle(
+        formatVersion: formatVersion,
+        appVersion: root['app_version'] as String? ?? '',
+        createdAt: DateTime.tryParse(root['created_at'] as String? ?? ''),
+        settings: _mapOrNull(data['settings']),
+        history: const [],
+        historyNdjsonPath: historyPath,
+        historyCount: (root['history_count'] as num?)?.toInt() ?? 0,
+        collections: _mapOrEmpty(data['collections']),
+        playlistCovers: restoredCovers,
+        extensions: _mapOrEmpty(data['extensions']),
+        temporaryDirectoryPath: extractionDir.path,
+      );
+    } catch (e) {
+      _log.w('Backup archive parse failed: $e');
+      if (extractionDir != null) {
+        try {
+          await extractionDir.delete(recursive: true);
+        } catch (_) {}
+      }
+      return null;
+    } finally {
+      if (input != null) await input.close();
+    }
+  }
+
   static BackupBundle? parse(String content) {
     dynamic decoded;
     try {
@@ -137,65 +383,31 @@ class BackupService {
       _log.w('Backup parse failed: not valid JSON ($e)');
       return null;
     }
-
-    if (decoded is! Map) {
-      _log.w('Backup parse failed: root is not an object');
-      return null;
-    }
-
+    if (decoded is! Map) return null;
     final root = Map<String, dynamic>.from(decoded);
-    if (root['magic'] != magic) {
-      _log.w('Backup parse failed: magic marker missing');
-      return null;
-    }
-
-    final dataRaw = root['data'];
-    if (dataRaw is! Map) {
-      _log.w('Backup parse failed: missing data section');
-      return null;
-    }
-    final data = Map<String, dynamic>.from(dataRaw);
-
-    Map<String, dynamic>? settings;
-    final settingsRaw = data['settings'];
-    if (settingsRaw is Map) {
-      settings = Map<String, dynamic>.from(settingsRaw);
-    }
-
+    if (root['magic'] != magic || root['data'] is! Map) return null;
+    final data = Map<String, dynamic>.from(root['data'] as Map);
     final history = <Map<String, dynamic>>[];
-    final historyRaw = data['history'];
-    if (historyRaw is List) {
-      for (final item in historyRaw) {
-        if (item is Map) {
-          history.add(Map<String, dynamic>.from(item));
-        }
+    if (data['history'] is List) {
+      for (final item in data['history'] as List) {
+        if (item is Map) history.add(Map<String, dynamic>.from(item));
       }
     }
-
-    final collectionsRaw = data['collections'];
-    final collections = collectionsRaw is Map
-        ? Map<String, dynamic>.from(collectionsRaw)
-        : <String, dynamic>{};
-
-    final coversRaw = data['playlist_covers'];
-    final playlistCovers = coversRaw is Map
-        ? Map<String, dynamic>.from(coversRaw)
-        : <String, dynamic>{};
-
-    final extensionsRaw = data['extensions'];
-    final extensions = extensionsRaw is Map
-        ? Map<String, dynamic>.from(extensionsRaw)
-        : <String, dynamic>{};
-
     return BackupBundle(
       formatVersion: (root['format_version'] as num?)?.toInt() ?? 1,
       appVersion: root['app_version'] as String? ?? '',
       createdAt: DateTime.tryParse(root['created_at'] as String? ?? ''),
-      settings: settings,
+      settings: _mapOrNull(data['settings']),
       history: history,
-      collections: collections,
-      playlistCovers: playlistCovers,
-      extensions: extensions,
+      collections: _mapOrEmpty(data['collections']),
+      playlistCovers: _mapOrEmpty(data['playlist_covers']),
+      extensions: _mapOrEmpty(data['extensions']),
     );
   }
+
+  static Map<String, dynamic>? _mapOrNull(dynamic value) =>
+      value is Map ? Map<String, dynamic>.from(value) : null;
+
+  static Map<String, dynamic> _mapOrEmpty(dynamic value) =>
+      value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
 }

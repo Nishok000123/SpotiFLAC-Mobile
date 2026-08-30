@@ -1145,6 +1145,34 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
     return covers;
   }
 
+  /// Returns cover file references for the streaming ZIP backup format. The
+  /// backup writer reads each file directly instead of materializing every
+  /// image as base64 in memory.
+  Future<Map<String, Map<String, String>>> exportPlaylistCoverFiles() async {
+    await _ensureLoaded();
+    final covers = <String, Map<String, String>>{};
+    final playlists = List<UserPlaylistCollection>.of(state.playlists);
+    for (final playlist in playlists) {
+      var path = playlist.coverImagePath;
+      if (path == null || path.isEmpty) continue;
+      try {
+        if (await _playlistCoverNeedsNormalization(path)) {
+          await setPlaylistCover(playlist.id, path);
+          path = state.playlistById(playlist.id)?.coverImagePath ?? path;
+        }
+        final file = File(path);
+        if (!await file.exists() || await file.length() == 0) continue;
+        covers[playlist.id] = {
+          'ext': p.extension(path).toLowerCase(),
+          'path': path,
+        };
+      } catch (_) {
+        // Skip unreadable cover; the rest of the backup still succeeds.
+      }
+    }
+    return covers;
+  }
+
   /// Replaces all collections (wishlist, loved, playlists, favorite artists)
   /// with the contents of a backup. [collectionsJson] uses the
   /// [LibraryCollectionsState.toJson] shape; [coverImages] is the map produced
@@ -1169,15 +1197,21 @@ class LibraryCollectionsNotifier extends Notifier<LibraryCollectionsState> {
             : null;
         if (id != null && coverEntry is Map) {
           final data = coverEntry['data'] as String?;
+          final restoredPath = coverEntry['path'] as String?;
           final ext = (coverEntry['ext'] as String?) ?? '.jpg';
-          if (data != null && data.isNotEmpty) {
+          if ((data != null && data.isNotEmpty) ||
+              (restoredPath != null && restoredPath.isNotEmpty)) {
             try {
               final sourcePath = p.join(
                 coversDir.path,
                 '.$id.restore${ext.startsWith('.') ? ext : '.$ext'}',
               );
               final source = File(sourcePath);
-              await source.writeAsBytes(base64Decode(data), flush: true);
+              if (restoredPath != null && restoredPath.isNotEmpty) {
+                await File(restoredPath).copy(source.path);
+              } else {
+                await source.writeAsBytes(base64Decode(data!), flush: true);
+              }
               try {
                 newCoverPath = await _normalizePlaylistCoverFile(
                   id,

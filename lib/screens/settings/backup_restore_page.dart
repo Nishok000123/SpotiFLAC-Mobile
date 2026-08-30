@@ -38,23 +38,21 @@ class _BackupRestorePageState extends ConsumerState<BackupRestorePage> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       final settings = ref.read(settingsProvider).toJson();
-      final history = await HistoryDatabase.instance.getAll();
       final collectionsNotifier = ref.read(libraryCollectionsProvider.notifier);
       final collections = await collectionsNotifier.exportCollections();
-      final covers = await collectionsNotifier.exportPlaylistCovers();
+      final covers = await collectionsNotifier.exportPlaylistCoverFiles();
       final extensions = await ref
           .read(extensionProvider.notifier)
           .exportBackup(includeSecrets: _includeSecrets);
 
-      final envelope = BackupService.buildEnvelope(
+      final file = await BackupService.writeBackupArchive(
         settings: settings,
-        history: history,
+        loadHistoryPage: (limit, offset) =>
+            HistoryDatabase.instance.getAll(limit: limit, offset: offset),
         collections: collections,
-        playlistCovers: covers,
+        playlistCoverFiles: covers,
         extensions: extensions,
       );
-
-      final file = await BackupService.writeBackupFile(envelope);
 
       messenger.showSnackBar(SnackBar(content: Text(l10n.backupCreated)));
 
@@ -74,29 +72,37 @@ class _BackupRestorePageState extends ConsumerState<BackupRestorePage> {
     final l10n = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
 
-    String? content;
+    BackupBundle? bundle;
     try {
       final picked = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['json', BackupService.fileExtension],
       );
       if (picked == null) return;
-      content = utf8.decode(await picked.readAsBytes());
+      final path = picked.path;
+      bundle = path != null
+          ? await BackupService.parseFile(path)
+          : BackupService.parse(utf8.decode(await picked.readAsBytes()));
     } catch (e) {
       _log.e('Failed to read backup file: $e');
       messenger.showSnackBar(SnackBar(content: Text(l10n.backupInvalidFile)));
       return;
     }
 
-    final bundle = BackupService.parse(content);
     if (bundle == null) {
       messenger.showSnackBar(SnackBar(content: Text(l10n.backupInvalidFile)));
       return;
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      await bundle.cleanup();
+      return;
+    }
     final confirmed = await _confirmRestore(bundle);
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !mounted) {
+      await bundle.cleanup();
+      return;
+    }
 
     setState(() => _isImporting = true);
     try {
@@ -107,7 +113,7 @@ class _BackupRestorePageState extends ConsumerState<BackupRestorePage> {
       }
       await ref
           .read(downloadHistoryProvider.notifier)
-          .restoreFromBackup(bundle.history);
+          .restoreFromBackupStream(bundle.streamHistory());
       await ref
           .read(libraryCollectionsProvider.notifier)
           .restoreFromBackup(
@@ -141,6 +147,7 @@ class _BackupRestorePageState extends ConsumerState<BackupRestorePage> {
       _log.e('Failed to restore backup: $e', e, stack);
       messenger.showSnackBar(SnackBar(content: Text(l10n.backupRestoreFailed)));
     } finally {
+      await bundle.cleanup();
       if (mounted) setState(() => _isImporting = false);
     }
   }
