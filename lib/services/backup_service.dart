@@ -98,7 +98,7 @@ class BackupService {
 
   static const String magic = 'spotiflac-backup';
   static const int formatVersion = 2;
-  static const String fileExtension = 'sflbackup';
+  static const String fileExtension = 'sflb';
   static const int _historyPageSize = 500;
   static const int _maxMetadataBytes = 8 << 20;
   static const int _maxHistoryBytes = 512 << 20;
