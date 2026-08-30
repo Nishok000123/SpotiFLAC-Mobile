@@ -465,6 +465,18 @@
   "@aboutSjdonadoDesc": {
     "description": "Credit description for sjdonado"
   },
+  "aboutUnituneDesc": "Open-source music link resolver by Flaze, used for cross-platform fallback matching.",
+  "@aboutUnituneDesc": {
+    "description": "Credit for the UniTune resolver"
+  },
+  "aboutMusicBrainzDesc": "Open music database maintained by MetaBrainz and its community, used for recording cross-references.",
+  "@aboutMusicBrainzDesc": {
+    "description": "Credit for the MusicBrainz database"
+  },
+  "aboutSquiglyDesc": "Universal music link service by Liam Macmillan, used as a final cross-platform resolver fallback.",
+  "@aboutSquiglyDesc": {
+    "description": "Credit for the Squigly resolver"
+  },
   "aboutAppDescription": "Search music metadata, manage extensions, and organize your library.",
   "@aboutAppDescription": {
     "description": "App description in header card"

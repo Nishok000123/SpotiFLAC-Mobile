@@ -105,6 +105,29 @@ class AboutPage extends StatelessWidget {
                     showDivider: true,
                   ),
                   _AboutSettingsItem(
+                    icon: Icons.swap_horiz_rounded,
+                    title: 'UniTune',
+                    subtitle: context.l10n.aboutUnituneDesc,
+                    onTap: () => _launchUrl(
+                      'https://github.com/FlazeIGuess/unitune-api',
+                    ),
+                    showDivider: true,
+                  ),
+                  _AboutSettingsItem(
+                    icon: Icons.library_music_outlined,
+                    title: 'MusicBrainz',
+                    subtitle: context.l10n.aboutMusicBrainzDesc,
+                    onTap: () => _launchUrl('https://musicbrainz.org'),
+                    showDivider: true,
+                  ),
+                  _AboutSettingsItem(
+                    icon: Icons.hub_outlined,
+                    title: 'Squigly',
+                    subtitle: context.l10n.aboutSquiglyDesc,
+                    onTap: () => _launchUrl('https://squigly.link'),
+                    showDivider: true,
+                  ),
+                  _AboutSettingsItem(
                     icon: Icons.lyrics_outlined,
                     title: 'Paxsenix',
                     subtitle: context.l10n.aboutPaxsenixSubtitle,

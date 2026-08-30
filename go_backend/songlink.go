@@ -15,6 +15,7 @@ import (
 
 type SongLinkClient struct {
 	client              *http.Client
+	fallbackResolver    platformFallbackResolver
 	requestFlight       singleflight.Group
 	resolutionFlight    singleflight.Group
 	availabilityFlight  singleflight.Group
@@ -60,7 +61,8 @@ var (
 func NewSongLinkClient() *SongLinkClient {
 	songLinkClientOnce.Do(func() {
 		globalSongLinkClient = &SongLinkClient{
-			client: NewMetadataHTTPClient(SongLinkTimeout),
+			client:           NewMetadataHTTPClient(SongLinkTimeout),
+			fallbackResolver: defaultPlatformResolverFallbacks,
 		}
 	})
 	return globalSongLinkClient
@@ -105,8 +107,9 @@ func (s *SongLinkClient) resolveTrackPlatforms(inputURL string) (map[string]song
 }
 
 // resolveTrackPlatformsWithIDHS keeps cross-platform lookups available when
-// SongLink is rate-limited or unavailable. IDHS accepts the same source URL and
-// returns a smaller but still useful set of verified platform links.
+// SongLink is rate-limited or unavailable. The established IDHS fallback keeps
+// priority; UniTune, MusicBrainz, and Squigly are only consulted when IDHS also
+// fails or returns no usable platform links.
 func (s *SongLinkClient) resolveTrackPlatformsWithIDHS(inputURL string) (map[string]songLinkPlatformLink, error) {
 	value, err, _ := s.resolutionFlight.Do(inputURL, func() (any, error) {
 		return s.resolveTrackPlatformsWithIDHSUncoalesced(inputURL)
@@ -125,26 +128,46 @@ func (s *SongLinkClient) resolveTrackPlatformsWithIDHSUncoalesced(inputURL strin
 
 	LogWarn("SongLink", "SongLink failed for %s, trying IDHS fallback: %v", inputURL, songLinkErr)
 	idhsResult, idhsErr := NewIDHSClient().Search(inputURL, nil)
-	if idhsErr != nil {
-		return nil, fmt.Errorf("SongLink failed: %v; IDHS failed: %w", songLinkErr, idhsErr)
+	if idhsErr == nil {
+		links = make(map[string]songLinkPlatformLink)
+		for _, link := range idhsResult.Links {
+			if link.NotAvailable || strings.TrimSpace(link.URL) == "" {
+				continue
+			}
+			platform := songLinkPlatformKeyFromIDHS(link.Type)
+			if directURL := directResolverURL(platform, link.URL); directURL != "" {
+				links[platform] = songLinkPlatformLink{URL: directURL}
+			}
+		}
+		if len(links) > 0 {
+			LogInfo("SongLink", "IDHS fallback returned %d platform links", len(links))
+			return links, nil
+		}
+		idhsErr = fmt.Errorf("IDHS returned no direct platform links")
 	}
 
-	links = make(map[string]songLinkPlatformLink)
-	for _, link := range idhsResult.Links {
-		if link.NotAvailable || strings.TrimSpace(link.URL) == "" {
-			continue
-		}
-		platform := songLinkPlatformKeyFromIDHS(link.Type)
-		if platform != "" {
-			links[platform] = songLinkPlatformLink{URL: strings.TrimSpace(link.URL)}
-		}
+	LogWarn("SongLink", "IDHS failed for %s, trying additional resolvers: %v", inputURL, idhsErr)
+	fallbackResolver := s.fallbackResolver
+	if fallbackResolver == nil {
+		fallbackResolver = defaultPlatformResolverFallbacks
 	}
-	if len(links) == 0 {
-		return nil, fmt.Errorf("SongLink failed: %v; IDHS returned no platform links", songLinkErr)
+	ctx, cancel := context.WithTimeout(context.Background(), resolverFallbackTimeout)
+	defer cancel()
+	additional, additionalErr := fallbackResolver.Resolve(ctx, inputURL, resolverMetadata{})
+	if additionalErr == nil && len(additional.Links) > 0 {
+		LogInfo("SongLink", "Additional resolver fallback returned %d platform links", len(additional.Links))
+		return additional.Links, nil
+	}
+	if additionalErr == nil {
+		additionalErr = fmt.Errorf("additional resolvers returned no platform links")
 	}
 
-	LogInfo("SongLink", "IDHS fallback returned %d platform links", len(links))
-	return links, nil
+	return nil, fmt.Errorf(
+		"SongLink failed: %v; IDHS failed: %v; additional resolvers failed: %w",
+		songLinkErr,
+		idhsErr,
+		additionalErr,
+	)
 }
 
 func songLinkPlatformKeyFromIDHS(platform string) string {
