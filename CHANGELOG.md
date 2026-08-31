@@ -1,5 +1,83 @@
 # Changelog
 
+## [4.9.5] - 2026-08-31
+
+### Added
+
+- **Direct Lyrics Sources**: KuGou, QQ Music, and Genius now fetch lyrics directly from their source services instead of relying on the Paxsenix proxy. Direct QQ Music results provide line-synced LRC, while Genius pages preserve every verse and chorus container.
+- **Sleep Timer**: Stop playback after a selected duration or when the current track ends.
+- **Resilient Backup Format**: Backups now use the compact `.sflb` extension and a versioned, streaming ZIP format that avoids loading the complete library and cover archive into memory.
+- **Resolver Fallbacks**: Expanded cross-platform link resolution with additional fallback services while retiring endpoints that are no longer available.
+- **Library Metadata Tools**: Filter tracks by lyrics availability and perform additional metadata maintenance directly from the Library.
+
+### Fixed
+
+- **Download Reliability**: Restored reliable provider fallback retries, prevented stale cancellation state from aborting new attempts, preserved finalized metadata and Library quality labels, and reduced duplicate transfer work.
+- **Library Availability**: Recover from transient file-availability races without showing misleading missing-file indicators; stabilize completed-download artwork, labels, and playback actions.
+- **Library Scrolling**: Prevent multi-touch and pinch recognition from unexpectedly interrupting vertical grid scrolling.
+- **Playback Controls**: Keep Library play/pause actions synchronized with the internal player and handle headset media controls correctly.
+- **Download Notifications**: Hide meaningless `0.0 / 0.0 MB` totals when a provider cannot report the transfer size.
+- **Search Compatibility**: Cache unavailable SQLite FTS5 capability and continue with the LIKE fallback without repeatedly attempting unsupported virtual tables.
+- **Android Build Compatibility**: Keep internal lyrics search result types out of the gomobile API so Android ARM bindings generate successfully.
+
+### Improved
+
+- **Download Pipeline**: Stream concurrent native queue work, reduce progress wakeups and log churn, reuse prepared extension context, and harden resumable transfer handling.
+- **Extension Runtime**: Coalesce signed-session lifecycle work, refresh provider health outside the download path, reduce JavaScript bridge overhead, quarantine stalled runtimes, and bound native queue state.
+- **Network Performance**: Improve IPv4/IPv6 connection fallback, DNS validation, HTTP connection reuse, retry draining, and rate-limit coordination.
+- **Library & Metadata Performance**: Use staged database updates, incremental scan reconciliation, coalesced MusicBrainz/Deezer lookups, and fewer redundant metadata probes and rebuilds.
+- **Playback Performance**: Stream SAF tracks through descriptor leases instead of retaining many complete temporary song copies.
+- **Lyrics Performance**: Coalesce identical provider requests, cancel losing lookups, and persist positive and negative results.
+- **Playlist Import**: Batch metadata enrichment with bounded concurrency instead of resolving every imported track sequentially.
+- **Extension Store**: Coalesce registry requests, use conditional responses, and avoid holding cache locks during network activity.
+- **App Updater**: Resume interrupted APK downloads, publish completed files atomically, and verify SHA-256 checksums when a release provides one.
+- **Codebase & APK Size**: Removed generated and duplicated code, tightened Android R8 keep rules, and standardized supported ARM release outputs.
+- **Diagnostics**: Removed noisy navigation and high-frequency progress logs while retaining actionable failures and performance data.
+- **Dependencies & Localization**: Updated Flutter, Go, Android, and native dependencies and merged the latest Crowdin translations.
+
+### Security
+
+- **Extension Sandbox**: Prevent raw FFmpeg argument/path escapes, restrict extension file and network access, and harden DNS resolution against private-network bypasses.
+- **Credential Protection**: Encrypt extension storage with a platform-provided master key and strengthen OAuth callback state with short-lived, single-use nonces.
+- **Network & Memory Safety**: Bound cover and response downloads, redact JSON credentials, cookies, and signed URLs from exported logs, and update Go to 1.26.6 security fixes.
+- **Release Workflow**: Validate manually supplied versions and pin sensitive GitHub Actions dependencies.
+
+---
+
+## [4.9.0] - 2026-08-25
+
+### Added
+
+- **Metadata Editing & Identity**: Edit release tags, write release identity fields, render UPC barcodes, preserve provider metadata, and add provider traceability and download-attribution comments.
+- **Cover and Quality Details**: Inspect embedded-cover dimensions and resolution, retain the best available artwork, and choose combined or bit-depth/sample-rate quality labels.
+- **Automatic Conversion**: Optionally convert downloaded lossy sources automatically while preserving the selected SAF destination.
+- **Explicit Track Badges**: Show explicit-content badges in track titles without duplicating the indicator across metadata sources or conversions.
+- **Library Storage Folders**: Scan and manage multiple storage folders, with live scan progress and readable SAF locations.
+- **Playlist Actions**: Play tracks from playlist results and keep the source provider ID available for recent playlists.
+- **Log Export Tools**: Copy selected diagnostic log entries directly from the log viewer.
+
+### Fixed
+
+- **Download Queue Recovery**: Restore user-paused items, recover batches after worker timeouts, resume short clean EOFs, and unblock the queue after verification cancellation.
+- **Download Storage & File Naming**: Preserve the selected SAF destination, defer unsafe background starts, normalize MP4 audio extensions according to the actual codec, preserve retained files during duplicate cleanup, and keep iOS security-scoped download-folder bookmarks.
+- **Provider Matching**: Accept matching tracks across releases, match by primary artist, preserve collaboration albums, and retain source release fields during enrichment and conversion.
+- **Metadata and Lyrics**: Honor provider priority and the selected lyrics extension during autofill, normalize Genius responses, and support batch metadata review with verification prompts.
+- **Library Stability**: Keep folder actions discoverable, restore live scan counts, clear recent activity permanently, and batch SAF orphan inspection without losing retained records.
+- **Audio Analysis**: Bound spectrogram memory, reject false low spectral cutoffs, and avoid unsupported analysis results.
+- **Playback and UI**: Improve timed-lyrics highlighting, align track badges and metadata layouts, and update tutorial and Library play-button copy.
+- **iOS Scanning**: Correctly handle library scan-count output on iOS.
+- **Startup Compatibility**: Prevent concurrent database startup locks.
+- **Accessibility**: Add semantic labels to interactive controls.
+
+### Improved
+
+- **Library Performance**: Stream library scans and optimize queue/history queries to reduce memory use and refresh work on large libraries.
+- **Metadata Pipeline**: Move cover-resolution selection into extensions and prioritize configurable extension settings during enrichment.
+- **Download Metadata**: Preserve final provider metadata through verification and conversion so Library records remain grouped and complete.
+- **Dependencies**: Update the Flutter and Go dependency sets used by the release.
+
+---
+
 ## [4.8.5] - 2026-08-01
 
 ### Added

@@ -78,7 +78,7 @@ func fetchKugouLyricsBody(httpClient *http.Client, endpoint string, params url.V
 	return body, nil
 }
 
-func (c *KugouLyricsClient) SearchSong(
+func (c *KugouLyricsClient) searchSong(
 	trackName,
 	artistName string,
 	durationSec float64,
@@ -170,7 +170,7 @@ func (c *KugouLyricsClient) FetchLyrics(
 	artistName string,
 	durationSec float64,
 ) (*LyricsResponse, error) {
-	match, err := c.SearchSong(trackName, artistName, durationSec)
+	match, err := c.searchSong(trackName, artistName, durationSec)
 	if err != nil {
 		return nil, err
 	}

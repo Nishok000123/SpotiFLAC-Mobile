@@ -84,7 +84,7 @@ func fetchQQMusicBody(client *http.Client, endpoint string, params url.Values) (
 	return body, nil
 }
 
-func (c *QQMusicClient) SearchSong(trackName, artistName string, durationSec float64) (*qqMusicSearchResult, error) {
+func (c *QQMusicClient) searchSong(trackName, artistName string, durationSec float64) (*qqMusicSearchResult, error) {
 	query := strings.TrimSpace(trackName + " " + artistName)
 	if query == "" {
 		return nil, lyricsNotFoundErrorf("empty search query")
@@ -156,7 +156,7 @@ func decodeQQMusicLyric(raw string) (string, error) {
 }
 
 func (c *QQMusicClient) FetchLyrics(trackName, artistName string, durationSec float64, _ bool) (*LyricsResponse, error) {
-	match, err := c.SearchSong(trackName, artistName, durationSec)
+	match, err := c.searchSong(trackName, artistName, durationSec)
 	if err != nil {
 		return nil, err
 	}
