@@ -35,6 +35,8 @@ func downloadCoverToMemory(coverURL string) ([]byte, error) {
 
 const (
 	embeddedCoverJPEGQuality = 88
+    // Bound Library cover cache dimensions.
+	libraryCoverMaxDimension = 800
 	maxCoverDownloadBytes    = 24 * 1024 * 1024
 	// Decoding arbitrary provider artwork allocates roughly four bytes per
 	// pixel. Refuse pathological images before Decode so a malicious extension

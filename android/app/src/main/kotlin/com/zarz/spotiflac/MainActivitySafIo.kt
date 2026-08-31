@@ -263,29 +263,36 @@ internal fun MainActivity.readAudioMetadataFromUri(
                         val obj = JSONObject(metadataJson)
                         val filenameFallback = obj.optBoolean("metadataFromFilename", false)
                         if (!obj.has("error") && !filenameFallback) {
-                            procSelfFdReadable = true
+                            synchronized(procSelfFdStateLock) {
+                                procSelfFdReadable = true
+                                procSelfFdFallbacks = 0
+                            }
                             return obj
                         }
-                        // Go could not read real metadata from the fd path –
-                        // remember so we skip the attempt for remaining files.
-                        if (procSelfFdReadable == null) {
-                            procSelfFdReadable = false
-                            android.util.Log.d(
-                                "SpotiFLAC",
-                                "Direct /proc/self/fd read not usable on this device, " +
-                                    "using temp-file fallback for remaining files",
-                            )
+                        // One filename fallback should not disable descriptors for all files.
+                        synchronized(procSelfFdStateLock) {
+                            procSelfFdFallbacks++
+                            if (procSelfFdFallbacks >= 3 && procSelfFdReadable == null) {
+                                procSelfFdReadable = false
+                                android.util.Log.d(
+                                    "SpotiFLAC",
+                                    "Direct /proc/self/fd read not usable for this provider, " +
+                                        "using temp-file fallback",
+                                )
+                            }
                         }
                     }
                 }
             } catch (e: Exception) {
-                if (procSelfFdReadable == null) {
-                    procSelfFdReadable = false
-                    android.util.Log.d(
-                        "SpotiFLAC",
-                        "Direct /proc/self/fd read not usable on this device, " +
-                            "using temp-file fallback for remaining files",
-                    )
+                synchronized(procSelfFdStateLock) {
+                    if (procSelfFdReadable == null) {
+                        procSelfFdReadable = false
+                        android.util.Log.d(
+                            "SpotiFLAC",
+                            "Direct /proc/self/fd read not usable on this device, " +
+                                "using temp-file fallback for remaining files",
+                        )
+                    }
                 }
             }
         }

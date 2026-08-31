@@ -37,8 +37,10 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.RandomAccessFile
 import java.security.MessageDigest
 import java.util.Locale
+import java.util.concurrent.Executors
 
 // SAF library-scan subsystem: tree walking, incremental diff, CUE resolution,
 // and scan-progress state shared with the progress stream in MainActivity.
@@ -55,7 +57,10 @@ internal fun MainActivity.resetSafScanProgress() {
             safScanProgress = MainActivity.SafScanProgress()
         }
         // Allow re-probing /proc/self/fd readability on every new scan session.
-        procSelfFdReadable = null
+        synchronized(procSelfFdStateLock) {
+            procSelfFdReadable = null
+            procSelfFdFallbacks = 0
+        }
     }
 
 internal fun MainActivity.updateSafScanProgress(block: (MainActivity.SafScanProgress) -> Unit) {
@@ -412,6 +417,59 @@ internal fun MainActivity.inspectSafFiles(requestsJson: String): String {
     return output.toString()
 }
 
+private fun safScanCheckpointPath(outputPath: String): String = "$outputPath.state"
+
+private fun loadSafScanCheckpoint(path: String): MutableMap<String, Long> {
+    val checkpoint = File(path)
+    if (!checkpoint.exists()) return mutableMapOf()
+    val entries = mutableMapOf<String, Long>()
+    try {
+        checkpoint.forEachLine(Charsets.UTF_8) { line ->
+            val separator = line.indexOf('\t')
+            if (separator <= 0) return@forEachLine
+            val uri = line.substring(0, separator)
+            val modified = line.substring(separator + 1).toLongOrNull() ?: return@forEachLine
+            entries[uri] = modified
+        }
+    } catch (e: Exception) {
+        android.util.Log.w("SpotiFLAC", "SAF scan: failed reading checkpoint: ${e.message}")
+    }
+    return entries
+}
+
+private fun countSafScanRows(path: String): Int {
+    val output = File(path)
+    if (!output.exists()) return 0
+    return try {
+        output.useLines(Charsets.UTF_8) { lines -> lines.count { it.isNotBlank() } }
+    } catch (e: Exception) {
+        android.util.Log.w("SpotiFLAC", "SAF scan: failed counting existing rows: ${e.message}")
+        0
+    }
+}
+
+private fun repairSafScanOutput(path: String) {
+    val output = File(path)
+    if (!output.exists()) return
+    try {
+        RandomAccessFile(output, "rw").use { file ->
+            var position = file.length() - 1
+            while (position >= 0) {
+                file.seek(position)
+                if (file.readByte().toInt() == '\n'.code) {
+                    file.setLength(position + 1)
+                    return
+                }
+                position--
+            }
+            // No complete line survived the interruption.
+            file.setLength(0)
+        }
+    } catch (e: Exception) {
+        android.util.Log.w("SpotiFLAC", "SAF scan: failed repairing output: ${e.message}")
+    }
+}
+
 
     /**
      * Extract the audio filename referenced by a CUE sheet file.
@@ -568,13 +626,14 @@ internal fun MainActivity.scanSafTree(
         fun emptyResult(): Any {
             if (ndjsonOutputPath == null) return "[]"
             File(ndjsonOutputPath).writeText("", Charsets.UTF_8)
+            try { File(safScanCheckpointPath(ndjsonOutputPath)).delete() } catch (_: Exception) {}
             return mapOf("path" to ndjsonOutputPath, "count" to 0)
         }
 
         fun cancelledResult(): Any {
             updateSafScanProgress { it.isComplete = true }
             if (ndjsonOutputPath == null) return "[]"
-            try { File(ndjsonOutputPath).delete() } catch (_: Exception) {}
+            // Preserve partial output so the next scan can resume.
             throw java.util.concurrent.CancellationException("SAF library scan cancelled")
         }
 
@@ -675,10 +734,43 @@ internal fun MainActivity.scanSafTree(
         // its serialized string would otherwise hold the whole payload on the
         // Java heap several times over.
         val spill = if (ndjsonOutputPath == null) this.SpillJsonWriter() else null
-        val ndjsonWriter = ndjsonOutputPath?.let {
-            File(it).bufferedWriter(Charsets.UTF_8, 64 * 1024)
+        val outputPath = ndjsonOutputPath
+        val checkpointPath = outputPath?.let(::safScanCheckpointPath)
+        val checkpoint = if (checkpointPath != null) {
+            val outputFile = File(requireNotNull(outputPath))
+            val checkpointFile = File(checkpointPath)
+            outputFile.parentFile?.mkdirs()
+            // Discard stale output that has no checkpoint.
+            if (outputFile.exists() && !checkpointFile.exists()) {
+                try { outputFile.delete() } catch (_: Exception) {}
+            } else if (!outputFile.exists() && checkpointFile.exists()) {
+                try { checkpointFile.delete() } catch (_: Exception) {}
+            }
+            repairSafScanOutput(outputFile.absolutePath)
+            loadSafScanCheckpoint(checkpointPath)
+        } else {
+            mutableMapOf()
         }
-        var resultCount = 0
+        val checkpointWriter = checkpointPath?.let {
+            FileOutputStream(File(it), true).bufferedWriter(Charsets.UTF_8)
+        }
+        val ndjsonWriter = outputPath?.let {
+            FileOutputStream(File(it), true).bufferedWriter(Charsets.UTF_8)
+        }
+        var resultCount = outputPath?.let(::countSafScanRows) ?: 0
+        fun checkpointed(uri: String, lastModified: Long): Boolean =
+            checkpoint[uri] == lastModified
+
+        fun recordCheckpoint(uri: String, lastModified: Long) {
+            if (checkpointWriter == null || uri.isBlank()) return
+            checkpoint[uri] = lastModified
+            checkpointWriter.write(uri)
+            checkpointWriter.write('\t'.code)
+            checkpointWriter.write(lastModified.toString())
+            checkpointWriter.newLine()
+            checkpointWriter.flush()
+        }
+
         fun putResult(obj: JSONObject) {
             if (ndjsonWriter != null) {
                 ndjsonWriter.write(obj.toString())
@@ -791,6 +883,15 @@ internal fun MainActivity.scanSafTree(
             }
         }
 
+        data class SafAudioScanOutcome(
+            val uri: String,
+            val name: String,
+            val lastModified: Long,
+            val metadata: JSONObject?,
+        )
+
+        val pendingAudio = mutableListOf<Triple<DocumentFile, String, Long>>()
+        // Skip resumable and CUE entries before parallel reads.
         for ((doc, _) in audioFiles) {
             if (safScanCancel) {
                 ndjsonWriter?.close()
@@ -798,7 +899,14 @@ internal fun MainActivity.scanSafTree(
                 return cancelledResult()
             }
 
-            if (cueReferencedAudioUris.contains(doc.uri.toString())) {
+            val stableUri = doc.uri.toString()
+            val lastModified = try { doc.lastModified() } catch (_: Exception) { 0L }
+            if (checkpointed(stableUri, lastModified) ||
+                cueReferencedAudioUris.contains(stableUri)
+            ) {
+                if (!checkpointed(stableUri, lastModified)) {
+                    recordCheckpoint(stableUri, lastModified)
+                }
                 scanned++
                 val pct = scanned.toDouble() / totalItems.toDouble() * 100.0
                 updateSafScanProgress {
@@ -807,43 +915,89 @@ internal fun MainActivity.scanSafTree(
                 }
                 continue
             }
+            pendingAudio.add(Triple(doc, stableUri, lastModified))
+        }
 
-            val name = try { doc.name ?: "" } catch (_: Exception) { "" }
-            updateSafScanProgress {
-                it.currentFile = name
-            }
+        // Bound parallelism to limit SAF full-copy memory and I/O.
+        val workerCount = 2
+        val executor = Executors.newFixedThreadPool(workerCount)
+        try {
+            for (batch in pendingAudio.chunked(workerCount * 2)) {
+                if (safScanCancel) {
+                    ndjsonWriter?.close()
+                    spill?.abandon()
+                    return cancelledResult()
+                }
 
-            val ext = name.substringAfterLast('.', "").lowercase(Locale.ROOT)
-            val fallbackExt = if (ext.isNotBlank()) ".${ext}" else null
-            val lastModified = try { doc.lastModified() } catch (_: Exception) { 0L }
-            val stableUri = doc.uri.toString()
-            val coverCacheKey = buildLibraryCoverCacheKey(stableUri, lastModified)
-            val metadataObj = readAudioMetadataFromUri(
-                doc.uri,
-                name,
-                fallbackExt,
-                coverCacheKey,
-            )
-            if (metadataObj == null) {
-                errors++
-            } else {
-                try {
-                    metadataObj.put("id", buildStableLibraryId(stableUri))
-                    metadataObj.put("filePath", stableUri)
-                    metadataObj.put("fileModTime", lastModified)
-                    putResult(metadataObj)
-                } catch (_: Exception) {
-                    errors++
+                val futures = batch.map { (doc, stableUri, lastModified) ->
+                    executor.submit<SafAudioScanOutcome> {
+                        val name = try { doc.name ?: "" } catch (_: Exception) { "" }
+                        val ext = name.substringAfterLast('.', "").lowercase(Locale.ROOT)
+                        val fallbackExt = if (ext.isNotBlank()) ".${ext}" else null
+                        val coverCacheKey = buildLibraryCoverCacheKey(stableUri, lastModified)
+                        val metadata = try {
+                            readAudioMetadataFromUri(
+                                doc.uri,
+                                name,
+                                fallbackExt,
+                                coverCacheKey,
+                            )
+                        } catch (e: Exception) {
+                            android.util.Log.w(
+                                "SpotiFLAC",
+                                "SAF scan: metadata read failed for $stableUri: ${e.message}",
+                            )
+                            null
+                        }
+                        SafAudioScanOutcome(stableUri, name, lastModified, metadata)
+                    }
+                }
+
+                for (future in futures) {
+                    if (safScanCancel) {
+                        futures.forEach { it.cancel(true) }
+                        ndjsonWriter?.close()
+                        spill?.abandon()
+                        return cancelledResult()
+                    }
+
+                    val outcome = try {
+                        future.get()
+                    } catch (e: Exception) {
+                        errors++
+                        null
+                    }
+                    if (outcome != null) {
+                        updateSafScanProgress { it.currentFile = outcome.name }
+                        val metadataObj = outcome.metadata
+                        if (metadataObj == null) {
+                            errors++
+                        } else {
+                            try {
+                                metadataObj.put("id", buildStableLibraryId(outcome.uri))
+                                metadataObj.put("filePath", outcome.uri)
+                                metadataObj.put("fileModTime", outcome.lastModified)
+                                putResult(metadataObj)
+                                // Flush before recording the checkpoint to avoid losing the row.
+                                ndjsonWriter?.flush()
+                                recordCheckpoint(outcome.uri, outcome.lastModified)
+                            } catch (_: Exception) {
+                                errors++
+                            }
+                        }
+                    }
+
+                    scanned++
+                    val pct = scanned.toDouble() / totalItems.toDouble() * 100.0
+                    updateSafScanProgress {
+                        it.scannedFiles = scanned
+                        it.errorCount = errors
+                        it.progressPct = pct
+                    }
                 }
             }
-
-            scanned++
-            val pct = scanned.toDouble() / totalItems.toDouble() * 100.0
-            updateSafScanProgress {
-                it.scannedFiles = scanned
-                it.errorCount = errors
-                it.progressPct = pct
-            }
+        } finally {
+            executor.shutdownNow()
         }
 
         updateSafScanProgress {
@@ -853,16 +1007,16 @@ internal fun MainActivity.scanSafTree(
 
         if (ndjsonWriter != null) {
             ndjsonWriter.close()
-            return mapOf("path" to ndjsonOutputPath, "count" to resultCount)
+            checkpointWriter?.close()
+            return mapOf("path" to outputPath, "count" to resultCount)
         }
         spill!!.raw(if (resultCount == 0) "[]" else "]")
         return spill.result()
         } catch (e: Exception) {
             try { ndjsonWriter?.close() } catch (_: Exception) {}
+            try { checkpointWriter?.close() } catch (_: Exception) {}
             spill?.abandon()
-            if (ndjsonOutputPath != null) {
-                try { File(ndjsonOutputPath).delete() } catch (_: Exception) {}
-            }
+            // Preserve partial output for resume.
             throw e
         }
     }

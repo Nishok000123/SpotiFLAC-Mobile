@@ -50,6 +50,11 @@ class LibraryScanNDJSONFile {
     try {
       if (await file.exists()) await file.delete();
     } catch (_) {}
+    // Remove the resumable scan checkpoint after ingestion.
+    try {
+      final checkpoint = File('${file.path}.state');
+      if (await checkpoint.exists()) await checkpoint.delete();
+    } catch (_) {}
   }
 }
 
@@ -2120,10 +2125,21 @@ class PlatformBridge {
     required Map<String, dynamic> arguments,
     bool Function()? isCancelled,
   }) async {
-    final tempDir = await getTemporaryDirectory();
+    // Stable support-directory path lets native SAF scans resume after process death.
+    final scanDir = await getApplicationSupportDirectory();
+    await scanDir.create(recursive: true);
+    final identity = jsonEncode(<String, dynamic>{
+      'method': method,
+      'arguments': arguments,
+    });
+    var hash = 0x811c9dc5;
+    for (final byte in utf8.encode(identity)) {
+      hash ^= byte;
+      hash = (hash * 0x01000193) & 0xffffffff;
+    }
     final output = File(
-      '${tempDir.path}${Platform.pathSeparator}'
-      'library_scan_${DateTime.now().microsecondsSinceEpoch}.ndjson',
+      '${scanDir.path}${Platform.pathSeparator}'
+      'library_scan_${hash.toRadixString(16).padLeft(8, '0')}.ndjson',
     );
     try {
       if (isCancelled?.call() == true) {
@@ -2158,9 +2174,7 @@ class PlatformBridge {
       }
       return LibraryScanNDJSONFile(file: file, expectedCount: count);
     } catch (_) {
-      try {
-        if (await output.exists()) await output.delete();
-      } catch (_) {}
+      // Keep partial output; native SAF scan resumes from its sidecar.
       rethrow;
     }
   }

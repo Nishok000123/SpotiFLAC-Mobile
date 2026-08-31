@@ -373,6 +373,15 @@ func saveLibraryCoverDataToCache(cacheDir, cacheKey string, imageData []byte, mi
 	if len(imageData) == 0 {
 		return "", fmt.Errorf("cover data is empty")
 	}
+	// Cap cached Library artwork while preserving unsupported formats.
+	if resized, changed, err := resizeCoverForEmbedding(imageData, libraryCoverMaxDimension); err == nil {
+		if changed {
+			imageData = resized
+			mimeType = embeddedCoverMIME(imageData)
+		}
+	} else {
+		GoLog("[LibraryScan] Cover resize skipped for %s: %v\n", cacheKey, err)
+	}
 	if err := os.MkdirAll(cacheDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create cache dir: %w", err)
 	}
