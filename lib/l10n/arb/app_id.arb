@@ -5494,7 +5494,7 @@
   "librarySourceLocal": "Local",
   "backupContentsExtensions": "{count, plural, =1{1 extension} other{{count} extensions}}",
   "sectionService": "Layanan",
-  "lyricsProviderQqMusicDesc": "QQ Music (good for Chinese songs, via proxy)",
+  "lyricsProviderQqMusicDesc": "QQ Music (cocok untuk lagu berbahasa Mandarin, API langsung)",
   "@lyricsProviderQqMusicDesc": {
     "description": "Description for QQ Music provider"
   },

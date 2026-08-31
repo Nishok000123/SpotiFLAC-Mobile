@@ -220,6 +220,9 @@ func lyricsSourceUsesPaxsenix(source string) bool {
 		return false
 	}
 	if strings.HasPrefix(s, "lrclib") ||
+		strings.HasPrefix(s, "kugou direct") ||
+		strings.HasPrefix(s, "qq music direct") ||
+		strings.HasPrefix(s, "genius direct") ||
 		strings.HasPrefix(s, "extension:") ||
 		strings.HasPrefix(s, "heuristic") {
 		return false

@@ -25,10 +25,6 @@ type YouTubeLyricsClient struct {
 	httpClient *http.Client
 }
 
-type KugouLyricsClient struct {
-	httpClient *http.Client
-}
-
 type GeniusLyricsClient struct {
 	httpClient *http.Client
 }
@@ -45,13 +41,6 @@ type youtubeLyricsSearchResult struct {
 	Title    string `json:"title"`
 	Author   string `json:"author"`
 	Duration string `json:"duration"`
-}
-
-type kugouLyricsSearchResult struct {
-	Hash     string  `json:"hash"`
-	Title    string  `json:"title"`
-	Artist   string  `json:"artist"`
-	Duration float64 `json:"duration"`
 }
 
 type geniusSearchResponse struct {
@@ -88,10 +77,6 @@ func NewDeezerLyricsClient() *DeezerLyricsClient {
 
 func NewYouTubeLyricsClient() *YouTubeLyricsClient {
 	return &YouTubeLyricsClient{httpClient: NewMetadataHTTPClient(15 * time.Second)}
-}
-
-func NewKugouLyricsClient() *KugouLyricsClient {
-	return &KugouLyricsClient{httpClient: NewMetadataHTTPClient(15 * time.Second)}
 }
 
 func NewGeniusLyricsClient() *GeniusLyricsClient {
@@ -433,59 +418,6 @@ func (c *YouTubeLyricsClient) FetchLyrics(trackName, artistName string, duration
 	return parsePaxsenixLyricsPayload(raw, "YouTube", false)
 }
 
-func (c *KugouLyricsClient) SearchSong(trackName, artistName string, durationSec float64) (string, error) {
-	query := strings.TrimSpace(trackName + " " + artistName)
-	if query == "" {
-		return "", lyricsNotFoundErrorf("empty search query")
-	}
-
-	params := url.Values{}
-	params.Set("q", query)
-	raw, err := fetchPaxsenixBody(c.httpClient, "https://lyrics.paxsenix.org/kugou/search", params)
-	if err != nil {
-		return "", fmt.Errorf("kugou search failed: %w", err)
-	}
-
-	var results []kugouLyricsSearchResult
-	if err := json.Unmarshal([]byte(raw), &results); err != nil {
-		return "", fmt.Errorf("failed to decode kugou search: %w", err)
-	}
-	best := selectBestKugouLyricsSearchResult(results, trackName, artistName, durationSec)
-	if best == nil || strings.TrimSpace(best.Hash) == "" {
-		return "", lyricsNotFoundErrorf("no songs found on kugou")
-	}
-	return strings.TrimSpace(best.Hash), nil
-}
-
-func selectBestKugouLyricsSearchResult(results []kugouLyricsSearchResult, trackName, artistName string, durationSec float64) *kugouLyricsSearchResult {
-	best := selectBestLyricsCandidate(len(results), trackName, artistName, durationSec, func(i int) (string, string, float64, bool) {
-		result := &results[i]
-		ok := lyricsSearchTitlesMatch(result.Title, trackName, false) &&
-			lyricsSearchArtistsMatch(result.Artist, artistName) &&
-			lyricsSearchDurationMatches(result.Duration, durationSec)
-		return result.Title, result.Artist, result.Duration, ok
-	})
-	if best < 0 {
-		return nil
-	}
-	return &results[best]
-}
-
-func (c *KugouLyricsClient) FetchLyrics(trackName, artistName string, durationSec float64) (*LyricsResponse, error) {
-	hash, err := c.SearchSong(trackName, artistName, durationSec)
-	if err != nil {
-		return nil, err
-	}
-
-	params := url.Values{}
-	params.Set("id", hash)
-	raw, err := fetchPaxsenixBody(c.httpClient, "https://lyrics.paxsenix.org/kugou/lyrics", params)
-	if err != nil {
-		return nil, fmt.Errorf("kugou lyrics fetch failed: %w", err)
-	}
-	return parsePaxsenixLyricsPayload(raw, "Kugou", false)
-}
-
 func (c *GeniusLyricsClient) SearchSong(trackName, artistName string, durationSec float64) (string, error) {
 	query := strings.TrimSpace(trackName + " " + artistName)
 	if query == "" {
@@ -544,18 +476,7 @@ func (c *GeniusLyricsClient) FetchLyrics(trackName, artistName string, durationS
 	if err != nil {
 		return nil, err
 	}
-
-	params := url.Values{}
-	params.Set("url", geniusURL)
-	// The legacy v1 contract can report success with an empty lyrics string.
-	// v2 keeps the same string payload shape while using the maintained
-	// normalized Genius extractor.
-	params.Set("v", "2")
-	raw, err := fetchPaxsenixBody(c.httpClient, "https://lyrics.paxsenix.org/genius/lyrics", params)
-	if err != nil {
-		return nil, fmt.Errorf("genius lyrics fetch failed: %w", err)
-	}
-	return parsePaxsenixLyricsPayload(raw, "Genius", false)
+	return c.fetchLyricsFromPage(geniusURL)
 }
 
 func scoreLyricsSearchCandidate(candidateTrack, candidateArtist string, candidateDuration float64, trackName, artistName string, durationSec float64) int {

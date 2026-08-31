@@ -42,10 +42,11 @@ func TestLyricsSearchSelectorsRejectUnrelatedSongWithMatchingArtistAndDuration(t
 
 	if best := selectBestKugouLyricsSearchResult(
 		[]kugouLyricsSearchResult{{
-			Hash:     "azul",
-			Title:    "Azul",
-			Artist:   artistName,
-			Duration: durationSec,
+			ID:        "azul",
+			AccessKey: "key",
+			Title:     "Azul",
+			Artist:    artistName,
+			Duration:  durationSec * 1000,
 		}},
 		trackName,
 		artistName,

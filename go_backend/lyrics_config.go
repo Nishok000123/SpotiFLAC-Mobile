@@ -288,12 +288,12 @@ func GetAvailableLyricsProviders() []map[string]any {
 		{"id": LyricsProviderNetease, "name": "Netease", "has_proxy_dependency": true, "description": "NetEase Cloud Music lyrics"},
 		{"id": LyricsProviderMusixmatch, "name": "Musixmatch", "has_proxy_dependency": true, "description": "Musixmatch lyrics"},
 		{"id": LyricsProviderAppleMusic, "name": "Apple Music", "has_proxy_dependency": true, "description": "Apple Music synced lyrics"},
-		{"id": LyricsProviderQQMusic, "name": "QQ Music", "has_proxy_dependency": true, "description": "QQ Music lyrics"},
+		{"id": LyricsProviderQQMusic, "name": "QQ Music", "has_proxy_dependency": false, "description": "Direct QQ Music line-synced lyrics"},
 		{"id": LyricsProviderSpotify, "name": "Spotify", "has_proxy_dependency": true, "description": "Spotify synced lyrics"},
 		{"id": LyricsProviderDeezer, "name": "Deezer", "has_proxy_dependency": true, "description": "Deezer lyrics"},
 		{"id": LyricsProviderYouTube, "name": "YouTube", "has_proxy_dependency": true, "description": "YouTube lyrics"},
-		{"id": LyricsProviderKugou, "name": "Kugou", "has_proxy_dependency": true, "description": "Kugou lyrics"},
-		{"id": LyricsProviderGenius, "name": "Genius", "has_proxy_dependency": true, "description": "Genius lyrics"},
+		{"id": LyricsProviderKugou, "name": "Kugou", "has_proxy_dependency": false, "description": "Direct Kugou synced lyrics"},
+		{"id": LyricsProviderGenius, "name": "Genius", "has_proxy_dependency": false, "description": "Direct Genius lyrics"},
 		{"id": LyricsProviderLyricsPlus, "name": "LyricsPlus", "has_proxy_dependency": true, "description": "Word-by-word karaoke lyrics (Apple/Musixmatch/Spotify/QQ)"},
 	}
 }
