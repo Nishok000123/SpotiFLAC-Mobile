@@ -6,6 +6,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.ParcelFileDescriptor
+import android.system.Os
+import android.system.OsConstants
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
@@ -137,7 +140,7 @@ internal fun MainActivity.copyUriToTemp(uri: Uri, fallbackExt: String? = null): 
 
             contentResolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(tempFile).use { output ->
-                    input.copyTo(output)
+                    input.copyTo(output, bufferSize = 256 * 1024)
                 }
             } ?: return null
 
@@ -192,7 +195,7 @@ internal fun MainActivity.copyMediaStoreUriToTemp(uri: Uri, fallbackExt: String?
 
             contentResolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(tempFile).use { output ->
-                    input.copyTo(output)
+                    input.copyTo(output, bufferSize = 256 * 1024)
                 }
             } ?: run {
                 tempFile.delete()
@@ -241,6 +244,20 @@ internal fun MainActivity.buildLibraryCoverCacheKey(stablePath: String, lastModi
         return if (lastModified > 0L) "$normalizedPath|$lastModified" else normalizedPath
     }
 
+private fun isSeekableSafDescriptor(descriptor: ParcelFileDescriptor): Boolean {
+    return try {
+        val position = Os.lseek(
+            descriptor.fileDescriptor,
+            0L,
+            OsConstants.SEEK_CUR,
+        )
+        Os.lseek(descriptor.fileDescriptor, position, OsConstants.SEEK_SET)
+        true
+    } catch (_: Exception) {
+        false
+    }
+}
+
 internal fun MainActivity.readAudioMetadataFromUri(
         uri: Uri,
         displayNameHint: String? = null,
@@ -253,6 +270,13 @@ internal fun MainActivity.readAudioMetadataFromUri(
         if (procSelfFdReadable != false) {
             try {
                 contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                    if (!isSeekableSafDescriptor(pfd)) {
+                        synchronized(procSelfFdStateLock) {
+                            procSelfFdReadable = false
+                            procSelfFdFallbacks = 0
+                        }
+                        return@use
+                    }
                     val directPath = "/proc/self/fd/${pfd.fd}"
                     val metadataJson = Gobackend.readAudioMetadataWithHintAndCoverCacheKeyJSON(
                         directPath,
@@ -334,7 +358,7 @@ internal fun MainActivity.writeUriFromPath(uri: Uri, srcPath: String): Boolean {
         if (!srcFile.exists()) return false
         contentResolver.openOutputStream(uri, "wt")?.use { output ->
             FileInputStream(srcFile).use { input ->
-                input.copyTo(output)
+                input.copyTo(output, bufferSize = 256 * 1024)
             }
         } ?: return false
         return true

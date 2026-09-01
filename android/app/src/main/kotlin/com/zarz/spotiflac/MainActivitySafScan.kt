@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.DocumentsContract
+import android.provider.DocumentsContract.Document.MIME_TYPE_DIR
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
@@ -437,6 +438,38 @@ private fun loadSafScanCheckpoint(path: String): MutableMap<String, Long> {
     return entries
 }
 
+private fun reconcileSafScanCheckpoint(
+    outputPath: String,
+    loaded: MutableMap<String, Long>,
+): MutableMap<String, Long> {
+    val output = File(outputPath)
+    if (!output.exists()) return loaded
+
+    val outputEntries = mutableMapOf<String, Long>()
+    try {
+        output.forEachLine(Charsets.UTF_8) { line ->
+            if (line.isBlank()) return@forEachLine
+            try {
+                val obj = JSONObject(line)
+                val filePath = obj.optString("filePath", "").trim()
+                if (filePath.isNotBlank()) {
+                    val modified = obj.optLong("fileModTime", 0L)
+                    val cueMarker = filePath.indexOf("#track")
+                    val key = if (cueMarker > 0) filePath.substring(0, cueMarker) else filePath
+                    outputEntries[key] = modified
+                }
+            } catch (_: Exception) {}
+        }
+    } catch (e: Exception) {
+        android.util.Log.w("SpotiFLAC", "SAF scan: failed reconciling checkpoint: ${e.message}")
+        return loaded
+    }
+
+    loaded.clear()
+    loaded.putAll(outputEntries)
+    return loaded
+}
+
 private fun countSafScanRows(path: String): Int {
     val output = File(path)
     if (!output.exists()) return 0
@@ -523,10 +556,10 @@ internal fun MainActivity.getSafChildFileLookup(
         return cache.getOrPut(dirKey) {
             buildMap {
                 for (child in listSafChildrenOrThrow(dir)) {
-                    if (!child.isFile) continue
+                    if (child.isDirectory) continue
                     val childName = child.name?.trim().orEmpty()
                     if (childName.isBlank()) continue
-                    put(childName.lowercase(Locale.ROOT), child)
+                    put(childName.lowercase(Locale.ROOT), child.doc)
                 }
             }
         }
@@ -563,21 +596,48 @@ internal fun MainActivity.resolveCueAudioSibling(
         return null
     }
 
-internal fun MainActivity.listSafChildrenOrThrow(dir: DocumentFile): List<DocumentFile> {
+internal data class SafChildEntry(
+    val doc: DocumentFile,
+    val name: String?,
+    val isDirectory: Boolean,
+    val lastModified: Long,
+)
+
+internal fun MainActivity.listSafChildrenOrThrow(dir: DocumentFile): List<SafChildEntry> {
         val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
             dir.uri,
             DocumentsContract.getDocumentId(dir.uri),
         )
-        val cursor = contentResolver.query(
-            childrenUri,
-            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
-            null,
-            null,
-            null,
-        ) ?: throw IOException("SAF provider returned no cursor for ${dir.uri}")
+        val projection = arrayOf(
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+            DocumentsContract.Document.COLUMN_MIME_TYPE,
+            DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+        )
+        val cursor = try {
+            contentResolver.query(childrenUri, projection, null, null, null)
+        } catch (_: Exception) {
+            // A few older providers reject the richer projection; retry with IDs.
+            contentResolver.query(
+                childrenUri,
+                arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
+                null,
+                null,
+                null,
+            )
+        } ?: throw IOException("SAF provider returned no cursor for ${dir.uri}")
         return cursor.use {
             val documentIdIndex = it.getColumnIndexOrThrow(
                 DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            )
+            val displayNameIndex = it.getColumnIndex(
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+            )
+            val mimeTypeIndex = it.getColumnIndex(
+                DocumentsContract.Document.COLUMN_MIME_TYPE,
+            )
+            val lastModifiedIndex = it.getColumnIndex(
+                DocumentsContract.Document.COLUMN_LAST_MODIFIED,
             )
             buildList {
                 while (it.moveToNext()) {
@@ -587,7 +647,29 @@ internal fun MainActivity.listSafChildrenOrThrow(dir: DocumentFile): List<Docume
                     )
                     val child = DocumentFile.fromSingleUri(this@listSafChildrenOrThrow, childUri)
                         ?: throw IOException("Invalid SAF child URI: $childUri")
-                    add(child)
+                    val name = if (displayNameIndex >= 0 && !it.isNull(displayNameIndex)) {
+                        it.getString(displayNameIndex)
+                    } else {
+                        try { child.name } catch (_: Exception) { null }
+                    }
+                    val mimeType = if (mimeTypeIndex >= 0 && !it.isNull(mimeTypeIndex)) {
+                        it.getString(mimeTypeIndex)
+                    } else {
+                        null
+                    }
+                    val isDirectory = if (mimeType != null) {
+                        mimeType == MIME_TYPE_DIR
+                    } else {
+                        try { child.isDirectory } catch (_: Exception) { false }
+                    }
+                    val lastModified = if (
+                        lastModifiedIndex >= 0 && !it.isNull(lastModifiedIndex)
+                    ) {
+                        it.getLong(lastModifiedIndex)
+                    } else {
+                        try { child.lastModified() } catch (_: Exception) { 0L }
+                    }
+                    add(SafChildEntry(child, name, isDirectory, lastModified))
                 }
             }
         }
@@ -623,8 +705,18 @@ internal fun MainActivity.scanSafTree(
         treeUriStr: String,
         ndjsonOutputPath: String? = null,
     ): Any {
+        val earlyCheckpoint = ndjsonOutputPath
+            ?.takeIf {
+                File(it).exists() && File(safScanCheckpointPath(it)).exists()
+            }
+            ?.let { loadSafScanCheckpoint(safScanCheckpointPath(it)) }
+            ?: mutableMapOf()
+
         fun emptyResult(): Any {
             if (ndjsonOutputPath == null) return "[]"
+            if (earlyCheckpoint.isNotEmpty() && File(ndjsonOutputPath).exists()) {
+                throw IOException("SAF scan returned no files while a resumable scan exists")
+            }
             File(ndjsonOutputPath).writeText("", Charsets.UTF_8)
             try { File(safScanCheckpointPath(ndjsonOutputPath)).delete() } catch (_: Exception) {}
             return mapOf("path" to ndjsonOutputPath, "count" to 0)
@@ -643,12 +735,28 @@ internal fun MainActivity.scanSafTree(
         safScanCancel = false
         safScanActive = true
         updateSafScanProgress {
-            it.currentFile = "Scanning folders..."
+            it.scannedFiles = earlyCheckpoint.size
+            it.currentFile = if (earlyCheckpoint.isEmpty()) {
+                "Scanning folders..."
+            } else {
+                "Resuming scan..."
+            }
         }
 
         val supportedAudioExt = libraryScanAudioExtensions
-        val audioFiles = mutableListOf<Pair<DocumentFile, String>>()
-        val cueFiles = mutableListOf<Pair<DocumentFile, DocumentFile>>()
+        data class SafAudioEntry(
+            val doc: DocumentFile,
+            val name: String,
+            val lastModified: Long,
+        )
+        data class SafCueEntry(
+            val doc: DocumentFile,
+            val parentDir: DocumentFile,
+            val name: String,
+            val lastModified: Long,
+        )
+        val audioFiles = mutableListOf<SafAudioEntry>()
+        val cueFiles = mutableListOf<SafCueEntry>()
         val visitedDirUris = mutableSetOf<String>()
         val safChildLookupCache = mutableMapOf<String, Map<String, DocumentFile>>()
         var traversalErrors = 0
@@ -688,18 +796,19 @@ internal fun MainActivity.scanSafTree(
                     if (child.isDirectory) {
                         val childName = child.name ?: continue
                         val childPath = if (path.isBlank()) childName else "$path/$childName"
-                        val childUri = child.uri.toString()
+                        val childUri = child.doc.uri.toString()
                         if (childUri == dirUri || visitedDirUris.contains(childUri)) {
                             continue
                         }
-                        queue.add(child to childPath)
-                    } else if (child.isFile) {
+                        queue.add(child.doc to childPath)
+                    } else {
                         val name = child.name ?: continue
+                        val lastModified = child.lastModified
                         val ext = name.substringAfterLast('.', "").lowercase(Locale.ROOT)
                         if (ext == "cue") {
-                            cueFiles.add(child to dir)
+                            cueFiles.add(SafCueEntry(child.doc, dir, name, lastModified))
                         } else if (ext.isNotBlank() && supportedAudioExt.contains(".$ext")) {
-                            audioFiles.add(child to path)
+                            audioFiles.add(SafAudioEntry(child.doc, name, lastModified))
                         }
                     }
                 } catch (e: Exception) {
@@ -720,6 +829,10 @@ internal fun MainActivity.scanSafTree(
         val totalItems = audioFiles.size + cueFiles.size
         updateSafScanProgress {
             it.totalFiles = totalItems
+            if (totalItems > 0 && earlyCheckpoint.isNotEmpty()) {
+                it.scannedFiles = earlyCheckpoint.size.coerceAtMost(totalItems)
+                it.progressPct = it.scannedFiles.toDouble() / totalItems.toDouble() * 100.0
+            }
         }
 
         if (audioFiles.isEmpty() && cueFiles.isEmpty()) {
@@ -747,7 +860,10 @@ internal fun MainActivity.scanSafTree(
                 try { checkpointFile.delete() } catch (_: Exception) {}
             }
             repairSafScanOutput(outputFile.absolutePath)
-            loadSafScanCheckpoint(checkpointPath)
+            reconcileSafScanCheckpoint(
+                outputFile.absolutePath,
+                loadSafScanCheckpoint(checkpointPath),
+            )
         } else {
             mutableMapOf()
         }
@@ -782,19 +898,23 @@ internal fun MainActivity.scanSafTree(
             resultCount++
         }
         try {
-        var scanned = 0
+        var scanned = checkpoint.size.coerceAtMost(totalItems)
         var errors = traversalErrors
 
         val cueReferencedAudioUris = mutableSetOf<String>()
 
-        for ((cueDoc, parentDir) in cueFiles) {
+        for (cue in cueFiles) {
+            val cueDoc = cue.doc
+            val parentDir = cue.parentDir
+            val cueUri = cueDoc.uri.toString()
+            val cueAlreadyIndexed = checkpointed(cueUri, cue.lastModified)
             if (safScanCancel) {
                 ndjsonWriter?.close()
                 spill?.abandon()
                 return cancelledResult()
             }
 
-            val cueName = try { cueDoc.name ?: "" } catch (_: Exception) { "" }
+            val cueName = cue.name
             updateSafScanProgress { it.currentFile = cueName }
 
             var tempCuePath: String? = null
@@ -826,6 +946,10 @@ internal fun MainActivity.scanSafTree(
 
                 cueReferencedAudioUris.add(audioDoc.uri.toString())
 
+                if (cueAlreadyIndexed) {
+                    continue
+                }
+
                 val tempDir = File(tempCuePath).parent ?: cacheDir.absolutePath
                 val audioName = try { audioDoc.name ?: "audio.flac" } catch (_: Exception) { "audio.flac" }
                 val audioExt = audioName.substringAfterLast('.', "").lowercase(Locale.ROOT)
@@ -851,7 +975,7 @@ internal fun MainActivity.scanSafTree(
                     tempAudioPath = renamedAudio.absolutePath
                 }
 
-                val cueLastModified = try { cueDoc.lastModified() } catch (_: Exception) { 0L }
+                val cueLastModified = cue.lastModified
 
                 val cueResultsJson = Gobackend.scanCueSheetForLibraryWithCoverCacheKey(
                     tempCuePath,
@@ -865,6 +989,8 @@ internal fun MainActivity.scanSafTree(
                 for (j in 0 until cueArray.length()) {
                     putResult(cueArray.getJSONObject(j))
                 }
+                ndjsonWriter?.flush()
+                recordCheckpoint(cueUri, cue.lastModified)
 
             } catch (e: Exception) {
                 errors++
@@ -890,9 +1016,10 @@ internal fun MainActivity.scanSafTree(
             val metadata: JSONObject?,
         )
 
-        val pendingAudio = mutableListOf<Triple<DocumentFile, String, Long>>()
+        val pendingAudio = mutableListOf<SafAudioEntry>()
         // Skip resumable and CUE entries before parallel reads.
-        for ((doc, _) in audioFiles) {
+        for (audio in audioFiles) {
+            val doc = audio.doc
             if (safScanCancel) {
                 ndjsonWriter?.close()
                 spill?.abandon()
@@ -900,13 +1027,12 @@ internal fun MainActivity.scanSafTree(
             }
 
             val stableUri = doc.uri.toString()
-            val lastModified = try { doc.lastModified() } catch (_: Exception) { 0L }
-            if (checkpointed(stableUri, lastModified) ||
-                cueReferencedAudioUris.contains(stableUri)
-            ) {
-                if (!checkpointed(stableUri, lastModified)) {
-                    recordCheckpoint(stableUri, lastModified)
-                }
+            val lastModified = audio.lastModified
+            if (checkpointed(stableUri, lastModified)) {
+                continue
+            }
+            if (cueReferencedAudioUris.contains(stableUri)) {
+                recordCheckpoint(stableUri, lastModified)
                 scanned++
                 val pct = scanned.toDouble() / totalItems.toDouble() * 100.0
                 updateSafScanProgress {
@@ -915,7 +1041,7 @@ internal fun MainActivity.scanSafTree(
                 }
                 continue
             }
-            pendingAudio.add(Triple(doc, stableUri, lastModified))
+            pendingAudio.add(audio)
         }
 
         // Bound parallelism to limit SAF full-copy memory and I/O.
@@ -929,9 +1055,12 @@ internal fun MainActivity.scanSafTree(
                     return cancelledResult()
                 }
 
-                val futures = batch.map { (doc, stableUri, lastModified) ->
+                val futures = batch.map { audio ->
                     executor.submit<SafAudioScanOutcome> {
-                        val name = try { doc.name ?: "" } catch (_: Exception) { "" }
+                        val doc = audio.doc
+                        val stableUri = doc.uri.toString()
+                        val name = audio.name
+                        val lastModified = audio.lastModified
                         val ext = name.substringAfterLast('.', "").lowercase(Locale.ROOT)
                         val fallbackExt = if (ext.isNotBlank()) ".${ext}" else null
                         val coverCacheKey = buildLibraryCoverCacheKey(stableUri, lastModified)
@@ -1122,44 +1251,38 @@ internal fun MainActivity.scanSafTreeIncremental(
                     if (child.isDirectory) {
                         val childName = child.name ?: continue
                         val childPath = if (path.isBlank()) childName else "$path/$childName"
-                        val childUri = child.uri.toString()
+                        val childUri = child.doc.uri.toString()
                         if (childUri == dirUri || visitedDirUris.contains(childUri)) {
                             continue
                         }
-                        queue.add(child to childPath)
-                    } else if (child.isFile) {
-                        val uriStr = child.uri.toString()
+                        queue.add(child.doc to childPath)
+                    } else {
+                        val uriStr = child.doc.uri.toString()
                         currentUris.add(uriStr)
 
                         val name = child.name ?: continue
                         val ext = name.substringAfterLast('.', "").lowercase(Locale.ROOT)
 
                         if (ext == "cue") {
-                            val lastModified = try {
-                                child.lastModified()
-                            } catch (_: Exception) { 0L }
+                            val lastModified = child.lastModified
 
                             val virtualPaths = existingCueVirtualPaths[uriStr]
                             val existingModified = virtualPaths?.firstOrNull()?.let { existingFiles[it] }
 
                             if (existingModified != null && existingModified == lastModified) {
-                                unchangedCueFiles.add(child to dir)
+                                unchangedCueFiles.add(child.doc to dir)
                                 for (vp in virtualPaths) {
                                     currentUris.add(vp)
                                 }
                             } else {
-                                cueFilesToScan.add(Triple(child, dir, lastModified))
+                                cueFilesToScan.add(Triple(child.doc, dir, lastModified))
                             }
                         } else if (ext.isNotBlank() && supportedAudioExt.contains(".$ext")) {
                             val existingModified = existingFiles[uriStr]
-                            val lastModified = try {
-                                child.lastModified()
-                            } catch (_: Exception) {
-                                existingModified ?: 0L
-                            }
+                            val lastModified = child.lastModified
 
                             if (existingModified == null || existingModified != lastModified) {
-                                audioFiles.add(Triple(child, path, lastModified))
+                                audioFiles.add(Triple(child.doc, path, lastModified))
                             }
                         }
                     }

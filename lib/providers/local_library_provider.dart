@@ -531,6 +531,7 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
             folderPath,
             isCancelled: () => _scanCancelRequested,
           );
+    var ingested = false;
     try {
       if (_scanCancelRequested) return null;
       state = state.copyWith(
@@ -560,9 +561,10 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
         'Stream-ingested ${result.inserted}/${scanFile.expectedCount} scan rows '
         '(${result.skipped} downloads excluded)',
       );
+      ingested = true;
       return result;
     } finally {
-      await scanFile.delete();
+      if (ingested) await scanFile.delete();
     }
   }
 
@@ -600,6 +602,12 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
 
     _scanInProgress = true;
     _scanCancelRequested = false;
+    try {
+      final prefs = await _prefs;
+      await prefs.setString(localLibraryActiveScanSourceKey, activeSourceId);
+    } catch (e) {
+      _log.w('Failed to persist active library scan marker: $e');
+    }
     _log.i(
       'Starting library scan: $folderPath (incremental: ${!forceFullScan})',
     );
@@ -930,6 +938,15 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
       }
       _stopProgressPolling();
       _scanInProgress = false;
+      try {
+        final prefs = await _prefs;
+        if (prefs.getString(localLibraryActiveScanSourceKey) ==
+            activeSourceId) {
+          await prefs.remove(localLibraryActiveScanSourceKey);
+        }
+      } catch (e) {
+        _log.w('Failed to clear active library scan marker: $e');
+      }
       state = state.copyWith(clearScanningSourceId: true);
     }
   }

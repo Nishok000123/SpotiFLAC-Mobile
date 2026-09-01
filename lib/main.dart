@@ -357,6 +357,13 @@ class _EagerInitializationState extends ConsumerState<_EagerInitialization>
 
     final now = DateTime.now();
     final prefs = await SharedPreferences.getInstance();
+    final pendingSourceId = prefs.getString(localLibraryActiveScanSourceKey);
+    if (pendingSourceId != null && pendingSourceId.trim().isNotEmpty) {
+      await ref
+          .read(localLibraryProvider.notifier)
+          .startSourceScan(pendingSourceId.trim());
+      return;
+    }
     final lastScanned = readLocalLibraryLastScannedAt(prefs);
 
     if (lastScanned != null) {
