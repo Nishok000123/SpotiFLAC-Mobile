@@ -118,10 +118,11 @@ import Gobackend
         streamQueue.async {
             var err: NSError?
             var response: String?
-            guard let extensionId = GobackendConsumeExtensionCallbackState(
+            let extensionId = GobackendConsumeExtensionCallbackState(
                 route.state,
                 &err
-            ), err == nil else {
+            )
+            guard err == nil, !extensionId.isEmpty else {
                 NSLog("SpotiFLAC Mobile: Rejected invalid or expired extension callback")
                 return
             }
