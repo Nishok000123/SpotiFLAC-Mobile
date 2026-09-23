@@ -11,6 +11,7 @@ import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/screens/now_playing_screen.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
+import 'package:spotiflac_android/widgets/overflow_marquee.dart';
 import 'package:spotiflac_android/widgets/player_artwork.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/mornye_chrome.dart';
@@ -126,35 +127,41 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            ExplicitTrackTitle(
-                              title: mediaItem.title,
-                              explicit:
-                                  parseExplicitFlag(
-                                    mediaItem.extras?['explicit'],
-                                  ) ==
-                                  true,
-                              style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.w600),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            OverflowMarquee(
+                              resetKey: (mediaItem.id, mediaItem.title),
+                              child: ExplicitTrackTitle(
+                                title: mediaItem.title,
+                                explicit:
+                                    parseExplicitFlag(
+                                      mediaItem.extras?['explicit'],
+                                    ) ==
+                                    true,
+                                style: Theme.of(context).textTheme.titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.w600),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            Text(
-                              mediaItem.artist ?? '',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: mornye
-                                        ? Color.lerp(
-                                            colorScheme.onSurfaceVariant,
-                                            colorScheme.onSurface,
-                                            colorScheme.brightness ==
-                                                    Brightness.dark
-                                                ? 0.7
-                                                : 0.6,
-                                          )
-                                        : colorScheme.onSurfaceVariant,
-                                  ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            OverflowMarquee(
+                              resetKey: (mediaItem.id, mediaItem.artist),
+                              child: Text(
+                                mediaItem.artist ?? '',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: mornye
+                                          ? Color.lerp(
+                                              colorScheme.onSurfaceVariant,
+                                              colorScheme.onSurface,
+                                              colorScheme.brightness ==
+                                                      Brightness.dark
+                                                  ? 0.7
+                                                  : 0.6,
+                                            )
+                                          : colorScheme.onSurfaceVariant,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ],
                         ),

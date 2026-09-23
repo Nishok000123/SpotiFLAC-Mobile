@@ -1,0 +1,228 @@
+import 'package:audio_service/audio_service.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/providers/music_player_provider.dart';
+import 'package:spotiflac_android/providers/runtime_profile_provider.dart';
+import 'package:spotiflac_android/theme/mornye_theme.dart';
+import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
+import 'package:spotiflac_android/widgets/mini_player.dart';
+import 'package:spotiflac_android/widgets/overflow_marquee.dart';
+
+void main() {
+  const longTitle = 'A long song title with enough words to leave the viewport';
+
+  Future<void> pumpTitle(
+    WidgetTester tester, {
+    String title = longTitle,
+    double width = 160,
+    bool explicit = false,
+    bool disableAnimations = false,
+    bool tickersEnabled = true,
+    TextDirection direction = TextDirection.ltr,
+  }) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MediaQuery(
+          data: MediaQueryData(disableAnimations: disableAnimations),
+          child: Directionality(
+            textDirection: direction,
+            child: TickerMode(
+              enabled: tickersEnabled,
+              child: Center(
+                child: SizedBox(
+                  width: width,
+                  child: OverflowMarquee(
+                    resetKey: title,
+                    child: ExplicitTrackTitle(
+                      title: title,
+                      explicit: explicit,
+                      style: const TextStyle(fontSize: 16),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+  }
+
+  ScrollController controller(WidgetTester tester) => tester
+      .widget<SingleChildScrollView>(find.byType(SingleChildScrollView))
+      .controller!;
+
+  Future<void> startScrolling(WidgetTester tester) async {
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump(const Duration(seconds: 1));
+  }
+
+  testWidgets('short titles stay still and schedule no animation', (
+    tester,
+  ) async {
+    await pumpTitle(tester, title: 'RH YNO', explicit: true);
+    await tester.pump(const Duration(seconds: 10));
+    expect(controller(tester).position.maxScrollExtent, 0);
+    expect(controller(tester).offset, 0);
+    expect(find.byType(ExplicitBadge), findsOneWidget);
+    expect(tester.binding.transientCallbackCount, 0);
+  });
+
+  testWidgets('long titles pause, reveal the end, and return smoothly', (
+    tester,
+  ) async {
+    await pumpTitle(tester, explicit: true);
+    final scroll = controller(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(scroll.offset, 0);
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(seconds: 1));
+    expect(scroll.offset, closeTo(28, 1));
+    await tester.pump(const Duration(minutes: 1));
+    final end = scroll.position.maxScrollExtent;
+    expect(scroll.offset, end);
+    expect(find.byType(ExplicitBadge), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    expect(scroll.offset, end);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(seconds: 1));
+    expect(scroll.offset, closeTo(end - 28, 1));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('track changes and compact widths restart at the beginning', (
+    tester,
+  ) async {
+    await pumpTitle(tester);
+    await startScrolling(tester);
+    expect(controller(tester).offset, greaterThan(0));
+    await pumpTitle(tester, width: 100);
+    expect(controller(tester).offset, 0);
+    await startScrolling(tester);
+    expect(controller(tester).offset, greaterThan(0));
+    await pumpTitle(tester, title: 'Next', width: 100);
+    expect(controller(tester).offset, 0);
+    await tester.pump(const Duration(seconds: 10));
+    expect(controller(tester).offset, 0);
+    expect(tester.binding.transientCallbackCount, 0);
+  });
+
+  testWidgets('reduced motion and hidden routes stop the marquee', (
+    tester,
+  ) async {
+    await pumpTitle(tester);
+    await startScrolling(tester);
+    await pumpTitle(tester, disableAnimations: true);
+    expect(find.byType(SingleChildScrollView), findsNothing);
+    expect(
+      tester
+          .widget<ExplicitTrackTitle>(find.byType(ExplicitTrackTitle))
+          .overflow,
+      TextOverflow.ellipsis,
+    );
+    await tester.pump(const Duration(seconds: 10));
+    expect(tester.binding.transientCallbackCount, 0);
+    await pumpTitle(tester);
+    await startScrolling(tester);
+    expect(controller(tester).offset, greaterThan(0));
+    await pumpTitle(tester, tickersEnabled: false);
+    await tester.pump(const Duration(seconds: 10));
+    expect(tester.binding.transientCallbackCount, 0);
+  });
+
+  testWidgets('backgrounding stops motion and resume waits before scrolling', (
+    tester,
+  ) async {
+    await pumpTitle(tester);
+    await startScrolling(tester);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 10));
+    expect(controller(tester).offset, 0);
+    expect(tester.binding.transientCallbackCount, 0);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(controller(tester).offset, 0);
+    await startScrolling(tester);
+    expect(controller(tester).offset, greaterThan(0));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('RTL titles scroll from the reading direction', (tester) async {
+    await pumpTitle(tester, direction: TextDirection.rtl);
+    expect(controller(tester).position.axisDirection, AxisDirection.left);
+    await startScrolling(tester);
+    expect(controller(tester).offset, greaterThan(0));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  for (final mornye in [false, true]) {
+    for (final compact in [false, true]) {
+      testWidgets(
+        'mini player scrolls title and artist (Mornye: $mornye, compact: $compact)',
+        (tester) async {
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                currentMediaItemProvider.overrideWith(
+                  (ref) => Stream.value(
+                    const MediaItem(
+                      id: 'long-track',
+                      title: longTitle,
+                      artist: 'First artist, second artist and another artist',
+                      extras: {'explicit': true},
+                    ),
+                  ),
+                ),
+                playbackStateProvider.overrideWith(
+                  (ref) => const Stream.empty(),
+                ),
+                lowEndDeviceProvider.overrideWithValue(true),
+                backdropBlurEnabledProvider.overrideWithValue(false),
+              ],
+              child: MaterialApp(
+                theme: mornye
+                    ? MornyeTheme.build(Brightness.light)
+                    : ThemeData(),
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: Scaffold(
+                  body: Center(
+                    child: SizedBox(
+                      width: 320,
+                      child: MiniPlayer(compact: compact),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+          await tester.pump();
+          await startScrolling(tester);
+          final scrollViews = tester.widgetList<SingleChildScrollView>(
+            find.descendant(
+              of: find.byType(MiniPlayer),
+              matching: find.byType(SingleChildScrollView),
+            ),
+          );
+          expect(scrollViews, hasLength(2));
+          for (final view in scrollViews) {
+            expect(view.controller!.offset, greaterThan(0));
+          }
+          expect(find.byType(ExplicitBadge), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          await tester.pumpWidget(const SizedBox.shrink());
+        },
+      );
+    }
+  }
+}
