@@ -231,7 +231,8 @@ import UniformTypeIdentifiers
             "pickIosDirectory", "createIosBookmarkFromPath", "resolveIosBookmark", "startAccessingIosBookmark", "stopAccessingIosBookmark", "downloadCoverToFile", "releaseMemory", "releaseMemoryUnderPressure",
             "setLibraryCoverCacheDir", "scanLibraryFolder", "scanLibraryFolderToNDJSONFile", "scanLibraryFolderIncremental",
             "getLibraryScanProgress", "cancelLibraryScan", "parseCueSheet", "extractCoverToFile",
-            "rewriteSplitArtistTags", "writeM4AFreeformTags", "ensureAC4Config", "writeAC4Metadata", "reEnrichFile"]
+            "rewriteSplitArtistTags", "writeM4AFreeformTags", "ensureAC4Config", "writeAC4Metadata", "reEnrichFile",
+            "checkHiResAuthenticity"]
         if coreBackend.routesApplication && !osMethods.contains(call.method) {
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
