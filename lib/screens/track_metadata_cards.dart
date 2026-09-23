@@ -88,6 +88,16 @@ extension _TrackMetadataCards on _TrackMetadataScreenState {
                 filePath: _filePath,
                 codecHint: _storedAudioFormat,
               ),
+              if (HiResCheckCard.isCandidate(
+                _filePath,
+                _storedAudioFormat,
+              )) ...[
+                const SizedBox(height: 16),
+                HiResCheckCard(
+                  filePath: _filePath,
+                  formatHint: _storedAudioFormat,
+                ),
+              ],
             ],
 
             if (!context.isMornye) ...[

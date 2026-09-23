@@ -869,6 +869,14 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
     var quality = item.qualityOverride ?? state.audioQuality;
     if (quality == 'DEFAULT') quality = state.audioQuality;
 
+    // The fake Hi-Res check and its LOSSLESS re-download live in the Dart
+    // run (_DownloadRun._replaceFakeHiResIfNeeded); the native finalizer has
+    // no equivalent, so these items stay on the Dart queue.
+    if (settings.redownloadFakeHiRes &&
+        HiResCheckService.isHiResQuality(quality)) {
+      return null;
+    }
+
     final isSafMode = _isSafMode(settings);
     final rawOutputDir = isSafMode
         ? _buildRelativeOutputDir(

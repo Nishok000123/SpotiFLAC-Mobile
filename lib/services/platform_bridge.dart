@@ -1156,6 +1156,18 @@ class PlatformBridge {
     });
   }
 
+  /// Runs the Go fake Hi-Res check (spectral cutoff + padded bit depth) on
+  /// a FLAC or WAV file. Returns `{"supported": false}` for other formats.
+  static Future<Map<String, dynamic>> checkHiResAuthenticity(
+    String filePath, {
+    Map<String, dynamic>? options,
+  }) {
+    return _invokeMap('checkHiResAuthenticity', {
+      'file_path': filePath,
+      'options_json': options == null ? '' : jsonEncode(options),
+    });
+  }
+
   /// Reads the tags and quality fields used for automatic Library display.
   ///
   /// Android's readAudioMetadata implementation can inspect most SAF files

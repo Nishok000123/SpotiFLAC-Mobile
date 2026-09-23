@@ -132,6 +132,7 @@ class _DownloadRun {
   Map<String, dynamic>? probedFinalMetadata;
   bool externalLrcWritten = false;
   final Map<String, String> _directoryScopes = {};
+  bool fakeHiResChecked = false;
 
   Future<void> _run() async {
     final normalizedService = n._normalizeQueuedService(item.service);
@@ -729,6 +730,7 @@ class _DownloadRun {
     decryptionDescriptor = DownloadDecryptionDescriptor.fromDownloadResult(
       result,
     );
+    final requestTrack = trackToDownload;
     trackToDownload = buildTrackForMetadataEmbedding(
       trackToDownload,
       result,
@@ -746,6 +748,19 @@ class _DownloadRun {
       deleteFileOnAbort: filePath,
     )) {
       return false;
+    }
+
+    // At most once per run: the LOSSLESS replacement is not checked again.
+    if (!fakeHiResChecked) {
+      fakeHiResChecked = true;
+      switch (await _replaceFakeHiResIfNeeded(requestTrack)) {
+        case _FakeHiResOutcome.replaced:
+          return _handleDownloadSuccess();
+        case _FakeHiResOutcome.aborted:
+          return false;
+        case _FakeHiResOutcome.kept:
+          break;
+      }
     }
 
     final deferredSafPublish =

@@ -164,6 +164,7 @@ protocol CoreBackend {
     func sanitizeFilename(filename: String) -> String
     func fileMetadataImplementation(path: String) -> String
     func readFileMetadata(path: String, hint: String) throws -> String
+    func checkHiResAuthenticity(path: String, optionsJson: String) throws -> String
     func editFileMetadata(path: String, metadataJson: String) throws -> String
     func reEnrichFile(requestJson: String) throws -> String
     func rewriteSplitArtistTags(path: String, artist: String, albumArtist: String) throws -> String
@@ -481,6 +482,10 @@ final class RustCoreBackend: CoreBackend {
 
     func readFileMetadata(path: String, hint: String) throws -> String {
         try SpotiFLACBackend.readFileMetadata(path: path, hint: hint, lease: nil)
+    }
+
+    func checkHiResAuthenticity(path: String, optionsJson: String) throws -> String {
+        try SpotiFLACBackend.checkHiresAuthenticity(path: path, optionsJson: optionsJson, lease: nil)
     }
 
     func editFileMetadata(path: String, metadataJson: String) throws -> String {
