@@ -547,7 +547,7 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
                 label: context.l10n.selectionConvertCount(selectedCount),
                 onPressed: selectedCount > 0
                     ? () => showBatchConvertSheet(
-                        context,
+                        this.context,
                         ref,
                         _selectedUnifiedItems(tracks),
                         onExitSelectionMode: exitSelectionMode,
@@ -563,7 +563,7 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
                 label: context.l10n.selectionReplayGainCount(selectedCount),
                 onPressed: selectedCount > 0
                     ? () => runBatchReplayGain(
-                        context,
+                        this.context,
                         _selectedUnifiedItems(tracks),
                         onExitSelectionMode: exitSelectionMode,
                       )
