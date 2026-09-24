@@ -4,7 +4,7 @@ import UIKit
 import UniformTypeIdentifiers
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
     private let CHANNEL = "com.zarz.spotiflac/backend"
     private let DOWNLOAD_PROGRESS_STREAM_CHANNEL = "com.zarz.spotiflac/download_progress_stream"
     private let LIBRARY_SCAN_PROGRESS_STREAM_CHANNEL = "com.zarz.spotiflac/library_scan_progress_stream"
@@ -43,11 +43,21 @@ import UniformTypeIdentifiers
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
+        // With the UIScene lifecycle (required from iOS 27) there is no root
+        // view controller yet: channels and plugins are registered once the
+        // storyboard's implicit engine exists, in
+        // didInitializeImplicitFlutterEngine below.
+        if let url = launchOptions?[.url] as? URL {
+            _ = handleExtensionOAuthRedirect(url: url)
+        }
+        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
 
-        let controller = window?.rootViewController as! FlutterViewController
+    func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+        let messenger = engineBridge.applicationRegistrar.messenger()
         let channel = FlutterMethodChannel(
             name: CHANNEL,
-            binaryMessenger: controller.binaryMessenger
+            binaryMessenger: messenger
         )
         backendChannel = channel
         if !pendingSessionGrantEvents.isEmpty {
@@ -59,11 +69,11 @@ import UniformTypeIdentifiers
         }
         let downloadProgressEvents = FlutterEventChannel(
             name: DOWNLOAD_PROGRESS_STREAM_CHANNEL,
-            binaryMessenger: controller.binaryMessenger
+            binaryMessenger: messenger
         )
         let libraryScanProgressEvents = FlutterEventChannel(
             name: LIBRARY_SCAN_PROGRESS_STREAM_CHANNEL,
-            binaryMessenger: controller.binaryMessenger
+            binaryMessenger: messenger
         )
 
         channel.setMethodCallHandler { [weak self] call, result in
@@ -93,19 +103,23 @@ import UniformTypeIdentifiers
                 }
             )
         )
+        
+        GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    }
 
-        GeneratedPluginRegistrant.register(with: self)
-        if let url = launchOptions?[.url] as? URL {
-            _ = handleExtensionOAuthRedirect(url: url)
-        }
-        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    /// The window of the foreground scene. Under the UIScene lifecycle the
+    /// app delegate's own `window` is never set.
+    var activeWindow: UIWindow? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let active = scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
+        return active?.windows.first { $0.isKeyWindow } ?? active?.windows.first ?? window
     }
 
     /// Extension return URLs:
     /// - OAuth: spotiflac://callback?code=...&state=<one_time_nonce>
     /// - Signed session: spotiflac://session-grant?grant=...&state=<one_time_nonce>
     @discardableResult
-    private func handleExtensionOAuthRedirect(url: URL) -> Bool {
+    func handleExtensionOAuthRedirect(url: URL) -> Bool {
         guard let route = ExtensionCallbackParser.parse(url) else { return false }
         streamQueue.async {
             var extensionId = ""
@@ -336,13 +350,23 @@ import UniformTypeIdentifiers
 
     override func applicationDidEnterBackground(_ application: UIApplication) {
         super.applicationDidEnterBackground(application)
+        didEnterBackground()
+    }
+
+    override func applicationWillEnterForeground(_ application: UIApplication) {
+        super.applicationWillEnterForeground(application)
+        willEnterForeground()
+    }
+
+    /// Called by the application callbacks above and, under the UIScene
+    /// lifecycle (where UIKit no longer sends those), by SceneDelegate.
+    func didEnterBackground() {
         if downloadsActive {
             beginBackgroundDownloadTask()
         }
     }
 
-    override func applicationWillEnterForeground(_ application: UIApplication) {
-        super.applicationWillEnterForeground(application)
+    func willEnterForeground() {
         endBackgroundDownloadTask()
     }
 
@@ -588,7 +612,7 @@ import UniformTypeIdentifiers
             ))
             return
         }
-        guard var topController = window?.rootViewController else {
+        guard var topController = activeWindow?.rootViewController else {
             result(FlutterError(
                 code: "NO_VIEW_CONTROLLER",
                 message: "No view controller available to present the folder picker",
@@ -745,7 +769,7 @@ import UniformTypeIdentifiers
 @available(iOS 13.0, *)
 extension AppDelegate: ASWebAuthenticationPresentationContextProviding {
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        return window ?? ASPresentationAnchor()
+        return activeWindow ?? ASPresentationAnchor()
     }
 }
 
@@ -814,5 +838,46 @@ private final class ClosureStreamHandler: NSObject, FlutterStreamHandler {
 
     func onCancel(withArguments arguments: Any?) -> FlutterError? {
         onCancelHandler(arguments)
+    }
+}
+
+/// UIScene lifecycle entry point (required from iOS 27). FlutterSceneDelegate
+/// hosts the storyboard's FlutterViewController; this subclass forwards what
+/// UIKit now delivers to the scene instead of the app delegate: OAuth
+/// redirect URLs and the background/foreground transitions that keep
+/// downloads alive.
+class SceneDelegate: FlutterSceneDelegate {
+    private var appDelegate: AppDelegate? {
+        UIApplication.shared.delegate as? AppDelegate
+    }
+
+    override func scene(
+        _ scene: UIScene,
+        willConnectTo session: UISceneSession,
+        options connectionOptions: UIScene.ConnectionOptions
+    ) {
+        super.scene(scene, willConnectTo: session, options: connectionOptions)
+        for context in connectionOptions.urlContexts {
+            _ = appDelegate?.handleExtensionOAuthRedirect(url: context.url)
+        }
+    }
+
+    override func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        let unhandled = URLContexts.filter {
+            appDelegate?.handleExtensionOAuthRedirect(url: $0.url) != true
+        }
+        if !unhandled.isEmpty {
+            super.scene(scene, openURLContexts: unhandled)
+        }
+    }
+
+    override func sceneDidEnterBackground(_ scene: UIScene) {
+        super.sceneDidEnterBackground(scene)
+        appDelegate?.didEnterBackground()
+    }
+
+    override func sceneWillEnterForeground(_ scene: UIScene) {
+        super.sceneWillEnterForeground(scene)
+        appDelegate?.willEnterForeground()
     }
 }
