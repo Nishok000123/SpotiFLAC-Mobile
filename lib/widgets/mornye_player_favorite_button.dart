@@ -69,7 +69,7 @@ class _MornyePlayerFavoriteButtonState
             ? context.l10n.trackOptionRemoveFromLoved
             : context.l10n.trackOptionAddToLoved,
         color: widget.color ?? Theme.of(context).colorScheme.onSurface,
-        iconSize: widget.compact ? 20 : 24,
+        iconSize: widget.compact ? 28 : 24,
         onPressed: _saving ? null : _toggle,
       ),
     );

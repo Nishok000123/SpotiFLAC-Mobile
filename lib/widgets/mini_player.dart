@@ -27,6 +27,22 @@ class MiniPlayer extends ConsumerStatefulWidget {
 }
 
 class _MiniPlayerState extends ConsumerState<MiniPlayer> {
+  final _surfaceKey = GlobalKey();
+  final _artworkKey = GlobalKey();
+
+  Rect? _bounds(GlobalKey key) {
+    final box = key.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.attached || !box.hasSize) return null;
+    final overlay = Navigator.of(
+      context,
+      rootNavigator: true,
+    ).overlay?.context.findRenderObject();
+    return MatrixUtils.transformRect(
+      box.getTransformTo(overlay),
+      Offset.zero & box.size,
+    );
+  }
+
   // Hides the bar in the frames between a swipe-dismiss and the stopped
   // service clearing the media item (a dismissed Dismissible must leave the
   // tree immediately). Playing the same track again shows the bar normally.
@@ -69,6 +85,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
         controller.stop();
       },
       child: DecoratedBox(
+        key: _surfaceKey,
         position: DecorationPosition.foreground,
         decoration: BoxDecoration(
           border: mornye
@@ -85,10 +102,19 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
               : settingsGroupColor(context).withValues(alpha: 0.72),
           child: InkWell(
             onTap: () {
-              Navigator.of(
-                context,
-                rootNavigator: true,
-              ).push(NowPlayingRoute());
+              Navigator.of(context, rootNavigator: true).push(
+                NowPlayingRoute(
+                  miniPlayerGeometry: mornye
+                      ? () {
+                          if (!mounted) return null;
+                          final surface = _bounds(_surfaceKey);
+                          final artwork = _bounds(_artworkKey);
+                          if (surface == null || artwork == null) return null;
+                          return (surface: surface, artwork: artwork);
+                        }
+                      : null,
+                ),
+              );
             },
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -108,6 +134,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                       Hero(
                         tag: kNowPlayingArtworkHeroTag,
                         child: ClipRRect(
+                          key: _artworkKey,
                           borderRadius: BorderRadius.circular(6),
                           child: SizedBox(
                             width: context.tokens.coverMini,
