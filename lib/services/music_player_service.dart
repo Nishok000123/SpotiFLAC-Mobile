@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:spotiflac_android/services/discord_presence_service.dart';
+import 'package:spotiflac_android/services/player_widget_service.dart';
 import 'package:audio_session/audio_session.dart'
     show AudioSession, AudioSessionConfiguration, AudioInterruptionType;
 import 'package:audioplayers/audioplayers.dart';
@@ -1648,6 +1649,9 @@ Future<MusicPlayerHandler> _doInitMusicPlayer() async {
     );
     _handler = handler;
     DiscordPresenceService.instance.bind(handler);
+    if (Platform.isAndroid || Platform.isIOS) {
+      PlayerWidgetService.instance.bind(handler);
+    }
     _handlerReadyController.add(handler);
     return handler;
   } catch (_) {
@@ -1659,7 +1663,12 @@ Future<MusicPlayerHandler> _doInitMusicPlayer() async {
 /// Restores the last persisted playback session (if any) into a freshly
 /// initialized handler, paused. Entries whose plain file paths no longer
 /// exist are dropped; content URIs are kept and fail gracefully at play time.
-Future<void> restorePersistedPlaybackSession() async {
+Future<void>? _restoreSessionFuture;
+
+Future<void> restorePersistedPlaybackSession() =>
+    _restoreSessionFuture ??= _restorePersistedPlaybackSession();
+
+Future<void> _restorePersistedPlaybackSession() async {
   try {
     final session = await AppStateDatabase.instance.getPlaybackSession();
     if (session == null) return;

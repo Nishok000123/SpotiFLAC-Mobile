@@ -1,8 +1,27 @@
 import Foundation
+import Flutter
 import XCTest
 @testable import Runner
 
 class RunnerTests: XCTestCase {
+    @MainActor
+    func testPlayerWidgetSharesSceneEngineAndCompletesCommands() async throws {
+        let delegate = try XCTUnwrap(UIApplication.shared.delegate as? AppDelegate)
+        let controller = try XCTUnwrap(delegate.activeWindow?.rootViewController as? FlutterViewController)
+        XCTAssertTrue(controller.engine === delegate.playerEngine)
+
+        // Exercise the real native -> Dart -> audio handler -> native path.
+        // With an empty queue, opening the widget leaves the app on its home
+        // or onboarding screen and still publishes a valid empty snapshot.
+        let completed = await PlayerWidgetBridge.shared.perform("open")
+        XCTAssertTrue(completed)
+        let container = try XCTUnwrap(PlayerWidgetState.container)
+        let data = try Data(contentsOf: container.appendingPathComponent("player.json"))
+        let state = try JSONDecoder().decode(PlayerWidgetState.self, from: data)
+        XCTAssertFalse(state.canPlay)
+        XCTAssertFalse(state.playing)
+    }
+
     private func isSymbolicLink(_ url: URL) -> Bool {
         guard let values = try? url.resourceValues(forKeys: [.isSymbolicLinkKey]) else { return false }
         return values.isSymbolicLink == true

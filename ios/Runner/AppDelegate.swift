@@ -4,7 +4,10 @@ import UIKit
 import UniformTypeIdentifiers
 
 @main
-@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+@objc class AppDelegate: FlutterAppDelegate {
+    // Widget playback intents can launch the process before any scene exists.
+    // Keep one headless-capable engine and attach that same player to the UI.
+    lazy var playerEngine = FlutterEngine(name: "spotiflac-player", project: nil, allowHeadlessExecution: true)
     private let CHANNEL = "com.zarz.spotiflac/backend"
     private let DOWNLOAD_PROGRESS_STREAM_CHANNEL = "com.zarz.spotiflac/download_progress_stream"
     private let LIBRARY_SCAN_PROGRESS_STREAM_CHANNEL = "com.zarz.spotiflac/library_scan_progress_stream"
@@ -43,18 +46,16 @@ import UniformTypeIdentifiers
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        // With the UIScene lifecycle (required from iOS 27) there is no root
-        // view controller yet: channels and plugins are registered once the
-        // storyboard's implicit engine exists, in
-        // didInitializeImplicitFlutterEngine below.
+        playerEngine.run()
+        configureFlutterEngine(playerEngine.binaryMessenger, registry: playerEngine)
         if let url = launchOptions?[.url] as? URL {
             _ = handleExtensionOAuthRedirect(url: url)
         }
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
 
-    func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-        let messenger = engineBridge.applicationRegistrar.messenger()
+    private func configureFlutterEngine(_ messenger: FlutterBinaryMessenger, registry: FlutterPluginRegistry) {
+        PlayerWidgetBridge.shared.attach(messenger)
         let channel = FlutterMethodChannel(
             name: CHANNEL,
             binaryMessenger: messenger
@@ -103,8 +104,8 @@ import UniformTypeIdentifiers
                 }
             )
         )
-        
-        GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+        GeneratedPluginRegistrant.register(with: registry)
     }
 
     /// The window of the foreground scene. Under the UIScene lifecycle the
@@ -120,6 +121,10 @@ import UniformTypeIdentifiers
     /// - Signed session: spotiflac://session-grant?grant=...&state=<one_time_nonce>
     @discardableResult
     func handleExtensionOAuthRedirect(url: URL) -> Bool {
+        if url.scheme == "spotiflac", url.host == "player" {
+            Task { _ = await PlayerWidgetBridge.shared.perform("open") }
+            return true
+        }
         guard let route = ExtensionCallbackParser.parse(url) else { return false }
         streamQueue.async {
             var extensionId = ""
@@ -848,7 +853,7 @@ private final class ClosureStreamHandler: NSObject, FlutterStreamHandler {
 }
 
 /// UIScene lifecycle entry point (required from iOS 27). FlutterSceneDelegate
-/// hosts the storyboard's FlutterViewController; this subclass forwards what
+/// hosts the shared engine's FlutterViewController; this subclass forwards what
 /// UIKit now delivers to the scene instead of the app delegate: OAuth
 /// redirect URLs and the background/foreground transitions that keep
 /// downloads alive.
@@ -862,6 +867,12 @@ class SceneDelegate: FlutterSceneDelegate {
         willConnectTo session: UISceneSession,
         options connectionOptions: UIScene.ConnectionOptions
     ) {
+        if let windowScene = scene as? UIWindowScene, let appDelegate {
+            let window = UIWindow(windowScene: windowScene)
+            window.rootViewController = FlutterViewController(engine: appDelegate.playerEngine, nibName: nil, bundle: nil)
+            self.window = window
+            window.makeKeyAndVisible()
+        }
         super.scene(scene, willConnectTo: session, options: connectionOptions)
         for context in connectionOptions.urlContexts {
             _ = appDelegate?.handleExtensionOAuthRedirect(url: context.url)

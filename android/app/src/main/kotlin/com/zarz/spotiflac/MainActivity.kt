@@ -782,6 +782,7 @@ class MainActivity: FlutterFragmentActivity() {
         super.onCreate(savedInstanceState)
         handleVerificationNotificationIntent(intent)
         handleExtensionOAuthIntent(intent)
+        PlayerWidgetBridge.handleIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -789,6 +790,7 @@ class MainActivity: FlutterFragmentActivity() {
         setIntent(intent)
         handleVerificationNotificationIntent(intent)
         handleExtensionOAuthIntent(intent)
+        PlayerWidgetBridge.handleIntent(intent)
     }
 
     private fun handleVerificationNotificationIntent(intent: Intent?) {
@@ -950,6 +952,7 @@ class MainActivity: FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        PlayerWidgetBridge.attach(this, flutterEngine)
         com.zarz.spotiflac.discord.DiscordPresenceBridge.attach(this, flutterEngine.dartExecutor.binaryMessenger)
         // Select and initialize the runtime before Flutter can dispatch a call.
         val selectedBackend = coreBackend

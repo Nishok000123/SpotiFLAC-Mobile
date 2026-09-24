@@ -22,6 +22,10 @@ import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/services/share_intent_service.dart';
 import 'package:spotiflac_android/services/cover_cache_manager.dart';
 import 'package:spotiflac_android/services/app_state_database.dart';
+import 'package:spotiflac_android/services/app_navigation_service.dart';
+import 'package:spotiflac_android/services/music_player_service.dart';
+import 'package:spotiflac_android/services/player_widget_service.dart';
+import 'package:spotiflac_android/screens/now_playing_screen.dart';
 import 'package:spotiflac_android/utils/local_library_scan_prefs.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/utils/extension_auth_launcher.dart';
@@ -87,6 +91,24 @@ void main() {
           ),
         ),
       );
+      if (Platform.isAndroid || Platform.isIOS) {
+        unawaited(
+          PlayerWidgetService.instance.initialize((command) async {
+            await restorePersistedPlaybackSession();
+            final handler = await initMusicPlayer();
+            if (command == 'open') {
+              await WidgetsBinding.instance.endOfFrame;
+              final navigator =
+                  AppNavigationService.rootNavigatorKey.currentState;
+              if (navigator != null && handler.mediaItem.value != null) {
+                unawaited(navigator.push<void>(NowPlayingRoute()));
+              }
+            } else {
+              await PlayerWidgetService.control(handler, command);
+            }
+          }),
+        );
+      }
     },
     (error, stack) {
       _log.e('Uncaught zone error: $error');
