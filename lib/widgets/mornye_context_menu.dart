@@ -17,6 +17,7 @@ Future<T?> showMornyeContextMenu<T>({
   required BuildContext context,
   required WidgetBuilder builder,
   Rect? anchor,
+  bool preferAbove = false,
 }) {
   final navigator = Navigator.of(context, rootNavigator: true);
   final themes = InheritedTheme.capture(from: context, to: navigator.context);
@@ -40,11 +41,13 @@ Future<T?> showMornyeContextMenu<T>({
           child: CustomSingleChildLayout(
             delegate: _MenuLayout(
               anchor: target,
+              preferAbove: preferAbove,
               padding: media.padding.copyWith(
                 bottom: math.max(media.padding.bottom, media.viewInsets.bottom),
               ),
             ),
             child: ScaleTransition(
+              alignment: preferAbove ? Alignment.bottomRight : Alignment.center,
               scale: animation.drive(Tween<double>(begin: 0.96, end: 1)),
               child: themes.wrap(Builder(builder: builder)),
             ),
@@ -56,10 +59,15 @@ Future<T?> showMornyeContextMenu<T>({
 }
 
 class _MenuLayout extends SingleChildLayoutDelegate {
-  const _MenuLayout({required this.anchor, required this.padding});
+  const _MenuLayout({
+    required this.anchor,
+    required this.padding,
+    required this.preferAbove,
+  });
 
   final Rect? anchor;
   final EdgeInsets padding;
+  final bool preferAbove;
   static const double _margin = 16;
 
   @override
@@ -68,14 +76,13 @@ class _MenuLayout extends SingleChildLayoutDelegate {
       320.0,
       math.max(0.0, constraints.maxWidth - padding.horizontal - _margin * 2),
     );
-    return BoxConstraints(
-      minWidth: width,
-      maxWidth: width,
-      maxHeight: math.max(
-        0,
-        constraints.maxHeight - padding.vertical - _margin * 2,
-      ),
+    var height = math.max(
+      0.0,
+      constraints.maxHeight - padding.vertical - _margin * 2,
     );
+    final above = (anchor?.top ?? 0) - padding.top - _margin - 8;
+    if (preferAbove && above >= 160) height = math.min(height, above);
+    return BoxConstraints(minWidth: width, maxWidth: width, maxHeight: height);
   }
 
   @override
@@ -93,17 +100,32 @@ class _MenuLayout extends SingleChildLayoutDelegate {
     final x = anchor == null
         ? (size.width - childSize.width) / 2
         : anchor!.right - childSize.width;
-    var y = anchor == null ? size.height * 0.18 : anchor!.bottom + 8;
-    if (anchor != null && y > bottom) {
-      y = anchor!.top - childSize.height - 8;
-      if (y < top) y = bottom;
+    var y = size.height * 0.18;
+    if (anchor != null) {
+      final above = anchor!.top - childSize.height - 8;
+      final below = anchor!.bottom + 8;
+      if (preferAbove) {
+        y = above >= top
+            ? above
+            : below <= bottom
+            ? below
+            : top;
+      } else {
+        y = below <= bottom
+            ? below
+            : above >= top
+            ? above
+            : bottom;
+      }
     }
     return Offset(x.clamp(left, right), y.clamp(top, bottom));
   }
 
   @override
   bool shouldRelayout(_MenuLayout oldDelegate) =>
-      anchor != oldDelegate.anchor || padding != oldDelegate.padding;
+      anchor != oldDelegate.anchor ||
+      padding != oldDelegate.padding ||
+      preferAbove != oldDelegate.preferAbove;
 }
 
 class MornyeMenuAction {
@@ -131,11 +153,13 @@ class MornyeContextMenu extends StatelessWidget {
     this.quickActions = const [],
     required this.groups,
     this.inheritSurface = false,
+    this.dense = false,
   });
 
   final List<MornyeMenuAction> quickActions;
   final List<List<MornyeMenuAction>> groups;
   final bool inheritSurface;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +246,11 @@ class MornyeContextMenu extends StatelessWidget {
       textAlign: compact ? TextAlign.center : TextAlign.start,
       style: theme.textTheme.bodyLarge?.copyWith(
         color: color,
-        fontSize: compact ? 13 : 17,
+        fontSize: compact
+            ? 13
+            : dense
+            ? 15
+            : 17,
         fontWeight: compact ? FontWeight.w600 : FontWeight.w400,
       ),
     );
@@ -231,7 +259,7 @@ class MornyeContextMenu extends StatelessWidget {
       child: CupertinoButton(
         padding: compact
             ? const EdgeInsets.symmetric(horizontal: 4, vertical: 10)
-            : const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+            : EdgeInsets.symmetric(horizontal: 20, vertical: dense ? 10 : 13),
         onPressed: action.onPressed,
         child: compact
             ? Column(

@@ -17,6 +17,7 @@ void main() {
     Brightness brightness = Brightness.light,
     double textScale = 1,
     bool reduceMotion = false,
+    bool preferAbove = false,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -41,6 +42,7 @@ void main() {
                     final result = await showMornyeContextMenu<String>(
                       context: context,
                       anchor: anchor,
+                      preferAbove: preferAbove,
                       builder: (menuContext) {
                         MornyeMenuAction action(String label, IconData icon) =>
                             MornyeMenuAction(
@@ -124,6 +126,7 @@ void main() {
         anchor: const Rect.fromLTWH(600, 200, 24, 44),
         size: const Size(640, 320),
         textScale: 2.5,
+        preferAbove: true,
         onResult: (value) => result = value,
       );
       final rect = tester.getRect(find.byType(MornyeContextMenu));
@@ -147,7 +150,12 @@ void main() {
       tester,
       anchor: const Rect.fromLTWH(12, 40, 44, 44),
       reduceMotion: true,
+      preferAbove: true,
       onResult: results.add,
+    );
+    expect(
+      tester.getRect(find.byType(MornyeContextMenu)).top,
+      greaterThanOrEqualTo(84),
     );
     await tester.tapAt(const Offset(8, 800));
     await tester.pump();

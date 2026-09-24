@@ -7,8 +7,10 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/providers/download_history_provider.dart';
+import 'package:spotiflac_android/providers/library_collections_provider.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
 import 'package:spotiflac_android/providers/runtime_profile_provider.dart';
 import 'package:spotiflac_android/screens/downloaded_album_screen.dart';
@@ -29,6 +31,7 @@ import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
 import 'package:spotiflac_android/widgets/player_artwork.dart';
 import 'package:spotiflac_android/widgets/playback_seek_slider.dart';
+import 'package:spotiflac_android/widgets/playlist_picker_sheet.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/mornye_volume_control.dart';
 import 'package:spotiflac_android/widgets/mornye_player_queue.dart';
@@ -1366,6 +1369,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   ) async {
     final action = await showMornyeContextMenu<String>(
       context: titleContext,
+      preferAbove: true,
       builder: (_) => MornyePlayerNavigationMenu(mediaItem: mediaItem),
     );
     if (!mounted) return;
@@ -1375,12 +1379,42 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         source: mediaItem.extras?['source']?.toString() ?? '',
       );
     } else if (action == 'artist') {
-      final track = ref.read(playerCollectionTrackProvider(mediaItem)).value;
-      await navigateToArtist(
-        context,
-        artistName: mediaItem.artist ?? '',
-        artistId: track?.artistId,
-        extensionId: track?.source,
+      await _goToCurrentArtist(mediaItem);
+    }
+  }
+
+  Future<void> _goToCurrentArtist(MediaItem mediaItem) async {
+    final track = ref.read(playerCollectionTrackProvider(mediaItem)).value;
+    await navigateToArtist(
+      context,
+      artistName: mediaItem.artist ?? '',
+      artistId: track?.artistId,
+      extensionId: track?.source,
+    );
+  }
+
+  Future<void> _updatePlayerCollection(
+    MediaItem item, {
+    required bool favorite,
+  }) async {
+    try {
+      final provider = playerCollectionTrackProvider(item);
+      if (ref.read(provider).hasError) ref.invalidate(provider);
+      final track = await ref.read(provider.future);
+      if (!mounted) return;
+      if (favorite) {
+        await ref.read(libraryCollectionsProvider.notifier).toggleLoved(track);
+      } else {
+        await showAddTrackToPlaylistSheet(context, ref, track);
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.snackbarError(context.friendlyError(error)),
+          ),
+        ),
       );
     }
   }
@@ -1405,6 +1439,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         ? await showMornyeContextMenu<String>(
             context: context,
             anchor: anchor,
+            preferAbove: true,
             builder: (_) => MornyePlayerActionsSheet(
               mediaItem: mediaItem,
               sleepTimerSubtitle: sleepTimerSubtitle,
@@ -1456,6 +1491,29 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           );
     if (!mounted || !context.mounted) return;
     switch (action) {
+      case 'favorite':
+        await _updatePlayerCollection(mediaItem, favorite: true);
+        break;
+      case 'playlist':
+        await _updatePlayerCollection(mediaItem, favorite: false);
+        break;
+      case 'artist':
+        await _goToCurrentArtist(mediaItem);
+        break;
+      case 'share':
+        await SharePlus.instance.share(
+          ShareParams(
+            text: '${mediaItem.title} — ${mediaItem.artist ?? ''}',
+            sharePositionOrigin:
+                anchor ??
+                Rect.fromCenter(
+                  center: MediaQuery.sizeOf(context).center(Offset.zero),
+                  width: 1,
+                  height: 1,
+                ),
+          ),
+        );
+        break;
       case 'album':
         await _goToCurrentAlbum(mediaItem: mediaItem, source: source);
         break;
