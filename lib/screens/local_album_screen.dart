@@ -20,6 +20,7 @@ import 'package:spotiflac_android/services/local_track_redownload_service.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
 import 'package:spotiflac_android/providers/playback_provider.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
+import 'package:spotiflac_android/providers/player_motion_artwork_provider.dart';
 import 'package:spotiflac_android/screens/collapsing_header_scroll_mixin.dart';
 import 'package:spotiflac_android/screens/selection_mode_mixin.dart';
 import 'package:spotiflac_android/widgets/collection_scaffold.dart';
@@ -31,6 +32,7 @@ import 'package:spotiflac_android/widgets/selection_bottom_bar.dart';
 import 'package:spotiflac_android/widgets/disc_separator_chip.dart';
 import 'package:spotiflac_android/widgets/album_detail_header.dart';
 import 'package:spotiflac_android/widgets/mornye_artist_header.dart';
+import 'package:spotiflac_android/widgets/motion_header_banner.dart';
 
 class LocalAlbumScreen extends ConsumerStatefulWidget {
   final String albumName;
@@ -216,6 +218,16 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
     String qualityLabelMode,
   ) {
     final expandedHeight = calculateExpandedHeight(context);
+    final motion = context.isMornye && !MediaQuery.disableAnimationsOf(context)
+        ? ref
+              .watch(
+                playerMotionArtworkProvider((
+                  album: widget.albumName,
+                  artist: _sortedTracksCache.first.artistName,
+                )),
+              )
+              .value
+        : null;
 
     final cacheWidth = coverCacheWidthForViewport(context);
     final Widget background = widget.coverPath != null
@@ -239,9 +251,12 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
     return AlbumDetailHeader(
       title: widget.albumName,
       immersive: context.isMornye,
+      squareArtwork: motion == null,
       expandedHeight: expandedHeight,
       showTitleInAppBar: showTitleInAppBar,
-      background: background,
+      background: motion == null
+          ? background
+          : MotionHeaderBanner(videoUrl: motion.source, fallback: background),
       paletteSource: widget.coverPath,
       blurAndScrimBackground: widget.coverPath != null,
       coverBuilder: (context, coverSize) => widget.coverPath != null

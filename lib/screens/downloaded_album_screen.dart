@@ -22,6 +22,7 @@ import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/playback_provider.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
+import 'package:spotiflac_android/providers/player_motion_artwork_provider.dart';
 import 'package:spotiflac_android/screens/collapsing_header_scroll_mixin.dart';
 import 'package:spotiflac_android/screens/selection_mode_mixin.dart';
 import 'package:spotiflac_android/screens/track_metadata_screen.dart';
@@ -36,6 +37,7 @@ import 'package:spotiflac_android/widgets/selection_bottom_bar.dart';
 import 'package:spotiflac_android/widgets/disc_separator_chip.dart';
 import 'package:spotiflac_android/widgets/album_detail_header.dart';
 import 'package:spotiflac_android/widgets/mornye_artist_header.dart';
+import 'package:spotiflac_android/widgets/motion_header_banner.dart';
 
 class DownloadedAlbumScreen extends ConsumerStatefulWidget {
   final String albumName;
@@ -345,6 +347,18 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
     final expandedHeight = calculateExpandedHeight(context);
     final embeddedCoverPath = _resolveAlbumEmbeddedCoverPath(tracks);
     final commonQuality = _getCommonQuality(tracks, qualityLabelMode);
+    final motion = context.isMornye && !MediaQuery.disableAnimationsOf(context)
+        ? ref
+              .watch(
+                playerMotionArtworkProvider((
+                  album: widget.albumName,
+                  artist: tracks.isEmpty
+                      ? widget.artistName
+                      : tracks.first.artistName,
+                )),
+              )
+              .value
+        : null;
 
     final cacheWidth = coverCacheWidthForViewport(context);
     final Widget background = embeddedCoverPath != null
@@ -377,9 +391,12 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
     return AlbumDetailHeader(
       title: widget.albumName,
       immersive: context.isMornye,
+      squareArtwork: motion == null,
       expandedHeight: expandedHeight,
       showTitleInAppBar: showTitleInAppBar,
-      background: background,
+      background: motion == null
+          ? background
+          : MotionHeaderBanner(videoUrl: motion.source, fallback: background),
       paletteSource: embeddedCoverPath ?? widget.coverUrl,
       blurAndScrimBackground:
           embeddedCoverPath != null || widget.coverUrl != null,

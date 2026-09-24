@@ -2,9 +2,19 @@ import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/providers/download_history_provider.dart';
 import 'package:spotiflac_android/providers/player_artwork_video_provider.dart';
+import 'package:spotiflac_android/providers/player_motion_artwork_provider.dart';
+import 'package:spotiflac_android/screens/downloaded_album_screen.dart';
+import 'package:spotiflac_android/screens/local_album_screen.dart';
+import 'package:spotiflac_android/services/library_database.dart';
+import 'package:spotiflac_android/services/motion_artwork_store.dart';
+import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/widgets/mornye_player_artwork.dart';
 import 'package:spotiflac_android/widgets/motion_header_banner.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
@@ -78,6 +88,106 @@ class _VideoPlatform extends VideoPlayerPlatform {
 }
 
 void main() {
+  for (final downloaded in [false, true]) {
+    for (final mode in ['saved', 'missing', 'reduced motion']) {
+      testWidgets(
+        'local album uses saved motion with fallback (downloaded: $downloaded, $mode)',
+        (tester) async {
+          SharedPreferences.setMockInitialValues({});
+          final previous = VideoPlayerPlatform.instance;
+          final platform = _VideoPlatform();
+          VideoPlayerPlatform.instance = platform;
+          addTearDown(() => VideoPlayerPlatform.instance = previous);
+          const channel = MethodChannel('com.zarz.spotiflac/backend');
+          final messenger =
+              TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+          messenger.setMockMethodCallHandler(channel, (_) async => null);
+          addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+          var lookups = 0;
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                playerMotionArtworkProvider.overrideWith((ref, album) async {
+                  lookups++;
+                  expect(album, (album: 'Album', artist: 'Track Artist'));
+                  return mode == 'missing'
+                      ? null
+                      : const MotionArtwork('file:///album-cover.mp4');
+                }),
+                downloadedAlbumTracksProvider(
+                  const DownloadedAlbumTracksRequest(
+                    albumName: 'Album',
+                    artistName: 'Album Artist',
+                  ),
+                ).overrideWith(
+                  (ref) async => [
+                    DownloadHistoryItem(
+                      id: 'track',
+                      trackName: 'Track',
+                      artistName: 'Track Artist',
+                      albumName: 'Album',
+                      albumArtist: 'Album Artist',
+                      filePath: 'content://library/track.flac',
+                      service: 'provider-a',
+                      downloadedAt: DateTime(2026),
+                    ),
+                  ],
+                ),
+              ],
+              child: MaterialApp(
+                theme: MornyeTheme.build(Brightness.light),
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(disableAnimations: mode == 'reduced motion'),
+                  child: child!,
+                ),
+                home: downloaded
+                    ? const DownloadedAlbumScreen(
+                        albumName: 'Album',
+                        artistName: 'Album Artist',
+                      )
+                    : LocalAlbumScreen(
+                        albumName: 'Album',
+                        artistName: 'Album Artist',
+                        tracks: [
+                          LocalLibraryItem(
+                            id: 'track',
+                            trackName: 'Track',
+                            artistName: 'Track Artist',
+                            albumName: 'Album',
+                            albumArtist: 'Album Artist',
+                            filePath: 'content://library/track.flac',
+                            scannedAt: DateTime(2026),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(lookups, mode == 'reduced motion' ? 0 : 1);
+          if (mode == 'saved') {
+            expect(find.byType(MotionHeaderBanner), findsOneWidget);
+            expect(platform.source?.sourceType, DataSourceType.file);
+            expect(platform.playing, isTrue);
+            expect(platform.looping, isTrue);
+            expect(platform.volume, 0);
+          } else {
+            expect(find.byType(MotionHeaderBanner), findsNothing);
+            expect(platform.creations, 0);
+          }
+          expect(find.text('Album Artist'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          await tester.pumpWidget(const SizedBox());
+          await tester.pumpAndSettle();
+        },
+      );
+    }
+  }
+
   testWidgets(
     'prepared player video opens without a new decoder or cover fade',
     (tester) async {
