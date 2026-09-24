@@ -19,12 +19,17 @@ class OverflowMarquee extends StatefulWidget {
 
 class _OverflowMarqueeState extends State<OverflowMarquee>
     with WidgetsBindingObserver {
+  static const _gap = 32.0;
+
   final _scroll = ScrollController();
+  final _contentKey = GlobalKey();
   Timer? _pause;
   int _generation = 0;
   bool _restartQueued = false;
   bool _motionEnabled = false;
   bool _appActive = true;
+  bool _looping = false;
+  double _loopDistance = 0;
   double? _viewport;
   double? _extent;
 
@@ -69,10 +74,18 @@ class _OverflowMarqueeState extends State<OverflowMarquee>
       if (!mounted || !_scroll.hasClients) return;
       // Also cancels an in-flight animation after a track/width change.
       _scroll.jumpTo(0);
-      if (_motionEnabled &&
-          _appActive &&
-          _scroll.position.maxScrollExtent > 0) {
-        _scheduleLeg(towardEnd: true, generation: _generation);
+      final content = _contentKey.currentContext?.findRenderObject();
+      if (content is! RenderBox || !content.hasSize) return;
+      final overflowing =
+          content.size.width > _scroll.position.viewportDimension + 0.5;
+      _loopDistance = content.size.width + _gap;
+      if (_looping != overflowing) {
+        setState(() => _looping = overflowing);
+        _queueRestart();
+        return;
+      }
+      if (_motionEnabled && _appActive && _looping) {
+        _scheduleCycle(_generation);
       }
     });
     WidgetsBinding.instance.ensureVisualUpdate();
@@ -85,28 +98,22 @@ class _OverflowMarqueeState extends State<OverflowMarquee>
       _appActive &&
       _scroll.hasClients;
 
-  void _scheduleLeg({required bool towardEnd, required int generation}) {
-    _pause = Timer(
-      Duration(milliseconds: towardEnd ? 1500 : 1200),
-      () => _scrollLeg(towardEnd: towardEnd, generation: generation),
-    );
+  void _scheduleCycle(int generation) {
+    _pause = Timer(const Duration(seconds: 3), () => _scrollCycle(generation));
   }
 
-  Future<void> _scrollLeg({
-    required bool towardEnd,
-    required int generation,
-  }) async {
+  Future<void> _scrollCycle(int generation) async {
     if (!_canScroll(generation)) return;
-    final target = towardEnd ? _scroll.position.maxScrollExtent : 0.0;
-    final distance = (target - _scroll.offset).abs();
-    if (distance < 0.5) return;
     await _scroll.animateTo(
-      target,
-      duration: Duration(milliseconds: (distance / 28 * 1000).round()),
+      _loopDistance,
+      duration: Duration(milliseconds: (_loopDistance / 28 * 1000).round()),
       curve: Curves.linear,
     );
     if (_canScroll(generation)) {
-      _scheduleLeg(towardEnd: !towardEnd, generation: generation);
+      // The next copy is now exactly where the first started, so resetting
+      // the offset changes neither the visible text nor its direction.
+      _scroll.jumpTo(0);
+      _scheduleCycle(generation);
     }
   }
 
@@ -138,7 +145,16 @@ class _OverflowMarqueeState extends State<OverflowMarquee>
           controller: _scroll,
           scrollDirection: Axis.horizontal,
           physics: const NeverScrollableScrollPhysics(),
-          child: widget.child,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              KeyedSubtree(key: _contentKey, child: widget.child),
+              if (_looping) ...[
+                const SizedBox(width: _gap),
+                ExcludeSemantics(child: IgnorePointer(child: widget.child)),
+              ],
+            ],
+          ),
         ),
       ),
     );

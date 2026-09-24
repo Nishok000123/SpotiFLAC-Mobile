@@ -53,6 +53,7 @@ void main() {
       ),
     );
     await tester.pump();
+    await tester.pump();
   }
 
   ScrollController controller(WidgetTester tester) => tester
@@ -60,7 +61,7 @@ void main() {
       .controller!;
 
   Future<void> startScrolling(WidgetTester tester) async {
-    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump(const Duration(seconds: 3));
     await tester.pump(const Duration(seconds: 1));
   }
 
@@ -75,25 +76,37 @@ void main() {
     expect(tester.binding.transientCallbackCount, 0);
   });
 
-  testWidgets('long titles pause, reveal the end, and return smoothly', (
+  testWidgets('long titles loop forward without reversing or a visible jump', (
     tester,
   ) async {
     await pumpTitle(tester, explicit: true);
     final scroll = controller(tester);
-    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 2500));
     expect(scroll.offset, 0);
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(seconds: 1));
     expect(scroll.offset, closeTo(28, 1));
-    await tester.pump(const Duration(minutes: 1));
-    final end = scroll.position.maxScrollExtent;
-    expect(scroll.offset, end);
-    expect(find.byType(ExplicitBadge), findsOneWidget);
+    final titles = find.byType(ExplicitTrackTitle);
+    expect(titles, findsNWidgets(2));
+    final distance =
+        tester.getTopLeft(titles.last).dx - tester.getTopLeft(titles.first).dx;
+    final travelMs = (distance / 28 * 1000).round();
+    await tester.pump(Duration(milliseconds: travelMs - 1000 - 10));
+    expect(scroll.offset, greaterThan(distance - 1));
+    final nextCopyPosition = tester.getTopLeft(titles.last);
+    await tester.pump(const Duration(milliseconds: 11));
+    await tester.pump();
+    expect(scroll.offset, 0);
+    expect(
+      (tester.getTopLeft(titles.first) - nextCopyPosition).distance,
+      lessThan(0.5),
+    );
+    expect(find.byType(ExplicitBadge), findsNWidgets(2));
+    await tester.pump(const Duration(milliseconds: 2500));
+    expect(scroll.offset, 0);
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(seconds: 1));
-    expect(scroll.offset, end);
-    await tester.pump(const Duration(milliseconds: 200));
-    await tester.pump(const Duration(seconds: 1));
-    expect(scroll.offset, closeTo(end - 28, 1));
+    expect(scroll.offset, closeTo(28, 1));
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
@@ -207,6 +220,8 @@ void main() {
           );
           await tester.pump();
           await tester.pump();
+          await tester.pump();
+          await tester.pump();
           await startScrolling(tester);
           final scrollViews = tester.widgetList<SingleChildScrollView>(
             find.descendant(
@@ -218,7 +233,7 @@ void main() {
           for (final view in scrollViews) {
             expect(view.controller!.offset, greaterThan(0));
           }
-          expect(find.byType(ExplicitBadge), findsOneWidget);
+          expect(find.byType(ExplicitBadge), findsNWidgets(2));
           expect(tester.takeException(), isNull);
           await tester.pumpWidget(const SizedBox.shrink());
         },
