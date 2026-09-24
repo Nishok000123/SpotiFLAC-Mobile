@@ -792,6 +792,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _saveSettings();
   }
 
+  void setRedownloadFakeHiRes(bool enabled) {
+    state = state.copyWith(redownloadFakeHiRes: enabled);
+    _saveSettings();
+  }
+
   void setAutoConvertFormat(String format) {
     state = state.copyWith(
       autoConvertFormat: normalizeAutoConvertFormat(format),

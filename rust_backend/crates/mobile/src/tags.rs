@@ -339,7 +339,7 @@ pub fn read_file_metadata(
     serde_json::to_string(&metadata).map_err(|error| error.to_string().into())
 }
 
-fn check_lease(lease: Option<&RequestLease>) -> Result<(), String> {
+pub(crate) fn check_lease(lease: Option<&RequestLease>) -> Result<(), String> {
     lease.map_or(Ok(()), |lease| {
         lease
             .inner
@@ -348,7 +348,7 @@ fn check_lease(lease: Option<&RequestLease>) -> Result<(), String> {
     })
 }
 
-fn open_audio_file(path: &str) -> Result<File, String> {
+pub(crate) fn open_audio_file(path: &str) -> Result<File, String> {
     let mut options = OpenOptions::new();
     options.read(true);
     #[cfg(unix)]

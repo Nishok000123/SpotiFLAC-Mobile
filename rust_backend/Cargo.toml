@@ -58,6 +58,8 @@ html5ever = "=0.39.0"
 unicode-normalization = "=0.1.22"
 unicode-general-category = "=0.6.0"
 time = { version = "=0.3.55", features = ["parsing"] }
+# Pure-Rust FLAC decoder for the Hi-Res authenticity check.
+claxon = "=0.4.3"
 chrono = { version = "=0.4.45", default-features = false, features = ["clock"] }
 tz-rs = "=0.7.3"
 httpdate = "=1.0.3"

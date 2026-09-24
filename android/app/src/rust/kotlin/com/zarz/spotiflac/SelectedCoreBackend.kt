@@ -218,6 +218,9 @@ internal object RustCoreBackend : CoreBackend {
     override fun readFileMetadata(path: String, hint: String): String =
         com.spotiflac.backend.readFileMetadata(path, hint, null)
 
+    override fun checkHiResAuthenticity(path: String, optionsJson: String): String =
+        com.spotiflac.backend.checkHiresAuthenticity(path, optionsJson, null)
+
     override fun readAudioMetadata(path: String, hint: String, cacheKey: String): String =
         owner().readAudioMetadata(File(path).canonicalPath, hint, cacheKey, null)
 

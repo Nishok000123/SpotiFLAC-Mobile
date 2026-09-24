@@ -299,6 +299,15 @@ internal fun MainActivity.readAudioMetadataFromUri(
     obj.takeUnless { it.has("error") }
 }
 
+/** The Hi-Res check reads only a window from the middle of the file, so a
+ * seekable descriptor avoids copying the whole track out of SAF. */
+internal fun MainActivity.checkHiResAuthenticityFromUri(
+    uri: Uri,
+    optionsJson: String,
+): JSONObject? = readMetadataFromUri(uri) { path, _ ->
+    JSONObject(coreBackend.checkHiResAuthenticity(path, optionsJson))
+}?.put("file_path", uri.toString())
+
 internal fun MainActivity.readCompleteMetadataFromUri(
     uri: Uri,
     displayNameHint: String? = null,

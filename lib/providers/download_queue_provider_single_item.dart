@@ -132,6 +132,8 @@ class _DownloadRun {
   Map<String, dynamic>? probedFinalMetadata;
   bool externalLrcWritten = false;
   final Map<String, String> _directoryScopes = {};
+  bool fakeHiResChecked = false;
+  String? fakeHiResOriginalPath;
 
   Future<void> _run() async {
     final normalizedService = n._normalizeQueuedService(item.service);
@@ -729,6 +731,7 @@ class _DownloadRun {
     decryptionDescriptor = DownloadDecryptionDescriptor.fromDownloadResult(
       result,
     );
+    final requestTrack = trackToDownload;
     trackToDownload = buildTrackForMetadataEmbedding(
       trackToDownload,
       result,
@@ -741,11 +744,36 @@ class _DownloadRun {
     await _applyFormatHandling(actualService);
     stageCompleted('format and metadata');
 
+    final originalHiResPath = fakeHiResOriginalPath;
+    if (originalHiResPath != null &&
+        (filePath == null ||
+            !await HiResCheckService.replacementPreservesAudio(
+              originalHiResPath,
+              filePath!,
+            ))) {
+      throw StateError(
+        'Lossless replacement does not preserve the original audio',
+      );
+    }
+
     if (await _shouldAbort(
       'during finalization',
       deleteFileOnAbort: filePath,
     )) {
       return false;
+    }
+
+    // At most once per run: the LOSSLESS replacement is not checked again.
+    if (!fakeHiResChecked) {
+      fakeHiResChecked = true;
+      switch (await _replaceFakeHiResIfNeeded(requestTrack)) {
+        case _FakeHiResOutcome.completed:
+          return true;
+        case _FakeHiResOutcome.aborted:
+          return false;
+        case _FakeHiResOutcome.kept:
+          break;
+      }
     }
 
     final deferredSafPublish =
@@ -836,6 +864,23 @@ class _DownloadRun {
       throw StateError(
         'Download backend reported success without a final file path',
       );
+    }
+
+    if (originalHiResPath != null &&
+        !await HiResCheckService.replacementPreservesAudio(
+          originalHiResPath,
+          filePath!,
+        )) {
+      throw StateError(
+        'Finalized replacement no longer preserves the original audio',
+      );
+    }
+
+    if (await _shouldAbort(
+      'before publishing finalized audio',
+      deleteFileOnAbort: wasExisting ? null : filePath,
+    )) {
+      return false;
     }
 
     if (deferredSafPublish && !await _publishDeferredSafOutputOnce()) {
@@ -1762,13 +1807,19 @@ class _DownloadRun {
           );
         },
       );
-      await n._notificationService.showDownloadComplete(
-        trackName: item.track.name,
-        artistName: item.track.artistName,
-        completedCount: n._completedInSession,
-        totalCount: n._totalQueuedAtStart,
-        alreadyInLibrary: wasExisting,
-      );
+      try {
+        await n._notificationService.showDownloadComplete(
+          trackName: item.track.name,
+          artistName: item.track.artistName,
+          completedCount: n._completedInSession,
+          totalCount: n._totalQueuedAtStart,
+          alreadyInLibrary: wasExisting,
+        );
+      } catch (e) {
+        // Audio and history are already committed. A notification failure
+        // must not roll back a valid replacement or its persisted history.
+        _log.w('Download completed but notification failed: $e');
+      }
       n.removeItem(item.id);
     }
   }

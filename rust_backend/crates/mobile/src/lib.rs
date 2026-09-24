@@ -4,6 +4,7 @@ mod cancellation;
 mod extensions;
 mod ffmpeg;
 mod filename;
+mod hires;
 mod index;
 mod logging;
 mod lyrics;

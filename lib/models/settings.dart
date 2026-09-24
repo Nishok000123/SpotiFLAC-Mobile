@@ -77,6 +77,8 @@ class AppSettings {
   final String locale;
   final String lyricsMode;
   final bool autoConvertDownloads;
+  // Re-download a Hi-Res request at LOSSLESS when the file measures as fake.
+  final bool redownloadFakeHiRes;
   final String autoConvertFormat; // 'mp3', 'aac' (M4A), or 'opus'
   final String autoConvertBitrate; // '128k', '192k', '256k', or '320k'
   final bool
@@ -172,6 +174,7 @@ class AppSettings {
     this.locale = 'system',
     this.lyricsMode = 'embed',
     this.autoConvertDownloads = false,
+    this.redownloadFakeHiRes = false,
     this.autoConvertFormat = 'mp3',
     this.autoConvertBitrate = '320k',
     this.useAllFilesAccess = false,
@@ -260,6 +263,7 @@ class AppSettings {
     String? locale,
     String? lyricsMode,
     bool? autoConvertDownloads,
+    bool? redownloadFakeHiRes,
     String? autoConvertFormat,
     String? autoConvertBitrate,
     bool? useAllFilesAccess,
@@ -353,6 +357,7 @@ class AppSettings {
       locale: locale ?? this.locale,
       lyricsMode: lyricsMode ?? this.lyricsMode,
       autoConvertDownloads: autoConvertDownloads ?? this.autoConvertDownloads,
+      redownloadFakeHiRes: redownloadFakeHiRes ?? this.redownloadFakeHiRes,
       autoConvertFormat: autoConvertFormat ?? this.autoConvertFormat,
       autoConvertBitrate: autoConvertBitrate ?? this.autoConvertBitrate,
       useAllFilesAccess: useAllFilesAccess ?? this.useAllFilesAccess,

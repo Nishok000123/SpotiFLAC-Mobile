@@ -64,6 +64,7 @@ import 'package:spotiflac_android/widgets/mornye_context_menu.dart';
 import 'package:spotiflac_android/widgets/mornye_metadata_row.dart';
 import 'package:spotiflac_android/widgets/player_artwork.dart';
 import 'package:spotiflac_android/widgets/audio_analysis_widget.dart';
+import 'package:spotiflac_android/widgets/hires_check_card.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
 import 'package:spotiflac_android/widgets/batch_convert_sheet.dart';
 import 'package:spotiflac_android/widgets/cached_cover_image.dart';

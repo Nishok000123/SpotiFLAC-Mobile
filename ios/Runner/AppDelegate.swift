@@ -245,7 +245,8 @@ import UniformTypeIdentifiers
             "pickIosDirectory", "createIosBookmarkFromPath", "resolveIosBookmark", "startAccessingIosBookmark", "stopAccessingIosBookmark", "downloadCoverToFile", "releaseMemory", "releaseMemoryUnderPressure",
             "setLibraryCoverCacheDir", "scanLibraryFolder", "scanLibraryFolderToNDJSONFile", "scanLibraryFolderIncremental",
             "getLibraryScanProgress", "cancelLibraryScan", "parseCueSheet", "extractCoverToFile",
-            "rewriteSplitArtistTags", "writeM4AFreeformTags", "ensureAC4Config", "writeAC4Metadata", "reEnrichFile"]
+            "rewriteSplitArtistTags", "writeM4AFreeformTags", "ensureAC4Config", "writeAC4Metadata", "reEnrichFile",
+            "checkHiResAuthenticity"]
         if coreBackend.routesApplication && !osMethods.contains(call.method) {
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
@@ -487,6 +488,11 @@ import UniformTypeIdentifiers
             let args = call.arguments as! [String: Any]
             let filePath = args["file_path"] as! String
             return try coreBackend.readFileMetadata(path: filePath, hint: args["display_name"] as? String ?? "")
+
+        case "checkHiResAuthenticity":
+            let args = call.arguments as! [String: Any]
+            let filePath = args["file_path"] as! String
+            return try coreBackend.checkHiResAuthenticity(path: filePath, optionsJson: args["options_json"] as? String ?? "")
 
         case "editFileMetadata":
             let args = call.arguments as! [String: Any]
