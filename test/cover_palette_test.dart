@@ -33,6 +33,10 @@ void main() {
         expect(identical(first, second), isTrue);
         final scheme = await first;
         expect(scheme, isNotNull);
+        expect(
+          CoverPalette.sourceColor(file.path, Brightness.light)?.toARGB32(),
+          Colors.blue.toARGB32(),
+        );
         // The original is 512 x 256. Its cached decode fits inside 112 x 112
         // while preserving the 2:1 aspect ratio, instead of retaining 512 KiB.
         expect(cache.currentSizeBytes, 112 * 56 * 4);
@@ -43,6 +47,46 @@ void main() {
       } finally {
         cache.clear();
         cache.clearLiveImages();
+        await directory.delete(recursive: true);
+      }
+    });
+  });
+
+  testWidgets('white and near-black artwork keeps a neutral source colour', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      final directory = await Directory.systemTemp.createTemp('neutral-cover-');
+      try {
+        final recorder = ui.PictureRecorder();
+        final canvas = Canvas(recorder);
+        canvas.drawRect(
+          const Rect.fromLTWH(0, 0, 100, 100),
+          Paint()..color = Colors.white,
+        );
+        canvas.drawRect(
+          const Rect.fromLTWH(50, 0, 50, 100),
+          Paint()..color = const Color(0xff02020f),
+        );
+        final picture = recorder.endRecording();
+        final image = await picture.toImage(100, 100);
+        final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+        image.dispose();
+        picture.dispose();
+        final file = File('${directory.path}/monochrome.png');
+        await file.writeAsBytes(bytes!.buffer.asUint8List());
+
+        expect(
+          await CoverPalette.resolve(file.path, Brightness.dark),
+          isNotNull,
+        );
+        final color = CoverPalette.sourceColor(file.path, Brightness.dark)!;
+        expect(color.r, color.g);
+        expect(color.g, color.b);
+        expect(color.r, inInclusiveRange(0.49, 0.52));
+      } finally {
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
         await directory.delete(recursive: true);
       }
     });

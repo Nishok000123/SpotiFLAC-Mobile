@@ -95,6 +95,26 @@ void main() {
     await tester.pump();
     await sample();
     expect(colors, {'header': Colors.black, 'controls': Colors.white});
+
+    // A muted pink frame still supports white player labels, including after
+    // a bright frame temporarily required black labels.
+    const pastel = Color(0xffa08398);
+    await tester.pumpWidget(app(pastel, pastel));
+    await sample();
+    expect(colors, {'header': Colors.white, 'controls': Colors.white});
+    final pastelChanges = changes;
+    await tester.pumpWidget(app(const Color(0xff939393), pastel));
+    await sample();
+    expect(changes, pastelChanges);
+    await tester.pumpWidget(app(Colors.white, pastel));
+    await sample();
+    expect(colors, {'header': Colors.black, 'controls': Colors.white});
+    await tester.pumpWidget(app(const Color(0xff939393), pastel));
+    await sample();
+    expect(colors, {'header': Colors.black, 'controls': Colors.white});
+    await tester.pumpWidget(app(pastel, pastel));
+    await sample();
+    expect(colors, {'header': Colors.white, 'controls': Colors.white});
     await tester.pumpWidget(const SizedBox());
   });
 }

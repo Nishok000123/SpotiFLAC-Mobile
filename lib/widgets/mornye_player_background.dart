@@ -34,10 +34,20 @@ class MornyePlayerBackground extends StatelessWidget {
       ),
       child: CoverPaletteBuilder(
         imageSource: source,
-        builder: (context, scheme) {
-          final dominant = HSLColor.fromColor(scheme.primary);
+        builder: (context, _) {
+          final dominant = HSLColor.fromColor(
+            source == null
+                ? const Color(0xff808080)
+                : CoverPalette.sourceColor(source, Brightness.dark) ??
+                      const Color(0xff808080),
+          );
           final muted = dominant.withSaturation(
-            dominant.saturation.clamp(0.0, 0.28),
+            dominant.saturation.clamp(0.0, 0.34),
+          );
+          // Carry the cover's muted colour through the controls instead of
+          // fading bright artwork into a nearly black, flat surface.
+          final backdrop = dominant.withSaturation(
+            dominant.saturation.clamp(0.0, 0.12),
           );
           final motion = MediaQuery.disableAnimationsOf(context)
               ? Duration.zero
@@ -47,12 +57,27 @@ class MornyePlayerBackground extends StatelessWidget {
             curve: Curves.easeInOutCubic,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  muted.withLightness(artwork == null ? 0.28 : 0.10).toColor(),
-                  muted.withLightness(artwork == null ? 0.15 : 0.10).toColor(),
-                ],
+                begin: artwork == null
+                    ? Alignment.topLeft
+                    : Alignment.topCenter,
+                end: artwork == null
+                    ? Alignment.bottomRight
+                    : Alignment.bottomCenter,
+                stops: artwork == null ? null : const [0, 0.5, 1],
+                colors: artwork == null
+                    ? [
+                        muted
+                            .withLightness(0.28 + dominant.lightness * 0.24)
+                            .toColor(),
+                        muted
+                            .withLightness(0.14 + dominant.lightness * 0.20)
+                            .toColor(),
+                      ]
+                    : [
+                        backdrop.withLightness(0.62).toColor(),
+                        backdrop.withLightness(0.54).toColor(),
+                        backdrop.withLightness(0.34).toColor(),
+                      ],
               ),
             ),
             child: Stack(

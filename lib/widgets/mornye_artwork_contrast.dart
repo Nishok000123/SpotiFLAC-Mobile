@@ -130,8 +130,10 @@ class _MornyeArtworkContrastState extends State<MornyeArtworkContrast> {
           }
         }
         if (count == 0) continue;
-        // Hysteresis avoids flicker when frames hover around the crossover.
-        final threshold = _colors[entry.key] == Colors.black ? 0.16 : 0.20;
+        // Prefer the player's white labels/icons while they retain 3:1
+        // contrast. Pastel frames need not switch to black merely because
+        // black has a higher contrast ratio. Hysteresis prevents flicker.
+        final threshold = _colors[entry.key] == Colors.black ? 0.28 : 0.30;
         next[entry.key] = luminance / count > threshold
             ? Colors.black
             : Colors.white;

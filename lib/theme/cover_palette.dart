@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:spotiflac_android/widgets/cached_cover_image.dart';
@@ -14,6 +17,7 @@ class CoverPalette {
   /// URL+brightness. Bounded because a long library-browsing session would
   /// otherwise keep every visited album's scheme alive.
   static final Map<String, ColorScheme> _cache = <String, ColorScheme>{};
+  static final Map<String, Color> _sourceColors = {};
   static final Map<String, Future<ColorScheme?>> _pending = {};
   static final List<String> _cacheOrder = <String>[];
   static const int _maxEntries = 32;
@@ -42,6 +46,11 @@ class CoverPalette {
   /// Cached scheme for [source], or null when it has not been resolved yet.
   static ColorScheme? peek(String source, Brightness brightness) =>
       _cache[cacheKeyFor(source, brightness)];
+
+  /// Average cover colour before Material's accent selection or tonal mapping.
+  /// Near-monochrome covers stay neutral instead of acquiring a seed hue.
+  static Color? sourceColor(String source, Brightness brightness) =>
+      _sourceColors[cacheKeyFor(source, brightness)];
 
   static ColorScheme? _peekByKey(String key) => _cache[key];
 
@@ -78,21 +87,25 @@ class CoverPalette {
     }
 
     try {
+      // Both samplers share this bounded decode through Flutter's image cache.
+      final sample = ResizeImage(
+        provider,
+        width: 112,
+        height: 112,
+        policy: ResizeImagePolicy.fit,
+      );
       final scheme = await ColorScheme.fromImageProvider(
-        // Palette extraction only samples a small image. Bound decoding too,
-        // instead of decoding the original before Flutter downsamples it.
-        provider: ResizeImage(
-          provider,
-          width: 112,
-          height: 112,
-          policy: ResizeImagePolicy.fit,
-        ),
+        provider: sample,
         brightness: brightness,
       );
+      final sourceColor = await _sampleSourceColor(sample);
+      if (sourceColor != null) _sourceColors[key] = sourceColor;
       _cache[key] = scheme;
       _cacheOrder.add(key);
       while (_cacheOrder.length > _maxEntries) {
-        _cache.remove(_cacheOrder.removeAt(0));
+        final oldest = _cacheOrder.removeAt(0);
+        _cache.remove(oldest);
+        _sourceColors.remove(oldest);
       }
       return scheme;
     } catch (_) {
@@ -100,6 +113,68 @@ class CoverPalette {
       // to the app scheme.
       return null;
     }
+  }
+
+  static Future<Color?> _sampleSourceColor(ImageProvider provider) {
+    final result = Completer<Color?>();
+    final stream = provider.resolve(ImageConfiguration.empty);
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (info, _) async {
+        stream.removeListener(listener);
+        try {
+          final data = await info.image.toByteData(
+            format: ui.ImageByteFormat.rawStraightRgba,
+          );
+          if (data == null) {
+            result.complete(null);
+            return;
+          }
+          var red = 0.0;
+          var green = 0.0;
+          var blue = 0.0;
+          var weight = 0.0;
+          for (var index = 0; index < data.lengthInBytes; index += 4) {
+            final alpha = data.getUint8(index + 3) / 255;
+            red += data.getUint8(index) * alpha;
+            green += data.getUint8(index + 1) * alpha;
+            blue += data.getUint8(index + 2) * alpha;
+            weight += alpha;
+          }
+          if (weight == 0) {
+            result.complete(null);
+            return;
+          }
+          red /= weight;
+          green /= weight;
+          blue /= weight;
+          // A very dark navy pixel can have high HSL saturation despite being
+          // visually black. Compare channel differences before using its hue.
+          final spread =
+              math.max(red, math.max(green, blue)) -
+              math.min(red, math.min(green, blue));
+          if (spread < 16) {
+            final gray = (red * 0.2126 + green * 0.7152 + blue * 0.0722)
+                .round();
+            result.complete(Color.fromARGB(255, gray, gray, gray));
+          } else {
+            result.complete(
+              Color.fromARGB(255, red.round(), green.round(), blue.round()),
+            );
+          }
+        } catch (_) {
+          result.complete(null);
+        } finally {
+          info.dispose();
+        }
+      },
+      onError: (Object error, StackTrace? stack) {
+        stream.removeListener(listener);
+        result.complete(null);
+      },
+    );
+    stream.addListener(listener);
+    return result.future;
   }
 }
 
