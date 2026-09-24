@@ -195,6 +195,7 @@ internal interface CoreBackend {
     fun sanitizeFilename(filename: String): String
     fun fileMetadataImplementation(path: String): String
     fun readFileMetadata(path: String, hint: String): String
+    fun checkHiResAuthenticity(path: String, optionsJson: String): String
     fun readAudioMetadata(path: String, hint: String, cacheKey: String): String
     fun setLibraryCoverCacheDirectory(path: String)
     fun scanLibraryFolder(folder: String): String

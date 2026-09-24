@@ -331,6 +331,12 @@ class SettingsSearchCatalog {
           keywords: const ['mp3', 'aac', 'opus'],
         ),
         SettingsSearchEntry(
+          icon: Icons.verified_outlined,
+          title: l10n.downloadRedownloadFakeHiRes,
+          subtitle: l10n.downloadRedownloadFakeHiResSubtitle,
+          keywords: const ['hi-res', 'hires', 'fake', 'upsampled', '24-bit'],
+        ),
+        SettingsSearchEntry(
           icon: Icons.auto_fix_high_outlined,
           title: l10n.downloadAutoConvert,
           subtitle: l10n.downloadAutoConvertSubtitle,

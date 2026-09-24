@@ -74,8 +74,8 @@ project boundaries, validation commands, and pull request checklist.
 ### [SpotiFLAC (Desktop)](https://github.com/afkarxyz/SpotiFLAC)
 Download music in true lossless FLAC from extension-provided sources on Windows, macOS & Linux.
 
-### [SpotiFLAC (Python Module)](https://github.com/ShuShuzinhuu/SpotiFLAC-Module-Version)
-Python library for SpotiFLAC integration, maintained by [@ShuShuzinhuu](https://github.com/ShuShuzinhuu).
+### [SpotiFLAC (Python Module)](https://github.com/BartolomeoRusso9/SpotiFLAC-Module-Version)
+Python library for SpotiFLAC integration, maintained by [@BartolomeoRusso9](https://github.com/BartolomeoRusso9).
 
 ---
 

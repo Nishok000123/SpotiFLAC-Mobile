@@ -86,6 +86,7 @@ class MainActivity: FlutterFragmentActivity() {
         "runPostProcessingV2",
         "readAudioMetadata",
         "readFileMetadata",
+        "checkHiResAuthenticity",
         "editFileMetadata",
         "reEnrichFile",
         "setLibraryCoverCacheDir",
@@ -1438,6 +1439,24 @@ class MainActivity: FlutterFragmentActivity() {
                                     }
                                 } catch (e: Exception) {
                                     errorJson(e.message ?: "Failed to read metadata")
+                                }
+                            }
+                            result.success(response)
+                        }
+                        "checkHiResAuthenticity" -> {
+                            val filePath = call.argument<String>("file_path") ?: ""
+                            val optionsJson = call.argument<String>("options_json") ?: ""
+                            val response = withContext(Dispatchers.IO) {
+                                try {
+                                    if (filePath.startsWith("content://")) {
+                                        checkHiResAuthenticityFromUri(Uri.parse(filePath), optionsJson)
+                                            ?.toString()
+                                            ?: errorJson("Failed to read SAF audio file")
+                                    } else {
+                                        coreBackend.checkHiResAuthenticity(filePath, optionsJson)
+                                    }
+                                } catch (e: Exception) {
+                                    errorJson(e.message ?: "Hi-Res check failed")
                                 }
                             }
                             result.success(response)

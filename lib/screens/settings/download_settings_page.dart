@@ -108,6 +108,15 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
                       ),
                   ],
                   SettingsSwitchItem(
+                    icon: Icons.verified_outlined,
+                    title: context.l10n.downloadRedownloadFakeHiRes,
+                    subtitle: context.l10n.downloadRedownloadFakeHiResSubtitle,
+                    value: settings.redownloadFakeHiRes,
+                    onChanged: (value) => ref
+                        .read(settingsProvider.notifier)
+                        .setRedownloadFakeHiRes(value),
+                  ),
+                  SettingsSwitchItem(
                     icon: Icons.auto_fix_high_outlined,
                     title: context.l10n.downloadAutoConvert,
                     subtitle: context.l10n.downloadAutoConvertSubtitle,
