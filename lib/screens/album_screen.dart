@@ -540,7 +540,6 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
                     child: HeaderFilledButton(
                       icon: CupertinoIcons.arrow_down_circle_fill,
                       label: context.l10n.dialogDownload,
-                      tonal: true,
                       onPressed: tracks.isEmpty
                           ? null
                           : () => _downloadAll(context),

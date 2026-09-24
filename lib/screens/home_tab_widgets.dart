@@ -864,21 +864,12 @@ class _ArtistLoadingScaffold extends StatelessWidget {
                       : const ShimmerLoading(
                           child: SkeletonBox(
                             width: double.infinity,
-                            height: 342,
+                            height: double.infinity,
                             borderRadius: 0,
                           ),
                         ),
                   actions: const [
-                    ShimmerLoading(
-                      child: Row(
-                        spacing: 24,
-                        children: [
-                          SkeletonBox(width: 44, height: 44, borderRadius: 22),
-                          SkeletonBox(width: 60, height: 60, borderRadius: 30),
-                          SkeletonBox(width: 44, height: 44, borderRadius: 22),
-                        ],
-                      ),
-                    ),
+                    ShimmerLoading(child: ArtistHeaderActionsSkeleton()),
                   ],
                 ).buildSlivers(context),
                 const SliverToBoxAdapter(

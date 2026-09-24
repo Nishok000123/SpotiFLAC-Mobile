@@ -77,9 +77,44 @@ extension _ArtistScreenSections on _ArtistScreenState {
             ? const []
             : [
                 HeaderCircleButton(
+                  icon: CupertinoIcons.square_arrow_up,
+                  buttonSize: 50,
+                  iconSize: 24,
+                  iconColor: colorScheme.primary,
+                  glassTintColor: Colors.white,
+                  glassTintOpacity: 0.10,
+                  tooltip: context.l10n.openInOtherServices,
+                  onPressed: () => _showShareSheet(context),
+                ),
+                if (_isLoadingDiscography)
+                  const ShimmerLoading(
+                    child: SkeletonBox(width: 74, height: 74, borderRadius: 37),
+                  )
+                else if (hasDiscography)
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    borderRadius: BorderRadius.circular(37),
+                    color: colorScheme.primary,
+                    onPressed: () =>
+                        _showDiscographyOptions(context, colorScheme, albums),
+                    child: SizedBox.square(
+                      dimension: 74,
+                      child: Semantics(
+                        label: context.l10n.discographyDownload,
+                        child: Icon(
+                          CupertinoIcons.arrow_down,
+                          size: 34,
+                          color: colorScheme.onPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                HeaderCircleButton(
                   icon: isFavoriteArtist
-                      ? CupertinoIcons.heart_fill
-                      : CupertinoIcons.heart,
+                      ? CupertinoIcons.star_fill
+                      : CupertinoIcons.star,
+                  buttonSize: 50,
+                  iconSize: 24,
                   iconColor: colorScheme.primary,
                   glassTintColor: Colors.white,
                   glassTintOpacity: 0.10,
@@ -87,37 +122,6 @@ extension _ArtistScreenSections on _ArtistScreenState {
                       ? context.l10n.artistOptionRemoveFromFavorites
                       : context.l10n.artistOptionAddToFavorites,
                   onPressed: () => _toggleFavoriteArtist(context),
-                ),
-                if (_isLoadingDiscography)
-                  const ShimmerLoading(
-                    child: SkeletonBox(width: 60, height: 60, borderRadius: 30),
-                  )
-                else if (hasDiscography)
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    borderRadius: BorderRadius.circular(30),
-                    color: colorScheme.primary,
-                    onPressed: () =>
-                        _showDiscographyOptions(context, colorScheme, albums),
-                    child: SizedBox.square(
-                      dimension: 60,
-                      child: Semantics(
-                        label: context.l10n.discographyDownload,
-                        child: Icon(
-                          CupertinoIcons.arrow_down,
-                          size: 26,
-                          color: colorScheme.onPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
-                HeaderCircleButton(
-                  icon: CupertinoIcons.ellipsis,
-                  iconColor: colorScheme.primary,
-                  glassTintColor: Colors.white,
-                  glassTintOpacity: 0.10,
-                  tooltip: context.l10n.openInOtherServices,
-                  onPressed: () => _showShareSheet(context),
                 ),
               ],
       ).buildSlivers(context);

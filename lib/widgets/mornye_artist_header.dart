@@ -16,10 +16,12 @@ class MornyeArtistSurface extends StatefulWidget {
     super.key,
     required this.imageSource,
     required this.child,
+    this.logoSource,
     this.neutralActions = false,
   });
 
   final String? imageSource;
+  final String? logoSource;
   final Widget child;
 
   /// Album and playlist actions use white controls over the artwork tint.
@@ -46,13 +48,30 @@ class _MornyeArtistSurfaceState extends State<MornyeArtistSurface> {
       child: CoverPaletteBuilder(
         imageSource: widget.imageSource,
         builder: (context, palette) {
-          // Retain the artwork's hue with a muted, slightly lifted surface.
-          // Large backgrounds need less saturation than the cover's accent.
-          final dominant = HSLColor.fromColor(palette.primary);
-          final surface = dominant
-              .withSaturation((dominant.saturation * 0.45).clamp(0.0, 0.22))
-              .withLightness(0.34)
-              .toColor();
+          final source = widget.imageSource;
+          final dominant = HSLColor.fromColor(
+            source == null
+                ? Colors.grey
+                : CoverPalette.sourceColor(source, Brightness.dark) ??
+                      Colors.grey,
+          );
+          // Averaging a portrait mixes its highlights and foliage into gray.
+          // Artist pages use the extracted accent at a deeper tone instead;
+          // album surfaces and monochrome artwork keep their neutral shading.
+          final useAccent =
+              !widget.neutralActions && dominant.saturation >= 0.08;
+          final accent = HSLColor.fromColor(palette.primary);
+          final surface = useAccent
+              ? accent
+                    .withSaturation((accent.saturation * 0.9).clamp(0.0, 0.88))
+                    .withLightness(0.14 + dominant.lightness * 0.05)
+                    .toColor()
+              : dominant
+                    .withSaturation(
+                      (dominant.saturation * 0.45).clamp(0.0, 0.22),
+                    )
+                    .withLightness(0.24 + dominant.lightness * 0.20)
+                    .toColor();
           final route = ModalRoute.of(context);
           if (route != null) {
             ShellNavigationService.setChromeBrightness(
@@ -62,12 +81,34 @@ class _MornyeArtistSurfaceState extends State<MornyeArtistSurface> {
               surface: surface,
             );
           }
-          return Theme(
-            data: darkTheme.copyWith(
-              scaffoldBackgroundColor: surface,
-              colorScheme: darkTheme.colorScheme.copyWith(
-                primary: widget.neutralActions ? Colors.white : palette.primary,
-                onPrimary: widget.neutralActions ? surface : palette.onPrimary,
+          return CoverPaletteBuilder(
+            imageSource: widget.neutralActions ? null : widget.logoSource,
+            builder: (context, _) {
+              final logo = widget.logoSource;
+              // Use the logo's original pixels, including white lettering,
+              // without Material's pastel accent mapping.
+              final logoColor = logo == null
+                  ? null
+                  : CoverPalette.sourceColor(logo, Brightness.dark);
+              final primary = widget.neutralActions
+                  ? Colors.white
+                  : logoColor ?? palette.primary;
+              final primaryLuminance = primary.computeLuminance();
+              final surfaceContrast =
+                  (primaryLuminance + 0.05) /
+                  (surface.computeLuminance() + 0.05);
+              final onPrimary = widget.neutralActions
+                  ? Colors.black
+                  : logoColor == null
+                  ? palette.onPrimary
+                  : surfaceContrast >= 4.5
+                  ? surface
+                  : primaryLuminance > 0.179
+                  ? Colors.black
+                  : Colors.white;
+              final scheme = darkTheme.colorScheme.copyWith(
+                primary: primary,
+                onPrimary: onPrimary,
                 onSurfaceVariant: widget.neutralActions ? Colors.white70 : null,
                 surface: surface,
                 surfaceContainer: Color.alphaBlend(
@@ -78,9 +119,15 @@ class _MornyeArtistSurfaceState extends State<MornyeArtistSurface> {
                   Colors.white.withValues(alpha: 0.12),
                   surface,
                 ),
-              ),
-            ),
-            child: widget.child,
+              );
+              return Theme(
+                data: darkTheme.copyWith(
+                  scaffoldBackgroundColor: surface,
+                  colorScheme: scheme,
+                ),
+                child: HeaderPalette(scheme: scheme, child: widget.child),
+              );
+            },
           );
         },
       ),
@@ -115,70 +162,121 @@ class MornyeArtistHeader extends StatelessWidget {
   List<Widget> buildSlivers(BuildContext context) {
     final surface = Theme.of(context).colorScheme.surface;
     return [
-      // Padding changes while the shell folds. Keep that dependency on the
-      // toolbar so callers do not rebuild the artist's entire discography.
-      Builder(
-        builder: (context) => SliverAppBar(
-          pinned: true,
-          expandedHeight: 342 - MediaQuery.paddingOf(context).top,
-          backgroundColor: surface,
-          surfaceTintColor: Colors.transparent,
-          leadingWidth: 64,
-          leading: Padding(
-            padding: const EdgeInsets.only(left: 12),
-            child: HeaderCircleButton(
-              icon: Icons.arrow_back,
-              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-              onPressed: () => Navigator.pop(context),
+      // Keep safe-area dependencies inside this sliver: folding the shell
+      // navigation must not rebuild the artist's entire discography.
+      SliverLayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.crossAxisExtent;
+          final textWidth = (width - 48).clamp(0.0, double.infinity);
+          final textScaler = MediaQuery.textScalerOf(context);
+          double textHeight(String text, TextStyle style) {
+            final painter = TextPainter(
+              text: TextSpan(
+                text: text,
+                style: DefaultTextStyle.of(context).style.merge(style),
+              ),
+              textDirection: Directionality.of(context),
+              textScaler: textScaler,
+              textAlign: TextAlign.center,
+            )..layout(maxWidth: textWidth);
+            final height = painter.height;
+            painter.dispose();
+            return height;
+          }
+
+          final nameHeight = textHeight(
+            name,
+            const TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+          );
+          final hasLogo = logoUrl?.trim().isNotEmpty == true;
+          final identityHeight = hasLogo
+              ? nameHeight.clamp(96.0, double.infinity)
+              : nameHeight;
+          final listenersHeight = listeners == null
+              ? 0.0
+              : 7 + textHeight(listeners!, const TextStyle(fontSize: 13));
+          final photoHeight = (width * 0.76).clamp(240.0, 340.0);
+          final expandedHeight =
+              photoHeight +
+              identityHeight +
+              listenersHeight +
+              (actions.isEmpty ? 0 : 94) +
+              32;
+          return SliverAppBar(
+            pinned: true,
+            expandedHeight: expandedHeight - MediaQuery.paddingOf(context).top,
+            backgroundColor: surface,
+            surfaceTintColor: Colors.transparent,
+            leadingWidth: 64,
+            leading: Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: HeaderCircleButton(
+                icon: Icons.arrow_back,
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                onPressed: () => Navigator.pop(context),
+              ),
             ),
-          ),
-          title: AnimatedOpacity(
-            opacity: showTitle ? 1 : 0,
-            duration: const Duration(milliseconds: 180),
-            child: Text(
-              name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+            title: AnimatedOpacity(
+              opacity: showTitle ? 1 : 0,
+              duration: const Duration(milliseconds: 180),
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-          ),
-          flexibleSpace: FlexibleSpaceBar(
-            collapseMode: CollapseMode.pin,
-            background: _ArtistCollapsingArtwork(
-              surface: surface,
-              child: artwork,
-            ),
-          ),
-        ),
-      ),
-      SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
-          child: Column(
-            children: [
-              _buildIdentity(),
-              if (listeners != null) ...[
-                const SizedBox(height: 7),
-                Text(
-                  listeners!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.7),
+            flexibleSpace: FlexibleSpaceBar(
+              collapseMode: CollapseMode.pin,
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _ArtistCollapsingArtwork(surface: surface, child: artwork),
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            height: identityHeight,
+                            child: Center(child: _buildIdentity()),
+                          ),
+                          if (listeners != null) ...[
+                            const SizedBox(height: 7),
+                            Text(
+                              listeners!,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.white.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ],
+                          if (actions.isNotEmpty) ...[
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              height: 74,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                spacing: 24,
+                                children: actions,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ],
-              if (actions.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  spacing: 24,
-                  children: actions,
-                ),
-              ],
-            ],
-          ),
-        ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     ];
   }
@@ -204,7 +302,7 @@ class MornyeArtistHeader extends StatelessWidget {
         fadeInDuration: Duration.zero,
         fadeOutDuration: Duration.zero,
         imageBuilder: (_, provider) => ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 320, maxHeight: 124),
+          constraints: const BoxConstraints(maxWidth: 260, maxHeight: 96),
           child: Image(image: provider, fit: BoxFit.contain),
         ),
         placeholder: (_, _) => fallback,
@@ -262,15 +360,45 @@ class _ArtistCollapsingArtwork extends ConsumerWidget {
               child: RepaintBoundary(child: child),
             ),
           ),
+          if (blurEnabled && fade < 1)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: FractionallySizedBox(
+                    heightFactor: 0.48,
+                    widthFactor: 1,
+                    child: ClipRect(
+                      child: ShaderMask(
+                        blendMode: BlendMode.dstIn,
+                        shaderCallback: (bounds) => const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Colors.white],
+                          stops: [0, 0.7],
+                        ).createShader(bounds),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                          child: ColoredBox(
+                            color: surface.withValues(alpha: 0.08),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                stops: const [0, 0.52, 1],
+                stops: const [0, 0.48, 0.82, 1],
                 colors: [
                   Colors.black.withValues(alpha: 0.15),
                   surface.withValues(alpha: 0),
+                  surface.withValues(alpha: 0.55),
                   surface,
                 ],
               ),

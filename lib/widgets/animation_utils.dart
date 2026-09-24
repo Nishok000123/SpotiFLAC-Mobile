@@ -381,24 +381,36 @@ class _CollectionHeaderSkeleton extends StatelessWidget {
       return LayoutBuilder(
         builder: (context, constraints) {
           final coverSize = constraints.maxWidth.clamp(0.0, 440.0);
-          return Column(
+          return Stack(
             children: [
-              ShaderMask(
-                blendMode: BlendMode.dstIn,
-                shaderCallback: (bounds) => const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0, 0.52, 1],
-                  colors: [Colors.white, Colors.white, Colors.transparent],
-                ).createShader(bounds),
-                child: SkeletonBox(
-                  width: coverSize,
-                  height: coverSize,
-                  borderRadius: 0,
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: ShaderMask(
+                    blendMode: BlendMode.dstIn,
+                    shaderCallback: (bounds) => const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [0, 0.48, 1],
+                      colors: [Colors.white, Colors.white, Colors.transparent],
+                    ).createShader(bounds),
+                    child: SkeletonBox(
+                      width: coverSize,
+                      height: coverSize,
+                      borderRadius: 0,
+                    ),
+                  ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  (coverSize - 20).clamp(0.0, double.infinity),
+                  20,
+                  28,
+                ),
                 child: Column(
                   children: [
                     const FractionallySizedBox(
@@ -422,7 +434,7 @@ class _CollectionHeaderSkeleton extends StatelessWidget {
                     ],
                     const SizedBox(height: 5),
                     const SkeletonBox(width: 140, height: 16, borderRadius: 4),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 460),
                       child: const Row(
@@ -494,6 +506,23 @@ class _CollectionHeaderSkeleton extends StatelessWidget {
   }
 }
 
+/// Mirrors the larger primary action and two smaller artist header actions.
+class ArtistHeaderActionsSkeleton extends StatelessWidget {
+  const ArtistHeaderActionsSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) => const Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    mainAxisSize: MainAxisSize.min,
+    spacing: 24,
+    children: [
+      SkeletonBox(width: 50, height: 50, borderRadius: 25),
+      SkeletonBox(width: 74, height: 74, borderRadius: 37),
+      SkeletonBox(width: 50, height: 50, borderRadius: 25),
+    ],
+  );
+}
+
 /// Artist screen skeleton shown below the SliverAppBar header while the
 /// discography loads: optional cover placeholder, "Popular" section, and the
 /// horizontal album sections.
@@ -519,24 +548,48 @@ class ArtistScreenSkeleton extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (showCoverHeader) ...[
-                const SkeletonBox(
-                  width: double.infinity,
-                  height: 342,
-                  borderRadius: 0,
+              if (showCoverHeader)
+                LayoutBuilder(
+                  builder: (context, constraints) => Stack(
+                    children: [
+                      Positioned.fill(
+                        child: ShaderMask(
+                          blendMode: BlendMode.dstIn,
+                          shaderCallback: (bounds) => const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            stops: [0, 0.48, 1],
+                            colors: [
+                              Colors.white,
+                              Colors.white,
+                              Colors.transparent,
+                            ],
+                          ).createShader(bounds),
+                          child: const SkeletonBox(
+                            width: double.infinity,
+                            height: double.infinity,
+                            borderRadius: 0,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          24,
+                          (constraints.maxWidth * 0.76).clamp(240.0, 340.0),
+                          24,
+                          32,
+                        ),
+                        child: const Column(
+                          children: [
+                            Center(child: SkeletonBox(width: 220, height: 36)),
+                            SizedBox(height: 20),
+                            ArtistHeaderActionsSkeleton(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const Center(child: SkeletonBox(width: 220, height: 36)),
-                const SizedBox(height: 16),
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  spacing: 24,
-                  children: [
-                    SkeletonBox(width: 44, height: 44, borderRadius: 22),
-                    SkeletonBox(width: 60, height: 60, borderRadius: 30),
-                    SkeletonBox(width: 44, height: 44, borderRadius: 22),
-                  ],
-                ),
-              ],
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
                 child: Container(

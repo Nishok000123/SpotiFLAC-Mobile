@@ -608,6 +608,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
       return MornyeArtistSurface(
         imageSource:
             _headerImageUrl ?? widget.headerImageUrl ?? widget.coverUrl,
+        logoSource: _headerLogoUrl ?? widget.headerLogoUrl,
         child: Builder(builder: _buildPage),
       );
     }
