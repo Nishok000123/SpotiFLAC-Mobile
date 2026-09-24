@@ -89,44 +89,42 @@ class MornyeBottomBar extends ConsumerWidget {
     final tabGap = glassTabs ? 0.0 : 8.0;
     // These contents do not depend on animation progress. Retain their widget
     // instances so folding only updates size/opacity wrappers each frame.
-    Widget sideSurface({double radius = 26}) => RepaintBoundary(
+    Widget sideSurface() => RepaintBoundary(
       child: MornyeGlass.navigation(
         blurEnabled: blurEnabled,
         strongTint: true,
-        tintOpacity: MornyeTheme.chromeOpacity(context),
-        radius: radius,
+        tintOpacity: MornyeTheme.navigationOpacity(context),
+        radius: 26,
         child: const SizedBox.expand(),
       ),
     );
     final leadingSurface = sideSurface();
-    final searchSurface = sideSurface(radius: 32);
-    final mainDestinations = destinations.sublist(0, destinations.length - 1);
+    final searchSurface = sideSurface();
     final searchSelected = selectedIndex == destinations.length - 1;
     final leadingIndex = searchSelected ? 0 : selectedIndex;
     final scheme = Theme.of(context).colorScheme;
-    final inactiveIconColor = Color.lerp(
-      scheme.onSurfaceVariant,
-      scheme.onSurface,
-      scheme.brightness == Brightness.dark ? 0.5 : 0.4,
-    );
+    final inactiveIconColor = scheme.onSurface;
     final player = MiniPlayer(compact: collapsed, bottomPadding: 0);
-    Widget tabs({required bool hideLeadingIcon}) => TickerMode(
+    Widget tabs({required bool hideMovingIcons}) => TickerMode(
       enabled: !collapsed,
       child: RepaintBoundary(
         child: MornyeTabBar(
-          destinations: mainDestinations,
-          selectedIndex: searchSelected ? -1 : selectedIndex,
-          onSelected: onSelected,
+          destinations: destinations,
+          selectedIndex: selectedIndex,
+          onSelected: (index) =>
+              index == destinations.length - 1 ? onSearch() : onSelected(index),
           blurEnabled: blurEnabled,
-          hiddenIconIndex: hideLeadingIcon ? leadingIndex : null,
+          hiddenIconIndices: hideMovingIcons
+              ? {leadingIndex, destinations.length - 1}
+              : const {},
         ),
       ),
     );
     // At rest the glass bar must paint its own active icon: its selected layer
     // follows a dragged pill before the destination is committed. Hand them
     // to the moving overlays only while folding, at the same coordinates.
-    final fullTabs = tabs(hideLeadingIcon: false);
-    final foldingTabs = tabs(hideLeadingIcon: true);
+    final fullTabs = tabs(hideMovingIcons: false);
+    final foldingTabs = tabs(hideMovingIcons: true);
     return LayoutBuilder(
       builder: (context, constraints) {
         // Match the tab's actual label height, including accessibility scaling.
@@ -147,14 +145,11 @@ class MornyeBottomBar extends ConsumerWidget {
             ? 40 + (labelHeight + 2) / 2
             : math.max(64.0, 49 + labelHeight) - 23.5;
         final tabInset = glassTabs ? 6.0 : 5.0;
-        final fullIconStart =
+        double fullIconStart(int index) =>
             tabInset +
-            (constraints.maxWidth - 76 - tabInset * 2) /
-                mainDestinations.length *
-                (leadingIndex + 0.5);
-        final fullSearchBottom = glassTabs
-            ? 8.0
-            : (math.max(64.0, 49 + labelHeight) - 64) / 2;
+            (constraints.maxWidth - tabInset * 2) /
+                destinations.length *
+                (index + 0.5);
         return TweenAnimationBuilder<double>(
           tween: Tween(end: collapsed ? 1 : 0),
           duration: MediaQuery.disableAnimationsOf(context)
@@ -167,28 +162,26 @@ class MornyeBottomBar extends ConsumerWidget {
               required Widget surface,
             }) {
               final index = leading ? leadingIndex : destinations.length - 1;
-              final offset = (fullIconStart - 26) * (1 - amount);
-              final size = leading ? 52.0 : 64 - 12 * amount;
+              final origin = fullIconStart(index);
+              final offset =
+                  ((leading ? origin : constraints.maxWidth - origin) - 26) *
+                  (1 - amount);
+              const size = 52.0;
               return PositionedDirectional(
                 start: leading ? offset : null,
-                end: leading ? null : 0,
-                bottom: leading
-                    ? fullIconBottom * (1 - amount) + 34 * amount - 26
-                    : fullSearchBottom * (1 - amount) + 8 * amount,
+                end: leading ? null : offset,
+                bottom: fullIconBottom * (1 - amount) + 34 * amount - 26,
                 width: size,
                 height: size,
                 child: IgnorePointer(
-                  ignoring: leading && amount < 0.5,
+                  ignoring: amount < 0.5,
                   child: ExcludeSemantics(
-                    excluding: leading && amount < 0.5,
+                    excluding: amount < 0.5,
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
                         Positioned.fill(
-                          child: Opacity(
-                            opacity: leading ? amount : 1,
-                            child: surface,
-                          ),
+                          child: Opacity(opacity: amount, child: surface),
                         ),
                         Material(
                           color: Colors.transparent,
@@ -214,7 +207,7 @@ class MornyeBottomBar extends ConsumerWidget {
                               amount,
                             ),
                             icon: Opacity(
-                              opacity: leading && amount == 0 ? 0 : 1,
+                              opacity: amount == 0 ? 0 : 1,
                               child: destinations[index].icon,
                             ),
                             onPressed: leading
@@ -274,12 +267,7 @@ class MornyeBottomBar extends ConsumerWidget {
                             excluding: amount > 0.5,
                             child: Opacity(
                               opacity: 1 - amount,
-                              child: Padding(
-                                padding: const EdgeInsetsDirectional.only(
-                                  end: 76,
-                                ),
-                                child: amount == 0 ? fullTabs : foldingTabs,
-                              ),
+                              child: amount == 0 ? fullTabs : foldingTabs,
                             ),
                           ),
                         ),

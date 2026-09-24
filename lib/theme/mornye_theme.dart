@@ -37,6 +37,11 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
       ? 0.42
       : 0.70;
 
+  static double navigationOpacity(BuildContext context) =>
+      Theme.of(context).extension<MornyeTheme>()?.chromeSurface != null
+      ? 0.28
+      : 0.54;
+
   static const lightAccent = Color.fromRGBO(204, 46, 51, 1);
   static const darkAccent = Color.fromRGBO(224, 61, 60, 1);
 

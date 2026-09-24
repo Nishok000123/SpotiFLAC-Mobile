@@ -437,15 +437,15 @@ class MornyeTabBar extends StatelessWidget {
     required this.selectedIndex,
     required this.onSelected,
     required this.blurEnabled,
-    this.hiddenIconIndex,
+    this.hiddenIconIndices = const {},
   });
 
   final List<NavigationDestination> destinations;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
   final bool blurEnabled;
-  // The active icon moves independently while the full capsule folds away.
-  final int? hiddenIconIndex;
+  // The active and Search icons move independently while the capsule folds.
+  final Set<int> hiddenIconIndices;
 
   @override
   Widget build(BuildContext context) {
@@ -453,11 +453,7 @@ class MornyeTabBar extends StatelessWidget {
     final selectionFill = scheme.onSurface.withValues(
       alpha: scheme.brightness == Brightness.dark ? 0.12 : 0.08,
     );
-    final inactiveIconColor = Color.lerp(
-      scheme.onSurfaceVariant,
-      scheme.onSurface,
-      scheme.brightness == Brightness.dark ? 0.5 : 0.4,
-    );
+    final inactiveIconColor = scheme.onSurface;
     if (blurEnabled &&
         !MediaQuery.disableAnimationsOf(context) &&
         !MediaQuery.highContrastOf(context)) {
@@ -480,7 +476,7 @@ class MornyeTabBar extends StatelessWidget {
                   child: _MornyeGlassSurface(
                     blurEnabled: blurEnabled,
                     strongTint: true,
-                    tintOpacity: MornyeTheme.chromeOpacity(context),
+                    tintOpacity: MornyeTheme.navigationOpacity(context),
                     child: const SizedBox.expand(),
                   ),
                 ),
@@ -535,7 +531,7 @@ class MornyeTabBar extends StatelessWidget {
                                 : inactiveIconColor,
                           ),
                           child: Opacity(
-                            opacity: hiddenIconIndex == index ? 0 : 1,
+                            opacity: hiddenIconIndices.contains(index) ? 0 : 1,
                             child: destination.icon,
                           ),
                         ),
@@ -555,8 +551,8 @@ class MornyeTabBar extends StatelessWidget {
                       ),
                   ],
                 ),
-                // Search lives outside the capsule. With no selected tab the
-                // package still needs an internal index; handle taps here so
+                // With no selected tab the package still needs an internal
+                // index; handle taps here so
                 // returning to that index (Home) is not swallowed as a re-tap.
                 if (selectedIndex < 0)
                   Positioned(
@@ -590,7 +586,7 @@ class MornyeTabBar extends StatelessWidget {
     return MornyeGlass.navigation(
       blurEnabled: blurEnabled,
       strongTint: true,
-      tintOpacity: MornyeTheme.chromeOpacity(context),
+      tintOpacity: MornyeTheme.navigationOpacity(context),
       child: Padding(
         padding: const EdgeInsets.all(5),
         child: Row(
@@ -635,7 +631,9 @@ class MornyeTabBar extends StatelessWidget {
                               // Keep tab selection quiet, as in Mornye. Badges
                               // stay live without the Material bounce/spin.
                               child: Opacity(
-                                opacity: hiddenIconIndex == index ? 0 : 1,
+                                opacity: hiddenIconIndices.contains(index)
+                                    ? 0
+                                    : 1,
                                 child: destinations[index].icon,
                               ),
                             ),

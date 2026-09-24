@@ -152,20 +152,16 @@ void main() {
         (3, 'Search'),
         (0, 'Home'),
       ]) {
-        if (index == 3) {
-          await tester.tap(find.byTooltip('Search'));
-        } else {
-          await tester.tapAt(
-            tester.getCenter(
-              find
-                  .descendant(
-                    of: find.byType(MornyeTabBar),
-                    matching: find.text(label),
-                  )
-                  .first,
-            ),
-          );
-        }
+        await tester.tapAt(
+          tester.getCenter(
+            find
+                .descendant(
+                  of: find.byType(MornyeTabBar),
+                  matching: find.text(label),
+                )
+                .first,
+          ),
+        );
         await tester.pumpAndSettle();
         expect(activeTab.value, index);
         final tabIcons = find.descendant(
@@ -221,8 +217,8 @@ void main() {
         expect(
           tester
               .widget<MornyeTabBar>(find.byType(MornyeTabBar))
-              .hiddenIconIndex,
-          index == 3 ? 0 : index,
+              .hiddenIconIndices,
+          {index == 3 ? 0 : index, 3},
         );
         await tester.pumpAndSettle();
         expect(
@@ -238,7 +234,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(
           tester.widget<MornyeTabBar>(find.byType(MornyeTabBar)).selectedIndex,
-          index == 3 ? -1 : index,
+          index,
         );
       }
     });
@@ -285,37 +281,54 @@ void main() {
       },
     );
 
-    testWidgets('Search is a separate circle at the right (glass: $blur)', (
-      tester,
-    ) async {
-      await pumpShell(tester, blur: blur);
-      final tabs = find.byType(MornyeTabBar);
-      final search = find.byKey(const ValueKey('mornye-compact-search'));
-      final repo = find.descendant(of: tabs, matching: find.text('Repo')).first;
-      expect(tester.widget<MornyeTabBar>(tabs).destinations, hasLength(3));
-      expect(
-        find.descendant(of: tabs, matching: find.text('Search')),
-        findsNothing,
-      );
-      expect(
-        find.descendant(of: tabs, matching: find.text('Settings')),
-        findsNothing,
-      );
-      expect(
-        tester.getCenter(search).dx,
-        greaterThan(tester.getCenter(repo).dx),
-      );
-      expect(
-        tester.getRect(search).left - tester.getRect(tabs).right,
-        closeTo(12, 0.1),
-      );
-      expect(tester.getSize(search), const Size(64, 64));
-      // The glass renderer paints the labels under a gesture overlay.
-      await tester.tapAt(tester.getCenter(search));
-      await tester.pumpAndSettle();
-      expect(searches, 1);
-      expect(tester.takeException(), isNull);
-    });
+    testWidgets(
+      'Search joins full tabs and separates when compact (glass: $blur)',
+      (tester) async {
+        await pumpShell(tester, blur: blur);
+        final tabs = find.byType(MornyeTabBar);
+        final search = find.byKey(const ValueKey('mornye-compact-search'));
+        final repo = find
+            .descendant(of: tabs, matching: find.text('Repo'))
+            .first;
+        expect(tester.widget<MornyeTabBar>(tabs).destinations, hasLength(4));
+        final searchLabel = find
+            .descendant(of: tabs, matching: find.text('Search'))
+            .first;
+        expect(
+          find.descendant(of: tabs, matching: find.text('Search')),
+          findsWidgets,
+        );
+        expect(
+          find.descendant(of: tabs, matching: find.text('Settings')),
+          findsNothing,
+        );
+        expect(
+          tester.getCenter(search).dx,
+          greaterThan(tester.getCenter(repo).dx),
+        );
+        expect(
+          tester.getSize(tabs).width,
+          tester.getSize(find.byType(MornyeBottomBar)).width,
+        );
+        final searchIcon = find
+            .descendant(of: tabs, matching: find.byIcon(Icons.search))
+            .first;
+        expect(
+          (tester.getCenter(search) - tester.getCenter(searchIcon)).distance,
+          lessThan(0.5),
+        );
+        // The glass renderer paints the labels under a gesture overlay.
+        await tester.tapAt(tester.getCenter(searchLabel));
+        await tester.pumpAndSettle();
+        expect(searches, 1);
+        chrome.value = true;
+        await tester.pumpAndSettle();
+        expect(tester.getSize(search), const Size(52, 52));
+        await tester.tap(search);
+        expect(searches, 2);
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   for (final withPlayer in [false, true]) {
