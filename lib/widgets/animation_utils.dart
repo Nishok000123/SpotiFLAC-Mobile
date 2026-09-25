@@ -575,14 +575,14 @@ class ArtistScreenSkeleton extends StatelessWidget {
                       Padding(
                         padding: EdgeInsets.fromLTRB(
                           24,
-                          (constraints.maxWidth * 0.76).clamp(240.0, 340.0),
+                          (constraints.maxWidth * 0.76).clamp(240.0, 340.0) + 4,
                           24,
                           32,
                         ),
                         child: const Column(
                           children: [
                             Center(child: SkeletonBox(width: 220, height: 36)),
-                            SizedBox(height: 20),
+                            SizedBox(height: 16),
                             ArtistHeaderActionsSkeleton(),
                           ],
                         ),
