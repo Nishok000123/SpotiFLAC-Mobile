@@ -30,6 +30,7 @@ import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/utils/synced_lyrics_scroll.dart';
 import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
+import 'package:spotiflac_android/widgets/aligned_lyric_pronunciation.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
 import 'package:spotiflac_android/widgets/audio_output_button.dart';
 import 'package:spotiflac_android/widgets/player_artwork.dart';
@@ -2997,7 +2998,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
         style: style,
       );
       painter.layout(maxWidth: width);
-      final height = painter.height + 32;
+      var height = painter.height + 32;
       var pronunciationHeight = 0.0;
       var translationHeight = 0.0;
       for (final (text, style, _, translation) in _lyricSupplements(
@@ -3010,6 +3011,19 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
           translationHeight = 6 + painter.height;
         } else {
           pronunciationHeight = 6 + painter.height;
+          final aligned = LyricPronunciationLayout.measure(
+            line: line,
+            primaryStyle: _mornyeLyricStyle(context),
+            pronunciationStyle: style,
+            maxWidth: width,
+            textScaler: scaler,
+            textDirection: direction,
+            locale: locale,
+          );
+          if (aligned != null) {
+            height = aligned.primaryHeight + 32;
+            pronunciationHeight = aligned.pronunciationHeight;
+          }
         }
       }
       measurements.add((height, pronunciationHeight, translationHeight));
@@ -3358,16 +3372,25 @@ Iterable<(String, TextStyle, List<LyricWord>, bool)> _lyricSupplements(
       text,
       base.copyWith(
         fontSize: context.isMornye
-            ? (translation ? 15 : 17)
+            ? (translation ? 18 : 22)
             : (translation ? 14 : 16),
         height: 1.35,
-        fontWeight: FontWeight.w500,
+        fontWeight: context.isMornye
+            ? (translation ? FontWeight.w600 : FontWeight.bold)
+            : FontWeight.w500,
       ),
       translation ? const <LyricWord>[] : line.romanizationWords,
       translation,
     );
   }
 }
+
+TextStyle _mornyeLyricStyle(BuildContext context) =>
+    (Theme.of(context).textTheme.headlineSmall ?? const TextStyle()).copyWith(
+      fontSize: _mornyeLyricFontSize,
+      height: context.tokens.lyricsLineHeight,
+      fontWeight: FontWeight.bold,
+    );
 
 Widget _withLyricSupplements(
   BuildContext context,
@@ -3378,17 +3401,16 @@ Widget _withLyricSupplements(
   Widget Function(String, List<LyricWord>, TextStyle)? timedText,
 }) {
   if (line.romanization == null && line.translation == null) return primary;
-  return Column(
+  final supplements = _lyricSupplements(context, line).toList();
+  Widget withSupplements(Widget primary, {bool aligned = false}) => Column(
     crossAxisAlignment: context.isMornye
         ? CrossAxisAlignment.start
         : CrossAxisAlignment.center,
     children: [
       primary,
-      for (final (text, style, words, translation) in _lyricSupplements(
-        context,
-        line,
-      ))
-        if ((translation ? visibility.dy : visibility.dx) > 0)
+      for (final (text, style, words, translation) in supplements)
+        if ((translation || !aligned) &&
+            (translation ? visibility.dy : visibility.dx) > 0)
           ClipRect(
             child: Align(
               alignment: context.isMornye
@@ -3415,6 +3437,42 @@ Widget _withLyricSupplements(
             ),
           ),
     ],
+  );
+  if (!context.isMornye ||
+      line.romanizationWords.isEmpty ||
+      line.romanization?.trim().isNotEmpty != true) {
+    return withSupplements(primary);
+  }
+  final primaryStyle = _mornyeLyricStyle(context);
+  final pronunciationStyle = supplements
+      .firstWhere((supplement) => !supplement.$4)
+      .$2;
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final layout = LyricPronunciationLayout.measure(
+        line: line,
+        primaryStyle: primaryStyle,
+        pronunciationStyle: pronunciationStyle,
+        maxWidth: constraints.maxWidth,
+        textScaler: MediaQuery.textScalerOf(context),
+        textDirection: Directionality.of(context),
+        locale: Localizations.maybeLocaleOf(context),
+      );
+      if (layout == null) return withSupplements(primary);
+      return withSupplements(
+        AlignedLyricPronunciation(
+          layout: layout,
+          visibility: visibility.dx,
+          primaryStyle: primaryStyle,
+          pronunciationStyle: pronunciationStyle,
+          textBuilder:
+              timedText ??
+              (text, words, style) =>
+                  Text(text, style: style.copyWith(color: color)),
+        ),
+        aligned: true,
+      );
+    },
   );
 }
 

@@ -2025,6 +2025,13 @@ void main() {
       for (final text in ['Original text', 'Romanized text', 'English text']) {
         expect(find.text(text), findsOneWidget);
       }
+      if (mornye) {
+        final pronunciation = tester.widget<Text>(find.text('Romanized text'));
+        final translation = tester.widget<Text>(find.text('English text'));
+        expect(pronunciation.style?.fontSize, 22);
+        expect(pronunciation.style?.fontWeight, FontWeight.bold);
+        expect(translation.style?.fontSize, 18);
+      }
       expect(
         tester.getTopLeft(find.text('Romanized text')).dy,
         greaterThan(tester.getBottomLeft(find.text('Original text')).dy),
@@ -2166,32 +2173,42 @@ void main() {
             ),
           );
           await tester.pumpAndSettle();
-          final paint = find.descendant(
-            of: find.byWidgetPredicate(
-              (widget) =>
-                  widget is Semantics && widget.properties.label == text,
-            ),
-            matching: find.byType(CustomPaint),
-          );
-          expect(paint, findsOneWidget, reason: '$text at $milliseconds ms');
-          final painter = tester.widget<CustomPaint>(paint).painter!;
-          final size = tester.getSize(paint);
-          return (await tester.runAsync(() async {
-            final recorder = ui.PictureRecorder();
-            painter.paint(Canvas(recorder), size);
-            final picture = recorder.endRecording();
-            final image = await picture.toImage(
-              size.width.ceil(),
-              size.height.ceil(),
+          final pixels = <int>[];
+          for (final phrase in mornye ? text.split(' ') : [text]) {
+            final paint = find.descendant(
+              of: find.byWidgetPredicate(
+                (widget) =>
+                    widget is Semantics && widget.properties.label == phrase,
+              ),
+              matching: find.byType(CustomPaint),
             );
-            final bytes = (await image.toByteData(
-              format: ui.ImageByteFormat.rawRgba,
-            ))!;
-            final pixels = bytes.buffer.asUint8List().toList();
-            image.dispose();
-            picture.dispose();
-            return pixels;
-          }))!;
+            expect(
+              paint,
+              findsOneWidget,
+              reason: '$phrase at $milliseconds ms',
+            );
+            final painter = tester.widget<CustomPaint>(paint).painter!;
+            final size = tester.getSize(paint);
+            pixels.addAll(
+              (await tester.runAsync(() async {
+                final recorder = ui.PictureRecorder();
+                painter.paint(Canvas(recorder), size);
+                final picture = recorder.endRecording();
+                final image = await picture.toImage(
+                  size.width.ceil(),
+                  size.height.ceil(),
+                );
+                final bytes = (await image.toByteData(
+                  format: ui.ImageByteFormat.rawRgba,
+                ))!;
+                final result = bytes.buffer.asUint8List().toList();
+                image.dispose();
+                picture.dispose();
+                return result;
+              }))!,
+            );
+          }
+          return pixels;
         }
 
         for (final text in ['First second', 'Firsu secondu']) {
