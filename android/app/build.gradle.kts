@@ -15,10 +15,13 @@ if (keystorePropertiesFile.exists()) {
 }
 
 val rustBackendDir = rootProject.file("../rust_backend")
+val cachedDiscordSdkDir = rootProject.file("../.dart_tool/discord-sdk/1.10.19337")
 val discordSdkDir = providers.environmentVariable("SPOTIFLAC_DISCORD_SDK_DIR").orNull
+    ?: cachedDiscordSdkDir.takeIf { it.isDirectory }?.absolutePath
 val discordSdkAar = discordSdkDir?.let { file("$it/lib/release/discord_partner_sdk.aar") }
 if (discordSdkAar != null) {
     require(discordSdkAar.isFile) { "SPOTIFLAC_DISCORD_SDK_DIR must contain the official Social SDK" }
+    require(file("$discordSdkDir/License-Notices.txt").isFile) { "Discord SDK license notices are required" }
 }
 val discordNotices = if (discordSdkDir != null) tasks.register<Copy>("copyDiscordNotices") {
     from(file("$discordSdkDir/License-Notices.txt"))
@@ -173,6 +176,13 @@ val buildRustBackend = tasks.register<Exec>("buildRustBackend") {
 }
 tasks.named("preBuild").configure { dependsOn(buildRustBackend) }
 if (discordNotices != null) tasks.named("preBuild").configure { dependsOn(discordNotices) }
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    doFirst {
+        check(discordSdkAar != null) {
+            "Release APKs require Discord SDK. Run python3 scripts/prepare_discord_sdk.py; see DISCORD.md."
+        }
+    }
+}
 
 flutter {
     source = "../.."

@@ -65,6 +65,11 @@ jobs:
               - 'scripts/build_android.sh'
               - 'scripts/build_rust_backend.sh'
               - 'scripts/check_backend_apk.py'
+              - 'scripts/test_check_backend_apk.py'
+              - 'scripts/prepare_discord_sdk.py'
+              - 'scripts/test_prepare_discord_sdk.py'
+              - '.github/actions/discord-sdk/**'
+              - 'third_party/discord/**'
               - 'lib/**'
               - 'assets/**'
               - 'pubspec.yaml'
@@ -211,15 +216,34 @@ jobs:
         uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
         with:
           gradle-version: "9.7.1"
+          # Cache public dependencies, not transforms of the decrypted SDK.
+          gradle-home-cache-includes: |
+            caches/modules-2
+            notifications
 
       - name: Install Android SDK & NDK
         run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             "ndk;29.0.14206865" \
             "platforms;android-37.0" \
-            "build-tools;37.0.0"
+            "build-tools;37.0.0" \
+            "cmake;3.22.1"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> "$GITHUB_ENV"
+
+      - name: Test Discord SDK preparation and APK audits
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_prepare_discord_sdk.py'
+          python3 -m unittest discover -s scripts -p 'test_check_backend_apk.py'
+
+      # Fork PRs do not receive SDK decryption secrets. They still compile the
+      # optional debug bridge and run native tests, but never produce a release
+      # APK with the advertised Discord feature silently missing.
+      - name: Prepare pinned Discord SDK
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/discord-sdk
+        with:
+          passphrase: ${{ secrets.DISCORD_SDK_PASSPHRASE }}
 
       - name: Get Flutter dependencies
         run: flutter pub get
@@ -240,16 +264,18 @@ jobs:
         run: gradle -p android :app:assembleDebug :app:testDebugUnitTest
 
       - name: Build Rust release application
+        if: env.SPOTIFLAC_DISCORD_SDK_DIR != ''
         run: bash scripts/build_android.sh --target lib/main.dart
 
       - name: Verify Rust release APK payloads
+        if: env.SPOTIFLAC_DISCORD_SDK_DIR != ''
         run: |
           python3 scripts/check_backend_apk.py \
             build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
-            --backend rust --abis arm64-v8a
+            --backend rust --abis arm64-v8a --require-discord
           python3 scripts/check_backend_apk.py \
             build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
-            --backend rust --abis armeabi-v7a
+            --backend rust --abis armeabi-v7a --require-discord
           # PR builds use Gradle's test key; production signing stays in Release.
           for abi in arm64-v8a armeabi-v7a; do
             "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose \

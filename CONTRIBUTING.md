@@ -70,6 +70,11 @@ compile time. The Android build script and iOS release workflow supply it
 automatically. Include the same `--dart-define` when running Flutter build
 commands directly; without it, the footer shows only the copyright.
 
+Android release builds also require the pinned Discord Social SDK. See
+[Discord build setup](DISCORD.md) for local staging and the CI decryption secret.
+`bash scripts/build_android.sh` verifies that every release APK contains the
+native integration; debug builds can run without the SDK.
+
 ## Project Boundaries
 
 ```text

@@ -15,6 +15,11 @@ ABI_LAYOUT = {
     "armeabi-v7a": (1, 40),
 }
 CORE_LIBRARIES = ("libapp.so", "libflutter.so")
+DISCORD_LIBRARIES = ("libspotiflac_discord.so", "libdiscord_partner_sdk.so")
+DISCORD_CLASSES = (
+    b"Lcom/zarz/spotiflac/discord/DiscordNative;",
+    b"Lcom/discord/socialsdk/DiscordSocialSdkInit;",
+)
 
 
 class AuditError(Exception):
@@ -106,7 +111,21 @@ def check_backend_markers(
         raise AuditError("Go APK contains forbidden libspotiflac_mobile.so")
 
 
-def audit(path: Path, backend: str, abis: Sequence[str]) -> str:
+def check_discord(zf: zipfile.ZipFile, infos: Sequence[zipfile.ZipInfo]) -> None:
+    notices = required_entry(infos, "assets/discord-sdk-notices.txt")
+    if not zf.read(notices).strip():
+        raise AuditError("Discord SDK notices are empty")
+    missing = set(DISCORD_CLASSES)
+    for info in infos:
+        if info.filename.endswith(".dex"):
+            data = zf.read(info)
+            missing = {marker for marker in missing if marker not in data}
+    if missing:
+        raise AuditError("Discord JNI/SDK classes missing from DEX: " +
+                         ", ".join(sorted(marker.decode() for marker in missing)))
+
+
+def audit(path: Path, backend: str, abis: Sequence[str], require_discord: bool = False) -> str:
     if not path.is_file():
         raise AuditError("APK is not a regular file: " + str(path))
     digest = artifact_sha256(path)
@@ -124,6 +143,9 @@ def audit(path: Path, backend: str, abis: Sequence[str]) -> str:
             libraries = CORE_LIBRARIES + (backend_library,)
             if backend == "rust":
                 libraries += ("libjnidispatch.so",)
+            if require_discord:
+                check_discord(zf, infos)
+                libraries += DISCORD_LIBRARIES
             for abi in abis:
                 for library in libraries:
                     entry_path = f"lib/{abi}/{library}"
@@ -140,6 +162,8 @@ def make_parser() -> argparse.ArgumentParser:
     parser.add_argument("apk", type=Path, help="release APK to audit")
     parser.add_argument("--backend", choices=("rust", "go"), required=True)
     parser.add_argument("--abis", required=True, metavar="ABI[,ABI...]", help="expected APK ABIs")
+    parser.add_argument("--require-discord", action="store_true",
+                        help="require Discord JNI/SDK libraries, classes and notices")
     return parser
 
 
@@ -147,11 +171,12 @@ def main(argv: Sequence[str] = None) -> int:
     args = make_parser().parse_args(argv)
     try:
         abis = parse_abis(args.abis)
-        digest = audit(args.apk, args.backend, abis)
+        digest = audit(args.apk, args.backend, abis, args.require_discord)
     except (AuditError, OSError) as exc:
         print("error: " + str(exc), file=sys.stderr)
         return 1
-    print(f"OK sha256={digest} backend={args.backend} abis={','.join(abis)}")
+    print(f"OK sha256={digest} backend={args.backend} abis={','.join(abis)} "
+          f"discord={'required' if args.require_discord else 'optional'}")
     return 0
 
 
