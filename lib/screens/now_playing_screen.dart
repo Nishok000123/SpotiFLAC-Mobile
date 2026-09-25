@@ -316,6 +316,7 @@ class NowPlayingScreen extends ConsumerStatefulWidget {
 class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   final PageController _pageController = PageController();
   ProviderSubscription<AsyncValue<MediaItem?>>? _mediaItemSub;
+  ProviderSubscription<bool>? _lyricsPlayingSub;
   String? _loadedSource;
   String? _loadedResolvedSource;
   String? _loadedMetadataPath;
@@ -359,6 +360,15 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         inspectUnresolvedContentUri: _currentPage == 1,
       ),
     );
+    _lyricsPlayingSub = ref.listenManual<bool>(playbackPlayingProvider, (
+      previous,
+      playing,
+    ) {
+      if (!playing && _lyricsControlsHidden) {
+        setState(() => _lyricsControlsHidden = false);
+      }
+      _scheduleLyricsControlsHide();
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _loadMetadataForItem(ref.read(currentMediaItemProvider).value);
@@ -380,6 +390,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   void dispose() {
     _lyricsIdleTimer?.cancel();
     _mediaItemSub?.close();
+    _lyricsPlayingSub?.close();
     _pageController.dispose();
     _artworkColorsChanged.dispose();
     super.dispose();
@@ -1039,6 +1050,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       context.isMornye &&
       !_landscape &&
       _currentPage == 1 &&
+      ref.read(playbackPlayingProvider) &&
       !MediaQuery.accessibleNavigationOf(context);
 
   void _scheduleLyricsControlsHide() {
@@ -1050,7 +1062,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         _lyricsPointers.isNotEmpty) {
       return;
     }
-    _lyricsIdleTimer = Timer(const Duration(seconds: 3), () {
+    _lyricsIdleTimer = Timer(const Duration(seconds: 5), () {
       if (!mounted || !_canAutoHideLyricsControls) return;
       if (ModalRoute.of(context)?.isCurrent == false) {
         _scheduleLyricsControlsHide();
@@ -1394,6 +1406,8 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           if (landscape) {
             return MornyeLandscapePlayer(
               page: _currentPage,
+              isPlaying: ref.watch(playbackPlayingProvider),
+              controlsHeldOpen: _lyricsOptionsOpen,
               onPageChanged: _setMornyePage,
               artwork: stage(artworkOnly: true),
               header: _trackHeader(mediaItem, colorScheme, compact: true),

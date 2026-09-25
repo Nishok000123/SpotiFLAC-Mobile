@@ -17,8 +17,10 @@ class MornyeLandscapePlayer extends StatefulWidget {
     required this.controls,
     required this.volume,
     required this.page,
+    required this.isPlaying,
     required this.onPageChanged,
     this.lyricsOptions,
+    this.controlsHeldOpen = false,
   });
 
   final Widget artwork;
@@ -28,6 +30,8 @@ class MornyeLandscapePlayer extends StatefulWidget {
   final Widget controls;
   final Widget volume;
   final int page;
+  final bool isPlaying;
+  final bool controlsHeldOpen;
   final ValueChanged<int> onPageChanged;
   final Widget? lyricsOptions;
 
@@ -54,8 +58,11 @@ class _MornyeLandscapePlayerState extends State<MornyeLandscapePlayer> {
   @override
   void didUpdateWidget(MornyeLandscapePlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.page != widget.page) {
+    if (oldWidget.page != widget.page ||
+        oldWidget.isPlaying != widget.isPlaying) {
       _actionsVisible = true;
+      _scheduleHide();
+    } else if (oldWidget.controlsHeldOpen != widget.controlsHeldOpen) {
       _scheduleHide();
     }
   }
@@ -63,12 +70,14 @@ class _MornyeLandscapePlayerState extends State<MornyeLandscapePlayer> {
   void _scheduleHide() {
     _hideTimer?.cancel();
     if (widget.page != 1 ||
+        !widget.isPlaying ||
+        widget.controlsHeldOpen ||
         !_actionsVisible ||
         _audioOutputOpen ||
         MediaQuery.accessibleNavigationOf(context)) {
       return;
     }
-    _hideTimer = Timer(const Duration(seconds: 3), () {
+    _hideTimer = Timer(const Duration(seconds: 5), () {
       if (!mounted) return;
       if (ModalRoute.of(context)?.isCurrent == false) {
         _scheduleHide();

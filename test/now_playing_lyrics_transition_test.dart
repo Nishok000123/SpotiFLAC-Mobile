@@ -446,12 +446,13 @@ void main() {
 
   for (final reducedMotion in [false, true]) {
     testWidgets(
-      'lyrics hide controls after three idle seconds and restore on tap (reduced motion: $reducedMotion)',
+      'lyrics hide controls after five idle seconds and restore on tap (reduced motion: $reducedMotion)',
       (tester) async {
         await pumpNowPlaying(
           tester,
           theme: MornyeTheme.build(Brightness.dark),
           size: const Size(393, 852),
+          playback: PlaybackState(playing: true),
           wrapPlayer: (player) => Builder(
             builder: (context) => MediaQuery(
               data: MediaQuery.of(
@@ -467,12 +468,12 @@ void main() {
         final queueButton = find.byIcon(CupertinoIcons.list_bullet);
         final play = find.widgetWithIcon(
           MornyePlaybackButton,
-          CupertinoIcons.play_fill,
+          CupertinoIcons.pause_fill,
         );
         final volume = find.byType(MornyeVolumeControl);
         await tester.tap(lyricsButton);
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 2900));
+        await tester.pump(const Duration(milliseconds: 4900));
         expect(play.hitTestable(), findsOneWidget);
         final list = find.byType(ListView);
         final originalHeight = tester.getSize(list).height;
@@ -505,7 +506,7 @@ void main() {
         await tester.pump(const Duration(seconds: 5));
         expect(volume.hitTestable(), findsOneWidget);
         await touch.up();
-        await tester.pump(const Duration(milliseconds: 2900));
+        await tester.pump(const Duration(milliseconds: 4900));
         expect(volume.hitTestable(), findsOneWidget);
         await tester.pump(const Duration(milliseconds: 100));
         await tester.pumpAndSettle();
@@ -514,13 +515,72 @@ void main() {
         await reveal();
         await tester.tap(queueButton.hitTestable());
         await tester.pumpAndSettle();
-        await tester.pump(const Duration(seconds: 4));
+        await tester.pump(const Duration(seconds: 6));
         expect(play.hitTestable(), findsOneWidget);
         expect(queueButton.hitTestable(), findsOneWidget);
         await tester.tap(queueButton.hitTestable());
         await tester.pumpAndSettle();
-        await tester.pump(const Duration(seconds: 4));
+        await tester.pump(const Duration(seconds: 6));
         expect(play.hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  for (final landscape in [false, true]) {
+    testWidgets(
+      'paused lyrics keep controls visible and resume gets five seconds (landscape: $landscape)',
+      (tester) async {
+        final playback = StreamController<PlaybackState>();
+        addTearDown(playback.close);
+        await pumpNowPlaying(
+          tester,
+          theme: MornyeTheme.build(Brightness.dark),
+          size: landscape ? const Size(852, 393) : const Size(393, 852),
+          playbackEvents: playback.stream,
+        );
+        playback.add(PlaybackState(playing: false));
+        mediaItems.add(item('many'));
+        await tester.pumpAndSettle();
+        final lyricsButton = find.byIcon(CupertinoIcons.quote_bubble);
+        await tester.tap(lyricsButton);
+        await tester.pumpAndSettle();
+        await tester.pump(const Duration(seconds: 6));
+        expect(lyricsButton.hitTestable(), findsOneWidget);
+
+        playback.add(PlaybackState(playing: true));
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 4900));
+        expect(lyricsButton.hitTestable(), findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpAndSettle();
+        expect(lyricsButton.hitTestable(), findsNothing);
+
+        playback.add(PlaybackState(playing: false));
+        await tester.pumpAndSettle();
+        expect(lyricsButton.hitTestable(), findsOneWidget);
+        await tester.pump(const Duration(seconds: 6));
+        expect(lyricsButton.hitTestable(), findsOneWidget);
+
+        // Pausing during the countdown must cancel the pending hide too.
+        playback.add(PlaybackState(playing: true));
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 3));
+        playback.add(PlaybackState(playing: false));
+        await tester.pumpAndSettle();
+        await tester.pump(const Duration(seconds: 6));
+        expect(lyricsButton.hitTestable(), findsOneWidget);
+
+        playback.add(PlaybackState(playing: true));
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 4900));
+        expect(lyricsButton.hitTestable(), findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpAndSettle();
+        expect(lyricsButton.hitTestable(), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );
@@ -533,6 +593,7 @@ void main() {
         tester,
         theme: MornyeTheme.build(Brightness.dark),
         size: const Size(393, 852),
+        playback: PlaybackState(playing: true),
         wrapPlayer: (player) => Builder(
           builder: (context) => MediaQuery(
             data: MediaQuery.of(context).copyWith(accessibleNavigation: true),
@@ -544,7 +605,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
       await tester.pumpAndSettle();
-      await tester.pump(const Duration(seconds: 5));
+      await tester.pump(const Duration(seconds: 6));
       expect(find.byType(MornyeVolumeControl).hitTestable(), findsOneWidget);
       expect(
         find.byIcon(CupertinoIcons.quote_bubble).hitTestable(),
@@ -1185,6 +1246,7 @@ void main() {
         tester,
         theme: MornyeTheme.build(Brightness.dark),
         size: const Size(393, 852),
+        playback: PlaybackState(playing: true),
       );
       mediaItems.add(item('first'));
       await tester.pumpAndSettle();
@@ -1217,7 +1279,7 @@ void main() {
       expect(tester.takeException(), isNull);
 
       expect(
-        find.byIcon(CupertinoIcons.play_fill).hitTestable(),
+        find.byIcon(CupertinoIcons.pause_fill).hitTestable(),
         findsOneWidget,
       );
       final volumeSlider = find.descendant(
@@ -1243,7 +1305,7 @@ void main() {
         tester.getRect(lyric).top,
         greaterThan(tester.getRect(header).bottom),
       );
-      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
       expect(
         find.byIcon(CupertinoIcons.quote_bubble).hitTestable(),
@@ -1838,6 +1900,7 @@ void main() {
           tester,
           theme: MornyeTheme.build(Brightness.dark),
           size: landscape ? const Size(844, 390) : const Size(390, 844),
+          playback: PlaybackState(playing: true),
           wrapPlayer: (player) => Builder(
             builder: (context) => MediaQuery(
               data: MediaQuery.of(context).copyWith(disableAnimations: true),
@@ -1852,7 +1915,7 @@ void main() {
         final options = find.byKey(const ValueKey('lyrics-language-options'));
         await tester.tap(options);
         await tester.pumpAndSettle();
-        await tester.pump(const Duration(seconds: 4));
+        await tester.pump(const Duration(seconds: 6));
         expect(find.text('Hide Pronunciation').hitTestable(), findsOneWidget);
         await tester.tap(find.text('Hide Pronunciation'));
         await tester.pump();
@@ -1860,7 +1923,7 @@ void main() {
         expect(find.text('Pronunciation'), findsNothing);
         expect(options.hitTestable(), findsOneWidget);
 
-        await tester.pump(const Duration(seconds: 3));
+        await tester.pump(const Duration(seconds: 5));
         await tester.pumpAndSettle();
         expect(options.hitTestable(), findsNothing);
         if (landscape) {
