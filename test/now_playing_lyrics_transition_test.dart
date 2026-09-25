@@ -1235,7 +1235,7 @@ void main() {
             updatePosition: Duration(seconds: seconds),
           ),
         );
-        if (state == AudioProcessingState.ready) {
+        if (state == AudioProcessingState.ready && !playing) {
           await tester.pumpAndSettle();
         } else {
           await tester.pump();
@@ -1272,6 +1272,34 @@ void main() {
           expect(filter.enabled, isTrue);
         }
       }
+
+      final firstDot = find.byKey(const ValueKey('lyric-gap-dot-0'));
+      double dotWidth() =>
+          (tester.getBottomRight(firstDot) - tester.getTopLeft(firstDot)).dx;
+      final restingWidth = dotWidth();
+      final restingCenter = tester.getCenter(firstDot);
+      final rowSize = tester.getSize(find.byType(LyricGapIndicator));
+      await positionAt(6, playing: true);
+      await tester.pump(const Duration(milliseconds: 400));
+      final filling = dotAlphas();
+      final growingWidth = dotWidth();
+      expect(growingWidth, greaterThan(restingWidth));
+      await tester.pump(const Duration(milliseconds: 350));
+      final peakWidth = dotWidth();
+      expect(peakWidth, greaterThan(growingWidth));
+      await tester.pump(const Duration(milliseconds: 750));
+      expect(dotWidth(), lessThan(peakWidth));
+      expect(tester.getCenter(firstDot), restingCenter);
+      expect(tester.getSize(find.byType(LyricGapIndicator)), rowSize);
+      expect(dotAlphas(), filling);
+
+      // Pause mid-pulse: both the size and countdown must hold their place.
+      await tester.pump(const Duration(milliseconds: 900));
+      await positionAt(6);
+      final pausedWidth = dotWidth();
+      await tester.pump(const Duration(seconds: 2));
+      expect(dotWidth(), pausedWidth);
+      expect(dotAlphas(), [1.0, 1.0, 0.25]);
 
       await positionAt(6, playing: true, state: AudioProcessingState.buffering);
       expect(find.byType(LyricGapIndicator), findsNothing);
