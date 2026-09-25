@@ -5,19 +5,17 @@
 //! separate LOSSLESS copy preserves the whole file.
 //!
 //! - Integer-ratio upsampling artifacts (sample-and-hold, linear
-//!   interpolation) and spectral imaging are exact fingerprints: "certain".
+//!   interpolation) give strong evidence. Spectral imaging is a heuristic.
 //! - A brickwall right at a CD/DAT Nyquist (22.05 / 24 kHz) means a
 //!   44.1/48 kHz chain. With an in-band noise floor no lower than 16-bit
 //!   quantization noise, a CD-derived source is "likely". This remains a
 //!   heuristic and does not authorize automatic replacement.
-//! - Anything else that fails the cutoff test may be a genuine master:
-//!   "suspect", never replaced automatically.
+//! - A limited bandwidth alone does not establish a file's provenance.
 
 use super::fft::Radix2Fft;
 
 pub const CONFIDENCE_CERTAIN: &str = "certain";
 pub const CONFIDENCE_LIKELY: &str = "likely";
-pub const CONFIDENCE_SUSPECT: &str = "suspect";
 
 pub const ARTIFACT_SAMPLE_HOLD: &str = "sample_hold";
 pub const ARTIFACT_INTERPOLATION: &str = "linear_interpolation";
@@ -82,9 +80,9 @@ pub struct StftStats {
     pub music_band_spreads: Vec<f64>,
 }
 
-/// Matches `np.abs(librosa.stft(y, n_fft)).mean(axis=1)` for the averaged
-/// spectrum: periodic Hann window, hop n_fft/4, frames centred by
-/// zero-padding n_fft/2 at both ends.
+/// Averaged channel spectrum with a periodic Hann window and hop n_fft/4.
+/// Only complete frames are used: padding a cropped segment with zeros
+/// introduces an artificial discontinuity and broadband spectral leakage.
 pub fn analyze_stft(
     y: &[f32],
     n_fft: usize,
@@ -99,11 +97,10 @@ pub fn analyze_stft(
         quiet_floor_var: f64::NAN,
         music_band_spreads: Vec::new(),
     };
-    let padded_len = y.len() + 2 * half;
-    if padded_len < n_fft {
+    if y.len() < n_fft {
         return Ok(stats);
     }
-    let frame_count = 1 + (padded_len - n_fft) / hop;
+    let frame_count = 1 + (y.len() - n_fft) / hop;
 
     let window: Vec<f64> = (0..n_fft)
         .map(|i| 0.5 - 0.5 * (2.0 * std::f64::consts::PI * i as f64 / n_fft as f64).cos())
@@ -142,14 +139,9 @@ pub fn analyze_stft(
             check()?;
         }
         // Index into y of the frame's first sample.
-        let start = (f * hop) as isize - half as isize;
+        let start = f * hop;
         for (i, (r, w)) in re.iter_mut().zip(&window).enumerate() {
-            let j = start + i as isize;
-            *r = if j >= 0 && (j as usize) < y.len() {
-                f64::from(y[j as usize]) * w
-            } else {
-                0.0
-            };
+            *r = f64::from(y[start + i]) * w;
         }
         im.fill(0.0);
         fft.transform(&mut re, &mut im);
@@ -157,9 +149,7 @@ pub fn analyze_stft(
             *avg += re[k].hypot(im[k]);
         }
 
-        // Frames that overlap the zero padding would read as quiet for the
-        // wrong reason; only frames fully inside the signal are candidates.
-        if start < 0 || start as usize + n_fft > y.len() || band_high <= band_low {
+        if band_high <= band_low {
             continue;
         }
         band_power.clear();

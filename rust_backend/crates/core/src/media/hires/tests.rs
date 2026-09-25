@@ -397,12 +397,106 @@ fn genuine_hires_is_not_flagged() {
 }
 
 #[test]
-fn an_upsampled_cd_signal_that_is_never_quiet_is_only_suspect() {
+fn full_bandwidth_is_measured_relative_to_each_sample_rate() {
+    let dir = TempDir::new("rates");
+    for sr in [44_100, 48_000, 88_200, 96_000, 176_400, 192_000] {
+        let samples = quantize(&full_band_noise(65_536, 21), 24);
+        let r = check(&flac(&dir, &format!("{sr}.flac"), &samples, sr, 24));
+        assert_eq!(r.verdict, VERDICT_GENUINE, "{sr}: {}", r.reason);
+        assert!((r.cutoff_frequency_hz - f64::from(sr) / 2.0).abs() < 50.0);
+        assert_eq!(r.effective_bit_depth, 24);
+    }
+}
+
+#[test]
+fn a_96k_master_filtered_at_27k_is_not_evidence_of_upsampling() {
+    let dir = TempDir::new("filtered96");
+    let signal = shape_spectrum(&full_band_noise(131_072, 22), 96_000, |hz| {
+        if hz < 27_000.0 { 1.0 } else { 0.0 }
+    });
+    let r = check(&flac(
+        &dir,
+        "filtered.flac",
+        &quantize(&signal, 24),
+        96_000,
+        24,
+    ));
+    assert_eq!(r.verdict, VERDICT_BAND_LIMITED);
+    assert!((r.cutoff_frequency_hz - 27_000.0).abs() < 1000.0);
+    assert_eq!(r.effective_bit_depth, 24);
+    assert!(!r.is_suspicious());
+    assert!(!r.redownload_safe());
+}
+
+fn write_stereo_wav(path: &Path, left: &[i32], right: &[i32], sr: u32) {
+    assert_eq!(left.len(), right.len());
+    let interleaved: Vec<i32> = left.iter().zip(right).flat_map(|(&l, &r)| [l, r]).collect();
+    write_wav(path, &interleaved, sr, 24);
+    let mut bytes = std::fs::read(path).expect("wav");
+    bytes[22..24].copy_from_slice(&2u16.to_le_bytes());
+    bytes[28..32].copy_from_slice(&(sr * 6).to_le_bytes());
+    bytes[32..34].copy_from_slice(&6u16.to_le_bytes());
+    std::fs::write(path, bytes).expect("stereo header");
+}
+
+#[test]
+fn antiphase_channels_do_not_cancel_spectral_evidence() {
+    let dir = TempDir::new("antiphase");
+    let left = quantize(&full_band_noise(65_536, 23), 24);
+    let right: Vec<i32> = left.iter().map(|v| -*v).collect();
+    let path = dir.file("antiphase.wav");
+    write_stereo_wav(&path, &left, &right, 96_000);
+    let r = check(&path);
+    assert_eq!(r.verdict, VERDICT_GENUINE);
+    assert!(r.cutoff_frequency_hz > 47_000.0);
+    assert_eq!(r.effective_bit_depth, 24);
+}
+
+#[test]
+fn a_full_resolution_channel_prevents_a_false_padding_or_pattern_verdict() {
+    let dir = TempDir::new("independent-channels");
+    let source = pcm_using_bits(16, 24, 16_384, 24);
+    let left: Vec<i32> = source.iter().flat_map(|&v| [v; 4]).collect();
+    let right = pcm_using_bits(24, 24, left.len(), 25);
+    let path = dir.file("independent.wav");
+    write_stereo_wav(&path, &left, &right, HIRES_SR);
+    let r = check(&path);
+    assert_eq!(r.verdict, VERDICT_GENUINE);
+    assert_eq!(r.upsampling_artifact, "");
+    assert_eq!(r.effective_bit_depth, 24);
+    assert!(r.cutoff_frequency_hz > 80_000.0);
+}
+
+#[test]
+fn cropped_segment_edges_do_not_create_ultrasonic_energy() {
+    let signal: Vec<f32> = (0..10_000)
+        .map(|i| (2.0 * std::f64::consts::PI * 3000.0 * i as f64 / 96_000.0).cos() as f32)
+        .collect();
+    let stats = analyze_stft(&signal, 4096, 96_000, &|| Ok(())).expect("stft");
+    let db = spectrum_db(&stats.avg_magnitude);
+    assert!(db[1024..].iter().all(|v| *v < -100.0));
+}
+
+#[test]
+fn a_16bit_noise_floor_in_one_channel_does_not_hide_quieter_detail_in_another() {
+    let dir = TempDir::new("mixed-floors");
+    let left = ideal_upsample(&dither_to_16_bit(&cd_source_with_quiet_half(0.0)), 4);
+    let right = ideal_upsample(&cd_source_with_quiet_half(1e-6), 4);
+    let path = dir.file("mixed.wav");
+    write_stereo_wav(&path, &quantize(&left, 24), &quantize(&right, 24), HIRES_SR);
+    let r = check(&path);
+    assert_eq!(r.brickwall_hz, 22_050.0);
+    assert_eq!(r.verdict, VERDICT_BAND_LIMITED);
+    assert!(!r.redownload_safe());
+}
+
+#[test]
+fn bandwidth_alone_cannot_identify_an_upsampled_cd() {
     let dir = TempDir::new("upsampled");
     let samples = quantize(&upsampled_from_cd(), 24);
     let r = check(&flac(&dir, "fake.flac", &samples, HIRES_SR, 24));
-    assert_eq!(r.verdict, VERDICT_FAKE);
-    assert!(r.is_suspicious());
+    assert_eq!(r.verdict, VERDICT_BAND_LIMITED);
+    assert!(!r.is_suspicious());
     assert!(
         r.cutoff_frequency_hz > 22_000.0 && r.cutoff_frequency_hz < 28_000.0,
         "{}",
@@ -410,10 +504,10 @@ fn an_upsampled_cd_signal_that_is_never_quiet_is_only_suspect() {
     );
     assert!(r.reason.contains("content stops"), "{}", r.reason);
     // Loud from start to end: the floor cannot be read, so a genuine master
-    // filtered at 22 kHz would look the same. Flagged, never replaced.
+    // filtered at 22 kHz would look the same. Report bandwidth, not provenance.
     assert_eq!(r.brickwall_hz, 22_050.0);
     assert_eq!(r.noise_floor_class, FLOOR_MASKED);
-    assert_eq!(r.confidence, CONFIDENCE_SUSPECT);
+    assert_eq!(r.confidence, "");
     assert!(!r.redownload_safe());
 }
 
@@ -536,7 +630,7 @@ fn wav_is_checked_too() {
     let r = check(&fake);
     assert_eq!(
         (r.verdict.as_str(), r.effective_bit_depth),
-        (VERDICT_FAKE, 24)
+        (VERDICT_BAND_LIMITED, 24)
     );
 }
 
@@ -613,7 +707,7 @@ fn an_upsampled_16_bit_master_is_likely() {
 /// The same cliff, but the quiet half carries detail far below 16-bit noise:
 /// a 24-bit master made at 44.1 kHz. LOSSLESS would lose that depth.
 #[test]
-fn a_24_bit_master_made_at_44k_is_only_suspect() {
+fn a_24_bit_master_made_at_44k_has_limited_bandwidth() {
     let dir = TempDir::new("master24");
     let signal = ideal_upsample(&cd_source_with_quiet_half(1e-6), 4);
     let r = check(&flac(
@@ -623,22 +717,22 @@ fn a_24_bit_master_made_at_44k_is_only_suspect() {
         HIRES_SR,
         24,
     ));
-    assert_eq!(r.verdict, VERDICT_FAKE);
+    assert_eq!(r.verdict, VERDICT_BAND_LIMITED);
     assert_eq!(
         r.noise_floor_class, FLOOR_BELOW_16BIT,
         "{} dB",
         r.noise_floor_vs_16bit_db
     );
-    assert_eq!(r.confidence, CONFIDENCE_SUSPECT);
+    assert_eq!(r.confidence, "");
     assert!(!r.redownload_safe());
-    assert!(r.reason.contains("genuine master"), "{}", r.reason);
+    assert!(r.reason.contains("provenance"), "{}", r.reason);
 }
 
 /// A gradual mastering roll-off that still ends below 28 kHz: no resampler
-/// cliff, so at most a suspect. Faded in and out: an abrupt start inside the
+/// cliff, so no evidence of upsampling. An abrupt start inside the
 /// analyzed window is a step, whose broadband splatter reads as content.
 #[test]
-fn a_gradual_mastering_roll_off_is_only_suspect() {
+fn a_gradual_mastering_roll_off_is_not_flagged_as_fake() {
     let dir = TempDir::new("lpf");
     let mut signal = shape_spectrum(&full_band_noise(HIRES_FRAMES, 0), HIRES_SR, |freq| {
         let gain_db = if freq > 16_000.0 {
@@ -656,15 +750,15 @@ fn a_gradual_mastering_roll_off_is_only_suspect() {
         HIRES_SR,
         24,
     ));
-    assert_eq!(r.verdict, VERDICT_FAKE);
+    assert_eq!(r.verdict, VERDICT_BAND_LIMITED);
     assert_eq!(r.brickwall_hz, 0.0);
-    assert_eq!(r.confidence, CONFIDENCE_SUSPECT);
+    assert_eq!(r.confidence, "");
 }
 
 /// 24-bit source samples (so the depth test passes) taken to 176.4 kHz by the
 /// cheap upsamplers whose output is an exact, checkable pattern.
 #[test]
-fn integer_upsampling_artifacts_are_certain() {
+fn integer_patterns_are_certain_but_spectral_imaging_is_likely() {
     let source = pcm_using_bits(24, 24, CD_SOURCE_FRAMES + 1, 1);
     let (mut hold, mut line, mut zero_stuffed) = (Vec::new(), Vec::new(), Vec::new());
     for pair in source.windows(2) {
@@ -684,7 +778,12 @@ fn integer_upsampling_artifacts_are_certain() {
         let r = check(&flac(&dir, &format!("{name}.flac"), &samples, HIRES_SR, 24));
         assert_eq!(r.upsampling_artifact, artifact, "{name}");
         assert_eq!(r.verdict, VERDICT_FAKE, "{name}");
-        assert_eq!(r.confidence, CONFIDENCE_CERTAIN, "{name}");
+        let confidence = if artifact == ARTIFACT_IMAGING {
+            CONFIDENCE_LIKELY
+        } else {
+            CONFIDENCE_CERTAIN
+        };
+        assert_eq!(r.confidence, confidence, "{name}");
     }
 }
 

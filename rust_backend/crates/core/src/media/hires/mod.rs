@@ -1,20 +1,19 @@
-//! Hi-Res authenticity check, in lockstep with SpotiFLAC-Module-Version's
-//! `core/hires_check.py`: same thresholds, same verdicts.
+//! Sampled Hi-Res analysis. A spectral roll-off is an observation, not proof
+//! that a master was upsampled or that a replacement preserves its audio.
 //!
 //! A file can claim Hi-Res along two independent axes, and each is checked on
 //! its own terms:
 //!
-//! - Sample rate: it declares e.g. 96 kHz but its spectral content stops at,
-//!   or just above, the ~22.05 kHz Nyquist of a 44.1 kHz source, the
-//!   fingerprint of upsampling. Measuring it is a heuristic.
+//! - Sample rate: spectral roll-off, noise floor and interpolation patterns
+//!   can suggest a lower-rate source. A cutoff alone is not a fingerprint.
 //! - Bit depth: it declares 24-bit but only 16 of those bits ever carry data,
 //!   the low 8 being zero in every sample: a CD master padded out. Unlike the
 //!   spectral test this one is exact, and it is the only test that can judge
 //!   a 24-bit/44.1 kHz file.
 //!
 //! The cutoff alone cannot tell an upsampled CD from a genuine master that
-//! was low-pass filtered in mastering, so every `fake_hires` verdict is graded
-//! ("certain", "likely", "suspect") by the evidence in `evidence`. These
+//! was low-pass filtered in mastering; that finding is `band_limited`.
+//! `fake_hires` requires additional evidence ("certain" or "likely"). These
 //! confidence levels describe the sampled evidence, not permission to discard
 //! audio. Replacement additionally requires a full, exact PCM comparison.
 //!
@@ -36,6 +35,7 @@ use std::io::{BufReader, Read, Seek, SeekFrom};
 pub const VERDICT_FAKE: &str = "fake_hires";
 pub const VERDICT_STANDARD: &str = "standard_definition";
 pub const VERDICT_GENUINE: &str = "genuine_hires";
+pub const VERDICT_BAND_LIMITED: &str = "band_limited";
 pub const VERDICT_INCONCLUSIVE: &str = "inconclusive";
 
 #[derive(Debug, PartialEq, Eq)]
@@ -71,10 +71,8 @@ pub struct HiResCheckOptions {
     pub noise_floor_db: f64,
     /// Sample rate above which a file claims Hi-Res.
     pub hires_sample_rate_threshold: i64,
-    /// Minimum active-content cutoff a genuine Hi-Res file must reach. Sits
-    /// well above 22.05 kHz on purpose: a resampler upsampling from CD leaves
-    /// a transition-band tail a couple of kHz wide (a measured 44.1 -> 176.4
-    /// kHz upsample reached ~24.7 kHz).
+    /// Threshold for reporting limited bandwidth, including transition-band
+    /// tails above CD bandwidth. This is never a requirement for authenticity.
     pub hires_cutoff_threshold_hz: f64,
     /// STFT window size; must be a power of two. Shrunk for short segments.
     pub n_fft: i64,
@@ -108,9 +106,8 @@ pub struct HiResCheckResult {
     pub effective_bit_depth: u32,
     /// Why the file was flagged, in one clause; empty when it was not.
     pub reason: String,
-    /// How sure a fake_hires verdict is: "certain" (exact fingerprint),
-    /// "likely" (a resampler's cliff over a 16-bit floor) or "suspect" (may be
-    /// a genuine low-pass filtered master). Empty for other verdicts.
+    /// Strength of the sampled evidence: "certain" (padding or integer
+    /// pattern), "likely" (spectral evidence). Empty for other verdicts.
     pub confidence: String,
     /// Exact upsampling fingerprint found, if any: "sample_hold",
     /// "linear_interpolation" or "imaging".
@@ -164,16 +161,16 @@ impl HiResCheckResult {
     }
 }
 
-/// One decoded segment: the mono signal for the spectrum and the OR of every
-/// raw sample for the bit-depth test, gathered in one pass.
+/// One channel's decoded segment. Channels are analyzed separately to avoid
+/// phase cancellation, keeping memory bounded to one channel at a time.
 #[derive(Default)]
 struct Window {
-    mono: Vec<f32>,
+    signal: Vec<f32>,
     /// OR of all raw integer samples, right-justified at the declared depth.
     or_bits: u32,
-    /// First channel's raw integer samples, for the upsampling-artifact
+    /// This channel's raw integer samples, for the upsampling-artifact
     /// tests; empty for float PCM.
-    first_channel: Vec<i32>,
+    samples: Vec<i32>,
 }
 
 /// Analyses one file and returns a populated result. Only a short segment from
@@ -187,8 +184,10 @@ pub fn check_file(
     if options.sample_seconds <= 0 {
         return Err("sample_seconds must be positive".to_string().into());
     }
-    if options.n_fft <= 0 || (options.n_fft & (options.n_fft - 1)) != 0 {
-        return Err("n_fft must be a positive power of two".to_string().into());
+    if options.n_fft < 4 || (options.n_fft & (options.n_fft - 1)) != 0 {
+        return Err("n_fft must be a power of two of at least 4"
+            .to_string()
+            .into());
     }
     let size = file.metadata().map_err(|e| e.to_string())?.len();
     if size == 0 {
@@ -196,7 +195,7 @@ pub fn check_file(
     }
     check()?;
 
-    let mut source = Source::open(&mut file)?;
+    let source = Source::open(&mut file)?;
     let sr = source.sample_rate();
     if sr == 0 {
         return Err("invalid declared sample rate 0".to_string().into());
@@ -213,13 +212,9 @@ pub fn check_file(
     let start_frame = (offset * f64::from(sr)) as u64;
     let window_frames = (analyzed_duration * f64::from(sr)) as u64;
 
-    let window = source
-        .read_window(start_frame, window_frames, check)
-        .map_err(|e| HiResCheckError::Failed(format!("could not decode audio: {e}")))?;
-    let y = &window.mono;
-    if y.is_empty() {
-        return Err("decoded audio segment is empty".to_string().into());
-    }
+    let declared_bits = source.declared_bits();
+    let channels = source.channel_count();
+    drop(source);
 
     let mut result = HiResCheckResult {
         file_path: file_path.to_string(),
@@ -227,23 +222,71 @@ pub fn check_file(
         total_duration_s: total_duration,
         analyzed_duration_s: analyzed_duration,
         noise_floor_db: options.noise_floor_db,
+        declared_bit_depth: declared_bits,
+        useful_sample_rate: sr,
         verdict: VERDICT_INCONCLUSIVE.into(),
         ..HiResCheckResult::default()
     };
 
-    // A silent segment makes spectral analysis meaningless rather than wrong.
-    if !y.iter().any(|v| f64::from(v.abs()) > 1e-9) {
-        return Ok(result);
-    }
-
-    // Shrink n_fft for very short segments so the window does not end up
-    // measuring its own zero padding.
+    // Use complete windows only. Zero-padding a segment boundary introduces
+    // an artificial broadband transient and can hide a real spectral cutoff.
     let mut n_fft = options.n_fft as usize;
-    while n_fft > 256 && n_fft > y.len() * 2 {
+    while n_fft > 256 && n_fft as u64 > window_frames {
         n_fft /= 2;
     }
-
-    let stats = analyze_stft(y, n_fft, sr, check)?;
+    let claims_by_rate = i64::from(sr) > options.hires_sample_rate_threshold;
+    let mut combined: Option<StftStats> = None;
+    let mut or_bits = 0;
+    let mut common_artifact: Option<&str> = None;
+    let mut all_floors_at_16bit = true;
+    for channel in 0..channels {
+        check()?;
+        file.seek(SeekFrom::Start(0)).map_err(|e| e.to_string())?;
+        let mut source = Source::open(&mut file)?;
+        let window = source
+            .read_window(start_frame, window_frames, channel, check)
+            .map_err(|e| HiResCheckError::Failed(format!("could not decode audio: {e}")))?;
+        if window.signal.is_empty() {
+            return Err("decoded audio segment is empty".to_string().into());
+        }
+        or_bits |= window.or_bits;
+        result.analyzed_duration_s = result
+            .analyzed_duration_s
+            .min(window.signal.len() as f64 / f64::from(sr));
+        if !window.signal.iter().any(|v| f64::from(v.abs()) > 1e-9) {
+            continue;
+        }
+        let stats = analyze_stft(&window.signal, n_fft, sr, check)?;
+        all_floors_at_16bit &= classify_noise_floor(stats.quiet_floor_var, 1).0 == FLOOR_AT_16BIT;
+        if claims_by_rate {
+            let artifact = detect_integer_upsampling(&window.samples, window.or_bits, sr);
+            // A pattern in one channel must not implicate independent,
+            // full-resolution content in another channel.
+            common_artifact = Some(match common_artifact {
+                None => artifact,
+                Some(previous) if previous == artifact => artifact,
+                Some(_) => "",
+            });
+        }
+        if let Some(combined) = &mut combined {
+            for (all, channel) in combined.avg_magnitude.iter_mut().zip(&stats.avg_magnitude) {
+                *all = all.max(*channel);
+            }
+            for (all, channel) in combined
+                .music_band_spreads
+                .iter_mut()
+                .zip(&stats.music_band_spreads)
+            {
+                *all = all.max(*channel);
+            }
+            combined.quiet_floor_var = combined.quiet_floor_var.max(stats.quiet_floor_var);
+        } else {
+            combined = Some(stats);
+        }
+    }
+    let Some(stats) = combined else {
+        return Ok(result);
+    };
     if !stats.avg_magnitude.iter().any(|&v| v > 0.0) {
         return Ok(result);
     }
@@ -257,19 +300,17 @@ pub fn check_file(
         .map_or(0.0, |k| k as f64 * f64::from(sr) / n_fft as f64);
     result.cutoff_frequency_hz = cutoff;
 
-    let declared_bits = source.declared_bits();
     let mut effective_bits = 0;
-    if declared_bits > 0 && window.or_bits != 0 {
+    if declared_bits > 0 && or_bits != 0 {
         // Digital silence carries no bits at all; leaving it at 0 keeps it
         // out of the padded-depth test.
-        effective_bits = declared_bits.saturating_sub(window.or_bits.trailing_zeros());
+        effective_bits = declared_bits.saturating_sub(or_bits.trailing_zeros());
     }
     result.declared_bit_depth = declared_bits;
     result.effective_bit_depth = effective_bits;
 
     // A file can claim Hi-Res by rate, by depth, or both, and each claim is
     // answered by the test that can actually judge it.
-    let claims_by_rate = i64::from(sr) > options.hires_sample_rate_threshold;
     let claims_by_depth = declared_bits > 16;
     result.useful_sample_rate = sr;
     if claims_by_rate {
@@ -292,42 +333,46 @@ pub fn check_file(
         result.brickwall_hz = detect_brickwall(&spec_db, sr, n_fft, options.noise_floor_db);
     }
     let cutoff_is_low = claims_by_rate && cutoff < options.hires_cutoff_threshold_hz;
-    let rate_is_fake = cutoff_is_low || result.brickwall_hz > 0.0;
+    let limited_bandwidth = cutoff_is_low || result.brickwall_hz > 0.0;
     let depth_is_fake = claims_by_depth && effective_bits > 0 && effective_bits <= 16;
 
-    // Exact fingerprints of a conversion. Imaging puts content back above
+    // Integer fingerprints of a conversion. Imaging puts content back above
     // 22 kHz, so such a file can pass the cutoff test and still be a fake.
-    let mut artifact = "";
-    if claims_by_rate {
-        artifact = detect_integer_upsampling(&window.first_channel, window.or_bits, sr);
-        if artifact.is_empty() && detect_imaging(&spec_db, sr, n_fft, options.noise_floor_db) {
-            artifact = ARTIFACT_IMAGING;
-        }
+    let mut artifact = common_artifact.unwrap_or("");
+    if claims_by_rate
+        && artifact.is_empty()
+        && detect_imaging(&spec_db, sr, n_fft, options.noise_floor_db)
+    {
+        artifact = ARTIFACT_IMAGING;
     }
     result.upsampling_artifact = artifact.into();
-    if rate_is_fake {
-        let (class, vs_16bit_db) =
-            classify_noise_floor(stats.quiet_floor_var, source.channel_count());
+    if limited_bandwidth {
+        let (class, vs_16bit_db) = classify_noise_floor(stats.quiet_floor_var, 1);
         result.noise_floor_class = class.into();
         result.noise_floor_vs_16bit_db = vs_16bit_db;
     }
+    // A noisier channel must not obscure a quieter channel's extra precision.
+    let likely_upsampled = result.brickwall_hz > 0.0 && all_floors_at_16bit;
 
     result.verdict = if !claims_by_rate && !claims_by_depth {
         VERDICT_STANDARD
-    } else if rate_is_fake || depth_is_fake || !artifact.is_empty() {
+    } else if likely_upsampled || depth_is_fake || !artifact.is_empty() {
         VERDICT_FAKE
+    } else if limited_bandwidth {
+        VERDICT_BAND_LIMITED
     } else {
         VERDICT_GENUINE
     }
     .into();
 
     if result.verdict == VERDICT_FAKE {
-        result.confidence = if depth_is_fake || !artifact.is_empty() {
+        result.confidence = if depth_is_fake
+            || artifact == ARTIFACT_SAMPLE_HOLD
+            || artifact == ARTIFACT_INTERPOLATION
+        {
             CONFIDENCE_CERTAIN
-        } else if result.brickwall_hz > 0.0 && result.noise_floor_class == FLOOR_AT_16BIT {
-            CONFIDENCE_LIKELY
         } else {
-            CONFIDENCE_SUSPECT
+            CONFIDENCE_LIKELY
         }
         .into();
     }
@@ -349,7 +394,7 @@ pub fn check_file(
         findings.push(format!(
             "declares {sr} Hz but content stops at ~{cutoff:.0} Hz"
         ));
-    } else if rate_is_fake {
+    } else if limited_bandwidth {
         findings.push(format!(
             "declares {sr} Hz but the spectrum falls off a cliff at {:.0} Hz",
             result.brickwall_hz
@@ -360,8 +405,8 @@ pub fn check_file(
             "declares {declared_bits}-bit but only {effective_bits} bits carry data"
         ));
     }
-    if result.confidence == CONFIDENCE_SUSPECT {
-        findings.push("may be a genuine master low-pass filtered in mastering".into());
+    if result.verdict == VERDICT_BAND_LIMITED {
+        findings.push("bandwidth alone does not establish upsampling or master provenance".into());
     }
     result.reason = findings.join("; ");
     Ok(result)
@@ -431,11 +476,12 @@ impl<'a> Source<'a> {
         &mut self,
         start_frame: u64,
         frames: u64,
+        channel: u32,
         check: &dyn Fn() -> Result<(), String>,
     ) -> Result<Window, String> {
         match self {
-            Source::Flac(reader) => read_flac_window(reader, start_frame, frames, check),
-            Source::Wav(wav) => wav.read_window(start_frame, frames, check),
+            Source::Flac(reader) => read_flac_window(reader, start_frame, frames, channel, check),
+            Source::Wav(wav) => wav.read_window(start_frame, frames, channel, check),
         }
     }
 }
@@ -448,21 +494,22 @@ fn read_flac_window(
     reader: &mut claxon::FlacReader<BufReader<&mut File>>,
     start_frame: u64,
     frames: u64,
+    channel: u32,
     check: &dyn Fn() -> Result<(), String>,
 ) -> Result<Window, String> {
     let bits = reader.streaminfo().bits_per_sample;
     let scale = 1.0 / 2f64.powi(bits as i32 - 1);
     let capacity = usize::try_from(frames).unwrap_or(0);
     let mut out = Window {
-        mono: Vec::with_capacity(capacity),
-        first_channel: Vec::with_capacity(capacity),
+        signal: Vec::with_capacity(capacity),
+        samples: Vec::with_capacity(capacity),
         ..Window::default()
     };
     let end = start_frame + frames;
     let mut blocks = reader.blocks();
     let mut buffer = Vec::new();
     let mut decoded = 0u64;
-    while (out.mono.len() as u64) < frames {
+    while (out.signal.len() as u64) < frames {
         if decoded.is_multiple_of(64) {
             check()?;
         }
@@ -471,25 +518,20 @@ fn read_flac_window(
             Ok(Some(block)) => block,
             Ok(None) => break,
             // A truncated tail still leaves a usable window.
-            Err(_) if !out.mono.is_empty() => break,
+            Err(_) if !out.signal.is_empty() => break,
             Err(e) => return Err(e.to_string()),
         };
         let first = block.time();
         let n = u64::from(block.duration());
         if first + n > start_frame {
-            let channels = block.channels();
             let from = start_frame.saturating_sub(first);
             let to = n.min(end - first);
             for i in from..to {
                 let i = i as usize;
-                let mut sum = 0.0;
-                for ch in 0..channels {
-                    let v = block.channel(ch)[i];
-                    out.or_bits |= v as u32;
-                    sum += f64::from(v);
-                }
-                out.first_channel.push(block.channel(0)[i]);
-                out.mono.push((sum / f64::from(channels) * scale) as f32);
+                let v = block.channel(channel)[i];
+                out.or_bits |= v as u32;
+                out.samples.push(v);
+                out.signal.push((f64::from(v) * scale) as f32);
             }
         }
         buffer = block.into_buffer();
@@ -599,6 +641,7 @@ impl<'a> WavSource<'a> {
         &mut self,
         start_frame: u64,
         frames: u64,
+        channel: u32,
         check: &dyn Fn() -> Result<(), String>,
     ) -> Result<Window, String> {
         let total = self.data_size / self.frame_bytes();
@@ -614,9 +657,9 @@ impl<'a> WavSource<'a> {
             ))
             .map_err(|e| e.to_string())?;
         let capacity = usize::try_from(frames).unwrap_or(0);
-        out.mono.reserve(capacity);
+        out.signal.reserve(capacity);
         if !self.is_float {
-            out.first_channel.reserve(capacity);
+            out.samples.reserve(capacity);
         }
         let bytes_per_sample = (self.container_bits / 8) as usize;
         let scale = 1.0 / 2f64.powi(self.container_bits as i32 - 1);
@@ -630,14 +673,17 @@ impl<'a> WavSource<'a> {
             if reader.read_exact(&mut frame).is_err() {
                 break;
             }
-            let mut sum = 0.0;
             for (c, b) in frame.chunks_exact(bytes_per_sample).enumerate() {
+                if c != channel as usize {
+                    continue;
+                }
                 if self.is_float {
-                    sum += if self.container_bits == 32 {
+                    let v = if self.container_bits == 32 {
                         f64::from(f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
                     } else {
                         f64::from_le_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]])
                     };
+                    out.signal.push(v as f32);
                     continue;
                 }
                 let v: i32 = match self.container_bits {
@@ -647,12 +693,9 @@ impl<'a> WavSource<'a> {
                     _ => i32::from_le_bytes([b[0], b[1], b[2], b[3]]),
                 };
                 out.or_bits |= v as u32;
-                if c == 0 {
-                    out.first_channel.push(v);
-                }
-                sum += f64::from(v) * scale;
+                out.samples.push(v);
+                out.signal.push((f64::from(v) * scale) as f32);
             }
-            out.mono.push((sum / f64::from(self.channels)) as f32);
         }
         Ok(out)
     }
