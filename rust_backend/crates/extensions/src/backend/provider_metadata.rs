@@ -185,6 +185,7 @@ impl Backend {
                 "album" => "getAlbum",
                 "playlist" => "getPlaylist",
                 "artist" => "getArtist",
+                "concert" => "getConcert",
                 _ => {
                     return Err(ResolverError::Failed(format!(
                         "unsupported provider resource type: {kind}"
@@ -393,6 +394,7 @@ fn response(kind: &str, value: &Value, check: &Check<'_>) -> Result<Value, Resol
     check().map_err(ResolverError::Cancelled)?;
     let cover = text(value, "cover_url");
     Ok(match kind {
+        "concert" => json!({"concert": value}),
         // Move normalized values into the envelope. json! serializes borrowed
         // expressions, duplicating every field of an already-built track list.
         "track" => Map::from_iter([("track".into(), track(value, "", 0))]).into(),

@@ -214,8 +214,8 @@ impl ExtensionManager {
         let manifest = &entry.manifest;
         let requirement =
             match method {
-                "getTrack" | "getAlbum" | "getPlaylist" | "getArtist" | "searchTracks"
-                | "enrichTrack" => (!manifest.has_type("metadata_provider"))
+                "getTrack" | "getAlbum" | "getPlaylist" | "getArtist" | "getConcert"
+                | "searchTracks" | "enrichTrack" => (!manifest.has_type("metadata_provider"))
                     .then_some("is not a metadata provider"),
                 "checkAvailability" => (!manifest.has_type("download_provider"))
                     .then_some("is not a download provider"),
@@ -313,6 +313,7 @@ impl ExtensionManager {
                 "getAlbum" => "album",
                 "getPlaylist" => "playlist",
                 "getArtist" => "artist",
+                "getConcert" => "concert",
                 "handleUrl" => "URL handle result",
                 "fetchLyrics" => "lyrics result",
                 "checkAvailability" => "availability result",

@@ -4578,6 +4578,13 @@
   },
   "nowPlayingUpNext": "Up next",
   "nowPlayingAudioOutput": "Output Audio",
+  "concertGetTickets": "Beli Tiket",
+  "concertSetList": "Set List Konser",
+  "concertSetListButton": "Set List",
+  "concertAddToCalendar": "Tambahkan ke Kalender",
+  "concertOpenMaps": "Buka Peta",
+  "concertDetailsUnavailable": "Detail konser belum tersedia saat ini.",
+  "concertCalendarUnavailable": "Tidak dapat membuka kalender.",
   "nowPlayingAudioOutputUnavailable": "Tidak dapat membuka pengaturan output audio.",
   "@nowPlayingUpNext": {
     "description": "Title for the playback queue sheet"

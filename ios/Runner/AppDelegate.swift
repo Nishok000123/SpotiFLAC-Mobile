@@ -23,6 +23,7 @@ import UniformTypeIdentifiers
     private var lastLibraryScanProgressPayload: String?
     private var libraryScanProgressGeneration: UInt64 = 0
     private var backendChannel: FlutterMethodChannel?
+    private var concertCalendar: ConcertCalendarBridge?
     private let coreBackend: CoreBackend = createCoreBackend()
     private var pendingSessionGrantEvents: [[String: Any]] = []
 
@@ -55,6 +56,9 @@ import UniformTypeIdentifiers
     }
 
     private func configureFlutterEngine(_ messenger: FlutterBinaryMessenger, registry: FlutterPluginRegistry) {
+        concertCalendar = ConcertCalendarBridge(messenger: messenger) { [weak self] in
+            self?.activeWindow?.rootViewController
+        }
         PlayerWidgetBridge.shared.attach(messenger)
         let channel = FlutterMethodChannel(
             name: CHANNEL,

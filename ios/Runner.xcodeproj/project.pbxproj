@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C0CE00000000000000000001 /* ConcertCalendarBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0CE00000000000000000002 /* ConcertCalendarBridge.swift */; };
 		A0D100000000000000000001 /* AudioOutputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0D100000000000000000002 /* AudioOutputView.swift */; };
 		F59500000000000000000011 /* PlayerWidgetState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59500000000000000000001 /* PlayerWidgetState.swift */; };
 		F59500000000000000000012 /* PlayerControlIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59500000000000000000002 /* PlayerControlIntent.swift */; };
@@ -70,6 +71,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		C0CE00000000000000000002 /* ConcertCalendarBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertCalendarBridge.swift; sourceTree = "<group>"; };
 		A0D100000000000000000002 /* AudioOutputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioOutputView.swift; sourceTree = "<group>"; };
 		F59500000000000000000009 /* PlayerWidget.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = PlayerWidget.xcconfig; sourceTree = "<group>"; };
 		F59500000000000000000001 /* PlayerWidgetState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerWidgetState.swift; sourceTree = "<group>"; };
@@ -213,6 +215,7 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				F59500000000000000000004 /* PlayerWidgetBridge.swift */,
 				A0D100000000000000000002 /* AudioOutputView.swift */,
+				C0CE00000000000000000002 /* ConcertCalendarBridge.swift */,
 				F59500000000000000000007 /* Runner.entitlements */,
 				C03400000000000000000002 /* CoreBackend.swift */,
 				D08A594730CF000100000002 /* DownloadProgressSubscription.swift */,
@@ -475,6 +478,7 @@
 				F59500000000000000000012 /* PlayerControlIntent.swift in Sources */,
 				F59500000000000000000013 /* PlayerWidgetBridge.swift in Sources */,
 				A0D100000000000000000001 /* AudioOutputView.swift in Sources */,
+				C0CE00000000000000000001 /* ConcertCalendarBridge.swift in Sources */,
 				C03400000000000000000001 /* CoreBackend.swift in Sources */,
 				D08A594730CF000100000001 /* DownloadProgressSubscription.swift in Sources */,
 				A11CE0012F00000000000001 /* ExtensionCallbackParser.swift in Sources */,

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/artist_concert.dart';
+import 'package:spotiflac_android/screens/concert_detail_screen.dart';
 import 'package:spotiflac_android/services/shell_navigation_service.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 import 'package:spotiflac_android/utils/nav_bar_inset.dart';
 import 'package:spotiflac_android/widgets/album_detail_header.dart';
 import 'package:spotiflac_android/widgets/cached_cover_image.dart';
+import 'package:spotiflac_android/widgets/animation_utils.dart';
 
 class ArtistConcertsScreen extends StatefulWidget {
   const ArtistConcertsScreen({
@@ -16,11 +17,13 @@ class ArtistConcertsScreen extends StatefulWidget {
     required this.artistName,
     required this.concerts,
     this.coverUrl,
+    this.providerId,
   });
 
   final String artistName;
   final List<ArtistConcert> concerts;
   final String? coverUrl;
+  final String? providerId;
 
   @override
   State<ArtistConcertsScreen> createState() => _ArtistConcertsScreenState();
@@ -154,9 +157,7 @@ class _ArtistConcertsScreenState extends State<ArtistConcertsScreen> {
                       DateFormat.Hm(locale).format(concert.date),
                   ].join(' · ');
                   return InkWell(
-                    onTap: concert.url == null
-                        ? null
-                        : () => _openConcert(context, concert),
+                    onTap: () => _openConcert(context, concert),
                     borderRadius: BorderRadius.circular(12),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 5),
@@ -256,19 +257,15 @@ class _ArtistConcertsScreenState extends State<ArtistConcertsScreen> {
   }
 
   Future<void> _openConcert(BuildContext context, ArtistConcert concert) async {
-    try {
-      if (await launchUrl(
-        Uri.parse(concert.url!),
-        mode: LaunchMode.externalApplication,
-      )) {
-        return;
-      }
-    } catch (_) {
-      // Keep the schedule visible if no browser can handle the event link.
-    }
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.announcementUnableToOpenLink)),
+    await Navigator.of(context).push(
+      slidePageRoute<void>(
+        page: ConcertDetailScreen(
+          artistName: widget.artistName,
+          coverUrl: widget.coverUrl,
+          providerId: widget.providerId,
+          concert: concert,
+        ),
+      ),
     );
   }
 }

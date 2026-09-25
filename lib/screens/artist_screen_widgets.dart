@@ -6,6 +6,7 @@ extension _ArtistScreenSections on _ArtistScreenState {
     artistName: widget.artistName,
     concerts: _concerts,
     coverUrl: widget.coverUrl ?? _headerImageUrl,
+    providerId: _directMetadataProviderId(),
   );
 
   List<Widget> _buildHeader(

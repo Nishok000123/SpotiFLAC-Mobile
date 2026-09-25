@@ -12,6 +12,7 @@ class ArtistConcert {
     required this.date,
     required this.hasTime,
     this.url,
+    this.detailId,
   });
 
   final String id;
@@ -20,6 +21,7 @@ class ArtistConcert {
   final DateTime date;
   final bool hasTime;
   final String? url;
+  final String? detailId;
 
   static bool _timeZonesReady = false;
 
@@ -75,9 +77,73 @@ class ArtistConcert {
           date: date,
           hasTime: match[4] != null,
           url: normalizeRemoteHttpUrl(text('url')),
+          detailId: text('detail_id').isEmpty ? null : text('detail_id'),
         ),
       );
     }
     return concerts.values.toList()..sort((a, b) => a.date.compareTo(b.date));
+  }
+}
+
+class ConcertDetail {
+  const ConcertDetail({
+    this.artistName,
+    this.title,
+    this.coverUrl,
+    this.venue,
+    this.address,
+    this.start,
+    this.end,
+    this.ticketUrl,
+    this.mapUrl,
+    this.url,
+    this.attribution,
+    this.setListId,
+    this.setListName,
+    this.setListCover,
+  });
+
+  final String? artistName;
+  final String? title;
+  final String? coverUrl;
+  final String? venue;
+  final String? address;
+  final DateTime? start;
+  final DateTime? end;
+  final String? ticketUrl;
+  final String? mapUrl;
+  final String? url;
+  final String? attribution;
+  final String? setListId;
+  final String? setListName;
+  final String? setListCover;
+
+  factory ConcertDetail.fromJson(Map<String, dynamic> json) {
+    String? text(Map<String, dynamic> data, String key) {
+      final value = data[key];
+      return value is String && value.trim().isNotEmpty ? value.trim() : null;
+    }
+
+    String? link(Map<String, dynamic> data, String key) =>
+        normalizeRemoteHttpUrl(text(data, key));
+    final setList = json['set_list'] is Map<String, dynamic>
+        ? json['set_list'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    return ConcertDetail(
+      artistName: text(json, 'artist_name'),
+      title: text(json, 'title'),
+      coverUrl: link(json, 'cover_url'),
+      venue: text(json, 'venue'),
+      address: text(json, 'address'),
+      start: DateTime.tryParse(text(json, 'start_at') ?? ''),
+      end: DateTime.tryParse(text(json, 'end_at') ?? ''),
+      ticketUrl: link(json, 'ticket_url'),
+      mapUrl: link(json, 'map_url'),
+      url: link(json, 'url'),
+      attribution: text(json, 'attribution'),
+      setListId: text(setList, 'id'),
+      setListName: text(setList, 'name'),
+      setListCover: link(setList, 'cover_url'),
+    );
   }
 }

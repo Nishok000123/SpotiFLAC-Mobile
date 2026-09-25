@@ -6282,6 +6282,13 @@
   },
   "nowPlayingUpNext": "Up next",
   "nowPlayingAudioOutput": "Audio Output",
+  "concertGetTickets": "Get Tickets",
+  "concertSetList": "Concert Set List",
+  "concertSetListButton": "Set List",
+  "concertAddToCalendar": "Add to Calendar",
+  "concertOpenMaps": "Open Maps",
+  "concertDetailsUnavailable": "Concert details are currently unavailable.",
+  "concertCalendarUnavailable": "Unable to open the calendar.",
   "nowPlayingAudioOutputUnavailable": "Unable to open audio output settings.",
   "@nowPlayingUpNext": {
     "description": "Title for the playback queue sheet"

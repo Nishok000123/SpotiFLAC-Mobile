@@ -10,11 +10,13 @@ class ArtistConcertsButton extends StatelessWidget {
     required this.artistName,
     required this.concerts,
     this.coverUrl,
+    this.providerId,
   });
 
   final String artistName;
   final List<ArtistConcert> concerts;
   final String? coverUrl;
+  final String? providerId;
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +28,7 @@ class ArtistConcertsButton extends StatelessWidget {
             artistName: artistName,
             concerts: concerts,
             coverUrl: coverUrl,
+            providerId: providerId,
           ),
         ),
       ),

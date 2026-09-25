@@ -21,11 +21,19 @@ function getArtist(id) {
     return {id, name: "Example Artist", image_url: "https://example.invalid/portrait.jpg",
         concerts: id === "bad-concerts" ? {} : [{id: "event-1", location: "Example City",
             venue: "Example Hall", startAt: "2026-10-07T01:00:00Z", timeZone: "America/New_York",
-            url: "https://example.invalid/events/1"}],
+            url: "https://example.invalid/events/1", detailId: "event-1"}],
         headerLogo: "https://example.invalid/logo.png", albumsNext: "artist-page-2", albums: []};
 }
 function handleUrl() { return {type: "artist", artist: getArtist("artist-1")}; }
-registerExtension({getAlbum: collection, getPlaylist: collection, getArtist, handleUrl});
+function getConcert(id) {
+    return {id, artistName: "Example Artist", title: "Example Show", venue: "Example Hall",
+        address: "123 Example Street", startAt: "2026-10-07T01:00:00Z",
+        endAt: "2026-10-07T04:00:00Z", timeZone: "America/New_York",
+        ticketUrl: "https://example.invalid/tickets/1", mapUrl: "https://example.invalid/maps/1",
+        coverUrl: "https://example.invalid/artist.jpg", attribution: "Example Events",
+        setList: {id: "list-1", name: "Concert Set List", coverUrl: "https://example.invalid/list.jpg"}};
+}
+registerExtension({getAlbum: collection, getPlaylist: collection, getArtist, getConcert, handleUrl});
 "#;
 
 fn fixture() -> (tempfile::TempDir, Backend) {
@@ -52,6 +60,30 @@ fn fixture() -> (tempfile::TempDir, Backend) {
     backend.load_all().unwrap();
     backend.set_enabled(ID, true).unwrap();
     (root, backend)
+}
+
+#[test]
+fn concert_details_preserve_generic_actions_and_set_list() {
+    let (_root, backend) = fixture();
+    let result: Value = serde_json::from_str(
+        &backend
+            .get_provider_metadata_json(ID, "concert", "event-1", &|| Ok(()))
+            .unwrap(),
+    )
+    .unwrap();
+    let detail = &result["concert"];
+    assert_eq!(detail["id"], "event-1");
+    assert_eq!(detail["artist_name"], "Example Artist");
+    assert_eq!(detail["start_at"], "2026-10-07T01:00:00Z");
+    assert_eq!(detail["end_at"], "2026-10-07T04:00:00Z");
+    assert_eq!(detail["ticket_url"], "https://example.invalid/tickets/1");
+    assert_eq!(detail["map_url"], "https://example.invalid/maps/1");
+    assert_eq!(detail["set_list"]["id"], "list-1");
+    assert_eq!(
+        detail["set_list"]["cover_url"],
+        "https://example.invalid/list.jpg"
+    );
+    assert_eq!(detail["attribution"], "Example Events");
 }
 
 #[test]
