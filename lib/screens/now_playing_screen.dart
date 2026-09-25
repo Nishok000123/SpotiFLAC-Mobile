@@ -4,6 +4,7 @@ import 'dart:ui' show BoxHeightStyle, ImageFilter;
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,6 +28,7 @@ import 'package:spotiflac_android/utils/int_utils.dart';
 import 'package:spotiflac_android/utils/isrc_utils.dart';
 import 'package:spotiflac_android/utils/lyrics_parser.dart';
 import 'package:spotiflac_android/utils/lyrics_timeline.dart';
+import 'package:spotiflac_android/utils/playback_seek_preview.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/utils/synced_lyrics_scroll.dart';
@@ -355,19 +357,23 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   final _motionArtworkKey = GlobalKey();
   Map<String, Color> _artworkForeground = {};
   final _artworkColorsChanged = ValueNotifier(0);
+  final _seekPreview = PlaybackSeekPreview();
 
   @override
   void initState() {
     super.initState();
     _mediaItemSub = ref.listenManual<AsyncValue<MediaItem?>>(
       currentMediaItemProvider,
-      (previous, next) => _loadMetadataForItem(
-        next.value,
-        // When automatic playback advances while Lyrics is already visible,
-        // onPageChanged will not run again. Inspect an unresolved SAF URI now
-        // instead of leaving the new track with an empty Lyrics page.
-        inspectUnresolvedContentUri: _currentPage == 1,
-      ),
+      (previous, next) {
+        if (previous?.value?.id != next.value?.id) _seekPreview.reset();
+        _loadMetadataForItem(
+          next.value,
+          // When automatic playback advances while Lyrics is already visible,
+          // onPageChanged will not run again. Inspect an unresolved SAF URI now
+          // instead of leaving the new track with an empty Lyrics page.
+          inspectUnresolvedContentUri: _currentPage == 1,
+        );
+      },
     );
     _lyricsPlayingSub = ref.listenManual<bool>(playbackPlayingProvider, (
       previous,
@@ -402,6 +408,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     _lyricsPlayingSub?.close();
     _pageController.dispose();
     _artworkColorsChanged.dispose();
+    _seekPreview.dispose();
     super.dispose();
   }
 
@@ -1405,6 +1412,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               mediaId: mediaItem.id,
               duration: mediaItem.duration ?? Duration.zero,
               controller: controller,
+              seekPreview: _seekPreview,
               colorScheme: foreground('controls'),
               qualityLabel: _qualityLabel(),
               compact: landscape,
@@ -1665,6 +1673,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         mediaId: mediaItem.id,
         duration: mediaItem.duration ?? Duration.zero,
         controller: controller,
+        seekPreview: _seekPreview,
         colorScheme: colorScheme,
         qualityLabel: _qualityLabel(),
       ),
@@ -1713,6 +1722,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         children: [
           _SyncedLyricsView(
             lyrics: _lyrics,
+            seekPreview: _seekPreview,
             credits: _lyricsCredits(),
             colorScheme: colorScheme,
             isActive: isActive,
@@ -2540,6 +2550,7 @@ class _PlaybackControls extends ConsumerWidget {
   final String mediaId;
   final Duration duration;
   final MusicPlayerController controller;
+  final PlaybackSeekPreview seekPreview;
   final ColorScheme colorScheme;
   final String? qualityLabel;
   final bool compact;
@@ -2550,6 +2561,7 @@ class _PlaybackControls extends ConsumerWidget {
     required this.mediaId,
     required this.duration,
     required this.controller,
+    required this.seekPreview,
     required this.colorScheme,
     required this.qualityLabel,
     this.compact = false,
@@ -2579,84 +2591,90 @@ class _PlaybackControls extends ConsumerWidget {
     );
     return Column(
       children: [
-        Consumer(
-          builder: (context, ref, _) {
-            final position = ref.watch(playbackPositionProvider);
-            final elapsedSeconds = position.inSeconds;
-            return Padding(
-              padding: EdgeInsets.symmetric(horizontal: mornye ? 28 : 16),
-              child: Column(
-                children: [
-                  SliderTheme(
-                    data: SliderThemeData(
-                      trackHeight: 4,
-                      activeTrackColor: mornye
-                          ? colorScheme.onSurface
-                          : colorScheme.primary,
-                      inactiveTrackColor: colorScheme.onSurface.withValues(
-                        alpha: 0.18,
+        ValueListenableBuilder<Duration?>(
+          valueListenable: seekPreview,
+          builder: (context, preview, _) => Consumer(
+            builder: (context, ref, _) {
+              final position = ref.watch(playbackPositionProvider);
+              final elapsedSeconds = (preview ?? position).inSeconds;
+              return Padding(
+                padding: EdgeInsets.symmetric(horizontal: mornye ? 28 : 16),
+                child: Column(
+                  children: [
+                    SliderTheme(
+                      data: SliderThemeData(
+                        trackHeight: 4,
+                        activeTrackColor: mornye
+                            ? colorScheme.onSurface
+                            : colorScheme.primary,
+                        inactiveTrackColor: colorScheme.onSurface.withValues(
+                          alpha: 0.18,
+                        ),
+                        thumbColor: mornye
+                            ? colorScheme.onSurface
+                            : colorScheme.primary,
+                        // A 7dp thumb was hard to grab; 10dp with a 24dp overlay
+                        // gives the drag gesture a full-size target.
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 10,
+                        ),
+                        overlayShape: const RoundSliderOverlayShape(
+                          overlayRadius: 24,
+                        ),
                       ),
-                      thumbColor: mornye
-                          ? colorScheme.onSurface
-                          : colorScheme.primary,
-                      // A 7dp thumb was hard to grab; 10dp with a 24dp overlay
-                      // gives the drag gesture a full-size target.
-                      thumbShape: const RoundSliderThumbShape(
-                        enabledThumbRadius: 10,
-                      ),
-                      overlayShape: const RoundSliderOverlayShape(
-                        overlayRadius: 24,
+                      child: PlaybackSeekSlider(
+                        key: ValueKey(mediaId),
+                        position: position,
+                        duration: duration,
+                        onSeek: controller.seek,
+                        preview: seekPreview,
                       ),
                     ),
-                    child: PlaybackSeekSlider(
-                      key: ValueKey(mediaId),
-                      position: position,
-                      duration: duration,
-                      onSeek: controller.seek,
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: mornye ? 8 : 12),
-                    child: Row(
-                      children: [
-                        if (mornye)
-                          MornyePlaybackTime(
-                            key: ValueKey('elapsed:$mediaId'),
-                            seconds: elapsedSeconds,
-                            style: timeStyle,
-                          )
-                        else
-                          Text(formatClock(elapsedSeconds), style: timeStyle),
-                        Expanded(
-                          child: Center(
-                            child: _QualityBadge(
-                              label: qualityLabel,
-                              colorScheme: colorScheme,
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: mornye ? 8 : 12,
+                      ),
+                      child: Row(
+                        children: [
+                          if (mornye)
+                            MornyePlaybackTime(
+                              key: ValueKey('elapsed:$mediaId'),
+                              seconds: elapsedSeconds,
+                              style: timeStyle,
+                            )
+                          else
+                            Text(formatClock(elapsedSeconds), style: timeStyle),
+                          Expanded(
+                            child: Center(
+                              child: _QualityBadge(
+                                label: qualityLabel,
+                                colorScheme: colorScheme,
+                              ),
                             ),
                           ),
-                        ),
-                        if (mornye)
-                          MornyePlaybackTime(
-                            key: ValueKey('remaining:$mediaId'),
-                            // Subtract whole seconds so both labels roll together,
-                            // even when the track duration includes milliseconds.
-                            seconds: (duration.inSeconds - elapsedSeconds)
-                                .clamp(0, duration.inSeconds),
-                            remaining: true,
-                            style: timeStyle,
-                          )
-                        else
-                          Text(
-                            formatClock(duration.inSeconds),
-                            style: timeStyle,
-                          ),
-                      ],
+                          if (mornye)
+                            MornyePlaybackTime(
+                              key: ValueKey('remaining:$mediaId'),
+                              // Subtract whole seconds so both labels roll together,
+                              // even when the track duration includes milliseconds.
+                              seconds: (duration.inSeconds - elapsedSeconds)
+                                  .clamp(0, duration.inSeconds),
+                              remaining: true,
+                              style: timeStyle,
+                            )
+                          else
+                            Text(
+                              formatClock(duration.inSeconds),
+                              style: timeStyle,
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          },
+                  ],
+                ),
+              );
+            },
+          ),
         ),
         SizedBox(height: compact ? 8 : transportTopPadding),
         Padding(
@@ -2790,6 +2808,7 @@ class _PlaybackControls extends ConsumerWidget {
 
 class _SyncedLyricsView extends ConsumerStatefulWidget {
   final ParsedLyrics lyrics;
+  final ValueListenable<Duration?> seekPreview;
   final _LyricsCredits? credits;
   final ColorScheme colorScheme;
   final bool isActive;
@@ -2798,6 +2817,7 @@ class _SyncedLyricsView extends ConsumerStatefulWidget {
 
   const _SyncedLyricsView({
     required this.lyrics,
+    required this.seekPreview,
     this.credits,
     required this.colorScheme,
     required this.isActive,
@@ -2840,6 +2860,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   void initState() {
     super.initState();
     _resetLineKeys();
+    widget.seekPreview.addListener(_previewChanged);
   }
 
   @override
@@ -2851,6 +2872,10 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   @override
   void didUpdateWidget(covariant _SyncedLyricsView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.seekPreview != widget.seekPreview) {
+      oldWidget.seekPreview.removeListener(_previewChanged);
+      widget.seekPreview.addListener(_previewChanged);
+    }
     if (oldWidget.lyrics != widget.lyrics) {
       _resetLineKeys();
     }
@@ -2884,7 +2909,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     _userScrollIdleTimer?.cancel();
     _userScrolling = false;
 
-    final position = ref.read(playbackPositionProvider);
+    final position = _displayPosition;
     _playing = ref.read(playbackPlayingProvider);
     _loading = ref.read(playbackLoadingProvider);
     _active = _activeIndexAt(position);
@@ -2896,6 +2921,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     _positionSubscription = ref.listenManual<Duration>(
       playbackPositionProvider,
       (previous, next) {
+        if (widget.seekPreview.value != null) return;
         final active = _activeIndexAt(next);
         if (active != _active) _setActiveLine(active, position: next);
         _scheduleNextLine(next);
@@ -2906,7 +2932,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       next,
     ) {
       _playing = next;
-      final position = ref.read(playbackPositionProvider);
+      final position = _displayPosition;
       _setActiveLine(_activeIndexAt(position), position: position);
       _scheduleNextLine(position);
     });
@@ -2915,13 +2941,34 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       next,
     ) {
       _loading = next;
-      final position = ref.read(playbackPositionProvider);
+      final position = _displayPosition;
       _setActiveLine(_activeIndexAt(position), position: position);
       _scheduleNextLine(position);
     });
   }
 
+  Duration get _displayPosition =>
+      widget.seekPreview.value ?? ref.read(playbackPositionProvider);
+
+  void _previewChanged() {
+    if (!mounted || !widget.isActive) return;
+    final position = _displayPosition;
+    final wasUserScrolling = _userScrolling;
+    _userScrolling = false;
+    _userScrollIdleTimer?.cancel();
+    final active = _activeIndexAt(position);
+    if (active == _active && (wasUserScrolling || active < 0)) {
+      unawaited(_maybeAutoScroll(active));
+    }
+    _setActiveLine(active, position: position);
+    _scheduleNextLine(position);
+  }
+
   int _activeIndexAt(Duration position) {
+    // Scrubbing is an explicit preview, even at zero or while audio buffers.
+    if (widget.seekPreview.value != null) {
+      return LyricsParser.activeIndex(_lines, position);
+    }
     if (context.isMornye) {
       // Read one transport snapshot: playing/loading derived providers can
       // notify separately during the same playback event.
@@ -2944,13 +2991,18 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       _activeTransitionPosition = position;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_maybeAutoScroll(active));
+      if (mounted && active == _active) unawaited(_maybeAutoScroll(active));
     });
   }
 
   void _scheduleNextLine(Duration position) {
     _lineBoundaryTimer?.cancel();
-    if (!widget.isActive || !_playing || _loading) return;
+    if (!widget.isActive ||
+        !_playing ||
+        _loading ||
+        widget.seekPreview.value != null) {
+      return;
+    }
 
     final lines = _lines;
     final dueIndex = syncedLyricsDueLineIndex(
@@ -2973,6 +3025,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
 
   @override
   void dispose() {
+    widget.seekPreview.removeListener(_previewChanged);
     _positionSubscription?.close();
     _playingSubscription?.close();
     _loadingSubscription?.close();
@@ -3042,7 +3095,13 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   }
 
   Future<void> _maybeAutoScroll(int index, {bool immediate = false}) async {
+    // A short intro may have no countdown row. Still return to the first
+    // upcoming lyric when the user scrubs back before any vocals.
+    if (index < 0 && widget.seekPreview.value != null) index = 0;
     if (_userScrolling || index < 0 || !_scroll.hasClients) return;
+    final duration = immediate || MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : Duration(milliseconds: widget.seekPreview.value != null ? 220 : 380);
     final extents = _lineExtents;
     if (context.isMornye && extents != null && index < extents.length) {
       final position = _scroll.position;
@@ -3053,12 +3112,12 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
         position.minScrollExtent,
         position.maxScrollExtent,
       );
-      if (immediate || MediaQuery.disableAnimationsOf(context)) {
+      if (duration == Duration.zero) {
         _scroll.jumpTo(offset);
       } else {
         await _scroll.animateTo(
           offset,
-          duration: const Duration(milliseconds: 380),
+          duration: duration,
           curve: Curves.easeOutCubic,
         );
       }
@@ -3071,9 +3130,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
           lineContext,
           alignment: 0.5,
           alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
-          duration: immediate
-              ? Duration.zero
-              : const Duration(milliseconds: 380),
+          duration: duration,
           curve: Curves.easeOutCubic,
         );
         return;
@@ -3089,19 +3146,30 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       position.minScrollExtent,
       position.maxScrollExtent,
     );
-    await _scroll.animateTo(
-      clamped.toDouble(),
-      duration: const Duration(milliseconds: 380),
-      curve: Curves.easeOutCubic,
-    );
-    if (!mounted || _userScrolling || index >= _lineKeys.length) return;
+    if (duration == Duration.zero) {
+      _scroll.jumpTo(clamped.toDouble());
+    } else {
+      await _scroll.animateTo(
+        clamped.toDouble(),
+        duration: duration,
+        curve: Curves.easeOutCubic,
+      );
+    }
+    if (!mounted ||
+        _userScrolling ||
+        index != _active ||
+        index >= _lineKeys.length) {
+      return;
+    }
     final lineContext = _lineKeys[index].currentContext;
     if (lineContext != null && lineContext.mounted) {
       await Scrollable.ensureVisible(
         lineContext,
         alignment: 0.5,
         alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
-        duration: const Duration(milliseconds: 180),
+        duration: duration == Duration.zero
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
         curve: Curves.easeOut,
       );
     }
@@ -3228,12 +3296,20 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                       alignment: mornye
                           ? Alignment.centerLeft
                           : Alignment.center,
-                      child: isActive && widget.isActive && !loading
-                          ? LyricGapIndicator(
-                              key: ValueKey(line.time),
-                              start: line.time,
-                              end: line.end!,
-                              color: color,
+                      child:
+                          isActive &&
+                              widget.isActive &&
+                              (!loading || widget.seekPreview.value != null)
+                          ? ValueListenableBuilder<Duration?>(
+                              valueListenable: widget.seekPreview,
+                              builder: (context, preview, _) =>
+                                  LyricGapIndicator(
+                                    key: ValueKey(line.time),
+                                    start: line.time,
+                                    end: line.end!,
+                                    color: color,
+                                    position: preview,
+                                  ),
                             )
                           : null,
                     ),
@@ -3251,6 +3327,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                   colorScheme: widget.colorScheme,
                   animate: widget.isActive,
                   initialPosition: _activeTransitionPosition,
+                  seekPreview: widget.seekPreview,
                   supplementVisibility: visibility,
                 );
               } else {
@@ -3506,6 +3583,7 @@ class _WordHighlightedLyricLine extends ConsumerStatefulWidget {
   final ColorScheme colorScheme;
   final bool animate;
   final Duration initialPosition;
+  final ValueListenable<Duration?> seekPreview;
   final Offset supplementVisibility;
 
   const _WordHighlightedLyricLine({
@@ -3513,6 +3591,7 @@ class _WordHighlightedLyricLine extends ConsumerStatefulWidget {
     required this.colorScheme,
     required this.animate,
     required this.initialPosition,
+    required this.seekPreview,
     required this.supplementVisibility,
   });
 
@@ -3535,7 +3614,11 @@ class _WordHighlightedLyricLineState
   bool _playing = false;
   bool _loading = false;
 
-  bool get _shouldAnimate => widget.animate && _playing && !_loading;
+  bool get _shouldAnimate =>
+      widget.animate &&
+      _playing &&
+      !_loading &&
+      widget.seekPreview.value == null;
 
   Duration _positionAt({required bool advance}) {
     return interpolatedSyncedLyricsPosition(
@@ -3557,6 +3640,7 @@ class _WordHighlightedLyricLineState
       vsync: this,
       duration: const Duration(seconds: 1),
     );
+    widget.seekPreview.addListener(_previewChanged);
     _positionSubscription = ref.listenManual<Duration>(
       playbackPositionProvider,
       (previous, next) => _updateReportedPosition(next),
@@ -3575,6 +3659,11 @@ class _WordHighlightedLyricLineState
   @override
   void didUpdateWidget(covariant _WordHighlightedLyricLine oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.seekPreview != widget.seekPreview) {
+      oldWidget.seekPreview.removeListener(_previewChanged);
+      widget.seekPreview.addListener(_previewChanged);
+      _previewChanged();
+    }
     if (oldWidget.line != widget.line ||
         oldWidget.initialPosition != widget.initialPosition) {
       _anchorAt(widget.initialPosition);
@@ -3588,7 +3677,14 @@ class _WordHighlightedLyricLineState
   }
 
   Duration _currentPosition() {
-    return _positionAt(advance: _shouldAnimate);
+    return widget.seekPreview.value ?? _positionAt(advance: _shouldAnimate);
+  }
+
+  void _previewChanged() {
+    if (!mounted) return;
+    _anchorAt(widget.seekPreview.value ?? ref.read(playbackPositionProvider));
+    _syncAnimationClock();
+    setState(() {});
   }
 
   void _anchorAt(Duration position) {
@@ -3597,7 +3693,7 @@ class _WordHighlightedLyricLineState
   }
 
   void _updateReportedPosition(Duration position) {
-    if (!mounted) return;
+    if (!mounted || widget.seekPreview.value != null) return;
     final predicted = _currentPosition();
     _anchorAt(
       _shouldAnimate
@@ -3615,7 +3711,10 @@ class _WordHighlightedLyricLineState
     final position = _currentPosition();
     if (playing != null) _playing = playing;
     if (loading != null) _loading = loading;
-    _anchorAt(_shouldAnimate ? position : ref.read(playbackPositionProvider));
+    _anchorAt(
+      widget.seekPreview.value ??
+          (_shouldAnimate ? position : ref.read(playbackPositionProvider)),
+    );
     _syncAnimationClock();
     setState(() {});
   }
@@ -3645,6 +3744,7 @@ class _WordHighlightedLyricLineState
 
   @override
   void dispose() {
+    widget.seekPreview.removeListener(_previewChanged);
     _positionSubscription?.close();
     _playingSubscription?.close();
     _loadingSubscription?.close();

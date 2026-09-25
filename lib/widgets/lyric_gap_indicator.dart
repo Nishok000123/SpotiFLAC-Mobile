@@ -11,16 +11,18 @@ class LyricGapIndicator extends ConsumerWidget {
     required this.start,
     required this.end,
     required this.color,
+    this.position,
   });
 
   final Duration start;
   final Duration end;
   final Color color;
+  final Duration? position;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final progress = syncedLyricSegmentProgress(
-      position: ref.watch(playbackPositionProvider),
+      position: position ?? ref.watch(playbackPositionProvider),
       start: start,
       end: end,
     );

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:spotiflac_android/theme/mornye_theme.dart';
+import 'package:spotiflac_android/utils/playback_seek_preview.dart';
 import 'package:spotiflac_android/widgets/playback_seek_slider.dart';
 
 void main() {
@@ -9,10 +11,13 @@ void main() {
     tester,
   ) async {
     final seeks = <Duration>[];
+    final sharedPreview = PlaybackSeekPreview();
+    addTearDown(sharedPreview.dispose);
     final completion = Completer<void>();
     Widget app(Duration position) => MaterialApp(
       home: Scaffold(
         body: PlaybackSeekSlider(
+          preview: sharedPreview,
           position: position,
           duration: const Duration(seconds: 100),
           onSeek: (target) {
@@ -32,10 +37,12 @@ void main() {
     await tester.pump();
     final preview = tester.widget<Slider>(find.byType(Slider)).value;
     expect(preview, greaterThan(50000));
+    expect(sharedPreview.value, Duration(milliseconds: preview.round()));
     expect(seeks, isEmpty);
 
     await tester.pumpWidget(app(const Duration(seconds: 11)));
     expect(tester.widget<Slider>(find.byType(Slider)).value, preview);
+    expect(sharedPreview.value, Duration(milliseconds: preview.round()));
     await gesture.up();
     await tester.pump();
     expect(seeks, [Duration(milliseconds: preview.round())]);
@@ -45,6 +52,7 @@ void main() {
     completion.complete();
     await tester.pump();
     await tester.pump();
+    expect(sharedPreview.value, isNull);
     expect(
       tester.widget<Slider>(find.byType(Slider)).value,
       seeks.single.inMilliseconds.toDouble(),
@@ -55,10 +63,13 @@ void main() {
     tester,
   ) async {
     final completions = <Completer<void>>[];
+    final sharedPreview = PlaybackSeekPreview();
+    addTearDown(sharedPreview.dispose);
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: PlaybackSeekSlider(
+            preview: sharedPreview,
             position: Duration.zero,
             duration: const Duration(seconds: 100),
             onSeek: (_) {
@@ -84,11 +95,82 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(tester.widget<Slider>(find.byType(Slider)).value, preview);
+    expect(sharedPreview.value, Duration(milliseconds: preview.round()));
     await gesture.up();
     expect(completions, hasLength(2));
     completions.last.complete();
     await tester.pump();
     await tester.pump();
+    expect(sharedPreview.value, isNull);
+  });
+
+  testWidgets('removing a Mornye slider releases its pending preview safely', (
+    tester,
+  ) async {
+    final preview = PlaybackSeekPreview();
+    addTearDown(preview.dispose);
+    final completion = Completer<void>();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: MornyeTheme.build(Brightness.dark),
+        home: Scaffold(
+          body: PlaybackSeekSlider(
+            preview: preview,
+            position: Duration.zero,
+            duration: const Duration(seconds: 100),
+            onSeek: (_) => completion.future,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byType(Slider));
+    await tester.pump();
+    expect(preview.value, isNotNull);
+    await tester.pumpWidget(const SizedBox());
+    expect(preview.value, isNull);
+    final session = preview.begin(const Duration(seconds: 20));
+    completion.complete();
+    await tester.pump();
+    expect(preview.value, const Duration(seconds: 20));
+    preview.end(session);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('failed seeks release the shared preview', (tester) async {
+    final preview = PlaybackSeekPreview();
+    addTearDown(preview.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlaybackSeekSlider(
+            preview: preview,
+            position: Duration.zero,
+            duration: const Duration(seconds: 100),
+            onSeek: (_) async => throw StateError('Seek failed'),
+          ),
+        ),
+      ),
+    );
+    final slider = tester.widget<Slider>(find.byType(Slider));
+    slider.onChangeStart!(50000);
+    slider.onChanged!(50000);
+    final commit = slider.onChangeEnd! as Future<void> Function(double);
+    await expectLater(commit(50000), throwsStateError);
+    expect(preview.value, isNull);
+    await tester.pump();
+    expect(tester.widget<Slider>(find.byType(Slider)).value, 0);
+  });
+
+  test('track reset invalidates pending preview sessions', () {
+    final preview = PlaybackSeekPreview();
+    addTearDown(preview.dispose);
+    final oldSession = preview.begin(const Duration(seconds: 30));
+    preview.reset();
+    preview.update(oldSession, const Duration(seconds: 40));
+    expect(preview.value, isNull);
+    preview.begin(const Duration(seconds: 10));
+    preview.end(oldSession);
+    expect(preview.value, const Duration(seconds: 10));
   });
 
   testWidgets('unknown duration disables seek and clamps stale position', (
