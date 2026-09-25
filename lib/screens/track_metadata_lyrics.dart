@@ -16,14 +16,6 @@ extension _TrackMetadataLyricsAndSaving on _TrackMetadataScreenState {
           children: [
             Row(
               children: [
-                Icon(
-                  context.isMornye
-                      ? CupertinoIcons.quote_bubble
-                      : Icons.lyrics_outlined,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     context.l10n.trackLyrics,

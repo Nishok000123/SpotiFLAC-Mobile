@@ -1551,8 +1551,6 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.info_outline, color: cs.primary, size: 24),
-              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1663,8 +1661,6 @@ class _AudioAnalysisCardState extends State<AudioAnalysisCard> {
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                Icon(Icons.analytics_outlined, color: cs.primary, size: 28),
-                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

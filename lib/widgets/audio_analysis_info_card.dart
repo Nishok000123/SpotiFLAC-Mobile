@@ -27,8 +27,6 @@ class _AudioInfoCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.analytics_outlined, color: cs.primary, size: 20),
-                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     context.l10n.audioAnalysisTitle,

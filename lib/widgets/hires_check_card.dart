@@ -91,10 +91,6 @@ class _HiResCheckCardState extends State<HiResCheckCard> {
           children: [
             Row(
               children: [
-                if (!mornye) ...[
-                  Icon(Icons.graphic_eq, color: cs.onSurfaceVariant, size: 22),
-                  const SizedBox(width: 10),
-                ],
                 Expanded(
                   child: Text(
                     l10n.hiResCheckTitle,
