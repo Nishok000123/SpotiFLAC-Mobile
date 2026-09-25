@@ -1,4 +1,48 @@
 {
+  "upgradeIntroWelcome": "Welcome to\nSpotiFLAC-Mobile 5.0",
+  "upgradeIntroThemeTitle": "Make it\nyour own.",
+  "upgradeIntroThemeBody": "Choose a look. Your choice applies immediately, and you can change it later in Appearance.",
+  "upgradeIntroThemeMaterialBody": "The familiar layout, with Material controls and your accent color.",
+  "upgradeIntroThemeMornyeBody": "Glass navigation, a redesigned Library and an immersive player.",
+  "upgradeIntroRustTitle": "A new engine.\nBuilt with Rust.",
+  "upgradeIntroRustBody": "In 5.0, the app’s backend has moved from Go to Rust. It is the engine working behind the screens you use every day.",
+  "upgradeIntroRustEngineTitle": "Working behind the scenes",
+  "upgradeIntroRustEngineBody": "Rust handles downloads, audio metadata, library scanning and the extension runtime on Android and iOS.",
+  "upgradeIntroRustMemoryTitle": "More careful with memory",
+  "upgradeIntroRustMemoryBody": "Reused buffers and fewer copies reduce temporary allocations when processing artwork and extension data.",
+  "upgradeIntroRustKeepTitle": "Keep your music",
+  "upgradeIntroRustKeepBody": "No need to download your collection again. Your saved music and settings stay in place, with no new setup required.",
+  "upgradeIntroWelcomeBody": "A quick look at what has changed, and where to find it.",
+  "upgradeIntroMornyeBody": "A new look for your player, lyrics and navigation.",
+  "upgradeIntroLibrarySummary": "Browse your music by playlist, artist or album.",
+  "upgradeIntroRepoSummary": "Choose your music sources and providers through extensions.",
+  "upgradeIntroLibraryTitle": "Get to know\nyour Library.",
+  "upgradeIntroLibraryBody": "In Mornye, browse by category or find your albums in Recently Added.",
+  "upgradeIntroDownloadsBody": "Pause and retry from Downloads at the top right. Finished music moves to Recently Added.",
+  "upgradeIntroSearchBody": "Search saved music here. The separate Search tab looks through your extensions.",
+  "upgradeIntroPlayerTitle": "Set up\nyour player.",
+  "upgradeIntroPlayerBody": "You can change your theme and playback options at any time. Here is where to find them.",
+  "upgradeIntroAppearanceBody": "Change themes in Settings → Appearance. In Mornye, scroll down for compact navigation; scroll up to expand it.",
+  "upgradeIntroAutoMixBody": "Match tempo and beats between tracks. Enable it in Settings → Local Library → Playback. Off by default.",
+  "upgradeIntroSettingsBody": "In Mornye, tap your profile on Home to open Settings and edit your name and photo.",
+  "upgradeIntroSkip": "Skip",
+  "upgradeIntroContinue": "Continue",
+  "upgradeIntroDone": "Start listening",
+  "upgradeIntroReplay": "What’s new in 5.0",
+  "cacheMotionArtwork": "Offline motion covers",
+  "cacheMotionArtworkDesc": "Album videos saved with downloads. Removing them keeps your music files and static covers.",
+  "nowPlayingVolume": "Volume",
+  "@nowPlayingVolume": {
+    "description": "System volume control label in the Mornye player"
+  },
+  "appearanceStyle": "App Style",
+  "@appearanceStyle": {
+    "description": "Appearance section for choosing the app visual style"
+  },
+  "discordRichPresence": "Discord Rich Presence",
+  "discordPresenceDescription": "Share the track playing in the built-in player on Discord. Requires Discord to be installed and signed in.",
+  "discordPresenceMissing": "Install Discord and sign in, then turn this setting off and on again.",
+  "discordPresenceUnavailable": "Discord Rich Presence is unavailable in this build or on this device.",
   "@@locale": "nl",
   "@@last_modified": "2026-04-28",
   "appName": "SpotiFLAC Mobile",
@@ -57,6 +101,11 @@
   "@historyFilterSingles": {
     "description": "Filter chip - show singles only"
   },
+  "libraryRecentlyAdded": "Recently Added",
+  "libraryDownloads": "Downloads",
+  "libraryNoActiveDownloads": "No active downloads",
+  "librarySearchHint": "Search your library",
+  "libraryEmptyCollection": "Your music will appear here",
   "historySearchHint": "Search history...",
   "@historySearchHint": {
     "description": "Search bar placeholder in history"
@@ -237,6 +286,7 @@
     "description": "Progress dialog title while batch scanning ReplayGain"
   },
   "replayGainBatchSuccess": "ReplayGain added to {success} of {total} tracks",
+  "replayGainUnsupportedDecoder": "Some tracks could not be analyzed because their audio codec is not supported by the ReplayGain decoder. Their files were not changed.",
   "@replayGainBatchSuccess": {
     "description": "Snackbar after batch ReplayGain completes",
     "placeholders": {
@@ -460,6 +510,18 @@
   "aboutSachinsenalDesc": "The original HiFi project creator. A foundation for lossless-source integration.",
   "@aboutSachinsenalDesc": {
     "description": "Credit description for sachinsenal0x64"
+  },
+  "aboutUnituneDesc": "Open-source music link resolver by Flaze, used for cross-platform fallback matching.",
+  "@aboutUnituneDesc": {
+    "description": "Credit for the UniTune resolver"
+  },
+  "aboutMusicBrainzDesc": "Open music database maintained by MetaBrainz and its community, used for recording cross-references.",
+  "@aboutMusicBrainzDesc": {
+    "description": "Credit for the MusicBrainz database"
+  },
+  "aboutSquiglyDesc": "Universal music link service by Liam Macmillan, used as a final cross-platform resolver fallback.",
+  "@aboutSquiglyDesc": {
+    "description": "Credit for the Squigly resolver"
   },
   "aboutAppDescription": "Search music metadata, manage extensions, and organize your library.",
   "@aboutAppDescription": {
@@ -841,6 +903,22 @@
   "duplicatesKeepBest": "Keep best",
   "@duplicatesKeepBest": {
     "description": "Button that deletes all but the highest-quality copy in a duplicate group"
+  },
+  "duplicatesKeepBestAll": "Keep best for all",
+  "@duplicatesKeepBestAll": {
+    "description": "Button that keeps the highest-quality copy in every duplicate group and deletes the rest"
+  },
+  "duplicatesKeepBestAllMessage": "Keep the best copy of {groupCount} {groupCount, plural, =1{track} other{tracks}} and delete {count} lower-quality {count, plural, =1{copy} other{copies}}?\n\nThe deleted files will be removed from storage.",
+  "@duplicatesKeepBestAllMessage": {
+    "description": "Confirmation message for keeping the best copy across every duplicate group",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "groupCount": {
+        "type": "int"
+      }
+    }
   },
   "duplicatesKeepBestMessage": "Delete {count} lower-quality copies of \"{trackName}\"?",
   "@duplicatesKeepBestMessage": {
@@ -1563,6 +1641,22 @@
   "trackAudioQuality": "Audio quality",
   "@trackAudioQuality": {
     "description": "Metadata label - audio quality"
+  },
+  "trackReplayGainTrackGain": "ReplayGain Track Gain",
+  "@trackReplayGainTrackGain": {
+    "description": "Metadata label - ReplayGain track gain"
+  },
+  "trackReplayGainTrackPeak": "ReplayGain Track Peak",
+  "@trackReplayGainTrackPeak": {
+    "description": "Metadata label - ReplayGain track peak"
+  },
+  "trackReplayGainAlbumGain": "ReplayGain Album Gain",
+  "@trackReplayGainAlbumGain": {
+    "description": "Metadata label - ReplayGain album gain"
+  },
+  "trackReplayGainAlbumPeak": "ReplayGain Album Peak",
+  "@trackReplayGainAlbumPeak": {
+    "description": "Metadata label - ReplayGain album peak"
   },
   "libraryQualityLabelFileFormat": "File format",
   "@libraryQualityLabelFileFormat": {
@@ -3176,6 +3270,10 @@
   "@trackReEnrichOnlineSubtitle": {
     "description": "Subtitle for re-enrich metadata action for local items"
   },
+  "trackReEnrichBatchSubtitle": "Choose an online or manual update, then review every change before writing",
+  "@trackReEnrichBatchSubtitle": {
+    "description": "Subtitle for batch metadata update choices"
+  },
   "trackReEnrichFieldCover": "Cover Art",
   "@trackReEnrichFieldCover": {
     "description": "Checkbox label for cover art field in re-enrich"
@@ -3227,6 +3325,22 @@
   "trackReEnrichModeReplaceSubtitle": "Choose which existing values may be replaced by online metadata",
   "@trackReEnrichModeReplaceSubtitle": {
     "description": "Explanation for the selected-tag batch metadata mode"
+  },
+  "trackReEnrichModeManual": "Set common values",
+  "@trackReEnrichModeManual": {
+    "description": "Batch metadata mode that applies shared values to every selected track"
+  },
+  "trackReEnrichModeManualSubtitle": "Apply the same values to every selected track",
+  "@trackReEnrichModeManualSubtitle": {
+    "description": "Explanation for the manual shared-value batch metadata mode"
+  },
+  "trackReEnrichManualFieldsTitle": "Values to apply",
+  "@trackReEnrichManualFieldsTitle": {
+    "description": "Heading above manual batch metadata inputs"
+  },
+  "trackReEnrichManualHint": "Leave a field empty to keep its current value. Track titles, numbers, and ISRCs stay unchanged.",
+  "@trackReEnrichManualHint": {
+    "description": "Safety explanation for manual batch metadata inputs"
   },
   "trackReEnrichFieldsTitle": "Tags to update",
   "@trackReEnrichFieldsTitle": {
@@ -3298,7 +3412,15 @@
   "@trackReEnrichSearching": {
     "description": "Snackbar while searching metadata from internet for local items"
   },
+  "trackReEnrichPreparing": "Preparing metadata changes...",
+  "@trackReEnrichPreparing": {
+    "description": "Progress message while preparing manual batch metadata changes"
+  },
   "trackReEnrichSuccess": "Metadata re-enriched successfully",
+  "trackReEnrichMetadataSaved": "Metadata saved",
+  "trackReEnrichLyricsUpdated": "Lyrics updated",
+  "trackReEnrichLyricsPreserved": "No new lyrics found; existing lyrics kept",
+  "trackReEnrichLyricsDisabled": "Lyrics not updated: lyric downloading is disabled in Settings",
   "@trackReEnrichSuccess": {
     "description": "Snackbar after successful re-enrichment"
   },
@@ -3889,7 +4011,7 @@
   "@lyricsProviderAppleMusicDesc": {
     "description": "Description for Apple Music provider"
   },
-  "lyricsProviderQqMusicDesc": "QQ Music (good for Chinese songs, via proxy)",
+  "lyricsProviderQqMusicDesc": "QQ Music (good for Chinese songs, direct API)",
   "@lyricsProviderQqMusicDesc": {
     "description": "Description for QQ Music provider"
   },
@@ -4001,6 +4123,14 @@
   "@backupContentsTitle": {
     "description": "Header above the list summarizing what the backup contains"
   },
+  "backupSettingsOnly": "Settings only",
+  "backupSelectHistory": "Download history",
+  "backupSelectCollections": "Library collections",
+  "backupSelectCollectionsDescription": "Liked tracks, wishlist, favorite artists, playlists and playlist covers.",
+  "backupSelectExtensions": "Extensions and their settings",
+  "backupSelectedExportDescription": "Save the selected categories to a backup file. Audio files are not included.",
+  "backupSelectAtLeastOne": "Select at least one category to create a backup.",
+  "backupSelectedRestoreMessage": "Only the categories listed below will be restored. Categories not included in this backup will stay unchanged. Restoring can replace existing data and cannot be undone.",
   "backupContentsSettings": "App settings",
   "@backupContentsSettings": {
     "description": "Backup contents row label for settings"
@@ -4164,6 +4294,10 @@
   "@downloadLocationSubtitle": {
     "description": "Subtitle shown in the download location picker sheet"
   },
+  "storageAutomaticFolder": "Automatic folder",
+  "storageAutomaticDownloadFolder": "Uses Download/SpotiFLAC when writable, otherwise app storage",
+  "storageSafRecommended": "Choose folder (Recommended)",
+  "storageDownloadFolderHint": "In the Android folder picker, open Download and select SpotiFLAC. If it does not exist, create it using New folder, then tap Use this folder to grant access.",
   "storageModeAppFolder": "App Folder (Recommended)",
   "@storageModeAppFolder": {
     "description": "Storage mode option - app-managed folder"
@@ -4731,6 +4865,131 @@
   "audioAnalysisRescan": "Re-analyze",
   "@audioAnalysisRescan": {
     "description": "Tooltip/label for the button that re-runs the audio analysis, discarding cached results"
+  },
+  "downloadRedownloadFakeHiRes": "Re-download fake Hi-Res",
+  "@downloadRedownloadFakeHiRes": {
+    "description": "Setting title: automatically replace downloads that measure as fake Hi-Res"
+  },
+  "downloadRedownloadFakeHiResSubtitle": "Off by default. Check Hi-Res downloads and replace only when every audio sample is preserved. Keep the original if verification or processing fails",
+  "@downloadRedownloadFakeHiResSubtitle": {
+    "description": "Setting subtitle for the fake Hi-Res re-download toggle"
+  },
+  "hiResCheckVerdictFakeCertain": "Fake Hi-Res",
+  "@hiResCheckVerdictFakeCertain": {
+    "description": "Verdict: an exact fingerprint (padded bits or upsampling pattern) proves the file is not real Hi-Res"
+  },
+  "hiResCheckVerdictFakeSuspect": "Possibly a filtered master",
+  "@hiResCheckVerdictFakeSuspect": {
+    "description": "Verdict: fails the cutoff test but may be a genuine master low-pass filtered in mastering"
+  },
+  "hiResCheckReasonSampleHold": "Every sample is repeated: upsampled by duplication",
+  "@hiResCheckReasonSampleHold": {
+    "description": "Reason: sample-and-hold upsampling detected"
+  },
+  "hiResCheckReasonInterpolation": "In-between samples are linearly interpolated",
+  "@hiResCheckReasonInterpolation": {
+    "description": "Reason: linear-interpolation upsampling detected"
+  },
+  "hiResCheckReasonImaging": "Content above 22 kHz mirrors the audible band",
+  "@hiResCheckReasonImaging": {
+    "description": "Reason: spectral imaging from upsampling detected"
+  },
+  "hiResCheckMusicContent": "Musical content",
+  "@hiResCheckMusicContent": {
+    "description": "Label for the highest frequency that still moves with the music"
+  },
+  "hiResCheckUltrasonicNoise": "Above {cutoff} only steady noise (typical of DSD or analog tape transfers): a {rate} file would hold all the music",
+  "@hiResCheckUltrasonicNoise": {
+    "description": "Shown when the ultrasonic content of a Hi-Res file is noise rather than music",
+    "placeholders": {
+      "cutoff": {
+        "type": "String"
+      },
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "hiResCheckTitle": "Hi-Res Authenticity",
+  "@hiResCheckTitle": {
+    "description": "Title of the fake Hi-Res check card"
+  },
+  "hiResCheckDescription": "Detect upsampled or bit-padded fake Hi-Res files",
+  "@hiResCheckDescription": {
+    "description": "Explains what the Hi-Res authenticity check does"
+  },
+  "hiResCheckRun": "Check",
+  "@hiResCheckRun": {
+    "description": "Button that starts the Hi-Res authenticity check"
+  },
+  "hiResCheckChecking": "Checking Hi-Res authenticity...",
+  "@hiResCheckChecking": {
+    "description": "Loading text while the Hi-Res check runs"
+  },
+  "hiResCheckVerdictFake": "Likely fake Hi-Res",
+  "@hiResCheckVerdictFake": {
+    "description": "Verdict: the file claims Hi-Res but does not measure as it"
+  },
+  "hiResCheckVerdictGenuine": "Measures as genuine Hi-Res",
+  "@hiResCheckVerdictGenuine": {
+    "description": "Verdict: no upsampling or padded bit depth found"
+  },
+  "hiResCheckVerdictStandard": "Standard definition, nothing to flag",
+  "@hiResCheckVerdictStandard": {
+    "description": "Verdict: neither sample rate nor bit depth claims Hi-Res"
+  },
+  "hiResCheckVerdictInconclusive": "Inconclusive: the analyzed segment is too quiet or short",
+  "@hiResCheckVerdictInconclusive": {
+    "description": "Verdict: analysis could not reach a reliable conclusion"
+  },
+  "hiResCheckUnsupported": "Only FLAC and WAV files can be checked",
+  "@hiResCheckUnsupported": {
+    "description": "Shown when the file format cannot be decoded by the Hi-Res check"
+  },
+  "hiResCheckCutoff": "Content cutoff",
+  "@hiResCheckCutoff": {
+    "description": "Label for the highest frequency with real content"
+  },
+  "hiResCheckBitsInUse": "Bits in use",
+  "@hiResCheckBitsInUse": {
+    "description": "Label for effective vs declared bit depth"
+  },
+  "hiResCheckDisclaimer": "The spectrum stops early, but nothing proves it was upsampled: it may be a genuine master low-pass filtered in mastering. It is not replaced automatically.",
+  "@hiResCheckDisclaimer": {
+    "description": "Caveat shown under a fake Hi-Res verdict"
+  },
+  "hiResCheckFailed": "Hi-Res check failed: {error}",
+  "@hiResCheckFailed": {
+    "description": "Error shown when the Hi-Res check fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "hiResCheckReasonRate": "Declares {sampleRate} but content stops at ~{cutoff}",
+  "@hiResCheckReasonRate": {
+    "description": "Reason for a fake verdict caused by upsampling",
+    "placeholders": {
+      "sampleRate": {
+        "type": "String"
+      },
+      "cutoff": {
+        "type": "String"
+      }
+    }
+  },
+  "hiResCheckReasonDepth": "Declares {declared}-bit but only {effective} bits carry data",
+  "@hiResCheckReasonDepth": {
+    "description": "Reason for a fake verdict caused by padded bit depth",
+    "placeholders": {
+      "declared": {
+        "type": "int"
+      },
+      "effective": {
+        "type": "int"
+      }
+    }
   },
   "audioAnalysisRescanning": "Re-analyzing audio...",
   "@audioAnalysisRescanning": {
@@ -6047,6 +6306,45 @@
   "@nowPlayingDetails": {
     "description": "Menu item and section title for track metadata details"
   },
+  "nowPlayingSleepTimer": "Sleep timer",
+  "@nowPlayingSleepTimer": {
+    "description": "Menu item and sheet title for the playback sleep timer"
+  },
+  "nowPlayingSleepTimerActive": "Ends at {time}",
+  "@nowPlayingSleepTimerActive": {
+    "description": "Active sleep timer deadline shown in the player menu",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "nowPlayingSleepTimerMinutes": "{minutes, plural, =1{1 minute} other{{minutes} minutes}}",
+  "@nowPlayingSleepTimerMinutes": {
+    "description": "Duration choice for the playback sleep timer",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "nowPlayingSleepTimerOff": "Turn off sleep timer",
+  "@nowPlayingSleepTimerOff": {
+    "description": "Action to cancel the active playback sleep timer"
+  },
+  "nowPlayingSleepTimerSet": "Sleep timer set for {duration}",
+  "@nowPlayingSleepTimerSet": {
+    "description": "Confirmation after setting the playback sleep timer",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "nowPlayingSleepTimerCancelled": "Sleep timer turned off",
+  "@nowPlayingSleepTimerCancelled": {
+    "description": "Confirmation after cancelling the playback sleep timer"
+  },
   "nowPlayingOpenInExternalPlayer": "Open in external player",
   "@nowPlayingOpenInExternalPlayer": {
     "description": "Menu item to open the current track in an external player"
@@ -6389,6 +6687,15 @@
   "@extensionVerificationBrowserInApp": {
     "description": "Chip label for in-app browser verification mode"
   },
+  "extensionVerificationUnavailable": "No verification page is available for {extension}. Retry the download to request a new challenge.",
+  "@extensionVerificationUnavailable": {
+    "description": "Shown when the app cannot retrieve a pending verification challenge",
+    "placeholders": {
+      "extension": {
+        "type": "String"
+      }
+    }
+  },
   "extensionVerificationHelpTitleManual": "Open verification manually",
   "@extensionVerificationHelpTitleManual": {
     "description": "Dialog title when automatic browser launch for verification fails"
@@ -6478,6 +6785,9 @@
   "@metadataCopyField": {
     "description": "Metadata menu action that copies the selected key and value"
   },
+  "mornyeShowTabs": "Show tabs",
+  "mornyeSearch": "Search",
+  "mornyeContinuePlaying": "Continue Playing",
   "metadataCopyAll": "Copy all metadata",
   "@metadataCopyAll": {
     "description": "Metadata menu action that copies every visible key and value"
@@ -6490,6 +6800,28 @@
   "@optionsEmbeddedCoverSizeDescription": {
     "description": "Description shown in the embedded cover size picker"
   },
+  "mornyeFavorite": "Favorite",
+  "mornyeGoToArtist": "Go to Artist",
+  "@mornyeFavorite": {
+    "description": "Compact context menu action that adds a track to Loved"
+  },
+  "mornyeFavorited": "Favorited",
+  "@mornyeFavorited": {
+    "description": "Selected state of the compact favorite action"
+  },
+  "autoMixDescription": "Blend songs with beat matching and pitch-preserving tempo adjustment. Uses crossfade when beats cannot be matched.",
+  "autoMixOn": "AutoMix on",
+  "autoMixOff": "AutoMix off",
+  "profileTitle": "Profile",
+  "profileSetUp": "Set up your profile",
+  "profileEdit": "Edit name and photo",
+  "backupIncludesProfile": "Includes your profile name and photo",
+  "profileName": "Name",
+  "profileNameHint": "Your name",
+  "profileChangePhoto": "Choose photo",
+  "profileRemovePhoto": "Remove photo",
+  "profilePhotoError": "Choose a valid image smaller than 20 MB.",
+  "profileSaveError": "Could not save your profile. Please try again.",
   "optionsEmbeddedCoverSizeOriginal": "Original resolution",
   "@optionsEmbeddedCoverSizeOriginal": {
     "description": "Option that preserves the provider artwork at its original resolution"

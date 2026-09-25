@@ -1,4 +1,48 @@
 {
+  "upgradeIntroWelcome": "SpotiFLAC Mobile 5.0\n에 오신 것을 환영 합니다",
+  "upgradeIntroThemeTitle": "나만의 스타일로\n꾸며보세요",
+  "upgradeIntroThemeBody": "스타일을 선택하세요. 선택한 스타일은 즉시 적용되며, 나중에 디자인 설정에서 변경할 수 있습니다",
+  "upgradeIntroThemeMaterialBody": "Material 디자인 컨트롤과 선택한 강조 색상이 적용된 익숙한 레이아웃",
+  "upgradeIntroThemeMornyeBody": "글래스 스타일의 하단바, 새롭게 디자인된 라이브러리, 그리고 몰입감 있는 플레이어",
+  "upgradeIntroRustTitle": "Rust로 제작된\n새로운 엔진",
+  "upgradeIntroRustBody": "5.0 버전에서는 앱의 백엔드가 Go에서 Rust로 변경되었습니다. 이는 여러분이 매일 사용하는 화면 뒤에서 작동하는 핵심 엔진입니다",
+  "upgradeIntroRustEngineTitle": "화면 뒤에서 작동",
+  "upgradeIntroRustEngineBody": "Rust는 Android와 iOS에서 다운로드, 오디오 메타데이터, 라이브러리 검색, 확장 기능 런타임을 처리합니다",
+  "upgradeIntroRustMemoryTitle": "메모리를 더욱 신중하게 사용",
+  "upgradeIntroRustMemoryBody": "버퍼를 재사용하고 데이터 복사 횟수를 줄여, 아트워크와 확장 기능 데이터를 처리할 때 발생하는 임시 메모리 할당을 줄였습니다",
+  "upgradeIntroRustKeepTitle": "음악을 그대로 유지",
+  "upgradeIntroRustKeepBody": "컬렉션을 다시 다운로드할 필요가 없습니다. 저장된 음악과 설정이 그대로 유지되며, 새로 설정할 필요도 없습니다",
+  "upgradeIntroWelcomeBody": "변경된 내용과 해당 기능을 찾을 수 있는 위치를 간단히 확인해 보세요",
+  "upgradeIntroMornyeBody": "플레이어, 가사 및 하단바 화면이 새로운 모습으로 바뀌었습니다",
+  "upgradeIntroLibrarySummary": "재생목록, 아티스트 또는 앨범별로 음악을 탐색할 수 있습니다",
+  "upgradeIntroRepoSummary": "확장 기능을 통해 음악 소스와 제공자를 선택할 수 있습니다",
+  "upgradeIntroLibraryTitle": "라이브러리를\n알아보세요",
+  "upgradeIntroLibraryBody": "Mornye에서는 카테고리별로 음악을 탐색하거나, 최근 추가됨에서 앨범을 찾을 수 있습니다",
+  "upgradeIntroDownloadsBody": "오른쪽 상단의 다운로드에서 일시정지하거나 다시 시도할 수 있습니다. 다운로드가 완료된 음악은 최근 추가됨으로 이동합니다",
+  "upgradeIntroSearchBody": "여기에서 저장된 음악을 검색할 수 있습니다. 별도의 검색 탭에서는 확장 기능을 통해 제공되는 음악까지 검색합니다",
+  "upgradeIntroPlayerTitle": "플레이어를\n설정하세요",
+  "upgradeIntroPlayerBody": "테마와 재생 옵션은 언제든지 변경할 수 있습니다. 여기에서 해당 설정을 찾을 수 있습니다",
+  "upgradeIntroAppearanceBody": "'설정 → 디자인'에서 테마를 변경할 수 있습니다. Mornye에서는 아래로 스크롤하면 탐색 메뉴가 축소되고, 위로 스크롤하면 다시 확장됩니다",
+  "upgradeIntroAutoMixBody": "트랙 간 템포와 비트를 맞춥니다. '설정 → 로컬 라이브러리 → 재생'에서 활성화하세요. 기본적으로 비활성화되어 있습니다",
+  "upgradeIntroSettingsBody": "Mornye에서 홈 화면의 프로필을 탭하면 설정을 열어 이름과 사진을 수정할 수 있습니다",
+  "upgradeIntroSkip": "건너뛰기",
+  "upgradeIntroContinue": "계속",
+  "upgradeIntroDone": "듣기 시작",
+  "upgradeIntroReplay": "5.0의 새로운 기능",
+  "cacheMotionArtwork": "오프라인 모션 커버",
+  "cacheMotionArtworkDesc": "앨범 동영상은 다운로드할 때 함께 저장됩니다. 동영상을 삭제해도 음악 파일과 정적 앨범 커버는 그대로 유지됩니다",
+  "nowPlayingVolume": "볼륨",
+  "@nowPlayingVolume": {
+    "description": "System volume control label in the Mornye player"
+  },
+  "appearanceStyle": "앱 스타일",
+  "@appearanceStyle": {
+    "description": "Appearance section for choosing the app visual style"
+  },
+  "discordRichPresence": "디스코드 리치 프레즌스",
+  "discordPresenceDescription": "내부 플레이어에서 재생 중인 트랙을 디스코드에 공유합니다. 디스코드가 설치되어 있고 로그인되어 있어야 합니다",
+  "discordPresenceMissing": "디스코드를 설치하고 로그인한 다음 이 설정을 비활성화했다가 다시 활성화하세요",
+  "discordPresenceUnavailable": "이 빌드 또는 이 기기에서는 디스코드 리치 프레즌스를 사용할 수 없습니다",
   "@@locale": "ko",
   "@@last_modified": "2026-04-28",
   "appName": "SpotiFLAC Mobile",
@@ -25,7 +69,7 @@
   "@homeTitle": {
     "description": "Home screen title"
   },
-  "homeSubtitle": "지원되는 URL을 붙여넣거나, 이름으로 검색하세요",
+  "homeSubtitle": "지원 URL 붙여넣기 또는 이름으로 검색",
   "@homeSubtitle": {
     "description": "Subtitle shown below search box"
   },
@@ -57,6 +101,11 @@
   "@historyFilterSingles": {
     "description": "Filter chip - show singles only"
   },
+  "libraryRecentlyAdded": "최근 추가됨",
+  "libraryDownloads": "다운로드",
+  "libraryNoActiveDownloads": "활성화된 다운로드가 없음",
+  "librarySearchHint": "라이브러리 검색",
+  "libraryEmptyCollection": "음악이 여기에 표시됩니다",
   "historySearchHint": "기록 검색...",
   "@historySearchHint": {
     "description": "Search bar placeholder in history"
@@ -202,7 +251,7 @@
   "@trackReplayGainScanning": {
     "description": "Snackbar/progress message while scanning ReplayGain for a single track"
   },
-  "trackReplayGainSuccess": "리플레이게인 태그가 추가됨",
+  "trackReplayGainSuccess": "리플레이게인 태그 추가됨",
   "@trackReplayGainSuccess": {
     "description": "Snackbar message after ReplayGain tags written for a single track"
   },
@@ -237,6 +286,7 @@
     "description": "Progress dialog title while batch scanning ReplayGain"
   },
   "replayGainBatchSuccess": "{total} 개의 트랙 중 {success} 개에 리플레이게인이 추가됨",
+  "replayGainUnsupportedDecoder": "일부 트랙은 리플레이게인 디코더에서 지원하지 않는 오디오 코덱을 사용하기 때문에 분석할 수 없습니다. 해당 파일은 변경되지 않았습니다",
   "@replayGainBatchSuccess": {
     "description": "Snackbar after batch ReplayGain completes",
     "placeholders": {
@@ -433,7 +483,7 @@
   "@aboutTelegramChannelSubtitle": {
     "description": "Subtitle for Telegram channel"
   },
-  "aboutTelegramChat": "텔레그램 커뮤니티",
+  "aboutTelegramChat": "텔레그램 그룹",
   "@aboutTelegramChat": {
     "description": "Link to Telegram chat group"
   },
@@ -460,6 +510,18 @@
   "aboutSachinsenalDesc": "HiFi 프로젝트의 원작자이자, 무손실 음원 소스 연동 기능의 토대를 구축한 개발자입니다",
   "@aboutSachinsenalDesc": {
     "description": "Credit description for sachinsenal0x64"
+  },
+  "aboutUnituneDesc": "Flaze가 개발한 오픈소스 음악 링크 확인 도구로, 플랫폼 간 대체 매칭에 사용됩니다",
+  "@aboutUnituneDesc": {
+    "description": "Credit for the UniTune resolver"
+  },
+  "aboutMusicBrainzDesc": "MetaBrainz와 커뮤니티가 관리하는 오픈 음악 데이터베이스로, 음원 간 상호 참조 정보를 기록하는데 사용됩니다",
+  "@aboutMusicBrainzDesc": {
+    "description": "Credit for the MusicBrainz database"
+  },
+  "aboutSquiglyDesc": "Liam Macmillan이 개발한 범용 음악 링크 서비스로, 플랫폼 간 링크 확인을 위한 최종 대체 수단으로 사용됩니다",
+  "@aboutSquiglyDesc": {
+    "description": "Credit for the Squigly resolver"
   },
   "aboutAppDescription": "음악 메타데이터를 검색하고, 확장 기능을 관리하고, 라이브러리를 정리하세요",
   "@aboutAppDescription": {
@@ -507,7 +569,7 @@
   "@trackMetadataDelete": {
     "description": "Action button - delete track"
   },
-  "setupGrantPermission": "권한을 부여해 주세요",
+  "setupGrantPermission": "권한 부여",
   "@setupGrantPermission": {
     "description": "Button to request permission"
   },
@@ -787,6 +849,95 @@
     "placeholders": {
       "count": {
         "type": "int"
+      }
+    }
+  },
+  "collectionExportM3u": "M3U8로 내보내기",
+  "@collectionExportM3u": {
+    "description": "Tooltip on the collection screen action that exports the track list as an M3U8 playlist file"
+  },
+  "collectionExportM3uDone": "{total} 개의 트랙 중 {exported} 개 내보내기 완료",
+  "@collectionExportM3uDone": {
+    "description": "Snackbar after M3U8 export; tracks without a local file are not exported",
+    "placeholders": {
+      "exported": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionExportM3uNone": "내보낼 다운로드된 파일이 없음",
+  "@collectionExportM3uNone": {
+    "description": "Snackbar when an M3U8 export finds no local files"
+  },
+  "collectionExportM3uFailed": "내보내기 실패",
+  "@collectionExportM3uFailed": {
+    "description": "Snackbar when writing or sharing the M3U8 export fails"
+  },
+  "trackOpenOn": "음원 플랫폼에서 열기",
+  "@trackOpenOn": {
+    "description": "Track option and sheet title listing streaming platforms where the track can be opened"
+  },
+  "trackOpenOnNoLinks": "이 트랙에 대한 플랫폼 링크를 찾을 수 없습니다",
+  "@trackOpenOnNoLinks": {
+    "description": "Shown in the Open on sheet when song.link returns no links"
+  },
+  "libraryReviewDuplicates": "중복된 트랙 보기",
+  "@libraryReviewDuplicates": {
+    "description": "Library settings row opening the duplicate review sheet"
+  },
+  "libraryReviewDuplicatesSubtitle": "중복 저장된 트랙 찾기",
+  "@libraryReviewDuplicatesSubtitle": {
+    "description": "Subtitle for the duplicate review settings row"
+  },
+  "duplicatesTitle": "중복",
+  "@duplicatesTitle": {
+    "description": "Title of the duplicate review sheet"
+  },
+  "duplicatesEmpty": "중복된 트랙이 없습니다",
+  "@duplicatesEmpty": {
+    "description": "Shown when the duplicate review sheet finds nothing"
+  },
+  "duplicatesKeepBest": "최고 음질 선택",
+  "@duplicatesKeepBest": {
+    "description": "Button that deletes all but the highest-quality copy in a duplicate group"
+  },
+  "duplicatesKeepBestAll": "모두에 대해 최상의 파일 유지",
+  "@duplicatesKeepBestAll": {
+    "description": "Button that keeps the highest-quality copy in every duplicate group and deletes the rest"
+  },
+  "duplicatesKeepBestAllMessage": "{groupCount} 개의 {groupCount, plural, =1{트랙} other{트랙}} 중 가장 음질이 좋은 복사본을 유지하고, {count} 개의 음질이 낮은 {count, plural, =1{복사본} other{복사본}}을 삭제하시겠습니까?\n\n삭제된 파일은 저장소에서 제거됩니다",
+  "@duplicatesKeepBestAllMessage": {
+    "description": "Confirmation message for keeping the best copy across every duplicate group",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "groupCount": {
+        "type": "int"
+      }
+    }
+  },
+  "duplicatesKeepBestMessage": "\"{trackName}\"의 {count} 개의 저음질 복사본을 삭제하시겠습니까?",
+  "@duplicatesKeepBestMessage": {
+    "description": "Confirmation message for the keep-best action",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "trackName": {
+        "type": "String"
+      }
+    }
+  },
+  "duplicatesDeleteCopyMessage": "\"{trackName}\"의 복사본을 삭제하시겠습니까?",
+  "@duplicatesDeleteCopyMessage": {
+    "description": "Confirmation message for deleting one duplicate copy",
+    "placeholders": {
+      "trackName": {
+        "type": "String"
       }
     }
   },
@@ -1459,7 +1610,7 @@
   "@trackOpenInSpotify": {
     "description": "Action - open track in Spotify app"
   },
-  "trackTrackName": "트랙 이름",
+  "trackTrackName": "트랙 제목",
   "@trackTrackName": {
     "description": "Metadata label - track title"
   },
@@ -1490,6 +1641,26 @@
   "trackAudioQuality": "오디오 음질",
   "@trackAudioQuality": {
     "description": "Metadata label - audio quality"
+  },
+  "trackReplayGainTrackGain": "리플레이게인 트랙 게인",
+  "@trackReplayGainTrackGain": {
+    "description": "Metadata label - ReplayGain track gain"
+  },
+  "trackReplayGainTrackPeak": "리플레이게인 트랙 피크",
+  "@trackReplayGainTrackPeak": {
+    "description": "Metadata label - ReplayGain track peak"
+  },
+  "trackReplayGainAlbumGain": "리플레이게인 앨범 게인",
+  "@trackReplayGainAlbumGain": {
+    "description": "Metadata label - ReplayGain album gain"
+  },
+  "trackReplayGainAlbumPeak": "리플레이게인 앨범 피크",
+  "@trackReplayGainAlbumPeak": {
+    "description": "Metadata label - ReplayGain album peak"
+  },
+  "libraryQualityLabelFileFormat": "파일 형식",
+  "@libraryQualityLabelFileFormat": {
+    "description": "Library audio quality label mode that shows the detected file format"
   },
   "trackReleaseDate": "발매일자",
   "@trackReleaseDate": {
@@ -1524,11 +1695,11 @@
       }
     }
   },
-  "trackLyricsNotAvailable": "이 트랙의 가사를 사용할 수 없습니다",
+  "trackLyricsNotAvailable": "이 트랙의 가사를 사용할 수 없음",
   "@trackLyricsNotAvailable": {
     "description": "Message when lyrics not found"
   },
-  "trackLyricsNotInFile": "이 파일에서 가사를 찾을 수 없습니다",
+  "trackLyricsNotInFile": "이 파일에서 가사를 찾을 수 없음",
   "@trackLyricsNotInFile": {
     "description": "Message when no embedded lyrics in audio file"
   },
@@ -1790,7 +1961,7 @@
   "@extensionsInstallButton": {
     "description": "Button to install extension from file"
   },
-  "extensionsInfoTip": "확장 기능은 새 메타데이터와 다운로드 제공자를 추가할 수 있습니다. 신뢰할 수 있는 출처의 확장 기능만 설치하세요",
+  "extensionsInfoTip": "확장 기능은 새 메타데이터와 다운로드 제공자를 추가할 수 있습니다. 신뢰할 수 있는 확장 기능만 설치하세요",
   "@extensionsInfoTip": {
     "description": "Security warning about extensions"
   },
@@ -1906,6 +2077,42 @@
   "@downloadLossyFormat": {
     "description": "Setting title to pick output format for lossy downloads"
   },
+  "downloadAutoConvert": "다운로드 후 자동 변환",
+  "@downloadAutoConvert": {
+    "description": "Toggle for automatic post-download audio conversion"
+  },
+  "downloadAutoConvertSubtitle": "다운로드가 완료되면 더 작은 손실 압축 형식으로 변환합니다. 원본은 변환이 성공한 후에만 교체됩니다",
+  "@downloadAutoConvertSubtitle": {
+    "description": "Explanation of safe automatic post-download conversion"
+  },
+  "downloadAutoConvertFormat": "출력 형식",
+  "@downloadAutoConvertFormat": {
+    "description": "Automatic conversion output format setting"
+  },
+  "downloadAutoConvertFormatSubtitle": "새로 완료된 다운로드에 사용되는 손실 압축 형식을 선택하세요",
+  "@downloadAutoConvertFormatSubtitle": {
+    "description": "Automatic conversion format picker explanation"
+  },
+  "downloadAutoConvertBitrate": "출력 음질",
+  "@downloadAutoConvertBitrate": {
+    "description": "Automatic conversion bitrate setting"
+  },
+  "downloadAutoConvertBitrateSubtitle": "비트 전송률이 높을수록 더 많은 디테일을 보존하지만 파일 크기가 커집니다",
+  "@downloadAutoConvertBitrateSubtitle": {
+    "description": "Automatic conversion bitrate picker explanation"
+  },
+  "downloadAutoConvertMp3Subtitle": "플레이어 및 기기 전반에 걸쳐 최상의 호환성",
+  "@downloadAutoConvertMp3Subtitle": {
+    "description": "MP3 automatic conversion option description"
+  },
+  "downloadAutoConvertM4aSubtitle": "M4A 컨테이너의 효율적인 AAC 오디오",
+  "@downloadAutoConvertM4aSubtitle": {
+    "description": "M4A AAC automatic conversion option description"
+  },
+  "downloadAutoConvertOpusSubtitle": "최신 플레이어에 최적화된 효율성",
+  "@downloadAutoConvertOpusSubtitle": {
+    "description": "Opus automatic conversion option description"
+  },
   "downloadLossy320Format": "손실 압축 320kbps 형식",
   "@downloadLossy320Format": {
     "description": "Title of the lossy format picker bottom sheet"
@@ -2005,6 +2212,14 @@
   "appearanceHeroAnimationsSubtitle": "화면 간 이동 시 앨범 커버가 날아가는 애니메이션을 표시합니다 (예시: 플레이어를 실행할 경우)",
   "@appearanceHeroAnimationsSubtitle": {
     "description": "Subtitle for the Hero animations toggle"
+  },
+  "appearanceForceBlur": "항상 블러 효과 사용",
+  "@appearanceForceBlur": {
+    "description": "Toggle that forces backdrop blur on even when the device profile disabled it"
+  },
+  "appearanceForceBlurSubtitle": "기본적으로 비활성화된 기기에서도 하단바 블러 효과를 활성화합니다. 성능이 저하될 수 있습니다",
+  "@appearanceForceBlurSubtitle": {
+    "description": "Subtitle for the force-blur toggle"
   },
   "queueClearAll": "모두 지우기",
   "@queueClearAll": {
@@ -2175,6 +2390,10 @@
   "recentEmpty": "최근 항목이 없음",
   "@recentEmpty": {
     "description": "Empty state text for recent access list"
+  },
+  "recentClearAllMessage": "최근 활동을 모두 지우시겠습니까? 다운로드 기록 및 음악 파일은 삭제되지 않습니다",
+  "@recentClearAllMessage": {
+    "description": "Confirmation message before clearing all recent activity"
   },
   "recentShowAllDownloads": "모든 다운로드 표시",
   "@recentShowAllDownloads": {
@@ -2375,6 +2594,53 @@
   "libraryFolderHint": "탭하여 폴더를 선택하세요",
   "@libraryFolderHint": {
     "description": "Placeholder when no folder selected"
+  },
+  "libraryAddFolder": "라이브러리 폴더 추가",
+  "@libraryAddFolder": {
+    "description": "Action to add another local library source"
+  },
+  "libraryAddFolderSubtitle": "내부 저장소, SD 카드, SSD 또는 다른 외부 드라이브",
+  "@libraryAddFolderSubtitle": {
+    "description": "Supported storage locations for local library sources"
+  },
+  "librarySourceOnline": "온라인",
+  "@librarySourceOnline": {
+    "description": "Library source is connected and accessible"
+  },
+  "librarySourceOffline": "오프라인. 이 트랙을 복원하려면 저장소를 다시 연결하세요",
+  "@librarySourceOffline": {
+    "description": "Library source is temporarily disconnected"
+  },
+  "librarySourceDisabled": "비활성화됨",
+  "@librarySourceDisabled": {
+    "description": "Library source has been disabled by the user"
+  },
+  "librarySourceScanCount": "{total} 개의 파일 중 {scanned} 개 스캔 완료 ({progress}%)",
+  "@librarySourceScanCount": {
+    "description": "Live progress for one library folder scan",
+    "placeholders": {
+      "scanned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "progress": {
+        "type": "String"
+      }
+    }
+  },
+  "libraryExternalStorage": "외부 저장소",
+  "@libraryExternalStorage": {
+    "description": "Label for a removable or external library source"
+  },
+  "libraryRemoveFolder": "라이브러리 폴더 제거",
+  "@libraryRemoveFolder": {
+    "description": "Action to remove one indexed library source"
+  },
+  "libraryRemoveFolderMessage": "SpotiFLAC Mobile에서 이 폴더와 색인된 트랙을 제거하시겠습니까? 저장소의 오디오 파일은 삭제되지 않습니다",
+  "@libraryRemoveFolderMessage": {
+    "description": "Confirmation shown before removing a library source"
   },
   "libraryShowDuplicateIndicator": "중복 표시기 표시",
   "@libraryShowDuplicateIndicator": {
@@ -2666,7 +2932,7 @@
       }
     }
   },
-  "tutorialWelcomeTitle": "SpotiFLAC Mobile에 어서오세요!",
+  "tutorialWelcomeTitle": "SpotiFLAC Mobile에 오신 것을 환영합니다!",
   "@tutorialWelcomeTitle": {
     "description": "Tutorial welcome page title"
   },
@@ -2791,7 +3057,7 @@
       }
     }
   },
-  "cleanupOrphanedDownloadsNone": "불필요한 항목이 없습니다",
+  "cleanupOrphanedDownloadsNone": "불필요한 항목이 없음",
   "@cleanupOrphanedDownloadsNone": {
     "description": "Snackbar when no orphans found"
   },
@@ -3004,6 +3270,10 @@
   "@trackReEnrichOnlineSubtitle": {
     "description": "Subtitle for re-enrich metadata action for local items"
   },
+  "trackReEnrichBatchSubtitle": "온라인 업데이트 또는 수동 업데이트를 선택한 다음, 변경 사항을 모두 검토한 후 적용하세요",
+  "@trackReEnrichBatchSubtitle": {
+    "description": "Subtitle for batch metadata update choices"
+  },
   "trackReEnrichFieldCover": "앨범 커버",
   "@trackReEnrichFieldCover": {
     "description": "Checkbox label for cover art field in re-enrich"
@@ -3031,6 +3301,82 @@
   "trackReEnrichSelectAll": "모두 선택",
   "@trackReEnrichSelectAll": {
     "description": "Select all fields checkbox in re-enrich"
+  },
+  "trackReEnrichModeIsrc": "ISRC만",
+  "@trackReEnrichModeIsrc": {
+    "description": "Batch metadata mode that only writes ISRC"
+  },
+  "trackReEnrichModeIsrcSubtitle": "다른 태그를 변경하지 않고 녹화 식별자를 찾아 추가합니다",
+  "@trackReEnrichModeIsrcSubtitle": {
+    "description": "Explanation for the ISRC-only batch metadata mode"
+  },
+  "trackReEnrichModeMissing": "누락된 태그 채우기",
+  "@trackReEnrichModeMissing": {
+    "description": "Batch metadata mode that fills only empty tags"
+  },
+  "trackReEnrichModeMissingSubtitle": "기존 값을 유지하고 비어 있는 필드만 채웁니다",
+  "@trackReEnrichModeMissingSubtitle": {
+    "description": "Explanation for the fill-missing batch metadata mode"
+  },
+  "trackReEnrichModeReplace": "선택된 태그 업데이트",
+  "@trackReEnrichModeReplace": {
+    "description": "Batch metadata mode that replaces selected tag groups"
+  },
+  "trackReEnrichModeReplaceSubtitle": "온라인 메타데이터로 대체할 기존 값을 선택하세요",
+  "@trackReEnrichModeReplaceSubtitle": {
+    "description": "Explanation for the selected-tag batch metadata mode"
+  },
+  "trackReEnrichModeManual": "공통 값 설정",
+  "@trackReEnrichModeManual": {
+    "description": "Batch metadata mode that applies shared values to every selected track"
+  },
+  "trackReEnrichModeManualSubtitle": "선택한 모든 트랙에 동일한 값 적용",
+  "@trackReEnrichModeManualSubtitle": {
+    "description": "Explanation for the manual shared-value batch metadata mode"
+  },
+  "trackReEnrichManualFieldsTitle": "적용할 값",
+  "@trackReEnrichManualFieldsTitle": {
+    "description": "Heading above manual batch metadata inputs"
+  },
+  "trackReEnrichManualHint": "현재 값을 유지하려면 필드를 비워 두세요. 트랙 제목, 번호 및 ISRC는 변경되지 않습니다",
+  "@trackReEnrichManualHint": {
+    "description": "Safety explanation for manual batch metadata inputs"
+  },
+  "trackReEnrichFieldsTitle": "업데이트할 태그",
+  "@trackReEnrichFieldsTitle": {
+    "description": "Heading above batch re-enrich field checkboxes"
+  },
+  "trackReEnrichReview": "변경 사항 검토",
+  "@trackReEnrichReview": {
+    "description": "Button that searches metadata and opens the batch change review"
+  },
+  "trackReEnrichReviewTitle": "메타데이터 변경 사항 검토",
+  "@trackReEnrichReviewTitle": {
+    "description": "Title of the batch metadata review sheet"
+  },
+  "trackReEnrichReviewSubtitle": "{trackCount} 개의 트랙에 걸쳐 제안된 {changeCount} 개의 변경 사항",
+  "@trackReEnrichReviewSubtitle": {
+    "description": "Summary shown above proposed batch metadata changes",
+    "placeholders": {
+      "changeCount": {
+        "type": "int"
+      },
+      "trackCount": {
+        "type": "int"
+      }
+    }
+  },
+  "trackReEnrichNoChanges": "선택한 트랙에 대한 메타데이터 변경 사항이 없습니다",
+  "@trackReEnrichNoChanges": {
+    "description": "Message when batch metadata preview has no proposed changes"
+  },
+  "trackReEnrichApplyChanges": "변경 사항 적용",
+  "@trackReEnrichApplyChanges": {
+    "description": "Confirmation button in the batch metadata review sheet"
+  },
+  "trackReEnrichRefreshOnline": "온라인에서 새로고침",
+  "@trackReEnrichRefreshOnline": {
+    "description": "Proposed value when lyrics will be refreshed during re-enrich"
   },
   "trackEditMetadata": "메타데이터 편집",
   "@trackEditMetadata": {
@@ -3066,7 +3412,15 @@
   "@trackReEnrichSearching": {
     "description": "Snackbar while searching metadata from internet for local items"
   },
+  "trackReEnrichPreparing": "메타데이터 변경 준비 중...",
+  "@trackReEnrichPreparing": {
+    "description": "Progress message while preparing manual batch metadata changes"
+  },
   "trackReEnrichSuccess": "메타데이터 재구성 성공",
+  "trackReEnrichMetadataSaved": "메타데이터 저장됨",
+  "trackReEnrichLyricsUpdated": "가사 업데이트됨",
+  "trackReEnrichLyricsPreserved": "새 가사가 없습니다; 기존 가사가 유지됩니다",
+  "trackReEnrichLyricsDisabled": "가사가 업데이트되지 않았습니다. 설정에서 가사 다운로드가 비활성화되어 있습니다",
   "@trackReEnrichSuccess": {
     "description": "Snackbar after successful re-enrichment"
   },
@@ -3272,7 +3626,7 @@
   "@cueSplitFailed": {
     "description": "Snackbar when CUE split fails"
   },
-  "cueSplitNoAudioFile": "이 CUE 시트에 대한 오디오 파일을 찾을 수 없습니다",
+  "cueSplitNoAudioFile": "이 CUE 시트에 대한 오디오 파일을 찾을 수 없음",
   "@cueSplitNoAudioFile": {
     "description": "Error when CUE audio file is missing"
   },
@@ -3582,7 +3936,7 @@
       }
     }
   },
-  "downloadedAlbumDownloadedCount": "{count} 개 다운로드됨",
+  "downloadedAlbumDownloadedCount": "{count} 개의 트랙 다운로드됨",
   "@downloadedAlbumDownloadedCount": {
     "description": "Downloaded tracks count badge",
     "placeholders": {
@@ -3657,7 +4011,7 @@
   "@lyricsProviderAppleMusicDesc": {
     "description": "Description for Apple Music provider"
   },
-  "lyricsProviderQqMusicDesc": "QQ Music (중국 노래에 적합, 프록시 경유)",
+  "lyricsProviderQqMusicDesc": "QQ Music (중국 노래에 적합, 직접 API)",
   "@lyricsProviderQqMusicDesc": {
     "description": "Description for QQ Music provider"
   },
@@ -3769,6 +4123,14 @@
   "@backupContentsTitle": {
     "description": "Header above the list summarizing what the backup contains"
   },
+  "backupSettingsOnly": "설정 만",
+  "backupSelectHistory": "다운로드 기록",
+  "backupSelectCollections": "라이브러리 컬렉션",
+  "backupSelectCollectionsDescription": "좋아요 표시한 음악, 위시리스트, 즐겨찾는 아티스트, 재생목록 및 재생목록 커버",
+  "backupSelectExtensions": "확장 기능 및 설정",
+  "backupSelectedExportDescription": "선택한 카테고리를 백업 파일에 저장합니다. 오디오 파일은 포함되지 않습니다",
+  "backupSelectAtLeastOne": "백업을 생성하려면 최소 하나 이상의 카테고리를 선택하세요",
+  "backupSelectedRestoreMessage": "아래 나열된 카테고리만 복원됩니다. 이 백업에 포함되지 않은 카테고리는 변경되지 않습니다. 복원하면 기존 데이터가 덮어쓰여질 수 있으며 되돌릴 수 없습니다",
   "backupContentsSettings": "앱 설정",
   "@backupContentsSettings": {
     "description": "Backup contents row label for settings"
@@ -3932,6 +4294,10 @@
   "@downloadLocationSubtitle": {
     "description": "Subtitle shown in the download location picker sheet"
   },
+  "storageAutomaticFolder": "자동 폴더",
+  "storageAutomaticDownloadFolder": "쓰기 가능하면 Download/SpotiFLAC을 사용하고, 그렇지 않으면 앱 저장소를 사용합니다",
+  "storageSafRecommended": "폴더 선택 (추천)",
+  "storageDownloadFolderHint": "안드로이드 폴더 선택기에서 Download 폴더를 열고 SpotiFLAC을 선택하세요.\n해당 폴더가 없다면 '새 폴더'를 사용해 만든 다음, '이 폴더 사용'을 탭하여 접근 권한을 허용하세요",
   "storageModeAppFolder": "앱 폴더 (추천)",
   "@storageModeAppFolder": {
     "description": "Storage mode option - app-managed folder"
@@ -3952,7 +4318,7 @@
   "@downloadFolderAccessLostTitle": {
     "description": "Title of the warning banner shown in Files settings when the saved SAF folder grant is no longer valid"
   },
-  "downloadFolderAccessLostSubtitle": "폴더를 다시 선택할 때까지 다운로드할 수 없습니다",
+  "downloadFolderAccessLostSubtitle": "폴더를 다시 선택할 때까지 다운로드할 수 없음",
   "@downloadFolderAccessLostSubtitle": {
     "description": "Subtitle of the warning banner shown when the saved SAF folder grant is no longer valid"
   },
@@ -4012,7 +4378,7 @@
   "@downloadNetworkCompatibilityMode": {
     "description": "Setting for legacy TLS/network handling"
   },
-  "downloadNetworkCompatibilityModeEnabled": "레거시 HTTP 엔드포인트 허용; TLS 검증은 계속 활성화됨",
+  "downloadNetworkCompatibilityModeEnabled": "레거시 HTTP 엔드포인트 허용; TLS 인증서 검증은 계속 활성화됨",
   "@downloadNetworkCompatibilityModeEnabled": {
     "description": "Subtitle when network compatibility mode is on"
   },
@@ -4173,7 +4539,7 @@
   "@bulkDownloadSelectPlaylists": {
     "description": "Button label when no playlists are selected for download"
   },
-  "snackbarSelectedPlaylistsEmpty": "선택한 재생목록에 트랙이 없습니다",
+  "snackbarSelectedPlaylistsEmpty": "선택한 재생목록에 트랙이 없음",
   "@snackbarSelectedPlaylistsEmpty": {
     "description": "Snackbar when selected playlists contain no tracks"
   },
@@ -4193,6 +4559,47 @@
   "editMetadataAutoFillDesc": "메타데이터 확장 기능을 선택하고, 필드를 지정한 다음, 적용하기 전에 해당 데이터를 확인",
   "@editMetadataAutoFillDesc": {
     "description": "Description for the auto-fill section"
+  },
+  "editMetadataAutoFillSource": "메타데이터 출처",
+  "@editMetadataAutoFillSource": {
+    "description": "Label for the metadata extension selector in online auto-fill"
+  },
+  "editMetadataAutoFillSourceAutomatic": "자동 (제공자 우선순위)",
+  "@editMetadataAutoFillSourceAutomatic": {
+    "description": "Automatic source option that follows configured metadata provider priority"
+  },
+  "editMetadataAutoFillFind": "메타데이터 찾기",
+  "@editMetadataAutoFillFind": {
+    "description": "Button label for finding an online metadata candidate"
+  },
+  "editMetadataAutoFillPreview": "{source}의 데이터",
+  "@editMetadataAutoFillPreview": {
+    "description": "Title for the online metadata preview",
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "editMetadataAutoFillCoverAvailable": "커버 아트워크 사용 가능",
+  "@editMetadataAutoFillCoverAvailable": {
+    "description": "Preview value when the selected metadata source provides cover artwork"
+  },
+  "editMetadataAutoFillApply": "선택된 데이터 적용",
+  "@editMetadataAutoFillApply": {
+    "description": "Button label for applying the previewed metadata"
+  },
+  "editMetadataAutoFillDoneFromSource": "{source}에서 {count} 개의 {count, plural, =1{필드} other{필드}}가 채워짐",
+  "@editMetadataAutoFillDoneFromSource": {
+    "description": "Snackbar confirming fields applied from a selected metadata source",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "source": {
+        "type": "String"
+      }
+    }
   },
   "editMetadataAutoFillFetch": "가져오기 & 채우기",
   "@editMetadataAutoFillFetch": {
@@ -4322,6 +4729,27 @@
   "@queueEmptySinglesSubtitle": {
     "description": "Empty state subtitle for single track downloads"
   },
+  "queuePlaylistCount": "{count, plural, =1{1 개의 재생목록} other{{count} 개의 재생목록}}",
+  "@queuePlaylistCount": {
+    "description": "Playlist count label with plural support",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "queueEmptyPlaylistsSubtitle": "트랙을 정리하려면 재생목록을 만드세요",
+  "@queueEmptyPlaylistsSubtitle": {
+    "description": "Empty state subtitle for the playlists library view"
+  },
+  "libraryDefaultView": "기본 보기",
+  "@libraryDefaultView": {
+    "description": "Setting title - which library view opens when switching to the Library tab"
+  },
+  "libraryDefaultViewLastUsed": "최근 사용",
+  "@libraryDefaultViewLastUsed": {
+    "description": "Default view option - keep the last used library view"
+  },
   "queueEmptyHistory": "다운로드 기록이 없음",
   "@queueEmptyHistory": {
     "description": "Empty state title when download history is empty"
@@ -4422,6 +4850,10 @@
   "@audioAnalysisSpectralCutoff": {
     "description": "Estimated spectral cutoff metric label"
   },
+  "audioAnalysisCutoffNotDetected": "감지되지 않음",
+  "@audioAnalysisCutoffNotDetected": {
+    "description": "Displayed when no reliable broadband spectral cutoff can be detected"
+  },
   "audioAnalysisChannelStats": "채널별 통계",
   "@audioAnalysisChannelStats": {
     "description": "Per-channel audio analysis section label"
@@ -4433,6 +4865,131 @@
   "audioAnalysisRescan": "다시 분석",
   "@audioAnalysisRescan": {
     "description": "Tooltip/label for the button that re-runs the audio analysis, discarding cached results"
+  },
+  "downloadRedownloadFakeHiRes": "가짜 Hi-Res 다시 다운로드",
+  "@downloadRedownloadFakeHiRes": {
+    "description": "Setting title: automatically replace downloads that measure as fake Hi-Res"
+  },
+  "downloadRedownloadFakeHiResSubtitle": "기본적으로 비활성화되어 있습니다. Hi-Res 다운로드를 확인하고, 모든 오디오 샘플이 그대로 보존된 것이 확인될 때만 교체합니다. 검증이나 처리에 실패하면 원본을 그대로 유지합니다",
+  "@downloadRedownloadFakeHiResSubtitle": {
+    "description": "Setting subtitle for the fake Hi-Res re-download toggle"
+  },
+  "hiResCheckVerdictFakeCertain": "가짜 Hi-Res",
+  "@hiResCheckVerdictFakeCertain": {
+    "description": "Verdict: an exact fingerprint (padded bits or upsampling pattern) proves the file is not real Hi-Res"
+  },
+  "hiResCheckVerdictFakeSuspect": "필터링된 마스터일 가능성이 있음",
+  "@hiResCheckVerdictFakeSuspect": {
+    "description": "Verdict: fails the cutoff test but may be a genuine master low-pass filtered in mastering"
+  },
+  "hiResCheckReasonSampleHold": "모든 샘플이 반복됨: 복제 방식으로 업샘플링됨",
+  "@hiResCheckReasonSampleHold": {
+    "description": "Reason: sample-and-hold upsampling detected"
+  },
+  "hiResCheckReasonInterpolation": "샘플 사이의 값이 선형 보간됨",
+  "@hiResCheckReasonInterpolation": {
+    "description": "Reason: linear-interpolation upsampling detected"
+  },
+  "hiResCheckReasonImaging": "22 kHz 이상의 콘텐츠가 가청 대역을 그대로 반영함",
+  "@hiResCheckReasonImaging": {
+    "description": "Reason: spectral imaging from upsampling detected"
+  },
+  "hiResCheckMusicContent": "음악 콘텐츠",
+  "@hiResCheckMusicContent": {
+    "description": "Label for the highest frequency that still moves with the music"
+  },
+  "hiResCheckUltrasonicNoise": "{cutoff} 이상에서는 일정한 노이즈만 존재함 (일반적으로 DSD 또는 아날로그 테이프 전송에서 나타나는 특성): {rate} 파일이면 모든 음악 정보를 담을 수 있음",
+  "@hiResCheckUltrasonicNoise": {
+    "description": "Shown when the ultrasonic content of a Hi-Res file is noise rather than music",
+    "placeholders": {
+      "cutoff": {
+        "type": "String"
+      },
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "hiResCheckTitle": "Hi-Res 진위 여부",
+  "@hiResCheckTitle": {
+    "description": "Title of the fake Hi-Res check card"
+  },
+  "hiResCheckDescription": "업샘플링되었거나 비트 패딩된 가짜 Hi-Res 파일을 감지합니다",
+  "@hiResCheckDescription": {
+    "description": "Explains what the Hi-Res authenticity check does"
+  },
+  "hiResCheckRun": "검사",
+  "@hiResCheckRun": {
+    "description": "Button that starts the Hi-Res authenticity check"
+  },
+  "hiResCheckChecking": "Hi-Res 진위 여부 검사 중...",
+  "@hiResCheckChecking": {
+    "description": "Loading text while the Hi-Res check runs"
+  },
+  "hiResCheckVerdictFake": "가짜 Hi-Res일 가능성이 높음",
+  "@hiResCheckVerdictFake": {
+    "description": "Verdict: the file claims Hi-Res but does not measure as it"
+  },
+  "hiResCheckVerdictGenuine": "실제 Hi-Res로 측정됨",
+  "@hiResCheckVerdictGenuine": {
+    "description": "Verdict: no upsampling or padded bit depth found"
+  },
+  "hiResCheckVerdictStandard": "일반 음질이며, 특별히 의심되는 사항이 없음",
+  "@hiResCheckVerdictStandard": {
+    "description": "Verdict: neither sample rate nor bit depth claims Hi-Res"
+  },
+  "hiResCheckVerdictInconclusive": "판단할 수 없음: 분석한 구간의 음량이 너무 작거나 길이가 너무 짧음",
+  "@hiResCheckVerdictInconclusive": {
+    "description": "Verdict: analysis could not reach a reliable conclusion"
+  },
+  "hiResCheckUnsupported": "FLAC 및 WAV 파일만 확인할 수 있음",
+  "@hiResCheckUnsupported": {
+    "description": "Shown when the file format cannot be decoded by the Hi-Res check"
+  },
+  "hiResCheckCutoff": "콘텐츠 주파수 한계",
+  "@hiResCheckCutoff": {
+    "description": "Label for the highest frequency with real content"
+  },
+  "hiResCheckBitsInUse": "사용 중인 비트",
+  "@hiResCheckBitsInUse": {
+    "description": "Label for effective vs declared bit depth"
+  },
+  "hiResCheckDisclaimer": "스펙트럼이 일찍 끊기지만, 그것만으로 업샘플링되었다는 증거는 없습니다. 마스터링 과정에서 의도적으로 낮은 주파수 대역을 제한한 정상적인 원본 마스터일 수도 있습니다. 따라서 자동으로 교체하지 않습니다",
+  "@hiResCheckDisclaimer": {
+    "description": "Caveat shown under a fake Hi-Res verdict"
+  },
+  "hiResCheckFailed": "Hi-Res 검사 실패: {error}",
+  "@hiResCheckFailed": {
+    "description": "Error shown when the Hi-Res check fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "hiResCheckReasonRate": "{sampleRate}를 선언했지만 콘텐츠가 약 {cutoff}에서 멈춥니다",
+  "@hiResCheckReasonRate": {
+    "description": "Reason for a fake verdict caused by upsampling",
+    "placeholders": {
+      "sampleRate": {
+        "type": "String"
+      },
+      "cutoff": {
+        "type": "String"
+      }
+    }
+  },
+  "hiResCheckReasonDepth": "{declared}-비트를 선언했지만 실제 데이터는 {effective} 비트만 전달합니다",
+  "@hiResCheckReasonDepth": {
+    "description": "Reason for a fake verdict caused by padded bit depth",
+    "placeholders": {
+      "declared": {
+        "type": "int"
+      },
+      "effective": {
+        "type": "int"
+      }
+    }
   },
   "audioAnalysisRescanning": "오디오를 다시 분석하는 중...",
   "@audioAnalysisRescanning": {
@@ -4491,6 +5048,14 @@
   "cancelDownloadKeep": "유지",
   "@cancelDownloadKeep": {
     "description": "Dialog button - keep the active download (do not cancel)"
+  },
+  "queueCancelledTitle": "다운로드 취소됨",
+  "@queueCancelledTitle": {
+    "description": "Dialog title when opening a cancelled queue item"
+  },
+  "queueCancelledMessage": "이 다운로드가 취소되었습니다. 다시 시도하거나, 다운로드 목록에서 제거하세요",
+  "@queueCancelledMessage": {
+    "description": "Dialog body when opening a cancelled queue item"
   },
   "metadataSaveFailedFfmpeg": "FFmpeg를 통해 메타데이터 저장 실패",
   "@metadataSaveFailedFfmpeg": {
@@ -4759,7 +5324,7 @@
   },
   "homeImportCsvTooltip": "재생목록 가져오기 (CSV, M3U)",
   "@homeImportCsvTooltip": {
-    "description": "Tooltip for importing a CSV file into Home search"
+    "description": "Tooltip for importing a CSV or M3U playlist file into Home search"
   },
   "homeChangeSearchProviderTooltip": "검색 제공자 변경",
   "@homeChangeSearchProviderTooltip": {
@@ -4825,6 +5390,18 @@
   "@trackCoverReplaceNotice": {
     "description": "Notice shown when a new cover has been selected but not saved yet"
   },
+  "trackCoverResolution": "커버 해상도",
+  "@trackCoverResolution": {
+    "description": "Label for selecting the embedded cover art resolution"
+  },
+  "trackCoverResolutionHint": "저장할 때 이미지의 긴 변 길이를 설정합니다. 확대해도 이미지의 세부 정보는 늘어나지 않습니다",
+  "@trackCoverResolutionHint": {
+    "description": "Explanation below the embedded cover art resolution selector"
+  },
+  "trackCoverResizeFailed": "앨범 커버를 원하는 크기로 조정할 수 없습니다. 다른 크기나 이미지를 사용해 보세요",
+  "@trackCoverResizeFailed": {
+    "description": "Error shown when resizing cover art before saving metadata fails"
+  },
   "actionStop": "중지",
   "@actionStop": {
     "description": "Generic action - stop"
@@ -4833,9 +5410,62 @@
   "@queueFinalizingDownload": {
     "description": "Accessibility label for a queue item that is finalizing"
   },
+  "queueDownloadNext": "다음 다운로드",
+  "@queueDownloadNext": {
+    "description": "Tooltip on a queued download row; moves the item to the front of the queue so the next free slot downloads it"
+  },
+  "queueMoveUp": "위로 이동",
+  "@queueMoveUp": {
+    "description": "Queue item menu action - move the queued item one position earlier"
+  },
+  "queueMoveDown": "아래로 이동",
+  "@queueMoveDown": {
+    "description": "Queue item menu action - move the queued item one position later"
+  },
+  "editMetadataMusicBrainzButton": "MusicBrainz에서 가져오기",
+  "@editMetadataMusicBrainzButton": {
+    "description": "Tag editor button that fills genre and album artist from MusicBrainz by ISRC"
+  },
+  "editMetadataMusicBrainzFilled": "MusicBrainz에서 업데이트됨",
+  "@editMetadataMusicBrainzFilled": {
+    "description": "Snackbar after MusicBrainz suggestions were applied to the tag editor fields"
+  },
+  "editMetadataMusicBrainzNothing": "MusicBrainZ에서 발견되지 않음",
+  "@editMetadataMusicBrainzNothing": {
+    "description": "Snackbar when the MusicBrainz lookup returns no data"
+  },
+  "editMetadataMusicBrainzNeedsIsrc": "ISRC 태그 필요",
+  "@editMetadataMusicBrainzNeedsIsrc": {
+    "description": "Snackbar when the MusicBrainz lookup is tapped without an ISRC"
+  },
+  "nowPlayingRepeatOff": "반복 끄기",
+  "@nowPlayingRepeatOff": {
+    "description": "Repeat toggle tooltip when repeat is disabled"
+  },
+  "nowPlayingRepeatAll": "모두 반복",
+  "@nowPlayingRepeatAll": {
+    "description": "Repeat toggle tooltip when the whole queue repeats"
+  },
+  "nowPlayingRepeatOne": "한 곡 반복",
+  "@nowPlayingRepeatOne": {
+    "description": "Repeat toggle tooltip when the current track repeats"
+  },
+  "queueNetworkFailedOffline": "오프라인 중에 {count} 개의 다운로드 실패",
+  "@queueNetworkFailedOffline": {
+    "description": "Snackbar shown when connectivity returns and network-failed downloads can be retried",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "queueDownloadedFileMissing": "다운로드된 파일이 없음",
   "@queueDownloadedFileMissing": {
     "description": "Accessibility label when a downloaded file is missing from disk"
+  },
+  "queueCheckingDownloadedFile": "다운로드된 파일을 확인하는 중...",
+  "@queueCheckingDownloadedFile": {
+    "description": "Accessibility label while the app checks whether a just-completed download has appeared at its final path yet. Not about authentication or a download session."
   },
   "queueDownloadCompleted": "다운로드 완료",
   "@queueDownloadCompleted": {
@@ -4914,7 +5544,7 @@
   "@logIssueTrackNotFoundLabel": {
     "description": "Diagnostic badge label when a track is unavailable"
   },
-  "logIssueTrackNotFoundDescription": "일부 트랙은 다운로드 서비스에서 찾을 수 없습니다",
+  "logIssueTrackNotFoundDescription": "일부 트랙은 다운로드 서비스에서 찾을 수 없음",
   "@logIssueTrackNotFoundDescription": {
     "description": "Diagnostic badge description when a track is unavailable"
   },
@@ -5144,6 +5774,34 @@
   "@editMetadataFieldComment": {
     "description": "Label for comment field in the edit metadata sheet"
   },
+  "trackAlbumType": "발매 유형",
+  "@trackAlbumType": {
+    "description": "Label for an album or release type metadata value"
+  },
+  "editMetadataFieldAlbumTypeHint": "앨범, 싱글, EP, 컴필레이션...",
+  "@editMetadataFieldAlbumTypeHint": {
+    "description": "Hint for the release type metadata field"
+  },
+  "editMetadataFieldExplicit": "성인용",
+  "@editMetadataFieldExplicit": {
+    "description": "Label for the explicit content metadata field"
+  },
+  "editMetadataFieldExplicitHint": "이 트랙에 성인용 콘텐츠가 포함되어 있음을 표시합니다",
+  "@editMetadataFieldExplicitHint": {
+    "description": "Description for the explicit content metadata switch"
+  },
+  "metadataExplicitValue": "성인용",
+  "@metadataExplicitValue": {
+    "description": "Displayed value when a track is marked explicit"
+  },
+  "editMetadataFieldUpc": "UPC / 바코드",
+  "@editMetadataFieldUpc": {
+    "description": "Label for the release barcode metadata field"
+  },
+  "editMetadataFieldUpcHint": "숫자 UPC, EAN, 또는 GTIN",
+  "@editMetadataFieldUpcHint": {
+    "description": "Hint for the release barcode metadata field"
+  },
   "editMetadataAdvanced": "고급",
   "@editMetadataAdvanced": {
     "description": "Expandable section label for advanced metadata fields"
@@ -5163,6 +5821,10 @@
   "libraryFilterMetadataIncorrectIsrcFormat": "ISRC 형식이 잘못됨",
   "@libraryFilterMetadataIncorrectIsrcFormat": {
     "description": "Filter option - items with an invalid ISRC format"
+  },
+  "libraryFilterMetadataMissingIsrc": "ISRC 누락",
+  "@libraryFilterMetadataMissingIsrc": {
+    "description": "Filter option - items without any ISRC tag"
   },
   "libraryFilterMetadataMissingLabel": "레이블 누락",
   "@libraryFilterMetadataMissingLabel": {
@@ -5263,6 +5925,9 @@
   "queueResumingAfterVerification": "확인 후 재개하는 중...",
   "@queueDownloadStarting": {
     "description": "Queue status before download progress is available"
+  },
+  "@queueCheckingDownloadSession": {
+    "description": "Queue status while the download provider's session is being checked during preparation (preparationStage 'checking_session'). This is about the provider session, not about locating a finished file."
   },
   "a11ySelectTrack": "트랙 선택",
   "@a11ySelectTrack": {
@@ -5605,7 +6270,7 @@
   "@libraryBuiltInPreviewPlayer": {
     "description": "Setting option to use the built-in preview player"
   },
-  "libraryBuiltInPreviewPlayerSubtitle": "SpotiFLAC Mobile에서 빠른 로컬 미리듣기 전용이며, 일반적인 음악 감상에는 권장되지 않습니다",
+  "libraryBuiltInPreviewPlayerSubtitle": "SpotiFLAC Mobile 내에서 빠른 로컬 미리 보기",
   "@libraryBuiltInPreviewPlayerSubtitle": {
     "description": "Subtitle for built-in preview player option"
   },
@@ -5630,10 +6295,55 @@
     "description": "Title for the playback queue sheet"
   },
   "nowPlayingPreviousTrack": "이전 트랙",
+  "@nowPlayingPreviousTrack": {
+    "description": "Tooltip for the previous-track playback control"
+  },
   "nowPlayingNextTrack": "다음 트랙",
+  "@nowPlayingNextTrack": {
+    "description": "Tooltip for the next-track playback control"
+  },
   "nowPlayingDetails": "트랙 세부 정보",
   "@nowPlayingDetails": {
     "description": "Menu item and section title for track metadata details"
+  },
+  "nowPlayingSleepTimer": "취침 타이머",
+  "@nowPlayingSleepTimer": {
+    "description": "Menu item and sheet title for the playback sleep timer"
+  },
+  "nowPlayingSleepTimerActive": "{time}에 종료",
+  "@nowPlayingSleepTimerActive": {
+    "description": "Active sleep timer deadline shown in the player menu",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "nowPlayingSleepTimerMinutes": "{minutes, plural, =1{1 분} other{{minutes} 분}}",
+  "@nowPlayingSleepTimerMinutes": {
+    "description": "Duration choice for the playback sleep timer",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "nowPlayingSleepTimerOff": "취침 타이머 끄기",
+  "@nowPlayingSleepTimerOff": {
+    "description": "Action to cancel the active playback sleep timer"
+  },
+  "nowPlayingSleepTimerSet": "{duration} 동안 취침 타이머가 설정됨",
+  "@nowPlayingSleepTimerSet": {
+    "description": "Confirmation after setting the playback sleep timer",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "nowPlayingSleepTimerCancelled": "취침 타이머 꺼짐",
+  "@nowPlayingSleepTimerCancelled": {
+    "description": "Confirmation after cancelling the playback sleep timer"
   },
   "nowPlayingOpenInExternalPlayer": "외부 플레이어에서 열기",
   "@nowPlayingOpenInExternalPlayer": {
@@ -5977,6 +6687,15 @@
   "@extensionVerificationBrowserInApp": {
     "description": "Chip label for in-app browser verification mode"
   },
+  "extensionVerificationUnavailable": "'{extension}'에 대한 인증 페이지를 사용할 수 없습니다. 새 인증을 요청하려면 다운로드를 다시 시도하세요",
+  "@extensionVerificationUnavailable": {
+    "description": "Shown when the app cannot retrieve a pending verification challenge",
+    "placeholders": {
+      "extension": {
+        "type": "String"
+      }
+    }
+  },
   "extensionVerificationHelpTitleManual": "수동으로 인증 열기",
   "@extensionVerificationHelpTitleManual": {
     "description": "Dialog title when automatic browser launch for verification fails"
@@ -6010,93 +6729,101 @@
     "description": "Button to open the extension verification URL in a browser"
   },
   "settingsSearchHint": "설정 검색",
+  "@settingsSearchHint": {
+    "description": "Placeholder of the search field on the Settings tab"
+  },
   "settingsSearchNoResults": "\"{query}\"과 일치하는 설정이 없음",
+  "@settingsSearchNoResults": {
+    "description": "Shown when a Settings search returns nothing",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "settingsGroupInterface": "확장 기능 & 디자인",
+  "@settingsGroupInterface": {
+    "description": "Settings group covering look and feel"
+  },
   "settingsGroupContent": "콘텐츠 & 메타데이터",
+  "@settingsGroupContent": {
+    "description": "Settings group covering the library, metadata and lyrics"
+  },
   "settingsGroupDownloads": "다운로드 & 파일",
+  "@settingsGroupDownloads": {
+    "description": "Settings group covering download behaviour and storage"
+  },
   "settingsGroupSystem": "시스템",
+  "@settingsGroupSystem": {
+    "description": "Settings group covering app-level data, cache and logs"
+  },
   "settingsGroupHelp": "정보 & 후원",
-  "collectionExportM3u": "M3U8로 내보내기",
-  "collectionExportM3uDone": "{total} 개의 트랙 중 {exported} 개 내보내기 완료",
-  "collectionExportM3uNone": "내보낼 다운로드된 파일이 없음",
-  "collectionExportM3uFailed": "내보내기 실패",
-  "trackOpenOn": "음원 플랫폼에서 열기",
-  "trackOpenOnNoLinks": "이 트랙에 대한 플랫폼 링크를 찾을 수 없습니다",
-  "libraryReviewDuplicates": "중복된 트랙 보기",
-  "libraryReviewDuplicatesSubtitle": "중복 저장된 트랙 찾기",
-  "duplicatesTitle": "중복",
-  "duplicatesEmpty": "중복된 트랙이 없습니다",
-  "duplicatesKeepBest": "최고 음질 선택",
-  "duplicatesKeepBestMessage": "\"{trackName}\"의 {count} 개의 저음질 복사본을 삭제하시겠습니까?",
-  "duplicatesDeleteCopyMessage": "\"{trackName}\"의 복사본을 삭제하시겠습니까?",
-  "downloadAutoConvert": "다운로드 후 자동 변환",
-  "downloadAutoConvertSubtitle": "다운로드가 완료되면 더 작은 손실 압축 형식으로 변환합니다. 원본은 변환이 성공한 후에만 교체됩니다",
-  "downloadAutoConvertFormat": "출력 형식",
-  "downloadAutoConvertFormatSubtitle": "새로 완료된 다운로드에 사용되는 손실 압축 형식을 선택하세요",
-  "downloadAutoConvertBitrate": "출력 음질",
-  "downloadAutoConvertBitrateSubtitle": "비트 전송률이 높을수록 더 많은 디테일을 보존하지만 파일 크기가 커집니다",
-  "downloadAutoConvertMp3Subtitle": "플레이어 및 기기 전반에 걸쳐 최상의 호환성",
-  "downloadAutoConvertM4aSubtitle": "M4A 컨테이너의 효율적인 AAC 오디오",
-  "downloadAutoConvertOpusSubtitle": "최신 플레이어에 최적화된 효율성",
-  "appearanceForceBlur": "항상 블러 효과 사용",
-  "appearanceForceBlurSubtitle": "기본적으로 비활성화된 기기에서도 하단바 블러 효과를 활성화합니다. 성능이 저하될 수 있습니다",
-  "recentClearAllMessage": "최근 활동을 모두 지우시겠습니까? 다운로드 기록 및 음악 파일은 삭제되지 않습니다",
-  "libraryAddFolder": "라이브러리 폴더 추가",
-  "libraryAddFolderSubtitle": "내부 저장소, SD 카드, SSD 또는 다른 외부 드라이브",
-  "librarySourceOnline": "온라인",
-  "librarySourceOffline": "오프라인. 이 트랙을 복원하려면 저장소를 다시 연결하세요",
-  "librarySourceDisabled": "비활성화됨",
-  "librarySourceScanCount": "{total} 개의 파일 중 {scanned} 개 스캔 완료 ({progress}%)",
-  "libraryExternalStorage": "외부 저장소",
-  "libraryRemoveFolder": "라이브러리 폴더 제거",
-  "libraryRemoveFolderMessage": "SpotiFLAC Mobile에서 이 폴더와 색인된 트랙을 제거하시겠습니까? 저장소의 오디오 파일은 삭제되지 않습니다",
-  "trackReEnrichModeIsrc": "ISRC만",
-  "trackReEnrichModeIsrcSubtitle": "다른 태그를 변경하지 않고 녹화 식별자를 찾아 추가합니다",
-  "trackReEnrichModeMissing": "누락된 태그 채우기",
-  "trackReEnrichModeMissingSubtitle": "기존 값을 유지하고 비어 있는 필드만 채웁니다",
-  "trackReEnrichModeReplace": "선택된 태그 업데이트",
-  "trackReEnrichModeReplaceSubtitle": "온라인 메타데이터로 대체할 기존 값을 선택하세요",
-  "trackReEnrichFieldsTitle": "업데이트할 태그",
-  "trackReEnrichReview": "변경 사항 검토",
-  "trackReEnrichReviewTitle": "메타데이터 변경 사항 검토",
-  "trackReEnrichReviewSubtitle": "{trackCount} 개의 트랙에 걸쳐 제안된 {changeCount} 개의 변경 사항",
-  "trackReEnrichNoChanges": "선택한 트랙에 대한 메타데이터 변경 사항이 없습니다",
-  "trackReEnrichApplyChanges": "변경 사항 적용",
-  "trackReEnrichRefreshOnline": "온라인에서 새로고침",
-  "editMetadataAutoFillSource": "메타데이터 출처",
-  "editMetadataAutoFillSourceAutomatic": "자동 (제공자 우선순위)",
-  "editMetadataAutoFillFind": "메타데이터 찾기",
-  "editMetadataAutoFillPreview": "{source}의 데이터",
-  "editMetadataAutoFillCoverAvailable": "커버 아트워크 사용 가능",
-  "editMetadataAutoFillApply": "선택된 데이터 적용",
-  "editMetadataAutoFillDoneFromSource": "{source}에서 {count} 개의 {count, plural, =1{필드} other{필드}}가 채워짐",
-  "queuePlaylistCount": "{count, plural, =1{1 개의 재생목록} other{{count} 개의 재생목록}}",
-  "queueEmptyPlaylistsSubtitle": "트랙을 정리하려면 재생목록을 만드세요",
-  "libraryDefaultView": "기본 보기",
-  "libraryDefaultViewLastUsed": "최근 사용",
-  "audioAnalysisCutoffNotDetected": "감지되지 않음",
-  "queueCancelledTitle": "다운로드 취소됨",
-  "queueCancelledMessage": "이 다운로드가 취소되었습니다. 다시 시도하거나, 다운로드 목록에서 제거하세요",
-  "trackCoverResolution": "커버 해상도",
-  "trackCoverResolutionHint": "저장할 때 이미지의 긴 변 길이를 설정합니다. 확대해도 이미지의 세부 정보는 늘어나지 않습니다",
-  "trackCoverResizeFailed": "앨범 커버를 원하는 크기로 조정할 수 없습니다. 다른 크기나 이미지를 사용해 보세요",
-  "queueDownloadNext": "다음 다운로드",
-  "queueMoveUp": "위로 이동",
-  "queueMoveDown": "아래로 이동",
-  "editMetadataMusicBrainzButton": "MusicBrainz에서 가져오기",
-  "editMetadataMusicBrainzFilled": "MusicBrainz에서 업데이트됨",
-  "editMetadataMusicBrainzNothing": "MusicBrainZ에서 발견되지 않음",
-  "editMetadataMusicBrainzNeedsIsrc": "ISRC 태그 필요",
-  "nowPlayingRepeatOff": "반복 끄기",
-  "nowPlayingRepeatAll": "모두 반복",
-  "nowPlayingRepeatOne": "한 곡 반복",
-  "queueNetworkFailedOffline": "오프라인 중에 {count} 개의 다운로드 실패",
-  "trackAlbumType": "발매 유형",
-  "editMetadataFieldAlbumTypeHint": "앨범, 싱글, EP, 컴필레이션...",
-  "editMetadataFieldExplicit": "성인용",
-  "editMetadataFieldExplicitHint": "이 트랙에 성인용 콘텐츠가 포함되어 있음을 표시합니다",
-  "metadataExplicitValue": "성인용",
-  "editMetadataFieldUpc": "UPC / 바코드",
-  "editMetadataFieldUpcHint": "숫자 UPC, EAN, 또는 GTIN",
-  "libraryFilterMetadataMissingIsrc": "ISRC 누락"
+  "@settingsGroupHelp": {
+    "description": "Settings group covering the about page and donations"
+  },
+  "libraryFilterMetadataMissingLyrics": "가사 누락",
+  "@libraryFilterMetadataMissingLyrics": {
+    "description": "Filter option for tracks without embedded or sidecar lyrics"
+  },
+  "trackOptionCopyTrackName": "트랙 제목 복사",
+  "@trackOptionCopyTrackName": {
+    "description": "Track menu action that copies the track title"
+  },
+  "trackOptionCopyArtist": "아티스트 복사",
+  "@trackOptionCopyArtist": {
+    "description": "Track menu action that copies the artist name"
+  },
+  "trackOptionCopyTrackAndArtist": "트랙 및 아티스트 복사",
+  "@trackOptionCopyTrackAndArtist": {
+    "description": "Track menu action that copies the track title and artist"
+  },
+  "metadataCopyValue": "값 복사",
+  "@metadataCopyValue": {
+    "description": "Metadata menu action that copies only the selected value"
+  },
+  "metadataCopyField": "필드 및 값 복사",
+  "@metadataCopyField": {
+    "description": "Metadata menu action that copies the selected key and value"
+  },
+  "mornyeShowTabs": "탭 표시",
+  "mornyeSearch": "검색",
+  "mornyeContinuePlaying": "계속 재생",
+  "metadataCopyAll": "모든 메타데이터 복사",
+  "@metadataCopyAll": {
+    "description": "Metadata menu action that copies every visible key and value"
+  },
+  "optionsEmbeddedCoverSize": "내장된 앨범 커버 크기",
+  "@optionsEmbeddedCoverSize": {
+    "description": "Metadata setting that limits downloaded artwork resolution before it is embedded"
+  },
+  "optionsEmbeddedCoverSizeDescription": "원격으로 다운로드된 앨범 커버를 내장하기 전에 크기를 줄입니다. 이미 제한 내에 있는 이미지는 변경되지 않습니다",
+  "@optionsEmbeddedCoverSizeDescription": {
+    "description": "Description shown in the embedded cover size picker"
+  },
+  "mornyeFavorite": "즐겨찾기",
+  "mornyeGoToArtist": "아티스트로 이동",
+  "@mornyeFavorite": {
+    "description": "Compact context menu action that adds a track to Loved"
+  },
+  "mornyeFavorited": "즐겨추가에 추가됨",
+  "@mornyeFavorited": {
+    "description": "Selected state of the compact favorite action"
+  },
+  "autoMixDescription": "곡을 비트에 맞춰 믹싱하고, 음정은 유지한 채 템포를 조절합니다. 비트를 맞출 수 없는 경우에는 크로스페이드를 사용합니다",
+  "autoMixOn": "자동믹스 켜짐",
+  "autoMixOff": "자동믹스 꺼짐",
+  "profileTitle": "프로필",
+  "profileSetUp": "프로필 설정",
+  "profileEdit": "이름 및 사진 편집",
+  "backupIncludesProfile": "프로필 이름과 사진 포함",
+  "profileName": "이름",
+  "profileNameHint": "당신의 이름을 입력하세요",
+  "profileChangePhoto": "사진 선택",
+  "profileRemovePhoto": "사진 삭제",
+  "profilePhotoError": "20MB보다 작은 유효한 이미지를 선택하세요",
+  "profileSaveError": "프로필을 저장할 수 없습니다. 다시 시도하세요",
+  "optionsEmbeddedCoverSizeOriginal": "원본 해상도",
+  "@optionsEmbeddedCoverSizeOriginal": {
+    "description": "Option that preserves the provider artwork at its original resolution"
+  }
 }

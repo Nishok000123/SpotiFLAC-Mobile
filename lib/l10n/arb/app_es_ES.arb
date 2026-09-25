@@ -1,4 +1,48 @@
 {
+  "upgradeIntroWelcome": "Welcome to\nSpotiFLAC-Mobile 5.0",
+  "upgradeIntroThemeTitle": "Make it\nyour own.",
+  "upgradeIntroThemeBody": "Choose a look. Your choice applies immediately, and you can change it later in Appearance.",
+  "upgradeIntroThemeMaterialBody": "The familiar layout, with Material controls and your accent color.",
+  "upgradeIntroThemeMornyeBody": "Glass navigation, a redesigned Library and an immersive player.",
+  "upgradeIntroRustTitle": "A new engine.\nBuilt with Rust.",
+  "upgradeIntroRustBody": "In 5.0, the app’s backend has moved from Go to Rust. It is the engine working behind the screens you use every day.",
+  "upgradeIntroRustEngineTitle": "Working behind the scenes",
+  "upgradeIntroRustEngineBody": "Rust handles downloads, audio metadata, library scanning and the extension runtime on Android and iOS.",
+  "upgradeIntroRustMemoryTitle": "More careful with memory",
+  "upgradeIntroRustMemoryBody": "Reused buffers and fewer copies reduce temporary allocations when processing artwork and extension data.",
+  "upgradeIntroRustKeepTitle": "Keep your music",
+  "upgradeIntroRustKeepBody": "No need to download your collection again. Your saved music and settings stay in place, with no new setup required.",
+  "upgradeIntroWelcomeBody": "A quick look at what has changed, and where to find it.",
+  "upgradeIntroMornyeBody": "A new look for your player, lyrics and navigation.",
+  "upgradeIntroLibrarySummary": "Browse your music by playlist, artist or album.",
+  "upgradeIntroRepoSummary": "Choose your music sources and providers through extensions.",
+  "upgradeIntroLibraryTitle": "Get to know\nyour Library.",
+  "upgradeIntroLibraryBody": "In Mornye, browse by category or find your albums in Recently Added.",
+  "upgradeIntroDownloadsBody": "Pause and retry from Downloads at the top right. Finished music moves to Recently Added.",
+  "upgradeIntroSearchBody": "Search saved music here. The separate Search tab looks through your extensions.",
+  "upgradeIntroPlayerTitle": "Set up\nyour player.",
+  "upgradeIntroPlayerBody": "You can change your theme and playback options at any time. Here is where to find them.",
+  "upgradeIntroAppearanceBody": "Change themes in Settings → Appearance. In Mornye, scroll down for compact navigation; scroll up to expand it.",
+  "upgradeIntroAutoMixBody": "Match tempo and beats between tracks. Enable it in Settings → Local Library → Playback. Off by default.",
+  "upgradeIntroSettingsBody": "In Mornye, tap your profile on Home to open Settings and edit your name and photo.",
+  "upgradeIntroSkip": "Skip",
+  "upgradeIntroContinue": "Continue",
+  "upgradeIntroDone": "Start listening",
+  "upgradeIntroReplay": "What’s new in 5.0",
+  "cacheMotionArtwork": "Offline motion covers",
+  "cacheMotionArtworkDesc": "Album videos saved with downloads. Removing them keeps your music files and static covers.",
+  "nowPlayingVolume": "Volume",
+  "@nowPlayingVolume": {
+    "description": "System volume control label in the Mornye player"
+  },
+  "appearanceStyle": "App Style",
+  "@appearanceStyle": {
+    "description": "Appearance section for choosing the app visual style"
+  },
+  "discordRichPresence": "Discord Rich Presence",
+  "discordPresenceDescription": "Share the track playing in the built-in player on Discord. Requires Discord to be installed and signed in.",
+  "discordPresenceMissing": "Install Discord and sign in, then turn this setting off and on again.",
+  "discordPresenceUnavailable": "Discord Rich Presence is unavailable in this build or on this device.",
   "@@locale": "es_ES",
   "@@last_modified": "2026-04-28",
   "appName": "SpotiFLAC Mobile",
@@ -57,6 +101,11 @@
   "@historyFilterSingles": {
     "description": "Filter chip - show singles only"
   },
+  "libraryRecentlyAdded": "Recently Added",
+  "libraryDownloads": "Downloads",
+  "libraryNoActiveDownloads": "No active downloads",
+  "librarySearchHint": "Search your library",
+  "libraryEmptyCollection": "Your music will appear here",
   "historySearchHint": "Buscar en historial...",
   "@historySearchHint": {
     "description": "Search bar placeholder in history"
@@ -237,6 +286,7 @@
     "description": "Progress dialog title while batch scanning ReplayGain"
   },
   "replayGainBatchSuccess": "Se agregaron las etiquetas ReplayGain a {success} de {total} pistas",
+  "replayGainUnsupportedDecoder": "Algunas pistas no se pudieron analizar porque el decodificador de ReplayGain no es compatible con su códec de audio. Los archivos no se modificaron.",
   "@replayGainBatchSuccess": {
     "description": "Snackbar after batch ReplayGain completes",
     "placeholders": {
@@ -461,6 +511,18 @@
   "@aboutSachinsenalDesc": {
     "description": "Credit description for sachinsenal0x64"
   },
+  "aboutUnituneDesc": "Resolvedor de links de música por Flaze, usado para coincidencias multiplataforma de respaldo.",
+  "@aboutUnituneDesc": {
+    "description": "Credit for the UniTune resolver"
+  },
+  "aboutMusicBrainzDesc": "Base de datos abierta mantenida por MetaBrainz y su comunidad, usado para grabar multi-referencias.",
+  "@aboutMusicBrainzDesc": {
+    "description": "Credit for the MusicBrainz database"
+  },
+  "aboutSquiglyDesc": "Servicio de enlaces de música universal por Liam Macmillan, usado como resolvedor multiplataforma final de respaldo.",
+  "@aboutSquiglyDesc": {
+    "description": "Credit for the Squigly resolver"
+  },
   "aboutAppDescription": "Busca información musical, gestiona extensiones y organiza tu biblioteca.",
   "@aboutAppDescription": {
     "description": "App description in header card"
@@ -594,7 +656,7 @@
   "@setupIcloudNotSupported": {
     "description": "Error when user selects iCloud Drive on iOS"
   },
-  "setupDownloadInFlac": "Download music in lossless and Hi-Res quality",
+  "setupDownloadInFlac": "Descarga música sin pérdida y Hi-Res",
   "@setupDownloadInFlac": {
     "description": "App tagline in setup"
   },
@@ -787,6 +849,95 @@
     "placeholders": {
       "count": {
         "type": "int"
+      }
+    }
+  },
+  "collectionExportM3u": "Exportar como M3U8",
+  "@collectionExportM3u": {
+    "description": "Tooltip on the collection screen action that exports the track list as an M3U8 playlist file"
+  },
+  "collectionExportM3uDone": "Exportado {exported} de {total} pistas",
+  "@collectionExportM3uDone": {
+    "description": "Snackbar after M3U8 export; tracks without a local file are not exported",
+    "placeholders": {
+      "exported": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionExportM3uNone": "No hay archivos descargados para exportar",
+  "@collectionExportM3uNone": {
+    "description": "Snackbar when an M3U8 export finds no local files"
+  },
+  "collectionExportM3uFailed": "Exportación fallida",
+  "@collectionExportM3uFailed": {
+    "description": "Snackbar when writing or sharing the M3U8 export fails"
+  },
+  "trackOpenOn": "Abrir en...",
+  "@trackOpenOn": {
+    "description": "Track option and sheet title listing streaming platforms where the track can be opened"
+  },
+  "trackOpenOnNoLinks": "No se han encontrado enlaces para esta pista.",
+  "@trackOpenOnNoLinks": {
+    "description": "Shown in the Open on sheet when song.link returns no links"
+  },
+  "libraryReviewDuplicates": "Revisar duplicados",
+  "@libraryReviewDuplicates": {
+    "description": "Library settings row opening the duplicate review sheet"
+  },
+  "libraryReviewDuplicatesSubtitle": "Encontrar pistas almacenadas más de una vez",
+  "@libraryReviewDuplicatesSubtitle": {
+    "description": "Subtitle for the duplicate review settings row"
+  },
+  "duplicatesTitle": "Duplicados",
+  "@duplicatesTitle": {
+    "description": "Title of the duplicate review sheet"
+  },
+  "duplicatesEmpty": "No se han encontrado pistas duplicadas.",
+  "@duplicatesEmpty": {
+    "description": "Shown when the duplicate review sheet finds nothing"
+  },
+  "duplicatesKeepBest": "Mantener mejor",
+  "@duplicatesKeepBest": {
+    "description": "Button that deletes all but the highest-quality copy in a duplicate group"
+  },
+  "duplicatesKeepBestAll": "Lo mejor para todos",
+  "@duplicatesKeepBestAll": {
+    "description": "Button that keeps the highest-quality copy in every duplicate group and deletes the rest"
+  },
+  "duplicatesKeepBestAllMessage": "¿Quieres conservar la mejor copia de {groupCount} {groupCount, plural, =1{track} other{tracks}} y eliminar {count} copias de menor calidad {count, plural, =1{copy} other{copies}}?\n\nLos archivos eliminados se borrarán del almacenamiento.",
+  "@duplicatesKeepBestAllMessage": {
+    "description": "Confirmation message for keeping the best copy across every duplicate group",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "groupCount": {
+        "type": "int"
+      }
+    }
+  },
+  "duplicatesKeepBestMessage": "¿Eliminar {count} copias de menor calidad del \"{trackName}\"?",
+  "@duplicatesKeepBestMessage": {
+    "description": "Confirmation message for the keep-best action",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "trackName": {
+        "type": "String"
+      }
+    }
+  },
+  "duplicatesDeleteCopyMessage": "¿Eliminar esta copia de \"{trackName}\"?",
+  "@duplicatesDeleteCopyMessage": {
+    "description": "Confirmation message for deleting one duplicate copy",
+    "placeholders": {
+      "trackName": {
+        "type": "String"
       }
     }
   },
@@ -1142,6 +1293,19 @@
   "@updateNewVersionReady": {
     "description": "Update subtitle"
   },
+  "updateRequiredTitle": "Actualización Necesaria",
+  "@updateRequiredTitle": {
+    "description": "Title of the mandatory update dialog shown when the installed version is too old"
+  },
+  "updateRequiredNotice": "Esta versión está {count} lanzamientos detrás de la actual y ya no es soportada. Actualice para seguir usando la app.",
+  "@updateRequiredNotice": {
+    "description": "Subtitle of the mandatory update dialog; explains why the dialog cannot be dismissed",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "updateCurrent": "Actual",
   "@updateCurrent": {
     "description": "Label for current version"
@@ -1477,6 +1641,26 @@
   "trackAudioQuality": "Calidad del sonido",
   "@trackAudioQuality": {
     "description": "Metadata label - audio quality"
+  },
+  "trackReplayGainTrackGain": "ReplayGain Track Gain",
+  "@trackReplayGainTrackGain": {
+    "description": "Metadata label - ReplayGain track gain"
+  },
+  "trackReplayGainTrackPeak": "ReplayGain Track Peak",
+  "@trackReplayGainTrackPeak": {
+    "description": "Metadata label - ReplayGain track peak"
+  },
+  "trackReplayGainAlbumGain": "ReplayGain Album Gain",
+  "@trackReplayGainAlbumGain": {
+    "description": "Metadata label - ReplayGain album gain"
+  },
+  "trackReplayGainAlbumPeak": "ReplayGain Album Peak",
+  "@trackReplayGainAlbumPeak": {
+    "description": "Metadata label - ReplayGain album peak"
+  },
+  "libraryQualityLabelFileFormat": "Formato de archivo",
+  "@libraryQualityLabelFileFormat": {
+    "description": "Library audio quality label mode that shows the detected file format"
   },
   "trackReleaseDate": "Fecha de lanzamiento",
   "@trackReleaseDate": {
@@ -1893,6 +2077,42 @@
   "@downloadLossyFormat": {
     "description": "Setting title to pick output format for lossy downloads"
   },
+  "downloadAutoConvert": "Autoconvertir después de descargar",
+  "@downloadAutoConvert": {
+    "description": "Toggle for automatic post-download audio conversion"
+  },
+  "downloadAutoConvertSubtitle": "Convierte descargas completadas a un formato con pérdidas más pequeño. El original solo es reemplazado después que la conversión sea exitosa.",
+  "@downloadAutoConvertSubtitle": {
+    "description": "Explanation of safe automatic post-download conversion"
+  },
+  "downloadAutoConvertFormat": "Formato de salida",
+  "@downloadAutoConvertFormat": {
+    "description": "Automatic conversion output format setting"
+  },
+  "downloadAutoConvertFormatSubtitle": "Elige el formato con pérdidas para descargas completadas nuevas.",
+  "@downloadAutoConvertFormatSubtitle": {
+    "description": "Automatic conversion format picker explanation"
+  },
+  "downloadAutoConvertBitrate": "Calidad de salida",
+  "@downloadAutoConvertBitrate": {
+    "description": "Automatic conversion bitrate setting"
+  },
+  "downloadAutoConvertBitrateSubtitle": "Las tasas de bits más altas preservan más detalles pero hacen archivos más grandes.",
+  "@downloadAutoConvertBitrateSubtitle": {
+    "description": "Automatic conversion bitrate picker explanation"
+  },
+  "downloadAutoConvertMp3Subtitle": "Mejor compatibilidad en reproductores y dispositivos",
+  "@downloadAutoConvertMp3Subtitle": {
+    "description": "MP3 automatic conversion option description"
+  },
+  "downloadAutoConvertM4aSubtitle": "Audio AAC eficiente en un contenedor M4A",
+  "@downloadAutoConvertM4aSubtitle": {
+    "description": "M4A AAC automatic conversion option description"
+  },
+  "downloadAutoConvertOpusSubtitle": "Mejor eficiencia para reproductores modernos",
+  "@downloadAutoConvertOpusSubtitle": {
+    "description": "Opus automatic conversion option description"
+  },
   "downloadLossy320Format": "Formato con pérdida a 320 kbps",
   "@downloadLossy320Format": {
     "description": "Title of the lossy format picker bottom sheet"
@@ -1985,6 +2205,22 @@
   "@appearanceAmoledDarkSubtitle": {
     "description": "Subtitle for AMOLED dark"
   },
+  "appearanceHeroAnimations": "Animaciones Hero",
+  "@appearanceHeroAnimations": {
+    "description": "Toggle for shared-element (Hero) transitions"
+  },
+  "appearanceHeroAnimationsSubtitle": "Covers voladores entre pantallas, ejemplo: cuando abre el reproductor",
+  "@appearanceHeroAnimationsSubtitle": {
+    "description": "Subtitle for the Hero animations toggle"
+  },
+  "appearanceForceBlur": "Siempre use efecto desenfoque",
+  "@appearanceForceBlur": {
+    "description": "Toggle that forces backdrop blur on even when the device profile disabled it"
+  },
+  "appearanceForceBlurSubtitle": "Habilite la barra de navegación desenfocada incluso en dispositivos donde está desactivada por defecto. Puede costar rendimiento.",
+  "@appearanceForceBlurSubtitle": {
+    "description": "Subtitle for the force-blur toggle"
+  },
   "queueClearAll": "Eliminar todo",
   "@queueClearAll": {
     "description": "Button - clear all queue items"
@@ -2016,6 +2252,27 @@
   "settingsDownloadNetworkSubtitle": "Elegir qué red usar para descargas. Cuando se establece en Wi-Fi solamente, las descargas se detendrán en los datos móviles.",
   "@settingsDownloadNetworkSubtitle": {
     "description": "Subtitle explaining network preference"
+  },
+  "settingsConcurrentDownloads": "Descargas concurrentes",
+  "@settingsConcurrentDownloads": {
+    "description": "Setting title - how many tracks download at the same time"
+  },
+  "settingsConcurrentDownloadsSubtitle": "Descargar varios archivos a la vez es rápido, pero con algunos proveedores puede haber un límite en pedidos paralelos.",
+  "@settingsConcurrentDownloadsSubtitle": {
+    "description": "Subtitle explaining the concurrent downloads picker"
+  },
+  "concurrentDownloadsOne": "1 archivo a la vez",
+  "@concurrentDownloadsOne": {
+    "description": "Concurrent downloads option - sequential"
+  },
+  "concurrentDownloadsCount": "Hasta {count} archivos a la vez",
+  "@concurrentDownloadsCount": {
+    "description": "Concurrent downloads option - parallel",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "albumFolderArtistAlbum": "Artista / Álbum",
   "@albumFolderArtistAlbum": {
@@ -2133,6 +2390,10 @@
   "recentEmpty": "Aún no hay entradas recientes",
   "@recentEmpty": {
     "description": "Empty state text for recent access list"
+  },
+  "recentClearAllMessage": "¿Borrar toda la actividad reciente? No se eliminarán los archivos del historial de descargas y de música.",
+  "@recentClearAllMessage": {
+    "description": "Confirmation message before clearing all recent activity"
   },
   "recentShowAllDownloads": "Mostrar todas las descargas",
   "@recentShowAllDownloads": {
@@ -2333,6 +2594,53 @@
   "libraryFolderHint": "Toque para seleccionar la carpeta",
   "@libraryFolderHint": {
     "description": "Placeholder when no folder selected"
+  },
+  "libraryAddFolder": "Añadir carpeta de biblioteca",
+  "@libraryAddFolder": {
+    "description": "Action to add another local library source"
+  },
+  "libraryAddFolderSubtitle": "Almacenamiento interno, tarjeta SD, o otro drive externo",
+  "@libraryAddFolderSubtitle": {
+    "description": "Supported storage locations for local library sources"
+  },
+  "librarySourceOnline": "Online",
+  "@librarySourceOnline": {
+    "description": "Library source is connected and accessible"
+  },
+  "librarySourceOffline": "Offline. Reconecta el almacenamiento para restaurar estas pistas",
+  "@librarySourceOffline": {
+    "description": "Library source is temporarily disconnected"
+  },
+  "librarySourceDisabled": "Desactivado",
+  "@librarySourceDisabled": {
+    "description": "Library source has been disabled by the user"
+  },
+  "librarySourceScanCount": "{scanned} archivos de {total} escaneados ({progress}%)",
+  "@librarySourceScanCount": {
+    "description": "Live progress for one library folder scan",
+    "placeholders": {
+      "scanned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "progress": {
+        "type": "String"
+      }
+    }
+  },
+  "libraryExternalStorage": "Almacenamiento externo",
+  "@libraryExternalStorage": {
+    "description": "Label for a removable or external library source"
+  },
+  "libraryRemoveFolder": "Eliminar carpeta de biblioteca",
+  "@libraryRemoveFolder": {
+    "description": "Action to remove one indexed library source"
+  },
+  "libraryRemoveFolderMessage": "¿Deseas eliminar esta carpeta y sus pistas indexadas de SpotiFLAC Mobile? Los archivos de audio almacenados no se borrarán.",
+  "@libraryRemoveFolderMessage": {
+    "description": "Confirmation shown before removing a library source"
   },
   "libraryShowDuplicateIndicator": "Mostrar indicador de duplicados",
   "@libraryShowDuplicateIndicator": {
@@ -2628,19 +2936,19 @@
   "@tutorialWelcomeTitle": {
     "description": "Tutorial welcome page title"
   },
-  "tutorialWelcomeDesc": "Learn how to find music with extensions, choose the quality you want, and manage downloads in SpotiFLAC Mobile.",
+  "tutorialWelcomeDesc": "Aprende a buscar música con extensiones, a elegir la calidad que desees y a administrar las descargas en SpotiFLAC Mobile.",
   "@tutorialWelcomeDesc": {
     "description": "Tutorial welcome page description"
   },
-  "tutorialWelcomeTip1": "Search with an installed extension or paste a supported music link",
+  "tutorialWelcomeTip1": "Busca con una extensión instalada o pega un enlace de música compatible",
   "@tutorialWelcomeTip1": {
     "description": "Tutorial welcome tip 1"
   },
-  "tutorialWelcomeTip2": "Choose from the audio qualities offered by your download provider",
+  "tutorialWelcomeTip2": "Elige entre las calidades de audio que ofrece tu proveedor de descargas",
   "@tutorialWelcomeTip2": {
     "description": "Tutorial welcome tip 2"
   },
-  "tutorialWelcomeTip3": "Embed metadata, cover art, lyrics, and release information automatically",
+  "tutorialWelcomeTip3": "Incorpora metadatos, portadas, letras e información sobre el lanzamiento automáticamente",
   "@tutorialWelcomeTip3": {
     "description": "Tutorial welcome tip 3"
   },
@@ -2648,7 +2956,7 @@
   "@tutorialSearchTitle": {
     "description": "Tutorial search page title"
   },
-  "tutorialSearchDesc": "Search with your selected extension or paste a supported music link.",
+  "tutorialSearchDesc": "Busca con la extensión que hayas seleccionado o pega un enlace de música compatible.",
   "@tutorialSearchDesc": {
     "description": "Tutorial search page description"
   },
@@ -2656,7 +2964,7 @@
   "@tutorialDownloadTitle": {
     "description": "Tutorial download page title"
   },
-  "tutorialDownloadDesc": "Pick an available quality, start the download, and follow its progress in the queue.",
+  "tutorialDownloadDesc": "Elige una calidad disponible, inicia la descarga y sigue su avance en la fila.",
   "@tutorialDownloadDesc": {
     "description": "Tutorial download page description"
   },
@@ -2664,19 +2972,19 @@
   "@tutorialLibraryTitle": {
     "description": "Tutorial library page title"
   },
-  "tutorialLibraryDesc": "Downloaded and locally scanned music is organized in your Library.",
+  "tutorialLibraryDesc": "La música descargada y escaneada localmente se organiza en tu biblioteca.",
   "@tutorialLibraryDesc": {
     "description": "Tutorial library page description"
   },
-  "tutorialLibraryTip1": "Manage active, pending, and completed downloads from the Library queue",
+  "tutorialLibraryTip1": "Administra las descargas activas, pendientes y completadas desde la cola de la Biblioteca",
   "@tutorialLibraryTip1": {
     "description": "Tutorial library tip 1"
   },
-  "tutorialLibraryTip2": "Tap a track to play it with the built-in player",
+  "tutorialLibraryTip2": "Toca una canción para reproducirla con el reproductor integrado",
   "@tutorialLibraryTip2": {
     "description": "Tutorial library tip 2"
   },
-  "tutorialLibraryTip3": "Browse tracks, albums, and playlists in list or grid views",
+  "tutorialLibraryTip3": "Explora canciones, álbumes y listas de reproducción en vista de lista o de cuadrícula",
   "@tutorialLibraryTip3": {
     "description": "Tutorial library tip 3"
   },
@@ -2684,7 +2992,7 @@
   "@tutorialExtensionsTitle": {
     "description": "Tutorial extensions page title"
   },
-  "tutorialExtensionsDesc": "Extensions add search, download, metadata, lyrics, and other integrations.",
+  "tutorialExtensionsDesc": "Las extensiones añaden funciones de búsqueda, descarga, metadatos, letras de canciones y otras integraciones.",
   "@tutorialExtensionsDesc": {
     "description": "Tutorial extensions page description"
   },
@@ -2692,11 +3000,11 @@
   "@tutorialExtensionsTip1": {
     "description": "Tutorial extensions tip 1"
   },
-  "tutorialExtensionsTip2": "Choose providers for search, downloads, metadata, and fallbacks",
+  "tutorialExtensionsTip2": "Selecciona proveedores para búsquedas, descargas, metadatos y opciones alternativas",
   "@tutorialExtensionsTip2": {
     "description": "Tutorial extensions tip 2"
   },
-  "tutorialExtensionsTip3": "Connect accounts when required and keep extensions up to date",
+  "tutorialExtensionsTip3": "Conecta las cuentas cuando sea necesario y mantén las extensiones actualizadas",
   "@tutorialExtensionsTip3": {
     "description": "Tutorial extensions tip 3"
   },
@@ -2813,6 +3121,22 @@
   "cacheLibraryCoverDesc": "Portada extraída de archivos locales. Se extraerá de nuevo en el próximo escaneo.",
   "@cacheLibraryCoverDesc": {
     "description": "Description of what library cover cache contains"
+  },
+  "libraryPlaybackNormalization": "Normalización de volumen",
+  "@libraryPlaybackNormalization": {
+    "description": "Toggle title for ReplayGain playback normalization in the built-in player"
+  },
+  "libraryPlaybackNormalizationSubtitle": "Equaliza el volumen entre las pistas utilizando sus etiquetas ReplayGain o R128, cuando estén presentes",
+  "@libraryPlaybackNormalizationSubtitle": {
+    "description": "Subtitle explaining playback volume normalization"
+  },
+  "cacheAudioAnalysis": "Caché de análisis de audio",
+  "@cacheAudioAnalysis": {
+    "description": "Cache item title for saved audio analysis results"
+  },
+  "cacheAudioAnalysisDesc": "Espectrogramas y resultados de análisis guardados. Se volverán a analizar la próxima vez que se abra el programa.",
+  "@cacheAudioAnalysisDesc": {
+    "description": "Description of what audio analysis cache contains"
   },
   "cacheExploreFeed": "Explorar caché de inicio",
   "@cacheExploreFeed": {
@@ -2946,6 +3270,10 @@
   "@trackReEnrichOnlineSubtitle": {
     "description": "Subtitle for re-enrich metadata action for local items"
   },
+  "trackReEnrichBatchSubtitle": "Choose an online or manual update, then review every change before writing",
+  "@trackReEnrichBatchSubtitle": {
+    "description": "Subtitle for batch metadata update choices"
+  },
   "trackReEnrichFieldCover": "Carátula",
   "@trackReEnrichFieldCover": {
     "description": "Checkbox label for cover art field in re-enrich"
@@ -2973,6 +3301,82 @@
   "trackReEnrichSelectAll": "Seleccionar todos",
   "@trackReEnrichSelectAll": {
     "description": "Select all fields checkbox in re-enrich"
+  },
+  "trackReEnrichModeIsrc": "ISRC only",
+  "@trackReEnrichModeIsrc": {
+    "description": "Batch metadata mode that only writes ISRC"
+  },
+  "trackReEnrichModeIsrcSubtitle": "Find and add the recording identifier without changing other tags",
+  "@trackReEnrichModeIsrcSubtitle": {
+    "description": "Explanation for the ISRC-only batch metadata mode"
+  },
+  "trackReEnrichModeMissing": "Fill missing tags",
+  "@trackReEnrichModeMissing": {
+    "description": "Batch metadata mode that fills only empty tags"
+  },
+  "trackReEnrichModeMissingSubtitle": "Keep existing values and fill only fields that are empty",
+  "@trackReEnrichModeMissingSubtitle": {
+    "description": "Explanation for the fill-missing batch metadata mode"
+  },
+  "trackReEnrichModeReplace": "Update selected tags",
+  "@trackReEnrichModeReplace": {
+    "description": "Batch metadata mode that replaces selected tag groups"
+  },
+  "trackReEnrichModeReplaceSubtitle": "Choose which existing values may be replaced by online metadata",
+  "@trackReEnrichModeReplaceSubtitle": {
+    "description": "Explanation for the selected-tag batch metadata mode"
+  },
+  "trackReEnrichModeManual": "Set common values",
+  "@trackReEnrichModeManual": {
+    "description": "Batch metadata mode that applies shared values to every selected track"
+  },
+  "trackReEnrichModeManualSubtitle": "Apply the same values to every selected track",
+  "@trackReEnrichModeManualSubtitle": {
+    "description": "Explanation for the manual shared-value batch metadata mode"
+  },
+  "trackReEnrichManualFieldsTitle": "Values to apply",
+  "@trackReEnrichManualFieldsTitle": {
+    "description": "Heading above manual batch metadata inputs"
+  },
+  "trackReEnrichManualHint": "Leave a field empty to keep its current value. Track titles, numbers, and ISRCs stay unchanged.",
+  "@trackReEnrichManualHint": {
+    "description": "Safety explanation for manual batch metadata inputs"
+  },
+  "trackReEnrichFieldsTitle": "Tags to update",
+  "@trackReEnrichFieldsTitle": {
+    "description": "Heading above batch re-enrich field checkboxes"
+  },
+  "trackReEnrichReview": "Review changes",
+  "@trackReEnrichReview": {
+    "description": "Button that searches metadata and opens the batch change review"
+  },
+  "trackReEnrichReviewTitle": "Review metadata changes",
+  "@trackReEnrichReviewTitle": {
+    "description": "Title of the batch metadata review sheet"
+  },
+  "trackReEnrichReviewSubtitle": "{changeCount} proposed changes across {trackCount} tracks",
+  "@trackReEnrichReviewSubtitle": {
+    "description": "Summary shown above proposed batch metadata changes",
+    "placeholders": {
+      "changeCount": {
+        "type": "int"
+      },
+      "trackCount": {
+        "type": "int"
+      }
+    }
+  },
+  "trackReEnrichNoChanges": "No metadata changes were found for the selected tracks.",
+  "@trackReEnrichNoChanges": {
+    "description": "Message when batch metadata preview has no proposed changes"
+  },
+  "trackReEnrichApplyChanges": "Apply changes",
+  "@trackReEnrichApplyChanges": {
+    "description": "Confirmation button in the batch metadata review sheet"
+  },
+  "trackReEnrichRefreshOnline": "Refresh from online",
+  "@trackReEnrichRefreshOnline": {
+    "description": "Proposed value when lyrics will be refreshed during re-enrich"
   },
   "trackEditMetadata": "Editar información",
   "@trackEditMetadata": {
@@ -3008,7 +3412,15 @@
   "@trackReEnrichSearching": {
     "description": "Snackbar while searching metadata from internet for local items"
   },
+  "trackReEnrichPreparing": "Preparing metadata changes...",
+  "@trackReEnrichPreparing": {
+    "description": "Progress message while preparing manual batch metadata changes"
+  },
   "trackReEnrichSuccess": "Información ",
+  "trackReEnrichMetadataSaved": "Metadata saved",
+  "trackReEnrichLyricsUpdated": "Lyrics updated",
+  "trackReEnrichLyricsPreserved": "No new lyrics found; existing lyrics kept",
+  "trackReEnrichLyricsDisabled": "Lyrics not updated: lyric downloading is disabled in Settings",
   "@trackReEnrichSuccess": {
     "description": "Snackbar after successful re-enrichment"
   },
@@ -3070,6 +3482,14 @@
   "@trackConvertBitrate": {
     "description": "Label for bitrate selection"
   },
+  "trackConvertKeepOriginal": "Mantener archivo original",
+  "@trackConvertKeepOriginal": {
+    "description": "Toggle to preserve the source file during conversion"
+  },
+  "trackConvertKeepOriginalDescription": "Agrega el archivo convertido como una entrada independiente en la biblioteca",
+  "@trackConvertKeepOriginalDescription": {
+    "description": "Description for preserving the source file during conversion"
+  },
   "trackConvertConfirmTitle": "Confirmar conversión",
   "@trackConvertConfirmTitle": {
     "description": "Confirmation dialog title"
@@ -3092,6 +3512,18 @@
   "trackConvertConfirmMessageLossless": "Convertir de {sourceFormat} a {targetFormat}? \n(Sin pérdidas)\n\nEl archivo original será eliminado después de la conversión.",
   "@trackConvertConfirmMessageLossless": {
     "description": "Confirmation dialog message for lossless-to-lossless conversion",
+    "placeholders": {
+      "sourceFormat": {
+        "type": "String"
+      },
+      "targetFormat": {
+        "type": "String"
+      }
+    }
+  },
+  "trackConvertConfirmKeepOriginal": "¿Convertir desde {sourceFormat} a {targetFormat}?\n\nEl archivo original se conservará y el archivo convertido se agregará como una entrada independiente en la biblioteca.\n",
+  "@trackConvertConfirmKeepOriginal": {
+    "description": "Confirmation message when the source file will be preserved",
     "placeholders": {
       "sourceFormat": {
         "type": "String"
@@ -3169,7 +3601,7 @@
       }
     }
   },
-  "cueSplitSplitting": "Dividiendo hoja CUE... ({current}/{total})",
+  "cueSplitSplitting": "Dividiendo la hoja CUE... ({current}/{total})",
   "@cueSplitSplitting": {
     "description": "Snackbar while splitting CUE",
     "placeholders": {
@@ -3477,6 +3909,18 @@
       }
     }
   },
+  "selectionBatchConvertConfirmKeepOriginal": "¿Convertir {count} {count, plural, =1{track} other{tracks}} a {format}?\n\nLos archivos originales se conservarán y los archivos convertidos se agregarán como entradas separadas en la biblioteca.",
+  "@selectionBatchConvertConfirmKeepOriginal": {
+    "description": "Batch conversion confirmation when source files will be preserved",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "format": {
+        "type": "String"
+      }
+    }
+  },
   "selectionBatchConvertSuccess": "Se convirtieron {success} de {total} pistas a {format}",
   "@selectionBatchConvertSuccess": {
     "description": "Snackbar after batch conversion completes",
@@ -3567,7 +4011,7 @@
   "@lyricsProviderAppleMusicDesc": {
     "description": "Description for Apple Music provider"
   },
-  "lyricsProviderQqMusicDesc": "QQ Music (buena para canciones chinas, a\ntravés de proxy)",
+  "lyricsProviderQqMusicDesc": "QQ Music (good for Chinese songs, direct API)",
   "@lyricsProviderQqMusicDesc": {
     "description": "Description for QQ Music provider"
   },
@@ -3679,6 +4123,14 @@
   "@backupContentsTitle": {
     "description": "Header above the list summarizing what the backup contains"
   },
+  "backupSettingsOnly": "Settings only",
+  "backupSelectHistory": "Download history",
+  "backupSelectCollections": "Library collections",
+  "backupSelectCollectionsDescription": "Liked tracks, wishlist, favorite artists, playlists and playlist covers.",
+  "backupSelectExtensions": "Extensions and their settings",
+  "backupSelectedExportDescription": "Save the selected categories to a backup file. Audio files are not included.",
+  "backupSelectAtLeastOne": "Select at least one category to create a backup.",
+  "backupSelectedRestoreMessage": "Only the categories listed below will be restored. Categories not included in this backup will stay unchanged. Restoring can replace existing data and cannot be undone.",
   "backupContentsSettings": "Configuración de la aplicación",
   "@backupContentsSettings": {
     "description": "Backup contents row label for settings"
@@ -3842,6 +4294,10 @@
   "@downloadLocationSubtitle": {
     "description": "Subtitle shown in the download location picker sheet"
   },
+  "storageAutomaticFolder": "Automatic folder",
+  "storageAutomaticDownloadFolder": "Uses Download/SpotiFLAC when writable, otherwise app storage",
+  "storageSafRecommended": "Choose folder (Recommended)",
+  "storageDownloadFolderHint": "In the Android folder picker, open Download and select SpotiFLAC. If it does not exist, create it using New folder, then tap Use this folder to grant access.",
   "storageModeAppFolder": "Carpeta de la App (Recomendado)",
   "@storageModeAppFolder": {
     "description": "Storage mode option - app-managed folder"
@@ -3857,6 +4313,26 @@
   "storageModeSafSubtitle": "Escoge cualquier carpeta, incluyendo la tarjeta SD",
   "@storageModeSafSubtitle": {
     "description": "Subtitle for SAF storage mode"
+  },
+  "downloadFolderAccessLostTitle": "Se perdió el acceso a la carpeta de descargas",
+  "@downloadFolderAccessLostTitle": {
+    "description": "Title of the warning banner shown in Files settings when the saved SAF folder grant is no longer valid"
+  },
+  "downloadFolderAccessLostSubtitle": "Las descargas fallarán hasta que vuelvas a seleccionar la carpeta",
+  "@downloadFolderAccessLostSubtitle": {
+    "description": "Subtitle of the warning banner shown when the saved SAF folder grant is no longer valid"
+  },
+  "downloadFolderReselect": "Volver a seleccionar carpeta",
+  "@downloadFolderReselect": {
+    "description": "Button that reopens the folder picker to restore download folder access"
+  },
+  "downloadErrorSafPermissionLost": "Permiso SAF inválido o revocado. Por favor, reconfigura la ubicación de descarga en Configuración.",
+  "@downloadErrorSafPermissionLost": {
+    "description": "Error shown on downloads that failed because the persisted Android SAF folder grant is no longer valid"
+  },
+  "downloadErrorFolderAccessLost": "Se ha perdido el acceso a la carpeta de descarga. Por favor, vuelve a seleccionar tu carpeta de descargas en Configuración.",
+  "@downloadErrorFolderAccessLost": {
+    "description": "Error shown on downloads that failed because the iOS download folder bookmark could not be opened"
   },
   "downloadFilenameDescription": "Usa {artist}, {title}, {album}, {track}, {year}, {date}, {disc} como marcadores de posición.",
   "@downloadFilenameDescription": {
@@ -3902,7 +4378,7 @@
   "@downloadNetworkCompatibilityMode": {
     "description": "Setting for legacy TLS/network handling"
   },
-  "downloadNetworkCompatibilityModeEnabled": "Uso de ajustes TLS heredados para redes antiguas",
+  "downloadNetworkCompatibilityModeEnabled": "Allowing legacy HTTP endpoints; TLS verification remains enabled",
   "@downloadNetworkCompatibilityModeEnabled": {
     "description": "Subtitle when network compatibility mode is on"
   },
@@ -4084,6 +4560,47 @@
   "@editMetadataAutoFillDesc": {
     "description": "Description for the auto-fill section"
   },
+  "editMetadataAutoFillSource": "Fuente de metadatos",
+  "@editMetadataAutoFillSource": {
+    "description": "Label for the metadata extension selector in online auto-fill"
+  },
+  "editMetadataAutoFillSourceAutomatic": "Automático (prioridad del proveedor)",
+  "@editMetadataAutoFillSourceAutomatic": {
+    "description": "Automatic source option that follows configured metadata provider priority"
+  },
+  "editMetadataAutoFillFind": "Buscar metadatos",
+  "@editMetadataAutoFillFind": {
+    "description": "Button label for finding an online metadata candidate"
+  },
+  "editMetadataAutoFillPreview": "Datos de {source}",
+  "@editMetadataAutoFillPreview": {
+    "description": "Title for the online metadata preview",
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "editMetadataAutoFillCoverAvailable": "Portada disponible",
+  "@editMetadataAutoFillCoverAvailable": {
+    "description": "Preview value when the selected metadata source provides cover artwork"
+  },
+  "editMetadataAutoFillApply": "Aplicar datos seleccionados",
+  "@editMetadataAutoFillApply": {
+    "description": "Button label for applying the previewed metadata"
+  },
+  "editMetadataAutoFillDoneFromSource": "Rellenado {count} {count, plural, =1{field} other{fields}} de {source}",
+  "@editMetadataAutoFillDoneFromSource": {
+    "description": "Snackbar confirming fields applied from a selected metadata source",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "source": {
+        "type": "String"
+      }
+    }
+  },
   "editMetadataAutoFillFetch": "Recuperar y llenar",
   "@editMetadataAutoFillFetch": {
     "description": "Button label to fetch online metadata and fill selected fields"
@@ -4212,6 +4729,27 @@
   "@queueEmptySinglesSubtitle": {
     "description": "Empty state subtitle for single track downloads"
   },
+  "queuePlaylistCount": "{count, plural, =1{1 playlist} other{{count} playlists}}",
+  "@queuePlaylistCount": {
+    "description": "Playlist count label with plural support",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "queueEmptyPlaylistsSubtitle": "Crea una lista de reproducción para organizar tus temas",
+  "@queueEmptyPlaylistsSubtitle": {
+    "description": "Empty state subtitle for the playlists library view"
+  },
+  "libraryDefaultView": "Vista predeterminada",
+  "@libraryDefaultView": {
+    "description": "Setting title - which library view opens when switching to the Library tab"
+  },
+  "libraryDefaultViewLastUsed": "Último uso",
+  "@libraryDefaultViewLastUsed": {
+    "description": "Default view option - keep the last used library view"
+  },
   "queueEmptyHistory": "No hay historial de descargas",
   "@queueEmptyHistory": {
     "description": "Empty state title when download history is empty"
@@ -4312,6 +4850,10 @@
   "@audioAnalysisSpectralCutoff": {
     "description": "Estimated spectral cutoff metric label"
   },
+  "audioAnalysisCutoffNotDetected": "Not detected",
+  "@audioAnalysisCutoffNotDetected": {
+    "description": "Displayed when no reliable broadband spectral cutoff can be detected"
+  },
   "audioAnalysisChannelStats": "Per-channel Stats",
   "@audioAnalysisChannelStats": {
     "description": "Per-channel audio analysis section label"
@@ -4323,6 +4865,131 @@
   "audioAnalysisRescan": "Volver a analizar",
   "@audioAnalysisRescan": {
     "description": "Tooltip/label for the button that re-runs the audio analysis, discarding cached results"
+  },
+  "downloadRedownloadFakeHiRes": "Re-download fake Hi-Res",
+  "@downloadRedownloadFakeHiRes": {
+    "description": "Setting title: automatically replace downloads that measure as fake Hi-Res"
+  },
+  "downloadRedownloadFakeHiResSubtitle": "Off by default. Check Hi-Res downloads and replace only when every audio sample is preserved. Keep the original if verification or processing fails",
+  "@downloadRedownloadFakeHiResSubtitle": {
+    "description": "Setting subtitle for the fake Hi-Res re-download toggle"
+  },
+  "hiResCheckVerdictFakeCertain": "Fake Hi-Res",
+  "@hiResCheckVerdictFakeCertain": {
+    "description": "Verdict: an exact fingerprint (padded bits or upsampling pattern) proves the file is not real Hi-Res"
+  },
+  "hiResCheckVerdictFakeSuspect": "Possibly a filtered master",
+  "@hiResCheckVerdictFakeSuspect": {
+    "description": "Verdict: fails the cutoff test but may be a genuine master low-pass filtered in mastering"
+  },
+  "hiResCheckReasonSampleHold": "Every sample is repeated: upsampled by duplication",
+  "@hiResCheckReasonSampleHold": {
+    "description": "Reason: sample-and-hold upsampling detected"
+  },
+  "hiResCheckReasonInterpolation": "In-between samples are linearly interpolated",
+  "@hiResCheckReasonInterpolation": {
+    "description": "Reason: linear-interpolation upsampling detected"
+  },
+  "hiResCheckReasonImaging": "Content above 22 kHz mirrors the audible band",
+  "@hiResCheckReasonImaging": {
+    "description": "Reason: spectral imaging from upsampling detected"
+  },
+  "hiResCheckMusicContent": "Musical content",
+  "@hiResCheckMusicContent": {
+    "description": "Label for the highest frequency that still moves with the music"
+  },
+  "hiResCheckUltrasonicNoise": "Above {cutoff} only steady noise (typical of DSD or analog tape transfers): a {rate} file would hold all the music",
+  "@hiResCheckUltrasonicNoise": {
+    "description": "Shown when the ultrasonic content of a Hi-Res file is noise rather than music",
+    "placeholders": {
+      "cutoff": {
+        "type": "String"
+      },
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "hiResCheckTitle": "Hi-Res Authenticity",
+  "@hiResCheckTitle": {
+    "description": "Title of the fake Hi-Res check card"
+  },
+  "hiResCheckDescription": "Detect upsampled or bit-padded fake Hi-Res files",
+  "@hiResCheckDescription": {
+    "description": "Explains what the Hi-Res authenticity check does"
+  },
+  "hiResCheckRun": "Check",
+  "@hiResCheckRun": {
+    "description": "Button that starts the Hi-Res authenticity check"
+  },
+  "hiResCheckChecking": "Checking Hi-Res authenticity...",
+  "@hiResCheckChecking": {
+    "description": "Loading text while the Hi-Res check runs"
+  },
+  "hiResCheckVerdictFake": "Likely fake Hi-Res",
+  "@hiResCheckVerdictFake": {
+    "description": "Verdict: the file claims Hi-Res but does not measure as it"
+  },
+  "hiResCheckVerdictGenuine": "Measures as genuine Hi-Res",
+  "@hiResCheckVerdictGenuine": {
+    "description": "Verdict: no upsampling or padded bit depth found"
+  },
+  "hiResCheckVerdictStandard": "Standard definition, nothing to flag",
+  "@hiResCheckVerdictStandard": {
+    "description": "Verdict: neither sample rate nor bit depth claims Hi-Res"
+  },
+  "hiResCheckVerdictInconclusive": "Inconclusive: the analyzed segment is too quiet or short",
+  "@hiResCheckVerdictInconclusive": {
+    "description": "Verdict: analysis could not reach a reliable conclusion"
+  },
+  "hiResCheckUnsupported": "Only FLAC and WAV files can be checked",
+  "@hiResCheckUnsupported": {
+    "description": "Shown when the file format cannot be decoded by the Hi-Res check"
+  },
+  "hiResCheckCutoff": "Content cutoff",
+  "@hiResCheckCutoff": {
+    "description": "Label for the highest frequency with real content"
+  },
+  "hiResCheckBitsInUse": "Bits in use",
+  "@hiResCheckBitsInUse": {
+    "description": "Label for effective vs declared bit depth"
+  },
+  "hiResCheckDisclaimer": "The spectrum stops early, but nothing proves it was upsampled: it may be a genuine master low-pass filtered in mastering. It is not replaced automatically.",
+  "@hiResCheckDisclaimer": {
+    "description": "Caveat shown under a fake Hi-Res verdict"
+  },
+  "hiResCheckFailed": "Hi-Res check failed: {error}",
+  "@hiResCheckFailed": {
+    "description": "Error shown when the Hi-Res check fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "hiResCheckReasonRate": "Declares {sampleRate} but content stops at ~{cutoff}",
+  "@hiResCheckReasonRate": {
+    "description": "Reason for a fake verdict caused by upsampling",
+    "placeholders": {
+      "sampleRate": {
+        "type": "String"
+      },
+      "cutoff": {
+        "type": "String"
+      }
+    }
+  },
+  "hiResCheckReasonDepth": "Declares {declared}-bit but only {effective} bits carry data",
+  "@hiResCheckReasonDepth": {
+    "description": "Reason for a fake verdict caused by padded bit depth",
+    "placeholders": {
+      "declared": {
+        "type": "int"
+      },
+      "effective": {
+        "type": "int"
+      }
+    }
   },
   "audioAnalysisRescanning": "Volviendo a analizar audio...",
   "@audioAnalysisRescanning": {
@@ -4381,6 +5048,14 @@
   "cancelDownloadKeep": "Mantener",
   "@cancelDownloadKeep": {
     "description": "Dialog button - keep the active download (do not cancel)"
+  },
+  "queueCancelledTitle": "Descarga cancelada",
+  "@queueCancelledTitle": {
+    "description": "Dialog title when opening a cancelled queue item"
+  },
+  "queueCancelledMessage": "This download was cancelled. Retry it or remove it from the queue.",
+  "@queueCancelledMessage": {
+    "description": "Dialog body when opening a cancelled queue item"
   },
   "metadataSaveFailedFfmpeg": "Failed to save metadata via FFmpeg",
   "@metadataSaveFailedFfmpeg": {
@@ -4464,6 +5139,14 @@
         "type": "int"
       }
     }
+  },
+  "notifVerificationRequiredTitle": "Verification required",
+  "@notifVerificationRequiredTitle": {
+    "description": "Notification title shown when a download needs the user to complete a verification challenge but the app is in the background"
+  },
+  "notifVerificationRequiredBody": "Open the app to complete verification and resume downloads",
+  "@notifVerificationRequiredBody": {
+    "description": "Notification body prompting the user to return to the app to solve a verification challenge"
   },
   "notifAllDownloadsComplete": "Todas las descargas completadas",
   "@notifAllDownloadsComplete": {
@@ -4565,7 +5248,7 @@
       }
     }
   },
-  "notifLibraryScanFailed": "Library scan failed",
+  "notifLibraryScanFailed": "Error al escanear la biblioteca",
   "@notifLibraryScanFailed": {
     "description": "Notification title when library scan fails"
   },
@@ -4641,7 +5324,7 @@
   },
   "homeImportCsvTooltip": "Import playlist (CSV, M3U)",
   "@homeImportCsvTooltip": {
-    "description": "Tooltip for importing a CSV file into Home search"
+    "description": "Tooltip for importing a CSV or M3U playlist file into Home search"
   },
   "homeChangeSearchProviderTooltip": "Change search provider",
   "@homeChangeSearchProviderTooltip": {
@@ -4707,6 +5390,18 @@
   "@trackCoverReplaceNotice": {
     "description": "Notice shown when a new cover has been selected but not saved yet"
   },
+  "trackCoverResolution": "Cover resolution",
+  "@trackCoverResolution": {
+    "description": "Label for selecting the embedded cover art resolution"
+  },
+  "trackCoverResolutionHint": "Sets the longest edge when saved. Enlarging does not add image detail.",
+  "@trackCoverResolutionHint": {
+    "description": "Explanation below the embedded cover art resolution selector"
+  },
+  "trackCoverResizeFailed": "The cover image could not be resized. Please try another size or image.",
+  "@trackCoverResizeFailed": {
+    "description": "Error shown when resizing cover art before saving metadata fails"
+  },
   "actionStop": "Detener",
   "@actionStop": {
     "description": "Generic action - stop"
@@ -4715,9 +5410,62 @@
   "@queueFinalizingDownload": {
     "description": "Accessibility label for a queue item that is finalizing"
   },
+  "queueDownloadNext": "Download next",
+  "@queueDownloadNext": {
+    "description": "Tooltip on a queued download row; moves the item to the front of the queue so the next free slot downloads it"
+  },
+  "queueMoveUp": "Move up",
+  "@queueMoveUp": {
+    "description": "Queue item menu action - move the queued item one position earlier"
+  },
+  "queueMoveDown": "Move down",
+  "@queueMoveDown": {
+    "description": "Queue item menu action - move the queued item one position later"
+  },
+  "editMetadataMusicBrainzButton": "Fetch from MusicBrainz",
+  "@editMetadataMusicBrainzButton": {
+    "description": "Tag editor button that fills genre and album artist from MusicBrainz by ISRC"
+  },
+  "editMetadataMusicBrainzFilled": "Updated from MusicBrainz",
+  "@editMetadataMusicBrainzFilled": {
+    "description": "Snackbar after MusicBrainz suggestions were applied to the tag editor fields"
+  },
+  "editMetadataMusicBrainzNothing": "Nothing found on MusicBrainz",
+  "@editMetadataMusicBrainzNothing": {
+    "description": "Snackbar when the MusicBrainz lookup returns no data"
+  },
+  "editMetadataMusicBrainzNeedsIsrc": "Requires an ISRC tag",
+  "@editMetadataMusicBrainzNeedsIsrc": {
+    "description": "Snackbar when the MusicBrainz lookup is tapped without an ISRC"
+  },
+  "nowPlayingRepeatOff": "Repeat off",
+  "@nowPlayingRepeatOff": {
+    "description": "Repeat toggle tooltip when repeat is disabled"
+  },
+  "nowPlayingRepeatAll": "Repeat all",
+  "@nowPlayingRepeatAll": {
+    "description": "Repeat toggle tooltip when the whole queue repeats"
+  },
+  "nowPlayingRepeatOne": "Repeat one",
+  "@nowPlayingRepeatOne": {
+    "description": "Repeat toggle tooltip when the current track repeats"
+  },
+  "queueNetworkFailedOffline": "{count} downloads failed while offline",
+  "@queueNetworkFailedOffline": {
+    "description": "Snackbar shown when connectivity returns and network-failed downloads can be retried",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "queueDownloadedFileMissing": "Downloaded file missing",
   "@queueDownloadedFileMissing": {
     "description": "Accessibility label when a downloaded file is missing from disk"
+  },
+  "queueCheckingDownloadedFile": "Checking downloaded file...",
+  "@queueCheckingDownloadedFile": {
+    "description": "Accessibility label while the app checks whether a just-completed download has appeared at its final path yet. Not about authentication or a download session."
   },
   "queueDownloadCompleted": "Descarga completada",
   "@queueDownloadCompleted": {
@@ -4978,9 +5726,25 @@
   "@downloadDeduplicationEnabled": {
     "description": "Subtitle when deduplication is on"
   },
+  "downloadDeduplicationWithQualityVariants": "Existing files at the selected quality will be skipped",
+  "@downloadDeduplicationWithQualityVariants": {
+    "description": "Deduplication subtitle when separate quality versions are allowed"
+  },
   "downloadDeduplicationDisabled": "Todas las pistas se descargarán independientemente del historial",
   "@downloadDeduplicationDisabled": {
     "description": "Subtitle when deduplication is off"
+  },
+  "downloadQualityVariants": "Allow different quality versions",
+  "@downloadQualityVariants": {
+    "description": "Setting to retain multiple quality versions of the same track"
+  },
+  "downloadQualityVariantsDescription": "Keep every quality version; add its measured quality to the filename only when the name is already used",
+  "@downloadQualityVariantsDescription": {
+    "description": "Description for retaining multiple quality versions"
+  },
+  "trackOptionDownloadQualityVariant": "Download another quality",
+  "@trackOptionDownloadQualityVariant": {
+    "description": "Track menu action to download another quality version"
   },
   "downloadFallbackExtensions": "Reslpado de extensiones",
   "@downloadFallbackExtensions": {
@@ -5010,6 +5774,34 @@
   "@editMetadataFieldComment": {
     "description": "Label for comment field in the edit metadata sheet"
   },
+  "trackAlbumType": "Release Type",
+  "@trackAlbumType": {
+    "description": "Label for an album or release type metadata value"
+  },
+  "editMetadataFieldAlbumTypeHint": "Album, single, EP, compilation...",
+  "@editMetadataFieldAlbumTypeHint": {
+    "description": "Hint for the release type metadata field"
+  },
+  "editMetadataFieldExplicit": "Explicit",
+  "@editMetadataFieldExplicit": {
+    "description": "Label for the explicit content metadata field"
+  },
+  "editMetadataFieldExplicitHint": "Mark this track as containing explicit content",
+  "@editMetadataFieldExplicitHint": {
+    "description": "Description for the explicit content metadata switch"
+  },
+  "metadataExplicitValue": "Explicit",
+  "@metadataExplicitValue": {
+    "description": "Displayed value when a track is marked explicit"
+  },
+  "editMetadataFieldUpc": "UPC / Barcode",
+  "@editMetadataFieldUpc": {
+    "description": "Label for the release barcode metadata field"
+  },
+  "editMetadataFieldUpcHint": "Numeric UPC, EAN, or GTIN",
+  "@editMetadataFieldUpcHint": {
+    "description": "Hint for the release barcode metadata field"
+  },
   "editMetadataAdvanced": "Avanzado",
   "@editMetadataAdvanced": {
     "description": "Expandable section label for advanced metadata fields"
@@ -5029,6 +5821,10 @@
   "libraryFilterMetadataIncorrectIsrcFormat": "Formato de ISRC erróneo",
   "@libraryFilterMetadataIncorrectIsrcFormat": {
     "description": "Filter option - items with an invalid ISRC format"
+  },
+  "libraryFilterMetadataMissingIsrc": "Missing ISRC",
+  "@libraryFilterMetadataMissingIsrc": {
+    "description": "Filter option - items without any ISRC tag"
   },
   "libraryFilterMetadataMissingLabel": "Falta etiqueta",
   "@libraryFilterMetadataMissingLabel": {
@@ -5122,8 +5918,16 @@
     }
   },
   "queueDownloadStarting": "Comenzando...",
+  "queueCheckingDownloadSession": "Checking download session...",
+  "queueResolvingDownloadMetadata": "Resolving track metadata...",
+  "queueResolvingDownloadStream": "Preparing audio stream...",
+  "queueWaitingForVerification": "Waiting for verification...",
+  "queueResumingAfterVerification": "Resuming after verification...",
   "@queueDownloadStarting": {
     "description": "Queue status before download progress is available"
+  },
+  "@queueCheckingDownloadSession": {
+    "description": "Queue status while the download provider's session is being checked during preparation (preparationStage 'checking_session'). This is about the provider session, not about locating a finished file."
   },
   "a11ySelectTrack": "Seleccionar pista",
   "@a11ySelectTrack": {
@@ -5210,7 +6014,7 @@
   "@downloadNativeWorker": {
     "description": "Setting title for Android native download worker"
   },
-  "downloadNativeWorkerSubtitle": "Servicio de Android en segundo plano para descargas de extensiones",
+  "downloadNativeWorkerSubtitle": "Android background service for extension downloads",
   "@downloadNativeWorkerSubtitle": {
     "description": "Setting subtitle for Android native download worker"
   },
@@ -5491,10 +6295,55 @@
     "description": "Title for the playback queue sheet"
   },
   "nowPlayingPreviousTrack": "Previous track",
+  "@nowPlayingPreviousTrack": {
+    "description": "Tooltip for the previous-track playback control"
+  },
   "nowPlayingNextTrack": "Next track",
+  "@nowPlayingNextTrack": {
+    "description": "Tooltip for the next-track playback control"
+  },
   "nowPlayingDetails": "Details",
   "@nowPlayingDetails": {
     "description": "Menu item and section title for track metadata details"
+  },
+  "nowPlayingSleepTimer": "Sleep timer",
+  "@nowPlayingSleepTimer": {
+    "description": "Menu item and sheet title for the playback sleep timer"
+  },
+  "nowPlayingSleepTimerActive": "Ends at {time}",
+  "@nowPlayingSleepTimerActive": {
+    "description": "Active sleep timer deadline shown in the player menu",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "nowPlayingSleepTimerMinutes": "{minutes, plural, =1{1 minute} other{{minutes} minutes}}",
+  "@nowPlayingSleepTimerMinutes": {
+    "description": "Duration choice for the playback sleep timer",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "nowPlayingSleepTimerOff": "Turn off sleep timer",
+  "@nowPlayingSleepTimerOff": {
+    "description": "Action to cancel the active playback sleep timer"
+  },
+  "nowPlayingSleepTimerSet": "Sleep timer set for {duration}",
+  "@nowPlayingSleepTimerSet": {
+    "description": "Confirmation after setting the playback sleep timer",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "nowPlayingSleepTimerCancelled": "Sleep timer turned off",
+  "@nowPlayingSleepTimerCancelled": {
+    "description": "Confirmation after cancelling the playback sleep timer"
   },
   "nowPlayingOpenInExternalPlayer": "Open in external player",
   "@nowPlayingOpenInExternalPlayer": {
@@ -5838,6 +6687,15 @@
   "@extensionVerificationBrowserInApp": {
     "description": "Chip label for in-app browser verification mode"
   },
+  "extensionVerificationUnavailable": "No verification page is available for {extension}. Retry the download to request a new challenge.",
+  "@extensionVerificationUnavailable": {
+    "description": "Shown when the app cannot retrieve a pending verification challenge",
+    "placeholders": {
+      "extension": {
+        "type": "String"
+      }
+    }
+  },
   "extensionVerificationHelpTitleManual": "Open verification manually",
   "@extensionVerificationHelpTitleManual": {
     "description": "Dialog title when automatic browser launch for verification fails"
@@ -5870,233 +6728,102 @@
   "@extensionVerificationOpenBrowser": {
     "description": "Button to open the extension verification URL in a browser"
   },
-  "updateRequiredTitle": "Actualización Necesaria",
-  "@updateRequiredTitle": {
-    "description": "Title of the mandatory update dialog shown when the installed version is too old"
-  },
-  "updateRequiredNotice": "Esta versión está {count} lanzamientos detrás de la actual y ya no es soportada. Actualice para seguir usando la app.",
-  "@updateRequiredNotice": {
-    "description": "Subtitle of the mandatory update dialog; explains why the dialog cannot be dismissed",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "appearanceHeroAnimations": "Animaciones Hero",
-  "@appearanceHeroAnimations": {
-    "description": "Toggle for shared-element (Hero) transitions"
-  },
-  "appearanceHeroAnimationsSubtitle": "Covers voladores entre pantallas, ejemplo: cuando abre el reproductor",
-  "@appearanceHeroAnimationsSubtitle": {
-    "description": "Subtitle for the Hero animations toggle"
-  },
-  "settingsConcurrentDownloads": "Descargas concurrentes",
-  "@settingsConcurrentDownloads": {
-    "description": "Setting title - how many tracks download at the same time"
-  },
-  "settingsConcurrentDownloadsSubtitle": "Descargar varios archivos a la vez es rápido, pero con algunos proveedores puede haber un límite en pedidos paralelos.",
-  "@settingsConcurrentDownloadsSubtitle": {
-    "description": "Subtitle explaining the concurrent downloads picker"
-  },
-  "concurrentDownloadsOne": "1 archivo a la vez",
-  "@concurrentDownloadsOne": {
-    "description": "Concurrent downloads option - sequential"
-  },
-  "concurrentDownloadsCount": "Hasta {count} archivos a la vez",
-  "@concurrentDownloadsCount": {
-    "description": "Concurrent downloads option - parallel",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "libraryPlaybackNormalization": "Normalización de volumen",
-  "@libraryPlaybackNormalization": {
-    "description": "Toggle title for ReplayGain playback normalization in the built-in player"
-  },
-  "libraryPlaybackNormalizationSubtitle": "Equaliza el volumen entre las pistas utilizando sus etiquetas ReplayGain o R128, cuando estén presentes",
-  "@libraryPlaybackNormalizationSubtitle": {
-    "description": "Subtitle explaining playback volume normalization"
-  },
-  "cacheAudioAnalysis": "Caché de análisis de audio",
-  "@cacheAudioAnalysis": {
-    "description": "Cache item title for saved audio analysis results"
-  },
-  "cacheAudioAnalysisDesc": "Espectrogramas y resultados de análisis guardados. Se volverán a analizar la próxima vez que se abra el programa.",
-  "@cacheAudioAnalysisDesc": {
-    "description": "Description of what audio analysis cache contains"
-  },
-  "trackConvertKeepOriginal": "Mantener archivo original",
-  "@trackConvertKeepOriginal": {
-    "description": "Toggle to preserve the source file during conversion"
-  },
-  "trackConvertKeepOriginalDescription": "Agrega el archivo convertido como una entrada independiente en la biblioteca",
-  "@trackConvertKeepOriginalDescription": {
-    "description": "Description for preserving the source file during conversion"
-  },
-  "trackConvertConfirmKeepOriginal": "¿Convertir desde {sourceFormat} a {targetFormat}?\n\nEl archivo original se conservará y el archivo convertido se agregará como una entrada independiente en la biblioteca.\n",
-  "@trackConvertConfirmKeepOriginal": {
-    "description": "Confirmation message when the source file will be preserved",
-    "placeholders": {
-      "sourceFormat": {
-        "type": "String"
-      },
-      "targetFormat": {
-        "type": "String"
-      }
-    }
-  },
-  "selectionBatchConvertConfirmKeepOriginal": "¿Convertir {count} {count, plural, =1{track} other{tracks}} a {format}?\n\nLos archivos originales se conservarán y los archivos convertidos se agregarán como entradas separadas en la biblioteca.",
-  "@selectionBatchConvertConfirmKeepOriginal": {
-    "description": "Batch conversion confirmation when source files will be preserved",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      },
-      "format": {
-        "type": "String"
-      }
-    }
-  },
-  "downloadFolderAccessLostTitle": "Se perdió el acceso a la carpeta de descargas",
-  "@downloadFolderAccessLostTitle": {
-    "description": "Title of the warning banner shown in Files settings when the saved SAF folder grant is no longer valid"
-  },
-  "downloadFolderAccessLostSubtitle": "Las descargas fallarán hasta que vuelvas a seleccionar la carpeta",
-  "@downloadFolderAccessLostSubtitle": {
-    "description": "Subtitle of the warning banner shown when the saved SAF folder grant is no longer valid"
-  },
-  "downloadFolderReselect": "Volver a seleccionar carpeta",
-  "@downloadFolderReselect": {
-    "description": "Button that reopens the folder picker to restore download folder access"
-  },
-  "downloadErrorSafPermissionLost": "Permiso SAF inválido o revocado. Por favor, reconfigura la ubicación de descarga en Configuración.",
-  "@downloadErrorSafPermissionLost": {
-    "description": "Error shown on downloads that failed because the persisted Android SAF folder grant is no longer valid"
-  },
-  "downloadErrorFolderAccessLost": "Se ha perdido el acceso a la carpeta de descarga. Por favor, vuelve a seleccionar tu carpeta de descargas en Configuración.",
-  "@downloadErrorFolderAccessLost": {
-    "description": "Error shown on downloads that failed because the iOS download folder bookmark could not be opened"
-  },
-  "notifVerificationRequiredTitle": "Verification required",
-  "@notifVerificationRequiredTitle": {
-    "description": "Notification title shown when a download needs the user to complete a verification challenge but the app is in the background"
-  },
-  "notifVerificationRequiredBody": "Open the app to complete verification and resume downloads",
-  "@notifVerificationRequiredBody": {
-    "description": "Notification body prompting the user to return to the app to solve a verification challenge"
-  },
-  "downloadDeduplicationWithQualityVariants": "Existing files at the selected quality will be skipped",
-  "@downloadDeduplicationWithQualityVariants": {
-    "description": "Deduplication subtitle when separate quality versions are allowed"
-  },
-  "downloadQualityVariants": "Allow different quality versions",
-  "@downloadQualityVariants": {
-    "description": "Setting to retain multiple quality versions of the same track"
-  },
-  "downloadQualityVariantsDescription": "Keep every quality version; add its measured quality to the filename only when the name is already used",
-  "@downloadQualityVariantsDescription": {
-    "description": "Description for retaining multiple quality versions"
-  },
-  "trackOptionDownloadQualityVariant": "Download another quality",
-  "@trackOptionDownloadQualityVariant": {
-    "description": "Track menu action to download another quality version"
-  },
-  "queueCheckingDownloadSession": "Checking download session...",
-  "queueResolvingDownloadMetadata": "Resolving track metadata...",
-  "queueResolvingDownloadStream": "Preparing audio stream...",
-  "queueWaitingForVerification": "Waiting for verification...",
-  "queueResumingAfterVerification": "Resuming after verification...",
   "settingsSearchHint": "Search settings",
+  "@settingsSearchHint": {
+    "description": "Placeholder of the search field on the Settings tab"
+  },
   "settingsSearchNoResults": "No settings match \"{query}\"",
+  "@settingsSearchNoResults": {
+    "description": "Shown when a Settings search returns nothing",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "settingsGroupInterface": "Extensions & appearance",
+  "@settingsGroupInterface": {
+    "description": "Settings group covering look and feel"
+  },
   "settingsGroupContent": "Content & metadata",
+  "@settingsGroupContent": {
+    "description": "Settings group covering the library, metadata and lyrics"
+  },
   "settingsGroupDownloads": "Downloads & files",
+  "@settingsGroupDownloads": {
+    "description": "Settings group covering download behaviour and storage"
+  },
   "settingsGroupSystem": "System",
+  "@settingsGroupSystem": {
+    "description": "Settings group covering app-level data, cache and logs"
+  },
   "settingsGroupHelp": "About & support",
-  "collectionExportM3u": "Exportar como M3U8",
-  "collectionExportM3uDone": "Exportado {exported} de {total} pistas",
-  "collectionExportM3uNone": "No hay archivos descargados para exportar",
-  "collectionExportM3uFailed": "Exportación fallida",
-  "trackOpenOn": "Abrir en...",
-  "trackOpenOnNoLinks": "No se han encontrado enlaces para esta pista.",
-  "libraryReviewDuplicates": "Revisar duplicados",
-  "libraryReviewDuplicatesSubtitle": "Encontrar pistas almacenadas más de una vez",
-  "duplicatesTitle": "Duplicados",
-  "duplicatesEmpty": "No se han encontrado pistas duplicadas.",
-  "duplicatesKeepBest": "Mantener mejor",
-  "duplicatesKeepBestMessage": "¿Eliminar {count} copias de menor calidad del \"{trackName}\"?",
-  "duplicatesDeleteCopyMessage": "¿Eliminar esta copia de \"{trackName}\"?",
-  "downloadAutoConvert": "Auto-convert after download",
-  "downloadAutoConvertSubtitle": "Convert completed downloads to a smaller lossy format. The original is replaced only after conversion succeeds.",
-  "downloadAutoConvertFormat": "Output format",
-  "downloadAutoConvertFormatSubtitle": "Choose the lossy format used for newly completed downloads.",
-  "downloadAutoConvertBitrate": "Output quality",
-  "downloadAutoConvertBitrateSubtitle": "Higher bitrates preserve more detail but create larger files.",
-  "downloadAutoConvertMp3Subtitle": "Best compatibility across players and devices",
-  "downloadAutoConvertM4aSubtitle": "Efficient AAC audio in an M4A container",
-  "downloadAutoConvertOpusSubtitle": "Best efficiency for modern players",
-  "appearanceForceBlur": "Siempre use efecto desenfoque",
-  "appearanceForceBlurSubtitle": "Habilite la barra de navegación desenfocada incluso en dispositivos donde está desactivada por defecto. Puede costar rendimiento.",
-  "recentClearAllMessage": "Clear all recent activity? Download history and music files will not be deleted.",
-  "libraryAddFolder": "Add library folder",
-  "libraryAddFolderSubtitle": "Internal storage, SD card, SSD, or another external drive",
-  "librarySourceOnline": "Online",
-  "librarySourceOffline": "Offline. Reconnect the storage to restore these tracks",
-  "librarySourceDisabled": "Disabled",
-  "librarySourceScanCount": "{scanned} of {total} files scanned ({progress}%)",
-  "libraryExternalStorage": "External storage",
-  "libraryRemoveFolder": "Remove library folder",
-  "libraryRemoveFolderMessage": "Remove this folder and its indexed tracks from SpotiFLAC Mobile? Audio files on the storage will not be deleted.",
-  "trackReEnrichModeIsrc": "ISRC only",
-  "trackReEnrichModeIsrcSubtitle": "Find and add the recording identifier without changing other tags",
-  "trackReEnrichModeMissing": "Fill missing tags",
-  "trackReEnrichModeMissingSubtitle": "Keep existing values and fill only fields that are empty",
-  "trackReEnrichModeReplace": "Update selected tags",
-  "trackReEnrichModeReplaceSubtitle": "Choose which existing values may be replaced by online metadata",
-  "trackReEnrichFieldsTitle": "Tags to update",
-  "trackReEnrichReview": "Review changes",
-  "trackReEnrichReviewTitle": "Review metadata changes",
-  "trackReEnrichReviewSubtitle": "{changeCount} proposed changes across {trackCount} tracks",
-  "trackReEnrichNoChanges": "No metadata changes were found for the selected tracks.",
-  "trackReEnrichApplyChanges": "Apply changes",
-  "trackReEnrichRefreshOnline": "Refresh from online",
-  "editMetadataAutoFillSource": "Fuente de metadatos",
-  "editMetadataAutoFillSourceAutomatic": "Automático (prioridad del proveedor)",
-  "editMetadataAutoFillFind": "Buscar metadatos",
-  "editMetadataAutoFillPreview": "Datos de {source}",
-  "editMetadataAutoFillCoverAvailable": "Portada disponible",
-  "editMetadataAutoFillApply": "Aplicar datos seleccionados",
-  "editMetadataAutoFillDoneFromSource": "Rellenado {count} {count, plural, =1{field} other{fields}} de {source}",
-  "queuePlaylistCount": "{count, plural, =1{1 playlist} other{{count} playlists}}",
-  "queueEmptyPlaylistsSubtitle": "Crea una lista de reproducción para organizar tus temas",
-  "libraryDefaultView": "Vista predeterminada",
-  "libraryDefaultViewLastUsed": "Último uso",
-  "audioAnalysisCutoffNotDetected": "Not detected",
-  "queueCancelledTitle": "Download cancelled",
-  "queueCancelledMessage": "This download was cancelled. Retry it or remove it from the queue.",
-  "trackCoverResolution": "Cover resolution",
-  "trackCoverResolutionHint": "Sets the longest edge when saved. Enlarging does not add image detail.",
-  "trackCoverResizeFailed": "The cover image could not be resized. Please try another size or image.",
-  "queueDownloadNext": "Download next",
-  "queueMoveUp": "Move up",
-  "queueMoveDown": "Move down",
-  "editMetadataMusicBrainzButton": "Fetch from MusicBrainz",
-  "editMetadataMusicBrainzFilled": "Updated from MusicBrainz",
-  "editMetadataMusicBrainzNothing": "Nothing found on MusicBrainz",
-  "editMetadataMusicBrainzNeedsIsrc": "Requires an ISRC tag",
-  "nowPlayingRepeatOff": "Repeat off",
-  "nowPlayingRepeatAll": "Repeat all",
-  "nowPlayingRepeatOne": "Repeat one",
-  "queueNetworkFailedOffline": "{count} downloads failed while offline",
-  "trackAlbumType": "Release Type",
-  "editMetadataFieldAlbumTypeHint": "Album, single, EP, compilation...",
-  "editMetadataFieldExplicit": "Explicit",
-  "editMetadataFieldExplicitHint": "Mark this track as containing explicit content",
-  "metadataExplicitValue": "Explicit",
-  "editMetadataFieldUpc": "UPC / Barcode",
-  "editMetadataFieldUpcHint": "Numeric UPC, EAN, or GTIN",
-  "libraryFilterMetadataMissingIsrc": "Missing ISRC"
+  "@settingsGroupHelp": {
+    "description": "Settings group covering the about page and donations"
+  },
+  "libraryFilterMetadataMissingLyrics": "Missing lyrics",
+  "@libraryFilterMetadataMissingLyrics": {
+    "description": "Filter option for tracks without embedded or sidecar lyrics"
+  },
+  "trackOptionCopyTrackName": "Copy track name",
+  "@trackOptionCopyTrackName": {
+    "description": "Track menu action that copies the track title"
+  },
+  "trackOptionCopyArtist": "Copy artist",
+  "@trackOptionCopyArtist": {
+    "description": "Track menu action that copies the artist name"
+  },
+  "trackOptionCopyTrackAndArtist": "Copy track and artist",
+  "@trackOptionCopyTrackAndArtist": {
+    "description": "Track menu action that copies the track title and artist"
+  },
+  "metadataCopyValue": "Copy value",
+  "@metadataCopyValue": {
+    "description": "Metadata menu action that copies only the selected value"
+  },
+  "metadataCopyField": "Copy field and value",
+  "@metadataCopyField": {
+    "description": "Metadata menu action that copies the selected key and value"
+  },
+  "mornyeShowTabs": "Show tabs",
+  "mornyeSearch": "Search",
+  "mornyeContinuePlaying": "Continue Playing",
+  "metadataCopyAll": "Copy all metadata",
+  "@metadataCopyAll": {
+    "description": "Metadata menu action that copies every visible key and value"
+  },
+  "optionsEmbeddedCoverSize": "Embedded Cover Size",
+  "@optionsEmbeddedCoverSize": {
+    "description": "Metadata setting that limits downloaded artwork resolution before it is embedded"
+  },
+  "optionsEmbeddedCoverSizeDescription": "Downscale remotely downloaded cover art before embedding it. Images already within the limit are kept unchanged.",
+  "@optionsEmbeddedCoverSizeDescription": {
+    "description": "Description shown in the embedded cover size picker"
+  },
+  "mornyeFavorite": "Favorite",
+  "mornyeGoToArtist": "Go to Artist",
+  "@mornyeFavorite": {
+    "description": "Compact context menu action that adds a track to Loved"
+  },
+  "mornyeFavorited": "Favorited",
+  "@mornyeFavorited": {
+    "description": "Selected state of the compact favorite action"
+  },
+  "autoMixDescription": "Blend songs with beat matching and pitch-preserving tempo adjustment. Uses crossfade when beats cannot be matched.",
+  "autoMixOn": "AutoMix on",
+  "autoMixOff": "AutoMix off",
+  "profileTitle": "Profile",
+  "profileSetUp": "Set up your profile",
+  "profileEdit": "Edit name and photo",
+  "backupIncludesProfile": "Includes your profile name and photo",
+  "profileName": "Name",
+  "profileNameHint": "Your name",
+  "profileChangePhoto": "Choose photo",
+  "profileRemovePhoto": "Remove photo",
+  "profilePhotoError": "Choose a valid image smaller than 20 MB.",
+  "profileSaveError": "Could not save your profile. Please try again.",
+  "optionsEmbeddedCoverSizeOriginal": "Original resolution",
+  "@optionsEmbeddedCoverSizeOriginal": {
+    "description": "Option that preserves the provider artwork at its original resolution"
+  }
 }
