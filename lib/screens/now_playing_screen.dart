@@ -26,6 +26,7 @@ import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/int_utils.dart';
 import 'package:spotiflac_android/utils/isrc_utils.dart';
 import 'package:spotiflac_android/utils/lyrics_parser.dart';
+import 'package:spotiflac_android/utils/lyrics_timeline.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/utils/synced_lyrics_scroll.dart';
@@ -33,6 +34,7 @@ import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/aligned_lyric_pronunciation.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
 import 'package:spotiflac_android/widgets/audio_output_button.dart';
+import 'package:spotiflac_android/widgets/lyric_gap_indicator.dart';
 import 'package:spotiflac_android/widgets/player_artwork.dart';
 import 'package:spotiflac_android/widgets/overflow_marquee.dart';
 import 'package:spotiflac_android/widgets/playback_seek_slider.dart';
@@ -2814,6 +2816,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   ProviderSubscription<bool>? _loadingSubscription;
   Timer? _lineBoundaryTimer;
   Timer? _userScrollIdleTimer;
+  late List<LyricLine> _lines;
   late List<GlobalKey> _lineKeys;
   int _active = -1;
   Duration _activeTransitionPosition = Duration.zero;
@@ -2861,8 +2864,9 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     _hasStarted = false;
     _lineExtents = null;
     _lineLayoutKey = null;
+    _lines = lyricsTimelineWithGaps(widget.lyrics.lines);
     _lineKeys = List<GlobalKey>.generate(
-      widget.lyrics.lines.length,
+      _lines.length,
       (index) => GlobalKey(debugLabel: 'lyric-line-$index'),
       growable: false,
     );
@@ -2930,7 +2934,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
           _hasStarted || playback?.playing == true || position > Duration.zero;
       if (!_hasStarted) return -1;
     }
-    return LyricsParser.activeIndex(widget.lyrics.lines, position);
+    return LyricsParser.activeIndex(_lines, position);
   }
 
   void _setActiveLine(int active, {required Duration position}) {
@@ -2948,7 +2952,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     _lineBoundaryTimer?.cancel();
     if (!widget.isActive || !_playing || _loading) return;
 
-    final lines = widget.lyrics.lines;
+    final lines = _lines;
     final dueIndex = syncedLyricsDueLineIndex(
       lineStarts: lines.map((line) => line.time).toList(growable: false),
       currentIndex: _active,
@@ -2996,11 +3000,12 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       locale: locale,
     );
     final measurements = <(double, double, double)>[];
-    for (final line in widget.lyrics.lines) {
-      painter.text = TextSpan(
-        text: line.text.trim().isEmpty ? '\u00b7\u00b7\u00b7' : line.text,
-        style: style,
-      );
+    for (final line in _lines) {
+      if (line.text.isEmpty) {
+        measurements.add((56, 0, 0));
+        continue;
+      }
+      painter.text = TextSpan(text: line.text, style: style);
       painter.layout(maxWidth: width);
       var height = painter.height + 32;
       var pronunciationHeight = 0.0;
@@ -3118,8 +3123,9 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   );
 
   Widget _buildLyrics(BuildContext context, Offset visibility) {
-    final lines = widget.lyrics.lines;
+    final lines = _lines;
     final active = _active;
+    final loading = ref.watch(playbackLoadingProvider);
     final mornye = context.isMornye;
     final highContrast = MediaQuery.highContrastOf(context);
     final blurLyrics =
@@ -3210,9 +3216,30 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                   ? widget.colorScheme.onSurfaceVariant.withValues(alpha: 0.5)
                   : widget.colorScheme.onSurfaceVariant.withValues(alpha: 0.8);
 
-              final text = line.text.trim().isEmpty
-                  ? '\u00b7\u00b7\u00b7'
-                  : line.text;
+              if (line.text.isEmpty) {
+                return Padding(
+                  key: _lineKeys[index],
+                  padding: EdgeInsets.symmetric(
+                    vertical: context.tokens.lyricsLinePaddingV,
+                  ),
+                  child: SizedBox(
+                    height: 24,
+                    child: Align(
+                      alignment: mornye
+                          ? Alignment.centerLeft
+                          : Alignment.center,
+                      child: isActive && widget.isActive && !loading
+                          ? LyricGapIndicator(
+                              key: ValueKey(line.time),
+                              start: line.time,
+                              end: line.end!,
+                              color: color,
+                            )
+                          : null,
+                    ),
+                  ),
+                );
+              }
 
               final timed =
                   isActive &&
@@ -3228,7 +3255,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                 );
               } else {
                 content = Text(
-                  text,
+                  line.text,
                   textAlign: mornye ? TextAlign.start : TextAlign.center,
                   style:
                       (mornye || isActive

@@ -22,6 +22,7 @@ import 'package:video_player/video_player.dart';
 import 'package:spotiflac_android/screens/now_playing_screen.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/widgets/mornye_volume_control.dart';
+import 'package:spotiflac_android/widgets/lyric_gap_indicator.dart';
 import 'package:spotiflac_android/widgets/mornye_player_queue.dart';
 import 'package:spotiflac_android/widgets/mornye_playback_button.dart';
 import 'package:spotiflac_android/widgets/mornye_playback_time.dart';
@@ -947,6 +948,106 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  for (final layout in ['material', 'portrait', 'landscape']) {
+    testWidgets('instrumental dots follow intro, break and seeks ($layout)', (
+      tester,
+    ) async {
+      metadataOverrides['lyrics'] = '''
+[00:09.00]First vocal
+[00:12.00]
+[00:21.00]Last vocal
+[00:25.00]
+''';
+      final playback = StreamController<PlaybackState>.broadcast();
+      addTearDown(playback.close);
+      await pumpNowPlaying(
+        tester,
+        theme: layout == 'material' ? null : MornyeTheme.build(Brightness.dark),
+        size: layout == 'landscape'
+            ? const Size(852, 393)
+            : const Size(393, 852),
+        playbackEvents: playback.stream,
+      );
+      mediaItems.add(item('first'));
+      await tester.pumpAndSettle();
+      if (layout == 'material') {
+        await tester.drag(find.byType(PageView), const Offset(-350, 0));
+      } else {
+        await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
+      }
+      await tester.pumpAndSettle();
+
+      Future<void> positionAt(
+        int seconds, {
+        bool playing = false,
+        AudioProcessingState state = AudioProcessingState.ready,
+      }) async {
+        playback.add(
+          PlaybackState(
+            processingState: state,
+            playing: playing,
+            updatePosition: Duration(seconds: seconds),
+          ),
+        );
+        if (state == AudioProcessingState.ready) {
+          await tester.pumpAndSettle();
+        } else {
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+        }
+      }
+
+      List<double> dotAlphas() => List.generate(3, (index) {
+        final dot = tester.widget<AnimatedContainer>(
+          find.byKey(ValueKey('lyric-gap-dot-$index')),
+        );
+        return (dot.decoration! as BoxDecoration).color!.a;
+      });
+
+      for (final (seconds, expected) in [
+        (3, [1.0, 0.25, 0.25]),
+        (6, [1.0, 1.0, 0.25]),
+        (15, [1.0, 0.25, 0.25]),
+        (18, [1.0, 1.0, 0.25]),
+        (6, [1.0, 1.0, 0.25]),
+      ]) {
+        await positionAt(seconds);
+        expect(find.byType(LyricGapIndicator).hitTestable(), findsOneWidget);
+        expect(dotAlphas(), expected);
+        if (layout != 'material') {
+          final filter = tester.widget<ImageFiltered>(
+            find
+                .ancestor(
+                  of: find.text(seconds >= 12 ? 'Last vocal' : 'First vocal'),
+                  matching: find.byType(ImageFiltered),
+                )
+                .first,
+          );
+          expect(filter.enabled, isTrue);
+        }
+      }
+
+      await positionAt(6, playing: true, state: AudioProcessingState.buffering);
+      expect(find.byType(LyricGapIndicator), findsNothing);
+      await positionAt(6);
+      expect(dotAlphas(), [1.0, 1.0, 0.25]);
+      await tester.pump(const Duration(seconds: 2));
+      expect(dotAlphas(), [1.0, 1.0, 0.25]);
+
+      for (final seconds in [9, 21, 25, 40]) {
+        await positionAt(seconds);
+        expect(find.byType(LyricGapIndicator), findsNothing);
+      }
+      await positionAt(6);
+      expect(find.byType(LyricGapIndicator), findsOneWidget);
+      metadataOverrides.clear();
+      mediaItems.add(item('second'));
+      await tester.pumpAndSettle();
+      expect(find.byType(LyricGapIndicator), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('Mornye lyrics stay blurred until playback starts', (
     tester,

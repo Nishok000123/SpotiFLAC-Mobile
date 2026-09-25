@@ -6448,6 +6448,10 @@
     "description": "Tab label for the lyrics view"
   },
   "nowPlayingNoLyrics": "No lyrics in this file",
+  "nowPlayingInstrumental": "Instrumental",
+  "@nowPlayingInstrumental": {
+    "description": "Accessibility label for the three-dot countdown during an instrumental break before lyrics resume"
+  },
   "nowPlayingLyricsLanguageOptions": "Lyrics language options",
   "@nowPlayingLyricsLanguageOptions": {
     "description": "Tooltip for the player menu that shows or hides existing lyric pronunciation and translation"
