@@ -82,6 +82,33 @@ double syncedLyricSegmentProgress({
   return (position - start).inMicroseconds / (end - start).inMicroseconds;
 }
 
+/// Subtle vertical emphasis relative to the normal highlighted position.
+/// Long timed segments rise further while held, then settle back to 1. This
+/// follows lyric duration, not pitch, and is deterministic on pause or seek.
+double syncedLyricSegmentLift({
+  required Duration position,
+  required Duration start,
+  required Duration end,
+}) {
+  if (end <= start) return 0;
+  final elapsed = (position - start).inMicroseconds / 1000;
+  final duration = (end - start).inMicroseconds / 1000;
+  double ease(double value) {
+    final t = value.clamp(0.0, 1.0);
+    return t * t * (3 - 2 * t);
+  }
+
+  // Anticipate the highlight slightly without moving the list's layout.
+  final normalLift = ease(
+    (elapsed + 100) / (100 + math.min(160, duration * 0.35)),
+  );
+  final heldStrength = ((duration - 1000) / 1500).clamp(0.0, 1.0);
+  if (heldStrength == 0) return normalLift;
+  final rise = ease((elapsed - 200) / math.min(900, (duration - 200) * 0.5));
+  final settle = ease((duration - elapsed) / 300);
+  return normalLift + 1.3 * heldStrength * rise * settle;
+}
+
 /// Horizontal leading edge for a highlight that fills left to right.
 double syncedLyricsLeftToRightBoundary({
   required double left,

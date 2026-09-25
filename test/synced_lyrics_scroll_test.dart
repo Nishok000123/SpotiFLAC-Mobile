@@ -55,6 +55,37 @@ void main() {
   });
 
   group('smooth timed lyric highlight', () {
+    double liftAt(int position, {int end = 1500}) => syncedLyricSegmentLift(
+      position: Duration(milliseconds: position),
+      start: const Duration(seconds: 1),
+      end: Duration(milliseconds: end),
+    );
+
+    test('short words anticipate gently and remain raised after singing', () {
+      expect(liftAt(800), 0);
+      expect(liftAt(950), inExclusiveRange(0, 1));
+      expect(liftAt(1000), greaterThan(liftAt(950)));
+      expect(liftAt(1200), 1);
+      expect(liftAt(1500), 1);
+      expect(liftAt(3000), 1);
+    });
+
+    test('held words rise further then settle to the normal highlight', () {
+      final peak = liftAt(2300, end: 4000);
+      expect(liftAt(1200, end: 4000), 1);
+      expect(peak, greaterThan(1));
+      expect(liftAt(3900, end: 4000), inExclusiveRange(1, peak));
+      expect(liftAt(4000, end: 4000), 1);
+      expect(liftAt(4200, end: 4000), 1);
+      expect(liftAt(2300, end: 4000), peak);
+      expect(liftAt(800, end: 4000), 0);
+    });
+
+    test('invalid or zero-length timing does not move the text', () {
+      expect(liftAt(1200, end: 1000), 0);
+      expect(liftAt(1200, end: 500), 0);
+    });
+
     test('interpolates position only while playback is advancing', () {
       expect(
         interpolatedSyncedLyricsPosition(

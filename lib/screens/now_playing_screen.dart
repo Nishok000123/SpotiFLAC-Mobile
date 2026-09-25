@@ -3687,6 +3687,7 @@ class _WordHighlightedLyricLineState
       pendingColor: pendingColor,
       highlightedColor: highlightedColor,
       semanticsLabel: text,
+      liftEnabled: mornye && !MediaQuery.disableAnimationsOf(context),
     );
   }
 }
@@ -3702,6 +3703,7 @@ class _SweepingTimedLyricText extends StatefulWidget {
   final Color pendingColor;
   final Color highlightedColor;
   final String semanticsLabel;
+  final bool liftEnabled;
 
   const _SweepingTimedLyricText({
     required this.segments,
@@ -3714,6 +3716,7 @@ class _SweepingTimedLyricText extends StatefulWidget {
     required this.pendingColor,
     required this.highlightedColor,
     required this.semanticsLabel,
+    required this.liftEnabled,
   });
 
   @override
@@ -3851,6 +3854,10 @@ class _SweepingTimedLyricTextState extends State<_SweepingTimedLyricText> {
               repaint: widget.repaint,
               pendingPainter: pendingPainter,
               highlightedPainter: highlightedPainter,
+              highlightLift: widget.liftEnabled
+                  ? (textScaler.scale(widget.style.fontSize ?? 24) * 0.05)
+                        .clamp(0.0, 2.0)
+                  : 0,
             ),
           ),
         );
@@ -3866,6 +3873,7 @@ class _TimedLyricSweepPainter extends CustomPainter {
   final Duration Function() currentPosition;
   final TextPainter pendingPainter;
   final TextPainter highlightedPainter;
+  final double highlightLift;
 
   _TimedLyricSweepPainter({
     required this.segmentBoxes,
@@ -3875,16 +3883,31 @@ class _TimedLyricSweepPainter extends CustomPainter {
     required Listenable repaint,
     required this.pendingPainter,
     required this.highlightedPainter,
+    required this.highlightLift,
   }) : super(repaint: repaint);
 
   @override
   void paint(Canvas canvas, Size size) {
-    pendingPainter.paint(canvas, Offset.zero);
-
-    final completedPath = Path();
-    final partialBoxes = <(Rect, double)>[];
+    final pendingPaths = <double, Path>{};
+    final completedPaths = <double, Path>{};
+    final partialBoxes = <(Rect, double, double)>[];
     final position = currentPosition();
     for (var index = 0; index < segmentBoxes.length; index++) {
+      final lift =
+          highlightLift > 0 && index < starts.length && index < ends.length
+          ? highlightLift *
+                syncedLyricSegmentLift(
+                  position: position,
+                  start: starts[index],
+                  end: ends[index],
+                )
+          : 0.0;
+      if (highlightLift > 0) {
+        final path = pendingPaths.putIfAbsent(lift, Path.new);
+        for (final box in segmentBoxes[index]) {
+          path.addRect(box);
+        }
+      }
       final value = index < starts.length && index < ends.length
           ? syncedLyricSegmentProgress(
               position: position,
@@ -3903,23 +3926,29 @@ class _TimedLyricSweepPainter extends CustomPainter {
           if (revealWidth <= 0) break;
           if (box.width <= 0) continue;
           if (revealWidth >= box.width) {
-            completedPath.addRect(box);
+            completedPaths.putIfAbsent(lift, Path.new).addRect(box);
           } else {
-            partialBoxes.add((box, revealWidth / box.width));
+            partialBoxes.add((box, revealWidth / box.width, lift));
           }
           revealWidth -= box.width;
         }
       }
     }
 
-    if (!completedPath.getBounds().isEmpty) {
-      canvas.save();
-      canvas.clipPath(completedPath);
-      highlightedPainter.paint(canvas, Offset.zero);
-      canvas.restore();
+    // Move both colors together, so a raised highlight never leaves a dim
+    // duplicate behind. Most words share the resting or completed position.
+    if (highlightLift > 0) {
+      for (final entry in pendingPaths.entries) {
+        _paintLiftedText(canvas, pendingPainter, entry.value, entry.key);
+      }
+    } else {
+      pendingPainter.paint(canvas, Offset.zero);
+    }
+    for (final entry in completedPaths.entries) {
+      _paintLiftedText(canvas, highlightedPainter, entry.value, entry.key);
     }
 
-    for (final (box, value) in partialBoxes) {
+    for (final (box, value, lift) in partialBoxes) {
       final boundary = syncedLyricsLeftToRightBoundary(
         left: box.left,
         right: box.right,
@@ -3936,6 +3965,7 @@ class _TimedLyricSweepPainter extends CustomPainter {
       final gradientStart = boundary.clamp(box.left, revealRight - 0.01);
 
       canvas.save();
+      canvas.translate(0, -lift);
       canvas.clipRect(revealRect);
       canvas.saveLayer(revealRect, Paint());
       highlightedPainter.paint(canvas, Offset.zero);
@@ -3953,12 +3983,26 @@ class _TimedLyricSweepPainter extends CustomPainter {
     }
   }
 
+  void _paintLiftedText(
+    Canvas canvas,
+    TextPainter painter,
+    Path clip,
+    double lift,
+  ) {
+    canvas.save();
+    canvas.translate(0, -lift);
+    canvas.clipPath(clip, doAntiAlias: false);
+    painter.paint(canvas, Offset.zero);
+    canvas.restore();
+  }
+
   @override
   bool shouldRepaint(covariant _TimedLyricSweepPainter oldDelegate) {
     return oldDelegate.segmentBoxes != segmentBoxes ||
         oldDelegate.starts != starts ||
         oldDelegate.ends != ends ||
         oldDelegate.currentPosition != currentPosition ||
+        oldDelegate.highlightLift != highlightLift ||
         oldDelegate.pendingPainter != pendingPainter ||
         oldDelegate.highlightedPainter != highlightedPainter;
   }
