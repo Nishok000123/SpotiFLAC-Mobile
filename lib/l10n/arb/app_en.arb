@@ -271,8 +271,9 @@
       }
     }
   },
-  "selectionRemoveReplayGainCount": "Remove ReplayGain ({count})",
+  "selectionRemoveReplayGainCount": "Remove RG ({count})",
   "@selectionRemoveReplayGainCount": {
+    "description": "Compact selection action label. RG abbreviates ReplayGain; keep this short for a two-column toolbar.",
     "placeholders": {
       "count": {
         "type": "int"
