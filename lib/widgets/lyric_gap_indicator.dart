@@ -71,13 +71,9 @@ class _LyricGapIndicatorState extends ConsumerState<LyricGapIndicator>
             AnimatedBuilder(
               animation: _pulse,
               builder: (context, child) {
-                // Stagger the breath without changing the row's layout or
-                // letting the pulse advance the playback-driven fill.
-                final phase = ((_pulse.value - index * 0.12) / 0.76).clamp(
-                  0.0,
-                  1.0,
-                );
-                final breath = math.sin(math.pi * phase);
+                // All three dots breathe together; only their fill advances
+                // independently with the playback position.
+                final breath = math.sin(math.pi * _pulse.value);
                 return Transform.scale(
                   scale: reduceMotion || widget.position != null
                       ? 1

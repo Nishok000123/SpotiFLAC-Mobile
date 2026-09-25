@@ -1274,8 +1274,17 @@ void main() {
       }
 
       final firstDot = find.byKey(const ValueKey('lyric-gap-dot-0'));
-      double dotWidth() =>
-          (tester.getBottomRight(firstDot) - tester.getTopLeft(firstDot)).dx;
+      double dotWidth([int index = 0]) {
+        final dot = find.byKey(ValueKey('lyric-gap-dot-$index'));
+        return (tester.getBottomRight(dot) - tester.getTopLeft(dot)).dx;
+      }
+
+      void expectSynchronizedDots() {
+        for (var index = 1; index < 3; index++) {
+          expect(dotWidth(index), closeTo(dotWidth(), 0.001));
+        }
+      }
+
       final restingWidth = dotWidth();
       final restingCenter = tester.getCenter(firstDot);
       final rowSize = tester.getSize(find.byType(LyricGapIndicator));
@@ -1284,11 +1293,14 @@ void main() {
       final filling = dotAlphas();
       final growingWidth = dotWidth();
       expect(growingWidth, greaterThan(restingWidth));
+      expectSynchronizedDots();
       await tester.pump(const Duration(milliseconds: 350));
       final peakWidth = dotWidth();
       expect(peakWidth, greaterThan(growingWidth));
+      expectSynchronizedDots();
       await tester.pump(const Duration(milliseconds: 750));
       expect(dotWidth(), lessThan(peakWidth));
+      expectSynchronizedDots();
       expect(tester.getCenter(firstDot), restingCenter);
       expect(tester.getSize(find.byType(LyricGapIndicator)), rowSize);
       expect(dotAlphas(), filling);
