@@ -86,11 +86,11 @@ class ExtensionAvatar extends StatelessWidget {
 }
 
 /// Row shell shared by the extension store and the installed-extensions list:
-/// avatar, title/subtitle column, trailing control, and the group divider.
+/// optional avatar, title/subtitle column, trailing control, and group divider.
 class ExtensionRow extends StatelessWidget {
   const ExtensionRow({
     super.key,
-    required this.avatar,
+    this.avatar,
     required this.title,
     required this.subtitle,
     required this.showDivider,
@@ -98,7 +98,7 @@ class ExtensionRow extends StatelessWidget {
     this.onTap,
   });
 
-  final Widget avatar;
+  final Widget? avatar;
 
   /// A widget rather than a string: the store row appends a version pill.
   final Widget title;
@@ -125,8 +125,7 @@ class ExtensionRow extends StatelessWidget {
             ),
             child: Row(
               children: [
-                avatar,
-                SizedBox(width: tokens.gapLg),
+                if (avatar != null) ...[avatar!, SizedBox(width: tokens.gapLg)],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,8 +151,9 @@ class ExtensionRow extends StatelessWidget {
           Divider(
             height: 1,
             thickness: 1,
-            // Aligns with the text column: avatar width + its trailing gap.
-            indent: ExtensionAvatar.size + tokens.gapLg * 2,
+            indent: avatar == null
+                ? tokens.gapLg
+                : ExtensionAvatar.size + tokens.gapLg * 2,
             endIndent: tokens.gapLg,
             color: colorScheme.outlineVariant.withValues(alpha: 0.3),
           ),

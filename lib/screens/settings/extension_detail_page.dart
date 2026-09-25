@@ -1,7 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart' show CupertinoIcons, CupertinoTextField;
+import 'package:flutter/cupertino.dart'
+    show CupertinoColors, CupertinoIcons, CupertinoTextField;
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/theme/mornye_icons.dart';
 import 'package:spotiflac_android/widgets/app_alert_dialog.dart';
@@ -747,10 +748,13 @@ class _CapabilityItem extends StatelessWidget {
   }
 }
 
-Color _healthStatusColor(ColorScheme colorScheme, String status) {
+Color _healthStatusColor(BuildContext context, String status) {
+  final colorScheme = Theme.of(context).colorScheme;
   switch (status) {
     case 'online':
-      return colorScheme.primary;
+      return context.isMornye
+          ? CupertinoColors.systemGreen.resolveFrom(context)
+          : colorScheme.primary;
     case 'degraded':
       return colorScheme.tertiary;
     case 'offline':
@@ -811,7 +815,7 @@ class _HealthSummaryItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final statusValue = status?.status ?? 'unknown';
-    final color = _healthStatusColor(colorScheme, statusValue);
+    final color = _healthStatusColor(context, statusValue);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -885,7 +889,7 @@ class _HealthCheckItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final color = _healthStatusColor(colorScheme, check.status);
+    final color = _healthStatusColor(context, check.status);
     final detailParts = <String>[
       _healthStatusLabel(context, check.status),
       if (check.httpStatus != null) 'HTTP ${check.httpStatus}',

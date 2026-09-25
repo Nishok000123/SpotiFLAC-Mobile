@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoColors;
 import 'package:spotiflac_android/widgets/app_snack_bar.dart';
 import 'package:spotiflac_android/widgets/app_switch.dart';
 import 'package:spotiflac_android/widgets/extension_row.dart';
@@ -346,35 +347,46 @@ class _ExtensionItem extends StatelessWidget {
         : null;
     final serviceHealthColor = serviceHealthStatus == null
         ? null
-        : _extensionHealthColor(colorScheme, serviceHealthStatus);
+        : _extensionHealthColor(context, serviceHealthStatus);
 
     return ExtensionRow(
       showDivider: showDivider,
       onTap: onTap,
-      avatar: ExtensionAvatar(
-        filePath: extension.iconPath,
-        fallbackIcon: hasError ? Icons.error_outline : Icons.extension,
-        background: hasError
-            ? colorScheme.errorContainer
-            : colorScheme.primaryContainer,
-        foreground: hasError
-            ? colorScheme.error
-            : colorScheme.onPrimaryContainer,
-      ),
+      avatar: context.isMornye
+          ? null
+          : ExtensionAvatar(
+              filePath: extension.iconPath,
+              fallbackIcon: hasError ? Icons.error_outline : Icons.extension,
+              background: hasError
+                  ? colorScheme.errorContainer
+                  : colorScheme.primaryContainer,
+              foreground: hasError
+                  ? colorScheme.error
+                  : colorScheme.onPrimaryContainer,
+            ),
       title: Text(extension.displayName),
-      subtitle: Text(
+      subtitle: Text.rich(
         hasError
-            ? context.friendlyError(
-                extension.errorMessage,
-                fallback: context.l10n.extensionsErrorLoading,
+            ? TextSpan(
+                text: context.friendlyError(
+                  extension.errorMessage,
+                  fallback: context.l10n.extensionsErrorLoading,
+                ),
               )
-            : serviceHealthStatus == null
-            ? 'v${extension.version}'
-            : 'v${extension.version} · ${_extensionHealthLabel(context, serviceHealthStatus)}',
+            : TextSpan(
+                text: 'v${extension.version}',
+                children: [
+                  if (serviceHealthStatus != null) ...[
+                    const TextSpan(text: ' · '),
+                    TextSpan(
+                      text: _extensionHealthLabel(context, serviceHealthStatus),
+                      style: TextStyle(color: serviceHealthColor),
+                    ),
+                  ],
+                ],
+              ),
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: hasError
-              ? colorScheme.error
-              : serviceHealthColor ?? colorScheme.onSurfaceVariant,
+          color: hasError ? colorScheme.error : colorScheme.onSurfaceVariant,
         ),
       ),
       trailing: AppSwitch(
@@ -386,10 +398,13 @@ class _ExtensionItem extends StatelessWidget {
   }
 }
 
-Color _extensionHealthColor(ColorScheme colorScheme, String status) {
+Color _extensionHealthColor(BuildContext context, String status) {
+  final colorScheme = Theme.of(context).colorScheme;
   switch (status) {
     case 'online':
-      return colorScheme.primary;
+      return context.isMornye
+          ? CupertinoColors.systemGreen.resolveFrom(context)
+          : colorScheme.primary;
     case 'degraded':
       return colorScheme.tertiary;
     case 'offline':
