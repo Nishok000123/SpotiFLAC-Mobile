@@ -200,7 +200,15 @@
         if (albums.length) result.albums = albums;
         if (releases.length) result.releases = releases;
         if (tracks.length) result.top_tracks = tracks;
+        const concertItems = first(object(value), ["concerts"]);
+        const concerts = isArray(concertItems) ? array(concertItems.slice(0, 500), concert) : [];
+        if (concerts.length) result.concerts = concerts;
         return result;
+    }
+    function concert(value) {
+        return fields(value, [["id","s"],["location","s"],["venue","s"],
+            ["start_at","s","startAt"],["time_zone","s","timeZone"],
+            ["url","s"]], ["id","location","start_at"]);
     }
     function decryption(value) {
         if (empty(value)) return null;

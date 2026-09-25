@@ -14,6 +14,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/track.dart';
+import 'package:spotiflac_android/models/artist_concert.dart';
+import 'package:spotiflac_android/widgets/artist_concerts_button.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/providers/track_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
@@ -60,6 +62,7 @@ class _ArtistCache {
     required List<ArtistAlbum> albums,
     List<ArtistAlbum>? releases,
     List<Track>? topTracks,
+    List<ArtistConcert> concerts = const [],
     String? headerImageUrl,
     String? headerVideoUrl,
     String? headerLogoUrl,
@@ -72,6 +75,7 @@ class _ArtistCache {
         albums: albums,
         releases: releases,
         topTracks: topTracks,
+        concerts: concerts,
         headerImageUrl: headerImageUrl,
         headerVideoUrl: headerVideoUrl,
         headerLogoUrl: headerLogoUrl,
@@ -86,6 +90,7 @@ class _CacheEntry {
   final List<ArtistAlbum> albums;
   final List<ArtistAlbum>? releases;
   final List<Track>? topTracks;
+  final List<ArtistConcert> concerts;
   final String? headerImageUrl;
   final String? headerVideoUrl;
   final String? headerLogoUrl;
@@ -96,6 +101,7 @@ class _CacheEntry {
     required this.albums,
     this.releases,
     this.topTracks,
+    this.concerts = const [],
     this.headerImageUrl,
     this.headerVideoUrl,
     this.headerLogoUrl,
@@ -115,6 +121,7 @@ class ArtistScreen extends ConsumerStatefulWidget {
   final int? monthlyListeners;
   final List<ArtistAlbum>? albums;
   final List<Track>? topTracks;
+  final List<ArtistConcert> concerts;
   final String? extensionId;
 
   const ArtistScreen({
@@ -129,6 +136,7 @@ class ArtistScreen extends ConsumerStatefulWidget {
     this.monthlyListeners,
     this.albums,
     this.topTracks,
+    this.concerts = const [],
     this.extensionId,
   });
 
@@ -143,6 +151,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
   List<ArtistAlbum>? _albums;
   List<ArtistAlbum>? _releases;
   List<Track>? _topTracks;
+  List<ArtistConcert> _concerts = const [];
   String? _headerImageUrl;
   String? _headerVideoUrl;
   String? _headerLogoUrl;
@@ -223,6 +232,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
   @override
   void initState() {
     super.initState();
+    _concerts = widget.concerts;
 
     _scrollController.addListener(_onScroll);
 
@@ -272,6 +282,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
       _albums = cached.albums;
       _releases = cached.releases;
       _topTracks = cached.topTracks;
+      _concerts = cached.concerts;
       _headerImageUrl = cached.headerImageUrl;
       _headerVideoUrl = cached.headerVideoUrl;
       _headerLogoUrl = cached.headerLogoUrl;
@@ -311,6 +322,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
       List<ArtistAlbum> albums;
       List<ArtistAlbum>? releases;
       List<Track>? topTracks;
+      List<ArtistConcert> concerts = const [];
       String? headerImage;
       String? headerVideo;
       String? headerLogo;
@@ -344,6 +356,9 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
         }
 
         final artistInfo = artistData['artist_info'] as Map<String, dynamic>?;
+        concerts = ArtistConcert.parseList(
+          artistInfo?['concerts'] ?? artistData['concerts'],
+        );
         albumsNext =
             (artistInfo?['albums_next'] ?? artistData['albums_next'])
                 as String?;
@@ -368,6 +383,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
 
         if (result != null && result['artist'] != null) {
           final artistData = result['artist'] as Map<String, dynamic>;
+          concerts = ArtistConcert.parseList(artistData['concerts']);
           albumsNext = artistData['albums_next'] as String?;
           final albumsList = artistData['albums'] as List<dynamic>? ?? [];
           albums = albumsList
@@ -408,6 +424,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
         releases: releases,
         topTracks: topTracks,
         headerImageUrl: finalHeaderImage,
+        concerts: concerts,
         headerVideoUrl: finalHeaderVideo,
         headerLogoUrl: finalHeaderLogo,
         albumsNext: albumsNext,
@@ -419,6 +436,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
           _albums = albums;
           _releases = releases;
           _topTracks = topTracks;
+          _concerts = concerts;
           _headerImageUrl = finalHeaderImage;
           _headerVideoUrl = finalHeaderVideo;
           _headerLogoUrl = finalHeaderLogo;
@@ -497,6 +515,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
         albums: _albums!,
         releases: _releases,
         topTracks: _topTracks,
+        concerts: _concerts,
         headerImageUrl: _headerImageUrl,
         headerVideoUrl: _headerVideoUrl,
         headerLogoUrl: _headerLogoUrl,

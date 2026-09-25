@@ -1337,6 +1337,7 @@ class _ExtensionArtistScreenState extends ConsumerState<ExtensionArtistScreen>
   String? _headerImageUrl;
   String? _headerVideoUrl;
   String? _headerLogoUrl;
+  List<ArtistConcert> _concerts = const [];
   String? _albumsNext;
   int? _monthlyListeners;
   bool _isLoading = true;
@@ -1405,6 +1406,9 @@ class _ExtensionArtistScreenState extends ConsumerState<ExtensionArtistScreen>
         _headerImageUrl = headerImage;
         _headerVideoUrl = headerVideo;
         _headerLogoUrl = headerLogo;
+        _concerts = ArtistConcert.parseList(
+          artistInfo['concerts'] ?? result['concerts'],
+        );
         _albumsNext = artistInfo['albums_next'] as String?;
         _monthlyListeners = listeners;
         _isLoading = false;
@@ -1472,6 +1476,7 @@ class _ExtensionArtistScreenState extends ConsumerState<ExtensionArtistScreen>
         headerImageUrl: _headerImageUrl,
         headerVideoUrl: _headerVideoUrl,
         headerLogoUrl: _headerLogoUrl,
+        concerts: _concerts,
         albumsNext: _albumsNext,
         monthlyListeners: _monthlyListeners,
         albums: _albums,

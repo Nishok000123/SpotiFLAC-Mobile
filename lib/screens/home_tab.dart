@@ -18,6 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/models/track.dart';
+import 'package:spotiflac_android/models/artist_concert.dart';
 import 'package:spotiflac_android/providers/track_provider.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
@@ -681,8 +682,10 @@ class _HomeTabState extends ConsumerState<HomeTab>
             headerImageUrl: trackState.headerImageUrl,
             headerVideoUrl: trackState.headerVideoUrl,
             headerLogoUrl: trackState.headerLogoUrl,
+            concerts: trackState.artistConcerts,
             albumsNext: trackState.artistAlbumsNext,
             albums: trackState.artistAlbums!,
+            topTracks: trackState.artistTopTracks,
             extensionId: extensionId,
           ),
         ),

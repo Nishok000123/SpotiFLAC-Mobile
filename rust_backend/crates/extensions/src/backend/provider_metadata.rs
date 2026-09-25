@@ -88,6 +88,7 @@ impl Backend {
                 "listeners".into(),
                 json!(value["listeners"].as_i64().unwrap_or_default()),
             );
+            info.insert("concerts".into(), array(value, "concerts").into());
             for key in ["albums", "releases"] {
                 let values = array(value, key);
                 if !values.is_empty() {
@@ -450,6 +451,7 @@ fn response(kind: &str, value: &Value, check: &Check<'_>) -> Result<Value, Resol
             );
             info.insert("images".into(), json!(image));
             info.insert("cover_url".into(), json!(cover));
+            info.insert("concerts".into(), array(value, "concerts").into());
             if value["listeners"].as_i64().unwrap_or_default() > 0 {
                 info.insert("listeners".into(), value["listeners"].clone());
             }

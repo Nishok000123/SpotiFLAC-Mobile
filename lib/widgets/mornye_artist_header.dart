@@ -146,6 +146,7 @@ class MornyeArtistHeader extends StatelessWidget {
     required this.showTitle,
     this.listeners,
     this.logoUrl,
+    this.badge,
   });
 
   final String name;
@@ -154,6 +155,7 @@ class MornyeArtistHeader extends StatelessWidget {
   final bool showTitle;
   final String? listeners;
   final String? logoUrl;
+  final Widget? badge;
 
   @override
   Widget build(BuildContext context) =>
@@ -196,6 +198,7 @@ class MornyeArtistHeader extends StatelessWidget {
               ? 0.0
               : 7 + textHeight(listeners!, const TextStyle(fontSize: 13));
           final photoHeight = (width * 0.76).clamp(240.0, 340.0);
+          final badgeHeight = badge == null ? 0.0 : textScaler.scale(13) + 39;
           final expandedHeight =
               photoHeight +
               identityHeight +
@@ -242,6 +245,11 @@ class MornyeArtistHeader extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (badge != null)
+                            SizedBox(
+                              height: badgeHeight,
+                              child: Center(child: badge),
+                            ),
                           SizedBox(
                             height: identityHeight,
                             child: Center(child: _buildIdentity()),

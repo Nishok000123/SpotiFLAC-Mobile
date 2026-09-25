@@ -2,6 +2,12 @@
 part of 'artist_screen.dart';
 
 extension _ArtistScreenSections on _ArtistScreenState {
+  Widget _concertsButton() => ArtistConcertsButton(
+    artistName: widget.artistName,
+    concerts: _concerts,
+    coverUrl: widget.coverUrl ?? _headerImageUrl,
+  );
+
   List<Widget> _buildHeader(
     BuildContext context,
     ColorScheme colorScheme, {
@@ -68,6 +74,7 @@ extension _ArtistScreenSections on _ArtistScreenState {
       return MornyeArtistHeader(
         name: widget.artistName,
         logoUrl: _headerLogoUrl ?? widget.headerLogoUrl,
+        badge: _concerts.isEmpty || isSelectionMode ? null : _concertsButton(),
         listeners: listenersText,
         showTitle: _showTitleInAppBar,
         artwork: hasMotionBanner
@@ -276,6 +283,10 @@ extension _ArtistScreenSections on _ArtistScreenState {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (_concerts.isNotEmpty && !isSelectionMode) ...[
+                          _concertsButton(),
+                          const SizedBox(height: 8),
+                        ],
                         Text(
                           widget.artistName,
                           style: Theme.of(context).textTheme.headlineLarge

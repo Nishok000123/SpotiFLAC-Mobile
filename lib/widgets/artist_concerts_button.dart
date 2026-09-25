@@ -1,0 +1,51 @@
+import 'package:flutter/material.dart';
+import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/models/artist_concert.dart';
+import 'package:spotiflac_android/screens/artist_concerts_screen.dart';
+import 'package:spotiflac_android/widgets/animation_utils.dart';
+
+class ArtistConcertsButton extends StatelessWidget {
+  const ArtistConcertsButton({
+    super.key,
+    required this.artistName,
+    required this.concerts,
+    this.coverUrl,
+  });
+
+  final String artistName;
+  final List<ArtistConcert> concerts;
+  final String? coverUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    if (concerts.isEmpty) return const SizedBox.shrink();
+    return TextButton.icon(
+      onPressed: () => Navigator.of(context).push(
+        slidePageRoute<void>(
+          page: ArtistConcertsScreen(
+            artistName: artistName,
+            concerts: concerts,
+            coverUrl: coverUrl,
+          ),
+        ),
+      ),
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.white,
+        backgroundColor: Colors.black.withValues(alpha: 0.35),
+        minimumSize: const Size(0, 36),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(9),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.22)),
+        ),
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      ),
+      icon: const Icon(Icons.confirmation_number_rounded, size: 16),
+      label: Text(
+        context.l10n.artistUpcomingConcerts,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}

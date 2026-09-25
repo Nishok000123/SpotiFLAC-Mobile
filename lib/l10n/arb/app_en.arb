@@ -6820,6 +6820,9 @@
   "profileRemovePhoto": "Remove photo",
   "profilePhotoError": "Choose a valid image smaller than 20 MB.",
   "profileSaveError": "Could not save your profile. Please try again.",
+  "artistUpcomingConcerts": "Upcoming Concerts",
+  "artistAllUpcomingConcerts": "All Upcoming Concerts",
+  "artistNoUpcomingConcerts": "No upcoming concerts.",
   "optionsEmbeddedCoverSizeOriginal": "Original resolution",
   "@optionsEmbeddedCoverSizeOriginal": {
     "description": "Option that preserves the provider artwork at its original resolution"
