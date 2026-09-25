@@ -145,20 +145,24 @@ class PlaybackController extends Notifier<PlaybackState> {
   Future<void> playTrackList(List<Track> tracks, {int startIndex = 0}) async {
     if (tracks.isEmpty) return;
 
-    final orderedTracks = _orderedTracksFromStartIndex(tracks, startIndex);
-    final resolvedPaths = await _resolveTrackPaths(orderedTracks);
+    final safeStart = startIndex.clamp(0, tracks.length - 1);
+    final resolvedPaths = await resolveTrackFilePaths(tracks);
 
     if (await _useInternalPlayer()) {
       final queue = <PlayableMedia>[];
+      int? initialIndex;
       var skippedCueVirtualTrack = false;
-      for (var index = 0; index < orderedTracks.length; index++) {
-        final track = orderedTracks[index];
+      for (var index = 0; index < tracks.length; index++) {
+        final track = tracks[index];
         final resolvedPath = resolvedPaths[index];
         if (resolvedPath == null) continue;
         if (isCueVirtualPath(resolvedPath)) {
           skippedCueVirtualTrack = true;
           continue;
         }
+        // Keep the playlist's original order so Previous can reach earlier
+        // tracks and reaching its end still respects the player's repeat mode.
+        if (index >= safeStart) initialIndex ??= queue.length;
         queue.add(
           PlayableMedia(
             id: resolvedPath,
@@ -177,7 +181,9 @@ class PlaybackController extends Notifier<PlaybackState> {
 
       if (queue.isNotEmpty) {
         _log.d('Playing ${queue.length} tracks in the internal player');
-        await ref.read(musicPlayerControllerProvider).playAll(queue);
+        await ref
+            .read(musicPlayerControllerProvider)
+            .playAll(queue, initialIndex: initialIndex ?? 0);
         return;
       }
       if (skippedCueVirtualTrack) {
@@ -189,8 +195,9 @@ class PlaybackController extends Notifier<PlaybackState> {
     }
 
     var skippedCueVirtualTrack = false;
-    for (var index = 0; index < orderedTracks.length; index++) {
-      final track = orderedTracks[index];
+    for (var offset = 0; offset < tracks.length; offset++) {
+      final index = (safeStart + offset) % tracks.length;
+      final track = tracks[index];
       final resolvedPath = resolvedPaths[index];
       if (resolvedPath == null) {
         continue;
@@ -221,18 +228,6 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// same library+history file resolution.
   Future<List<String?>> resolveTrackFilePaths(List<Track> tracks) =>
       _resolveTrackPaths(tracks);
-
-  List<Track> _orderedTracksFromStartIndex(List<Track> tracks, int startIndex) {
-    final safeStart = startIndex.clamp(0, tracks.length - 1);
-    if (safeStart == 0) {
-      return List<Track>.from(tracks, growable: false);
-    }
-
-    return <Track>[
-      ...tracks.sublist(safeStart),
-      ...tracks.sublist(0, safeStart),
-    ];
-  }
 
   Future<List<String?>> _resolveTrackPaths(List<Track> tracks) async {
     if (tracks.isEmpty) return const [];

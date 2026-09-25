@@ -351,6 +351,7 @@ class _LibraryTracksFolderScreenState
                       mode: widget.mode,
                       playlistId: widget.playlistId,
                       folderTracks: folderTracks,
+                      trackIndex: index,
                       isInHistory: isInHistory,
                       isSelectionMode: isSelectionMode,
                       isSelected: isSelected,
@@ -910,6 +911,7 @@ class _CollectionTrackTile extends ConsumerWidget {
   final LibraryTracksFolderMode mode;
   final String? playlistId;
   final List<Track> folderTracks;
+  final int trackIndex;
   final bool isInHistory;
   final bool isSelectionMode;
   final bool isSelected;
@@ -921,6 +923,7 @@ class _CollectionTrackTile extends ConsumerWidget {
     required this.mode,
     required this.playlistId,
     required this.folderTracks,
+    required this.trackIndex,
     required this.isInHistory,
     this.isSelectionMode = false,
     this.isSelected = false,
@@ -1023,9 +1026,7 @@ class _CollectionTrackTile extends ConsumerWidget {
       trailing: isInHistory || isInLocalLibrary
           ? IconButton(
               tooltip: context.l10n.tooltipPlay,
-              onPressed: () {
-                ref.read(playbackProvider.notifier).playTrackList([track]);
-              },
+              onPressed: () => _playFromHere(context, ref),
               icon: Icon(Icons.play_arrow, color: colorScheme.primary),
               style: IconButton.styleFrom(
                 minimumSize: Size.square(context.tokens.minTouchTarget),
@@ -1047,6 +1048,23 @@ class _CollectionTrackTile extends ConsumerWidget {
             },
       onLongPress: isSelectionMode ? onTap : onLongPress,
     );
+  }
+
+  Future<void> _playFromHere(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref
+          .read(playbackProvider.notifier)
+          .playTrackList(folderTracks, startIndex: trackIndex);
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.snackbarCannotOpenFile(context.friendlyError(error)),
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildTrackCover(BuildContext context, String coverUrl, double size) {
