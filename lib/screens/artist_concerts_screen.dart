@@ -36,20 +36,16 @@ class _ArtistConcertsScreenState extends State<ArtistConcertsScreen> {
   @override
   Widget build(BuildContext context) {
     if (context.isMornye) {
-      final theme = MornyeTheme.build(Brightness.dark);
+      final theme = Theme.of(context);
       final route = ModalRoute.of(context);
       if (route != null) {
         ShellNavigationService.setChromeBrightness(
           owner: this,
           route: route,
-          brightness: Brightness.dark,
+          brightness: theme.brightness,
           surface: theme.colorScheme.surface,
         );
       }
-      return Theme(
-        data: theme,
-        child: Builder(builder: _buildPage),
-      );
     }
     return _buildPage(context);
   }
