@@ -27,8 +27,13 @@ class MornyePlaybackButton extends StatefulWidget {
 }
 
 class _MornyePlaybackButtonState extends State<MornyePlaybackButton>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final _states = WidgetStatesController();
+  late final _press = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 100),
+    reverseDuration: const Duration(milliseconds: 320),
+  );
   late final _skip = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 300),
@@ -39,8 +44,31 @@ class _MornyePlaybackButtonState extends State<MornyePlaybackButton>
       widget.icon == CupertinoIcons.backward_fill;
 
   @override
+  void initState() {
+    super.initState();
+    _states.addListener(_updatePress);
+    _press.addStatusListener((status) {
+      if (status == AnimationStatus.completed &&
+          !_states.value.contains(WidgetState.pressed)) {
+        _press.reverse();
+      }
+    });
+  }
+
+  void _updatePress() {
+    if (_states.value.contains(WidgetState.pressed)) {
+      _press.forward();
+    } else if (_press.isCompleted) {
+      _press.reverse();
+    }
+    // A quick tap still finishes its fade-in before fading back out.
+  }
+
+  @override
   void dispose() {
+    _states.removeListener(_updatePress);
     _states.dispose();
+    _press.dispose();
     _skip.dispose();
     super.dispose();
   }
@@ -83,13 +111,14 @@ class _MornyePlaybackButtonState extends State<MornyePlaybackButton>
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final motion = Duration(milliseconds: reduceMotion ? 120 : 180);
     final enabled = widget.onPressed != null && !widget.loading;
-    return IconButton(
+    final button = IconButton(
       statesController: _states,
       tooltip: widget.tooltip,
       color: widget.color,
       iconSize: widget.iconSize,
       padding: widget.padding,
       style: ButtonStyle(
+        shape: const WidgetStatePropertyAll(CircleBorder()),
         splashFactory: NoSplash.splashFactory,
         overlayColor: WidgetStateProperty.resolveWith((states) {
           return states.contains(WidgetState.focused) ||
@@ -100,6 +129,7 @@ class _MornyePlaybackButtonState extends State<MornyePlaybackButton>
       ),
       onPressed: enabled
           ? () {
+              _press.forward();
               if (_isSkip && !reduceMotion) _skip.forward(from: 0);
               widget.onPressed!();
             }
@@ -137,6 +167,19 @@ class _MornyePlaybackButtonState extends State<MornyePlaybackButton>
             ),
           );
         },
+      ),
+    );
+    return AnimatedBuilder(
+      animation: _press,
+      child: button,
+      builder: (context, child) => DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: widget.color.withValues(
+            alpha: 0.14 * Curves.easeOutCubic.transform(_press.value),
+          ),
+        ),
+        child: child,
       ),
     );
   }
