@@ -6,8 +6,7 @@ import 'dart:ui' as ui;
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart'
-    show RenderAnimatedOpacity, RenderRepaintBoundary;
+import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -485,7 +484,7 @@ void main() {
         expect(queueButton.hitTestable(), findsNothing);
         expect(tester.getSize(list).height, greaterThan(originalHeight + 150));
         expect(
-          find.byKey(const ValueKey('compact-track-header')).hitTestable(),
+          find.byKey(const ValueKey('player-track-header')).hitTestable(),
           findsOneWidget,
         );
 
@@ -1501,7 +1500,7 @@ void main() {
         await tester.pumpAndSettle();
         final compactBounds = tester.getRect(compact);
         expect(compactBounds.size, const Size(72, 72));
-        final header = find.byKey(const ValueKey('compact-track-header'));
+        final header = find.byKey(const ValueKey('player-track-header'));
         expect(tester.getRect(header).left, compactBounds.right + 12);
         expect(tester.getRect(header).center.dy, compactBounds.center.dy);
         await tester.tap(toggle);
@@ -1524,7 +1523,7 @@ void main() {
     );
 
     testWidgets(
-      'compact header finishes fading after closing ${lyrics ? 'lyrics' : 'queue'}',
+      'one header travels to and from ${lyrics ? 'lyrics' : 'queue'} beside the cover',
       (tester) async {
         await pumpNowPlaying(
           tester,
@@ -1536,20 +1535,56 @@ void main() {
         final toggle = find.byIcon(
           lyrics ? CupertinoIcons.quote_bubble : CupertinoIcons.list_bullet,
         );
-        final header = find.byKey(const ValueKey('compact-track-header'));
-        double opacity() =>
-            tester.renderObject<RenderAnimatedOpacity>(header).opacity.value;
-        expect(opacity(), 0);
+        final header = find.byKey(const ValueKey('player-track-header'));
+        final element = tester.element(header);
+        final expandedBounds = tester.getRect(header);
+        final play = find.widgetWithIcon(
+          MornyePlaybackButton,
+          CupertinoIcons.play_fill,
+        );
+        final controlsBounds = tester.getRect(play);
+        final favorite = find.byType(MornyePlayerFavoriteButton);
+        final favoriteState = tester.state(favorite);
         for (var visit = 0; visit < 2; visit++) {
           await tester.tap(toggle);
+          await tester.pump();
+          expect(tester.getRect(header), expandedBounds);
+          var previous = expandedBounds;
+          for (var frame = 0; frame < 3; frame++) {
+            await tester.pump(const Duration(milliseconds: 80));
+            final bounds = tester.getRect(header);
+            expect(bounds.top, lessThan(previous.top));
+            expect(bounds.left, greaterThan(previous.left));
+            expect(header.hitTestable(), findsOneWidget);
+            expect(tester.element(header), same(element));
+            expect(tester.state(favorite), same(favoriteState));
+            expect(tester.getRect(play), controlsBounds);
+            previous = bounds;
+          }
           await tester.pumpAndSettle();
-          expect(opacity(), 1);
+          final cover = tester.getRect(
+            find.byKey(const ValueKey('compact-player-artwork')),
+          );
+          final compactBounds = tester.getRect(header);
+          expect(compactBounds.left, cover.right + 12);
+          expect(compactBounds.center.dy, cover.center.dy);
           await tester.tap(toggle);
           await tester.pump();
-          await tester.pump(const Duration(milliseconds: 150));
-          expect(opacity(), inExclusiveRange(0, 1));
+          expect(tester.getRect(header), compactBounds);
+          previous = compactBounds;
+          for (var frame = 0; frame < 3; frame++) {
+            await tester.pump(const Duration(milliseconds: 80));
+            final bounds = tester.getRect(header);
+            expect(bounds.top, greaterThan(previous.top));
+            expect(bounds.left, lessThan(previous.left));
+            expect(header.hitTestable(), findsOneWidget);
+            expect(tester.element(header), same(element));
+            expect(tester.state(favorite), same(favoriteState));
+            expect(tester.getRect(play), controlsBounds);
+            previous = bounds;
+          }
           await tester.pumpAndSettle();
-          expect(opacity(), 0);
+          expect(tester.getRect(header), expandedBounds);
           expect(
             find.byKey(const ValueKey('full-player-artwork')),
             findsOneWidget,
@@ -1559,6 +1594,84 @@ void main() {
       },
     );
   }
+
+  testWidgets('header reverses in place and stays beside cover across panels', (
+    tester,
+  ) async {
+    await pumpNowPlaying(
+      tester,
+      theme: MornyeTheme.build(Brightness.dark),
+      size: const Size(393, 852),
+    );
+    mediaItems.add(item('first'));
+    await tester.pumpAndSettle();
+    final header = find.byKey(const ValueKey('player-track-header'));
+    final element = tester.element(header);
+    final expandedBounds = tester.getRect(header);
+    final lyrics = find.byIcon(CupertinoIcons.quote_bubble);
+    final queue = find.byIcon(CupertinoIcons.list_bullet);
+    await tester.tap(lyrics);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 160));
+    final interruptedBounds = tester.getRect(header);
+    await tester.tap(lyrics);
+    await tester.pump();
+    expect(tester.getRect(header), interruptedBounds);
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(tester.getRect(header).top, greaterThan(interruptedBounds.top));
+    expect(tester.getRect(header).left, lessThan(interruptedBounds.left));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(header), expandedBounds);
+
+    await tester.tap(lyrics);
+    await tester.pumpAndSettle();
+    final compactBounds = tester.getRect(header);
+    await tester.tap(queue);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 160));
+    expect(tester.getRect(header), compactBounds);
+    expect(tester.element(header), same(element));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(header), compactBounds);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shared header respects reduced motion and large text', (
+    tester,
+  ) async {
+    await pumpNowPlaying(
+      tester,
+      theme: MornyeTheme.build(Brightness.dark),
+      size: const Size(393, 852),
+      wrapPlayer: (player) => Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            disableAnimations: true,
+            textScaler: const TextScaler.linear(1.6),
+          ),
+          child: player,
+        ),
+      ),
+    );
+    mediaItems.add(item('first'));
+    await tester.pumpAndSettle();
+    final header = find.byKey(const ValueKey('player-track-header'));
+    final expandedBounds = tester.getRect(header);
+    final lyrics = find.byIcon(CupertinoIcons.quote_bubble);
+    await tester.tap(lyrics);
+    await tester.pump();
+    final compactBounds = tester.getRect(header);
+    final cover = tester.getRect(
+      find.byKey(const ValueKey('compact-player-artwork')),
+    );
+    expect(compactBounds.left, cover.right + 12);
+    expect(compactBounds.top, cover.top);
+    expect(compactBounds.top, lessThan(expandedBounds.top));
+    await tester.tap(lyrics);
+    await tester.pump();
+    expect(tester.getRect(header), expandedBounds);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('Mornye lyrics replace artwork while controls stay in place', (
     tester,

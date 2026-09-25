@@ -1129,17 +1129,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     final motion = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : const Duration(milliseconds: 380);
-    Widget resize({
-      required Widget child,
-      AlignmentGeometry alignment = Alignment.center,
-    }) => motion == Duration.zero
-        ? child
-        : AnimatedSize(
-            duration: motion,
-            curve: Curves.easeInOutCubic,
-            alignment: alignment,
-            child: child,
-          );
     return NotificationListener<ScrollUpdateNotification>(
       onNotification: (notification) {
         if (!showLyrics ||
@@ -1170,7 +1159,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             compactCoverSize,
             double.infinity,
           );
-          Widget stage({bool artworkOnly = false}) => LayoutBuilder(
+          Widget stage({
+            bool artworkOnly = false,
+            double progress = 0,
+          }) => LayoutBuilder(
             builder: (context, stage) {
               final compact = compactStage && !artworkOnly;
               final expandedArtwork =
@@ -1248,150 +1240,128 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       ),
                     ),
                   ),
-                  AnimatedPositioned(
-                    duration: motion,
-                    curve: Curves.easeInOutCubic,
-                    top: !compact
-                        ? fullBleed
-                              ? -artworkTopInset
-                              : (stage.maxHeight - artHeight) / 2
-                        : 8,
-                    left: !compact
-                        ? fullBleed
-                              ? 0
-                              : (stage.maxWidth - artWidth) / 2
-                        : 28,
-                    width: !compact
-                        ? fullBleed
-                              ? stage.maxWidth
-                              : artWidth
-                        : compactCoverSize,
-                    height: !compact
-                        ? fullBleed
-                              ? motionHeight
-                              : artHeight
-                        : compactCoverSize,
-                    child: HeroMode(
-                      enabled: expandedArtwork || compact,
-                      child: AnimatedSwitcher(
-                        duration: motion,
-                        switchInCurve: Curves.easeInOutCubic,
-                        switchOutCurve: Curves.easeInOutCubic,
-                        layoutBuilder: (current, previous) => Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            for (final child in previous)
-                              HeroMode(
-                                enabled: false,
-                                child: IgnorePointer(child: child),
-                              ),
-                            ?current,
-                          ],
-                        ),
-                        transitionBuilder: (child, animation) =>
-                            FadeTransition(opacity: animation, child: child),
-                        child: !expandedArtwork && !compact
-                            ? null
-                            : KeyedSubtree(
-                                key: ValueKey(
-                                  expandedArtwork
-                                      ? 'full-player-artwork'
-                                      : 'compact-player-artwork',
-                                ),
-                                child: _artworkDragRegion(
-                                  context,
-                                  Hero(
-                                    tag: kNowPlayingArtworkHeroTag,
-                                    child: expandedArtwork
-                                        ? Consumer(
-                                            builder: (context, ref, child) =>
-                                                AnimatedScale(
-                                                  scale:
-                                                      !insetArtwork ||
-                                                          ref.watch(
-                                                            playbackPlayingProvider,
-                                                          )
-                                                      ? 1
-                                                      : 0.73,
-                                                  duration: motion,
-                                                  curve: Curves.easeInOutCubic,
-                                                  child: child,
-                                                ),
-                                            child: DecoratedBox(
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                boxShadow: const [
-                                                  BoxShadow(
-                                                    color: Color(0x40000000),
-                                                    blurRadius: 28,
-                                                    offset: Offset(0, 16),
+                  Positioned.fromRect(
+                    rect: Rect.lerp(
+                      Rect.fromLTWH(
+                        fullBleed ? 0 : (stage.maxWidth - artWidth) / 2,
+                        fullBleed
+                            ? -artworkTopInset
+                            : (stage.maxHeight - artHeight) / 2,
+                        fullBleed ? stage.maxWidth : artWidth,
+                        fullBleed ? motionHeight : artHeight,
+                      ),
+                      const Rect.fromLTWH(
+                        28,
+                        8,
+                        compactCoverSize,
+                        compactCoverSize,
+                      ),
+                      progress,
+                    )!,
+                    // Both layers share the header's progress, so reversing a
+                    // transition reuses the live cover instead of inserting a
+                    // duplicate while its previous instance is still fading.
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        for (final expanded in [true, false])
+                          if (expanded
+                              ? !fullBleed && (!compact || progress < 1)
+                              : compact || progress > 0)
+                            HeroMode(
+                              key: ValueKey(expanded),
+                              enabled: expanded ? expandedArtwork : compact,
+                              child: IgnorePointer(
+                                ignoring: expanded
+                                    ? !expandedArtwork
+                                    : !compact,
+                                child: FadeTransition(
+                                  opacity: AlwaysStoppedAnimation(
+                                    expanded ? 1 - progress : progress,
+                                  ),
+                                  child: KeyedSubtree(
+                                    key: ValueKey(
+                                      expanded
+                                          ? 'full-player-artwork'
+                                          : 'compact-player-artwork',
+                                    ),
+                                    child: _artworkDragRegion(
+                                      context,
+                                      Hero(
+                                        tag: kNowPlayingArtworkHeroTag,
+                                        child: expanded
+                                            ? Consumer(
+                                                builder:
+                                                    (
+                                                      context,
+                                                      ref,
+                                                      child,
+                                                    ) => AnimatedScale(
+                                                      scale:
+                                                          !insetArtwork ||
+                                                              ref.watch(
+                                                                playbackPlayingProvider,
+                                                              )
+                                                          ? 1
+                                                          : 0.73,
+                                                      duration: motion,
+                                                      curve:
+                                                          Curves.easeInOutCubic,
+                                                      child: child,
+                                                    ),
+                                                child: DecoratedBox(
+                                                  decoration: BoxDecoration(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                    boxShadow: const [
+                                                      BoxShadow(
+                                                        color: Color(
+                                                          0x40000000,
+                                                        ),
+                                                        blurRadius: 28,
+                                                        offset: Offset(0, 16),
+                                                      ),
+                                                    ],
                                                   ),
-                                                ],
-                                              ),
-                                              child: _transitionArtwork(
-                                                _expandedArtworkKey,
+                                                  child: _transitionArtwork(
+                                                    _expandedArtworkKey,
+                                                    ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            12,
+                                                          ),
+                                                      child: motionArtwork,
+                                                    ),
+                                                  ),
+                                                ),
+                                              )
+                                            : _transitionArtwork(
+                                                _compactArtworkKey,
                                                 ClipRRect(
                                                   borderRadius:
                                                       BorderRadius.circular(12),
-                                                  child: motionArtwork,
+                                                  child: PlayerArtwork(
+                                                    artUri: mediaItem.artUri
+                                                        ?.toString(),
+                                                    colorScheme: colorScheme,
+                                                    cacheWidth:
+                                                        (360 *
+                                                                MediaQuery.devicePixelRatioOf(
+                                                                  context,
+                                                                ))
+                                                            .round(),
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          )
-                                        : _transitionArtwork(
-                                            _compactArtworkKey,
-                                            ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              child: PlayerArtwork(
-                                                artUri: mediaItem.artUri
-                                                    ?.toString(),
-                                                colorScheme: colorScheme,
-                                                cacheWidth:
-                                                    (360 *
-                                                            MediaQuery.devicePixelRatioOf(
-                                                              context,
-                                                            ))
-                                                        .round(),
-                                              ),
-                                            ),
-                                          ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 28 + compactCoverSize + 12,
-                    right: 28,
-                    top: 8,
-                    child: IgnorePointer(
-                      ignoring: !compact,
-                      child: ExcludeSemantics(
-                        excluding: !compact,
-                        child: AnimatedOpacity(
-                          key: const ValueKey('compact-track-header'),
-                          opacity: compact ? 1 : 0,
-                          duration: motion,
-                          // Pause the hidden marquee without freezing the
-                          // header's own fade-out animation.
-                          child: TickerMode(
-                            enabled: compact,
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: compactHeaderHeight,
-                              ),
-                              child: _trackHeader(
-                                mediaItem,
-                                colorScheme,
-                                compact: true,
-                              ),
                             ),
-                          ),
-                        ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
@@ -1442,19 +1412,40 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
 
           Widget content() => Column(
             children: [
-              Expanded(child: stage()),
-              resize(
-                child: compactStage
-                    ? const SizedBox(width: double.infinity)
-                    : Padding(
-                        key: _artworkHeaderKey,
-                        padding: const EdgeInsets.fromLTRB(28, 12, 28, 8),
-                        child: AnimatedBuilder(
-                          animation: _artworkColorsChanged,
-                          builder: (context, _) =>
-                              _trackHeader(mediaItem, foreground('header')),
+              Expanded(
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: compactStage ? 1 : 0),
+                  duration: motion,
+                  curve: Curves.easeInOutCubic,
+                  builder: (context, progress, _) => CustomMultiChildLayout(
+                    delegate: _PlayerHeaderLayout(
+                      progress: progress,
+                      compactHeight: compactHeaderHeight,
+                      compactLeft: 28 + compactCoverSize + 12,
+                    ),
+                    children: [
+                      LayoutId(
+                        id: _PlayerHeaderSlot.stage,
+                        child: stage(progress: progress),
+                      ),
+                      LayoutId(
+                        id: _PlayerHeaderSlot.header,
+                        child: KeyedSubtree(
+                          key: const ValueKey('player-track-header'),
+                          child: AnimatedBuilder(
+                            key: _artworkHeaderKey,
+                            animation: _artworkColorsChanged,
+                            builder: (context, _) => _trackHeader(
+                              mediaItem,
+                              foreground('header'),
+                              compactProgress: progress,
+                            ),
+                          ),
                         ),
                       ),
+                    ],
+                  ),
+                ),
               ),
               _autoHidingLyricsControls(
                 Column(
@@ -1496,7 +1487,12 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     MediaItem mediaItem,
     ColorScheme colorScheme, {
     bool compact = false,
+    double? compactProgress,
   }) {
+    final progress = compactProgress ?? (compact ? 1.0 : 0.0);
+    final actionSize = compactProgress == null
+        ? (_currentPage == 0 ? 24.0 : 28.0)
+        : 24 + 4 * progress;
     return Builder(
       builder: (context) => Row(
         children: [
@@ -1521,7 +1517,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: compact ? 18 : 22,
+                          fontSize: 22 - 4 * progress,
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onSurface,
                         ),
@@ -1535,7 +1531,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: compact ? 16 : 20,
+                          fontSize: 20 - 4 * progress,
                           color: colorScheme.onSurface.withValues(alpha: 0.72),
                         ),
                       ),
@@ -1549,13 +1545,14 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             key: ValueKey(mediaItem.id),
             mediaItem: mediaItem,
             compact: _currentPage != 0,
+            iconSize: actionSize,
             color: colorScheme.onSurface,
           ),
           Builder(
             builder: (buttonContext) => IconButton(
               tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
               color: colorScheme.onSurface,
-              iconSize: _currentPage == 0 ? 24 : 28,
+              iconSize: actionSize,
               icon: const Icon(CupertinoIcons.ellipsis),
               onPressed: () => _showMoreActions(
                 context: context,
@@ -2464,6 +2461,56 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       },
     );
   }
+}
+
+enum _PlayerHeaderSlot { stage, header }
+
+/// Keep one live header throughout the cover/lyrics/queue transition. Measuring
+/// it at its current width also accommodates accessibility text sizes without
+/// moving the transport controls below this layout.
+class _PlayerHeaderLayout extends MultiChildLayoutDelegate {
+  _PlayerHeaderLayout({
+    required this.progress,
+    required this.compactHeight,
+    required this.compactLeft,
+  });
+
+  final double progress;
+  final double compactHeight;
+  final double compactLeft;
+
+  @override
+  void performLayout(Size size) {
+    final left = 28 + (compactLeft - 28) * progress;
+    final header = layoutChild(
+      _PlayerHeaderSlot.header,
+      BoxConstraints(
+        minWidth: size.width - left - 28,
+        maxWidth: size.width - left - 28,
+        minHeight: compactHeight * progress,
+      ),
+    );
+    final stageHeight = (size.height - (header.height + 20) * (1 - progress))
+        .clamp(0.0, size.height);
+    layoutChild(
+      _PlayerHeaderSlot.stage,
+      BoxConstraints.tight(Size(size.width, stageHeight)),
+    );
+    positionChild(_PlayerHeaderSlot.stage, Offset.zero);
+    positionChild(
+      _PlayerHeaderSlot.header,
+      Offset(
+        left,
+        (size.height - header.height - 8) * (1 - progress) + 8 * progress,
+      ),
+    );
+  }
+
+  @override
+  bool shouldRelayout(_PlayerHeaderLayout oldDelegate) =>
+      progress != oldDelegate.progress ||
+      compactHeight != oldDelegate.compactHeight ||
+      compactLeft != oldDelegate.compactLeft;
 }
 
 class _PlaybackControls extends ConsumerWidget {
