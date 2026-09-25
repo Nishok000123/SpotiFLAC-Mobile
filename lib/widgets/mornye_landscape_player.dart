@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/providers/runtime_profile_provider.dart';
 import 'package:spotiflac_android/widgets/audio_output_button.dart';
 
 /// Landscape opens on the player. Lyrics can hide their bottom actions until
@@ -166,7 +169,10 @@ class _MornyeLandscapePlayerState extends State<MornyeLandscapePlayer> {
                                       : Stack(
                                           fit: StackFit.expand,
                                           children: [
-                                            widget.lyrics,
+                                            _LandscapeLyricsViewport(
+                                              controlsVisible: _actionsVisible,
+                                              child: widget.lyrics,
+                                            ),
                                             if (widget.lyricsOptions != null)
                                               Positioned(
                                                 left: 20,
@@ -228,6 +234,14 @@ class _MornyeLandscapePlayerState extends State<MornyeLandscapePlayer> {
                                                     .l10n
                                                     .nowPlayingTabLyrics,
                                           isSelected: widget.page == 1,
+                                          color: Colors.white,
+                                          style: IconButton.styleFrom(
+                                            backgroundColor: widget.page == 1
+                                                ? Colors.white.withValues(
+                                                    alpha: 0.16,
+                                                  )
+                                                : Colors.transparent,
+                                          ),
                                           icon: const Icon(
                                             CupertinoIcons.quote_bubble,
                                           ),
@@ -236,6 +250,7 @@ class _MornyeLandscapePlayerState extends State<MornyeLandscapePlayer> {
                                           ),
                                         ),
                                         AudioOutputButton(
+                                          color: Colors.white,
                                           onPickerChanged: (open) {
                                             if (!mounted) return;
                                             setState(
@@ -251,6 +266,14 @@ class _MornyeLandscapePlayerState extends State<MornyeLandscapePlayer> {
                                             CupertinoIcons.list_bullet,
                                           ),
                                           isSelected: widget.page == 2,
+                                          color: Colors.white,
+                                          style: IconButton.styleFrom(
+                                            backgroundColor: widget.page == 2
+                                                ? Colors.white.withValues(
+                                                    alpha: 0.16,
+                                                  )
+                                                : Colors.transparent,
+                                          ),
                                           onPressed: () => widget.onPageChanged(
                                             widget.page == 2 ? 0 : 2,
                                           ),
@@ -274,4 +297,84 @@ class _MornyeLandscapePlayerState extends State<MornyeLandscapePlayer> {
       ),
     ),
   );
+}
+
+/// Let lyrics pass behind the footer without leaving readable text underneath
+/// its controls. The mask and bounded blur recede when those controls hide.
+class _LandscapeLyricsViewport extends ConsumerWidget {
+  const _LandscapeLyricsViewport({
+    required this.controlsVisible,
+    required this.child,
+  });
+
+  final bool controlsVisible;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final blur =
+        !MediaQuery.highContrastOf(context) &&
+        (!ref.watch(lowEndDeviceProvider) ||
+            ref.watch(backdropBlurEnabledProvider));
+    return ClipRect(
+      key: const ValueKey('landscape-lyrics-viewport'),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(end: controlsVisible ? 1 : 0),
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        child: child,
+        builder: (context, progress, child) => Stack(
+          fit: StackFit.expand,
+          children: [
+            ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) => LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white,
+                  Colors.white,
+                  Colors.white.withValues(alpha: 1 - progress),
+                  Colors.white.withValues(alpha: 1 - progress),
+                ],
+                stops: [
+                  0,
+                  (1 - 96 / bounds.height).clamp(0, 1),
+                  (1 - 48 / bounds.height).clamp(0, 1),
+                  1,
+                ],
+              ).createShader(bounds),
+              child: child,
+            ),
+            if (blur && progress > 0)
+              // Increasing, clipped passes soften the edge without placing a
+              // mask/opacity layer between the filters and their backdrop.
+              for (final (height, sigma) in const [
+                (96.0, 2.0),
+                (80.0, 4.0),
+                (64.0, 8.0),
+              ])
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: height,
+                  child: IgnorePointer(
+                    child: ClipRect(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(
+                          sigmaX: sigma * progress,
+                          sigmaY: sigma * progress,
+                        ),
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                  ),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
 }
