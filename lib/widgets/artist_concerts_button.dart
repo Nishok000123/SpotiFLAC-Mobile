@@ -35,10 +35,11 @@ class ArtistConcertsButton extends StatelessWidget {
       style: TextButton.styleFrom(
         foregroundColor: Colors.white,
         backgroundColor: Colors.black.withValues(alpha: 0.35),
-        minimumSize: const Size(0, 36),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        minimumSize: const Size(0, 24),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+        tapTargetSize: MaterialTapTargetSize.padded,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(7),
           side: BorderSide(color: Colors.white.withValues(alpha: 0.22)),
         ),
         textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
