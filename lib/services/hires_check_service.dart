@@ -18,6 +18,8 @@ class HiResCheckResult {
   final String verdict;
   final int declaredSampleRate;
   final double cutoffFrequencyHz;
+  final double analyzedDurationSeconds;
+  final double brickwallHz;
   final int declaredBitDepth;
   final int effectiveBitDepth;
   final bool paddedBitDepth;
@@ -50,6 +52,8 @@ class HiResCheckResult {
     this.verdict = '',
     this.declaredSampleRate = 0,
     this.cutoffFrequencyHz = 0,
+    this.analyzedDurationSeconds = 0,
+    this.brickwallHz = 0,
     this.declaredBitDepth = 0,
     this.effectiveBitDepth = 0,
     this.paddedBitDepth = false,
@@ -68,6 +72,9 @@ class HiResCheckResult {
       verdict: json['verdict'] as String? ?? '',
       declaredSampleRate: (json['declared_sample_rate'] as num?)?.toInt() ?? 0,
       cutoffFrequencyHz: (json['cutoff_frequency_hz'] as num?)?.toDouble() ?? 0,
+      analyzedDurationSeconds:
+          (json['analyzed_duration_s'] as num?)?.toDouble() ?? 0,
+      brickwallHz: (json['brickwall_hz'] as num?)?.toDouble() ?? 0,
       declaredBitDepth: (json['declared_bit_depth'] as num?)?.toInt() ?? 0,
       effectiveBitDepth: (json['effective_bit_depth'] as num?)?.toInt() ?? 0,
       paddedBitDepth: json['padded_bit_depth'] == true,
@@ -86,10 +93,9 @@ class HiResCheckResult {
   bool get isCertain => isFake && confidence == 'certain';
   bool get isSuspect => isFake && confidence == 'suspect';
 
-  /// Mirrors the analysis thresholds: a rate claim above 48 kHz whose content
-  /// stops below 28 kHz. Recomputed here so the reason can be localized.
-  bool get upsampled =>
-      isFake && declaredSampleRate > 48000 && cutoffFrequencyHz < 28000;
+  /// Older backends called a limited spectrum "suspect". Neither that label
+  /// nor the cutoff alone establishes that the file was upsampled.
+  bool get hasLimitedBandwidth => verdict == 'band_limited' || isSuspect;
 }
 
 class HiResCheckService {

@@ -1,17 +1,21 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/services/hires_check_service.dart';
+import 'package:spotiflac_android/theme/mornye_icons.dart';
+import 'package:spotiflac_android/theme/mornye_theme.dart';
+import 'package:spotiflac_android/widgets/app_action_button.dart';
+import 'package:spotiflac_android/widgets/app_content_card.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 
-/// On-demand fake Hi-Res check for one FLAC/WAV file: spectral cutoff for
-/// upsampling, and unused low bits for a 16-bit master padded to 24.
+/// On-demand sampled spectrum and bit-depth analysis for one FLAC/WAV file.
 class HiResCheckCard extends StatefulWidget {
   final String filePath;
   final String? formatHint;
 
   const HiResCheckCard({super.key, required this.filePath, this.formatHint});
 
-  /// Only FLAC and PCM WAV are decoded by the Go checker.
+  /// Only FLAC and PCM WAV are decoded by the Rust checker.
   static bool isCandidate(String filePath, String? formatHint) {
     final format = formatHint?.toLowerCase().trim() ?? '';
     if (format == 'flac' || format == 'wav') return true;
@@ -71,8 +75,9 @@ class _HiResCheckCardState extends State<HiResCheckCard> {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final result = _result;
+    final mornye = context.isMornye;
 
-    return Card(
+    return AppContentCard(
       elevation: 0,
       color: settingsGroupColor(context),
       shape: RoundedRectangleBorder(
@@ -80,29 +85,47 @@ class _HiResCheckCardState extends State<HiResCheckCard> {
         side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(mornye ? 20 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.verified_outlined, color: cs.primary, size: 20),
-                const SizedBox(width: 8),
+                if (!mornye) ...[
+                  Icon(Icons.graphic_eq, color: cs.onSurfaceVariant, size: 22),
+                  const SizedBox(width: 10),
+                ],
                 Expanded(
                   child: Text(
                     l10n.hiResCheckTitle,
                     style: TextStyle(
                       color: cs.onSurface,
                       fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                      fontSize: 17,
                     ),
                   ),
                 ),
                 if (_checking)
-                  const SizedBox(
+                  SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                    child: mornye
+                        ? const CupertinoActivityIndicator()
+                        : const CircularProgressIndicator(strokeWidth: 2.5),
+                  )
+                else if (mornye && (result != null || _error != null))
+                  Tooltip(
+                    message: l10n.audioAnalysisRescan,
+                    child: CupertinoButton(
+                      padding: const EdgeInsets.all(12),
+                      onPressed: _check,
+                      child: Icon(
+                        CupertinoIcons.refresh,
+                        color: cs.onSurfaceVariant,
+                        size: 22,
+                        semanticLabel: l10n.audioAnalysisRescan,
+                      ),
+                    ),
                   )
                 else if (result != null || _error != null)
                   IconButton(
@@ -125,15 +148,26 @@ class _HiResCheckCardState extends State<HiResCheckCard> {
             else if (_error != null)
               Text(
                 l10n.hiResCheckFailed(_error!),
-                style: TextStyle(color: cs.error, fontSize: 13),
+                style: TextStyle(color: cs.error, fontSize: 15),
               )
             else if (result == null) ...[
-              _secondaryText(l10n.hiResCheckDescription, cs),
-              const SizedBox(height: 12),
-              FilledButton.tonalIcon(
-                onPressed: _check,
-                icon: const Icon(Icons.search, size: 18),
-                label: Text(l10n.hiResCheckRun),
+              _secondaryText(l10n.hiResCheckSummary, cs),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: mornye
+                    ? AppActionButton(
+                        outlined: true,
+                        tonal: true,
+                        onPressed: _check,
+                        icon: const Icon(Icons.search),
+                        label: Text(l10n.hiResCheckRun),
+                      )
+                    : FilledButton.tonalIcon(
+                        onPressed: _check,
+                        icon: const Icon(Icons.search, size: 20),
+                        label: Text(l10n.hiResCheckRun),
+                      ),
               ),
             ] else if (!result.supported)
               _secondaryText(l10n.hiResCheckUnsupported, cs)
@@ -148,7 +182,7 @@ class _HiResCheckCardState extends State<HiResCheckCard> {
   Widget _secondaryText(String text, ColorScheme cs) {
     return Text(
       text,
-      style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+      style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15, height: 1.35),
     );
   }
 
@@ -164,10 +198,10 @@ class _HiResCheckCardState extends State<HiResCheckCard> {
         cs.error,
         l10n.hiResCheckVerdictFakeCertain,
       ),
-      'fake_hires' when result.isSuspect => (
-        Icons.help_outline,
-        cs.tertiary,
-        l10n.hiResCheckVerdictFakeSuspect,
+      _ when result.hasLimitedBandwidth => (
+        Icons.info_outline,
+        cs.onSurface,
+        l10n.hiResCheckLimitedBandwidth,
       ),
       'fake_hires' => (
         Icons.warning_amber_rounded,
@@ -176,8 +210,8 @@ class _HiResCheckCardState extends State<HiResCheckCard> {
       ),
       'genuine_hires' => (
         Icons.check_circle_outline,
-        cs.primary,
-        l10n.hiResCheckVerdictGenuine,
+        cs.onSurface,
+        l10n.hiResCheckNoEvidence,
       ),
       'standard_definition' => (
         Icons.info_outline,
@@ -199,12 +233,13 @@ class _HiResCheckCardState extends State<HiResCheckCard> {
         l10n.hiResCheckReasonSampleHold,
       if (result.upsamplingArtifact == 'linear_interpolation')
         l10n.hiResCheckReasonInterpolation,
-      if (result.upsamplingArtifact == 'imaging') l10n.hiResCheckReasonImaging,
-      if (result.upsampled)
-        l10n.hiResCheckReasonRate(
-          _formatKHz(result.declaredSampleRate.toDouble()),
-          _formatKHz(result.cutoffFrequencyHz),
-        ),
+      if (result.upsamplingArtifact == 'imaging')
+        l10n.hiResCheckImagingEvidence,
+      if (result.isFake &&
+          result.confidence == 'likely' &&
+          result.upsamplingArtifact.isEmpty &&
+          result.brickwallHz > 0)
+        l10n.hiResCheckRateEvidence(_formatKHz(result.brickwallHz)),
       if (result.isFake && result.paddedBitDepth)
         l10n.hiResCheckReasonDepth(
           result.declaredBitDepth,
@@ -215,88 +250,95 @@ class _HiResCheckCardState extends State<HiResCheckCard> {
     return [
       Row(
         children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 6),
+          Icon(context.adaptiveIcon(icon), color: color, size: 22),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               label,
               style: TextStyle(
                 color: color,
                 fontWeight: FontWeight.w600,
-                fontSize: 13,
+                fontSize: 16,
               ),
             ),
           ),
         ],
       ),
       for (final reason in reasons) ...[
-        const SizedBox(height: 4),
+        const SizedBox(height: 10),
         _secondaryText('• $reason', cs),
       ],
       if (result.ultrasonicNoiseOnly) ...[
-        const SizedBox(height: 4),
+        const SizedBox(height: 10),
         _secondaryText(
-          '• ${l10n.hiResCheckUltrasonicNoise(_formatKHz(result.musicCutoffHz), _formatKHz(result.usefulSampleRate.toDouble()))}',
+          l10n.hiResCheckSteadyEnergy(_formatKHz(result.musicCutoffHz)),
           cs,
         ),
       ],
       if (result.verdict != 'inconclusive') ...[
+        const SizedBox(height: 16),
+        const Divider(height: 1),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 16,
-          runSpacing: 4,
-          children: [
-            // Past the music only steady noise remains, so where it ends
-            // says nothing about the music: show the music's own edge.
-            if (result.ultrasonicNoiseOnly)
-              _detail(
-                l10n.hiResCheckMusicContent,
-                '~${_formatKHz(result.musicCutoffHz)}',
-                cs,
-              )
-            else
-              _detail(
-                l10n.hiResCheckCutoff,
-                '~${_formatKHz(result.cutoffFrequencyHz)}',
-                cs,
-              ),
-            if (result.declaredBitDepth > 0)
-              _detail(
-                l10n.hiResCheckBitsInUse,
-                '${effectiveBits ?? '?'} / ${result.declaredBitDepth}-bit',
-                cs,
-              ),
-          ],
+        _detail(
+          l10n.audioAnalysisSampleRate,
+          _formatKHz(result.declaredSampleRate.toDouble()),
+          cs,
         ),
-      ],
-      if (result.isSuspect) ...[
-        const SizedBox(height: 8),
-        Text(
-          l10n.hiResCheckDisclaimer,
-          style: TextStyle(
-            color: cs.onSurfaceVariant,
-            fontSize: 11,
-            fontStyle: FontStyle.italic,
+        _detail(
+          l10n.audioAnalysisNyquist,
+          _formatKHz(result.declaredSampleRate / 2),
+          cs,
+        ),
+        _detail(
+          l10n.hiResCheckEstimatedCutoff,
+          '~${_formatKHz(result.cutoffFrequencyHz)}',
+          cs,
+        ),
+        if (result.declaredBitDepth > 0)
+          _detail(
+            l10n.hiResCheckActiveBits,
+            '${effectiveBits ?? '?'} / ${result.declaredBitDepth}',
+            cs,
           ),
+      ],
+      if (result.hasLimitedBandwidth) ...[
+        const SizedBox(height: 16),
+        _secondaryText(l10n.hiResCheckBandwidthExplanation, cs),
+      ],
+      if (result.analyzedDurationSeconds > 0) ...[
+        const SizedBox(height: 12),
+        _secondaryText(
+          l10n.hiResCheckSampledExplanation(
+            result.analyzedDurationSeconds.toStringAsFixed(1),
+          ),
+          cs,
         ),
       ],
     ];
   }
 
   Widget _detail(String label, String value, ColorScheme cs) {
-    return Text.rich(
-      TextSpan(
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextSpan(
-            text: '$label: ',
-            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15),
+            ),
           ),
-          TextSpan(
-            text: value,
-            style: TextStyle(
-              color: cs.onSurface,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                color: cs.onSurface,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
