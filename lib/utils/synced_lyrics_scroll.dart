@@ -98,14 +98,14 @@ double syncedLyricSegmentLift({
     return t * t * (3 - 2 * t);
   }
 
-  // Anticipate the highlight slightly without moving the list's layout.
-  final normalLift = ease(
-    (elapsed + 100) / (100 + math.min(160, duration * 0.35)),
-  );
+  // Start gently before the color sweep and let the movement trail it. Keep
+  // this envelope independent of word length: fast syllables must not snap
+  // upwards just because their highlight finishes in a few frames.
+  final normalLift = ease((elapsed + 180) / 720);
   final heldStrength = ((duration - 1000) / 1500).clamp(0.0, 1.0);
   if (heldStrength == 0) return normalLift;
-  final rise = ease((elapsed - 200) / math.min(900, (duration - 200) * 0.5));
-  final settle = ease((duration - elapsed) / 300);
+  final rise = ease((elapsed - 400) / math.min(1200, (duration - 400) * 0.6));
+  final settle = ease((duration - elapsed) / 600);
   return normalLift + 1.3 * heldStrength * rise * settle;
 }
 

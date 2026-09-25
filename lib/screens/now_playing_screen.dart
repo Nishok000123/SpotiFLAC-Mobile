@@ -3501,6 +3501,7 @@ Widget _withLyricSupplements(
   Color color, {
   required Offset visibility,
   Widget Function(String, List<LyricWord>, TextStyle)? timedText,
+  Widget Function(String, List<LyricWord>, TextStyle)? timedSupplementText,
 }) {
   if (line.romanization == null && line.translation == null) return primary;
   final supplements = _lyricSupplements(context, line).toList();
@@ -3523,8 +3524,8 @@ Widget _withLyricSupplements(
                 opacity: translation ? visibility.dy : visibility.dx,
                 child: Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: words.isNotEmpty && timedText != null
-                      ? timedText(text, words, style)
+                  child: words.isNotEmpty && timedSupplementText != null
+                      ? timedSupplementText(text, words, style)
                       : Text(
                           text,
                           textAlign: context.isMornye
@@ -3567,6 +3568,7 @@ Widget _withLyricSupplements(
           visibility: visibility.dx,
           primaryStyle: primaryStyle,
           pronunciationStyle: pronunciationStyle,
+          pronunciationBuilder: timedSupplementText,
           textBuilder:
               timedText ??
               (text, words, style) =>
@@ -3781,11 +3783,18 @@ class _WordHighlightedLyricLineState
       primary,
       widget.colorScheme.onSurface,
       timedText: _buildTimedText,
+      timedSupplementText: (text, words, style) =>
+          _buildTimedText(text, words, style, lift: false),
       visibility: widget.supplementVisibility,
     );
   }
 
-  Widget _buildTimedText(String text, List<LyricWord> words, TextStyle style) {
+  Widget _buildTimedText(
+    String text,
+    List<LyricWord> words,
+    TextStyle style, {
+    bool lift = true,
+  }) {
     final highlightedColor = widget.colorScheme.onSurface;
     final mornye = context.isMornye;
     final pendingColor = mornye
@@ -3812,7 +3821,7 @@ class _WordHighlightedLyricLineState
       pendingColor: pendingColor,
       highlightedColor: highlightedColor,
       semanticsLabel: text,
-      liftEnabled: mornye && !MediaQuery.disableAnimationsOf(context),
+      liftEnabled: lift && mornye && !MediaQuery.disableAnimationsOf(context),
     );
   }
 }

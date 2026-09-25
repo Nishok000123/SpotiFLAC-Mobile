@@ -2572,11 +2572,19 @@ void main() {
 
         for (final text in ['First second', 'Firsu secondu']) {
           final singingFirst = await pixelsAt(1100, text);
-          final firstEnded = await pixelsAt(1307, text);
+          final moves = mornye && text == 'First second';
+          final firstEnded = await pixelsAt(moves ? 1600 : 1307, text);
           expect(firstEnded, isNot(orderedEquals(singingFirst)));
+          if (moves) {
+            expect(
+              await pixelsAt(1307, text),
+              isNot(orderedEquals(firstEnded)),
+              reason: 'Movement trails the finished color sweep',
+            );
+          }
           expect(await pixelsAt(1800, text), orderedEquals(firstEnded));
           final singingLast = await pixelsAt(2150, text);
-          final lastEnded = await pixelsAt(2497, text);
+          final lastEnded = await pixelsAt(moves ? 2600 : 2497, text);
           expect(lastEnded, isNot(orderedEquals(singingLast)));
           expect(await pixelsAt(2900, text), orderedEquals(lastEnded));
           expect(await pixelsAt(1100, text), orderedEquals(singingFirst));

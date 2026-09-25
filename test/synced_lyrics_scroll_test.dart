@@ -65,20 +65,33 @@ void main() {
       expect(liftAt(800), 0);
       expect(liftAt(950), inExclusiveRange(0, 1));
       expect(liftAt(1000), greaterThan(liftAt(950)));
-      expect(liftAt(1200), 1);
-      expect(liftAt(1500), 1);
+      expect(liftAt(1000), lessThan(0.2));
+      expect(liftAt(1200), inExclusiveRange(0.4, 0.7));
+      expect(liftAt(1500), lessThan(1));
+      expect(liftAt(1540), 1);
       expect(liftAt(3000), 1);
     });
 
     test('held words rise further then settle to the normal highlight', () {
       final peak = liftAt(2300, end: 4000);
-      expect(liftAt(1200, end: 4000), 1);
+      expect(liftAt(1200, end: 4000), inExclusiveRange(0.4, 0.7));
       expect(peak, greaterThan(1));
       expect(liftAt(3900, end: 4000), inExclusiveRange(1, peak));
       expect(liftAt(4000, end: 4000), 1);
       expect(liftAt(4200, end: 4000), 1);
       expect(liftAt(2300, end: 4000), peak);
       expect(liftAt(800, end: 4000), 0);
+    });
+
+    test('short syllables keep the slow rise and trail their color sweep', () {
+      expect(liftAt(1100, end: 1100), lessThan(0.4));
+      expect(liftAt(1200, end: 1100), lessThan(0.7));
+      expect(liftAt(1540, end: 1100), 1);
+      for (var position = 820; position < 1540; position += 16) {
+        final before = liftAt(position, end: 1100);
+        final after = liftAt(position + 16, end: 1100);
+        expect(after - before, inInclusiveRange(0, 0.034));
+      }
     });
 
     test('invalid or zero-length timing does not move the text', () {

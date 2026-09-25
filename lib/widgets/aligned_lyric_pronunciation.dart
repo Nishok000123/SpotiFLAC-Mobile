@@ -172,6 +172,8 @@ class AlignedLyricPronunciation extends StatelessWidget {
   final TextStyle primaryStyle;
   final TextStyle pronunciationStyle;
   final Widget Function(String, List<LyricWord>, TextStyle) textBuilder;
+  final Widget Function(String, List<LyricWord>, TextStyle)?
+  pronunciationBuilder;
 
   const AlignedLyricPronunciation({
     super.key,
@@ -180,6 +182,7 @@ class AlignedLyricPronunciation extends StatelessWidget {
     required this.primaryStyle,
     required this.pronunciationStyle,
     required this.textBuilder,
+    this.pronunciationBuilder,
   });
 
   @override
@@ -231,7 +234,7 @@ class AlignedLyricPronunciation extends StatelessWidget {
                       ),
                       child: SizedBox(
                         height: row.pronunciationHeight,
-                        child: textBuilder(
+                        child: (pronunciationBuilder ?? textBuilder)(
                           group.pronunciation.map((word) => word.text).join(),
                           group.pronunciation,
                           pronunciationStyle,
