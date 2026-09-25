@@ -101,6 +101,8 @@ AppSettings _$AppSettingsFromJson(Map<String, dynamic> json) => AppSettings(
   allowQualityVariants: json['allowQualityVariants'] as bool? ?? false,
   saveDownloadHistory: json['saveDownloadHistory'] as bool? ?? true,
   playerMode: json['playerMode'] as String? ?? 'external',
+  playerShowPronunciation: json['playerShowPronunciation'] as bool? ?? true,
+  playerShowTranslation: json['playerShowTranslation'] as bool? ?? true,
 );
 
 Map<String, dynamic> _$AppSettingsToJson(
@@ -181,4 +183,6 @@ Map<String, dynamic> _$AppSettingsToJson(
   'allowQualityVariants': instance.allowQualityVariants,
   'saveDownloadHistory': instance.saveDownloadHistory,
   'playerMode': instance.playerMode,
+  'playerShowPronunciation': instance.playerShowPronunciation,
+  'playerShowTranslation': instance.playerShowTranslation,
 };

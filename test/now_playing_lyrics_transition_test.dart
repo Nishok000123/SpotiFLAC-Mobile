@@ -39,6 +39,9 @@ import 'package:spotiflac_android/widgets/mini_player.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const backendChannel = MethodChannel('com.zarz.spotiflac/backend');
+  const secureStorageChannel = MethodChannel(
+    'plugins.it_nomads.com/flutter_secure_storage',
+  );
   late StreamController<MediaItem?> mediaItems;
   late List<double> volumeWrites;
   late Map<String, dynamic> metadataOverrides;
@@ -50,6 +53,8 @@ void main() {
     volumeWrites = [];
     metadataOverrides = {};
     metadataReads = [];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(secureStorageChannel, (_) async => null);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(backendChannel, (call) async {
           if (call.method != 'readFileMetadata') {
@@ -77,6 +82,8 @@ void main() {
     await mediaItems.close();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(backendChannel, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(secureStorageChannel, null);
   });
 
   MediaItem item(String id) => MediaItem(
@@ -1634,6 +1641,98 @@ void main() {
     },
   );
 
+  for (final supplement in ['none', 'pronunciation', 'translation']) {
+    testWidgets('language menu only offers available $supplement', (
+      tester,
+    ) async {
+      metadataOverrides['lyrics'] =
+          '${supplement == 'pronunciation' ? '[x-romaji:1009:${base64.encode(utf8.encode('Pronunciation'))}]\n' : ''}'
+          '${supplement == 'translation' ? '[x-translation:1009:${base64.encode(utf8.encode('Translation'))}]\n' : ''}'
+          '[00:01.009]Original';
+      await pumpNowPlaying(
+        tester,
+        theme: MornyeTheme.build(Brightness.dark),
+        size: const Size(390, 844),
+      );
+      mediaItems.add(item('first'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
+      await tester.pumpAndSettle();
+      final options = find.byKey(const ValueKey('lyrics-language-options'));
+      if (supplement == 'none') {
+        expect(options, findsNothing);
+      } else {
+        await tester.tap(options);
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Hide Pronunciation'),
+          supplement == 'pronunciation' ? findsOneWidget : findsNothing,
+        );
+        expect(
+          find.text('Hide Translation'),
+          supplement == 'translation' ? findsOneWidget : findsNothing,
+        );
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final landscape in [false, true]) {
+    testWidgets(
+      'language menu respects reduced motion and idle controls (landscape: $landscape)',
+      (tester) async {
+        metadataOverrides['lyrics'] =
+            '[x-romaji:1009:${base64.encode(utf8.encode('Pronunciation'))}]\n'
+            '[00:01.009]Original';
+        await pumpNowPlaying(
+          tester,
+          theme: MornyeTheme.build(Brightness.dark),
+          size: landscape ? const Size(844, 390) : const Size(390, 844),
+          wrapPlayer: (player) => Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: true),
+              child: player,
+            ),
+          ),
+        );
+        mediaItems.add(item('first'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
+        await tester.pumpAndSettle();
+        final options = find.byKey(const ValueKey('lyrics-language-options'));
+        await tester.tap(options);
+        await tester.pumpAndSettle();
+        await tester.pump(const Duration(seconds: 4));
+        expect(find.text('Hide Pronunciation').hitTestable(), findsOneWidget);
+        await tester.tap(find.text('Hide Pronunciation'));
+        await tester.pump();
+        await tester.pump();
+        expect(find.text('Pronunciation'), findsNothing);
+        expect(options.hitTestable(), findsOneWidget);
+
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pumpAndSettle();
+        expect(options.hitTestable(), findsNothing);
+        if (landscape) {
+          await tester.tap(
+            find.byKey(const ValueKey('landscape-actions-reveal')),
+          );
+        } else {
+          final bounds = tester.getRect(find.byType(ListView));
+          await tester.tapAt(Offset(bounds.right - 6, bounds.top + 10));
+        }
+        await tester.pumpAndSettle();
+        await tester.tap(options);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Show Pronunciation'));
+        await tester.pump();
+        await tester.pump();
+        expect(find.text('Pronunciation'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   for (final mornye in [false, true]) {
     testWidgets('player shows original, romanization and English ($mornye)', (
       tester,
@@ -1668,6 +1767,94 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets(
+      'lyric language toggles fade, resize and remember choices ($mornye)',
+      (tester) async {
+        metadataOverrides['lyrics'] =
+            '[x-romaji:1009:${base64.encode(utf8.encode('Romanized text'))}]\n'
+            '[x-translation:1009:${base64.encode(utf8.encode('English text'))}]\n'
+            '[00:01.009]Original text\n[00:10.000]Next line';
+        Future<void> openPlayer(String id) async {
+          await pumpNowPlaying(
+            tester,
+            theme: mornye ? MornyeTheme.build(Brightness.dark) : null,
+            size: const Size(390, 844),
+            playback: PlaybackState(
+              processingState: AudioProcessingState.ready,
+              updatePosition: const Duration(milliseconds: 1500),
+            ),
+          );
+          mediaItems.add(item(id));
+          await tester.pumpAndSettle();
+          if (mornye) {
+            await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
+          } else {
+            await tester.drag(find.byType(PageView), const Offset(-350, 0));
+          }
+          await tester.pumpAndSettle();
+        }
+
+        final options = find.byKey(const ValueKey('lyrics-language-options'));
+        Future<void> choose(String label) async {
+          await tester.tap(options);
+          await tester.pumpAndSettle();
+          await tester.tap(find.text(label));
+          await tester.pump();
+        }
+
+        double gap() =>
+            tester.getTopLeft(find.text('Next line')).dy -
+            tester.getTopLeft(find.text('Original text')).dy;
+        double pronunciationOpacity() => tester
+            .widget<Opacity>(
+              find
+                  .ancestor(
+                    of: find.text('Romanized text'),
+                    matching: find.byType(Opacity),
+                  )
+                  .first,
+            )
+            .opacity;
+
+        await openPlayer('first');
+        final expandedGap = gap();
+        await choose('Hide Pronunciation');
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(pronunciationOpacity(), inExclusiveRange(0, 1));
+        final intermediateGap = gap();
+        expect(intermediateGap, lessThan(expandedGap));
+        await tester.pumpAndSettle();
+        expect(find.text('Romanized text'), findsNothing);
+        expect(find.text('English text'), findsOneWidget);
+        expect(gap(), lessThan(intermediateGap));
+
+        await choose('Show Pronunciation');
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(pronunciationOpacity(), inExclusiveRange(0, 1));
+        await tester.pumpAndSettle();
+        expect(gap(), closeTo(expandedGap, 1));
+        await choose('Hide Translation');
+        await tester.pumpAndSettle();
+        expect(find.text('English text'), findsNothing);
+        expect(find.text('Romanized text'), findsOneWidget);
+        await choose('Hide Pronunciation');
+        await tester.pumpAndSettle();
+        expect(find.text('Original text'), findsOneWidget);
+        expect(find.text('Romanized text'), findsNothing);
+        expect(options.hitTestable(), findsOneWidget);
+
+        await tester.pumpWidget(const SizedBox());
+        await openPlayer('second');
+        expect(find.text('English text'), findsNothing);
+        expect(find.text('Romanized text'), findsNothing);
+        await choose('Show Translation');
+        await tester.pumpAndSettle();
+        expect(find.text('English text'), findsOneWidget);
+        expect(find.text('Romanized text'), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets(
       'original and romanization follow word timing and pauses ($mornye)',
@@ -1750,6 +1937,27 @@ void main() {
           expect(await pixelsAt(2900, text), orderedEquals(lastEnded));
           expect(await pixelsAt(1100, text), orderedEquals(singingFirst));
         }
+        final originalPixels = await pixelsAt(1100, 'First second');
+        final options = find.byKey(const ValueKey('lyrics-language-options'));
+        if (mornye && options.hitTestable().evaluate().isEmpty) {
+          final bounds = tester.getRect(find.byType(ListView));
+          await tester.tapAt(Offset(bounds.right - 6, bounds.top + 10));
+          await tester.pumpAndSettle();
+        }
+        await tester.tap(options);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Hide Pronunciation'));
+        await tester.pumpAndSettle();
+        expect(find.bySemanticsLabel('Firsu secondu'), findsNothing);
+        expect(
+          await pixelsAt(1100, 'First second'),
+          orderedEquals(originalPixels),
+        );
+        await tester.tap(options);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Show Pronunciation'));
+        await tester.pumpAndSettle();
+        await pixelsAt(2150, 'Firsu secondu');
         expect(tester.takeException(), isNull);
       },
     );

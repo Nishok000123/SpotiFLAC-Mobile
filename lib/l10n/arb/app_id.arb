@@ -5688,6 +5688,11 @@
   "setupStorageGranted": "Izin Penyimpanan Diberikan!",
   "downloadAllowLocalNetwork": "Allow Local Network Access",
   "nowPlayingNoLyrics": "No lyrics in this file",
+  "nowPlayingLyricsLanguageOptions": "Opsi bahasa lirik",
+  "nowPlayingHidePronunciation": "Sembunyikan Pelafalan",
+  "nowPlayingShowPronunciation": "Tampilkan Pelafalan",
+  "nowPlayingHideTranslation": "Sembunyikan Terjemahan",
+  "nowPlayingShowTranslation": "Tampilkan Terjemahan",
   "selectionDeleteTracksCount": "Delete {count} {count, plural, =1{track} other{tracks}}",
   "@selectionDeleteTracksCount": {
     "description": "Button label for deleting selected tracks",

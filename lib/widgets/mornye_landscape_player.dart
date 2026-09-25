@@ -17,6 +17,7 @@ class MornyeLandscapePlayer extends StatefulWidget {
     required this.volume,
     required this.page,
     required this.onPageChanged,
+    this.lyricsOptions,
   });
 
   final Widget artwork;
@@ -27,6 +28,7 @@ class MornyeLandscapePlayer extends StatefulWidget {
   final Widget volume;
   final int page;
   final ValueChanged<int> onPageChanged;
+  final Widget? lyricsOptions;
 
   @override
   State<MornyeLandscapePlayer> createState() => _MornyeLandscapePlayerState();
@@ -193,6 +195,9 @@ class _MornyeLandscapePlayerState extends State<MornyeLandscapePlayer> {
                                             widget.page == 1 ? 0 : 1,
                                           ),
                                         ),
+                                        if (widget.page == 1 &&
+                                            widget.lyricsOptions != null)
+                                          widget.lyricsOptions!,
                                         IconButton(
                                           tooltip:
                                               context.l10n.nowPlayingUpNext,

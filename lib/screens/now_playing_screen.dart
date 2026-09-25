@@ -13,6 +13,7 @@ import 'package:spotiflac_android/providers/download_history_provider.dart';
 import 'package:spotiflac_android/providers/library_collections_provider.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
 import 'package:spotiflac_android/providers/runtime_profile_provider.dart';
+import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/screens/downloaded_album_screen.dart';
 import 'package:spotiflac_android/screens/local_album_screen.dart';
 import 'package:spotiflac_android/services/library_database.dart';
@@ -329,6 +330,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   double? _motionAspectRatio;
   String? _failedMotionSource;
   bool _lyricsControlsHidden = false;
+  bool _lyricsOptionsOpen = false;
   double _lyricsScrollDistance = 0;
   Timer? _lyricsIdleTimer;
   final _lyricsPointers = <int, Offset>{};
@@ -1031,6 +1033,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   void _scheduleLyricsControlsHide() {
     _lyricsIdleTimer?.cancel();
     if (!_canAutoHideLyricsControls ||
+        _lyricsOptionsOpen ||
         _lyricsControlsHidden ||
         _lyricsPointers.isNotEmpty) {
       return;
@@ -1413,6 +1416,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               artwork: stage(artworkOnly: true),
               header: _trackHeader(mediaItem, colorScheme, compact: true),
               lyrics: _lyricsSection(colorScheme, isActive: showLyrics),
+              lyricsOptions: showLyrics
+                  ? _lyricsOptionsButton(colorScheme)
+                  : null,
               queue: MornyePlayerQueue(
                 colorScheme: colorScheme,
                 onShuffleLibrary: () => _shuffleLibrary(controller),
@@ -1659,10 +1665,34 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       );
     }
     if (_lyrics.synced) {
-      return _SyncedLyricsView(
-        lyrics: _lyrics,
-        colorScheme: colorScheme,
-        isActive: isActive,
+      final visibility = ref.watch(
+        settingsProvider.select(
+          (settings) => (
+            settings.playerShowPronunciation,
+            settings.playerShowTranslation,
+          ),
+        ),
+      );
+      final options = isActive && !_landscape
+          ? _lyricsOptionsButton(colorScheme)
+          : null;
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          _SyncedLyricsView(
+            lyrics: _lyrics,
+            colorScheme: colorScheme,
+            isActive: isActive,
+            showPronunciation: visibility.$1,
+            showTranslation: visibility.$2,
+          ),
+          if (options != null)
+            Positioned(
+              left: 24,
+              bottom: 8,
+              child: _autoHidingLyricsControls(options),
+            ),
+        ],
       );
     }
     return SingleChildScrollView(
@@ -1676,6 +1706,122 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         textAlign: TextAlign.center,
       ),
     );
+  }
+
+  Widget? _lyricsOptionsButton(ColorScheme colorScheme) {
+    if (_loadingMeta || !_lyrics.synced) return null;
+    final pronunciation = _lyrics.lines.any(
+      (line) => line.romanization?.trim().isNotEmpty == true,
+    );
+    final translation = _lyrics.lines.any(
+      (line) => line.translation?.trim().isNotEmpty == true,
+    );
+    if (!pronunciation && !translation) return null;
+    return Builder(
+      builder: (buttonContext) => IconButton.filledTonal(
+        key: const ValueKey('lyrics-language-options'),
+        tooltip: context.l10n.nowPlayingLyricsLanguageOptions,
+        icon: const Icon(Icons.translate_rounded),
+        style: IconButton.styleFrom(
+          foregroundColor: _lyricsOptionsOpen
+              ? colorScheme.surface
+              : colorScheme.onSurface,
+          backgroundColor: colorScheme.onSurface.withValues(
+            alpha: _lyricsOptionsOpen ? 0.85 : 0.16,
+          ),
+        ),
+        onPressed: () => _showLyricsOptions(
+          buttonContext,
+          pronunciation: pronunciation,
+          translation: translation,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showLyricsOptions(
+    BuildContext buttonContext, {
+    required bool pronunciation,
+    required bool translation,
+  }) async {
+    final settings = ref.read(settingsProvider);
+    final l10n = context.l10n;
+    final actions = <(String, String, IconData)>[
+      if (pronunciation)
+        (
+          'pronunciation',
+          settings.playerShowPronunciation
+              ? l10n.nowPlayingHidePronunciation
+              : l10n.nowPlayingShowPronunciation,
+          settings.playerShowPronunciation
+              ? Icons.voice_over_off_outlined
+              : Icons.record_voice_over_outlined,
+        ),
+      if (translation)
+        (
+          'translation',
+          settings.playerShowTranslation
+              ? l10n.nowPlayingHideTranslation
+              : l10n.nowPlayingShowTranslation,
+          Icons.translate_rounded,
+        ),
+    ];
+    _lyricsIdleTimer?.cancel();
+    setState(() => _lyricsOptionsOpen = true);
+    try {
+      final anchor = mornyeMenuAnchor(buttonContext);
+      final action = context.isMornye
+          ? await showMornyeContextMenu<String>(
+              context: buttonContext,
+              anchor: anchor,
+              preferAbove: true,
+              builder: (menuContext) => MornyeContextMenu(
+                dense: true,
+                groups: [
+                  [
+                    for (final (value, label, icon) in actions)
+                      MornyeMenuAction(
+                        icon: icon,
+                        label: label,
+                        onPressed: () => Navigator.of(menuContext).pop(value),
+                      ),
+                  ],
+                ],
+              ),
+            )
+          : await showMenu<String>(
+              context: buttonContext,
+              position: RelativeRect.fromRect(
+                anchor ?? Rect.zero,
+                Offset.zero & MediaQuery.sizeOf(context),
+              ),
+              items: [
+                for (final (value, label, icon) in actions)
+                  PopupMenuItem(
+                    value: value,
+                    child: Row(
+                      children: [
+                        Icon(icon),
+                        const SizedBox(width: 12),
+                        Flexible(child: Text(label)),
+                      ],
+                    ),
+                  ),
+              ],
+            );
+      if (!mounted) return;
+      final notifier = ref.read(settingsProvider.notifier);
+      if (action == 'pronunciation') {
+        notifier.setPlayerShowPronunciation(!settings.playerShowPronunciation);
+      } else if (action == 'translation') {
+        notifier.setPlayerShowTranslation(!settings.playerShowTranslation);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _lyricsOptionsOpen = false);
+        _scheduleLyricsControlsHide();
+      }
+    }
   }
 
   Future<void> _openExternally(String source) async {
@@ -2524,11 +2670,15 @@ class _SyncedLyricsView extends ConsumerStatefulWidget {
   final ParsedLyrics lyrics;
   final ColorScheme colorScheme;
   final bool isActive;
+  final bool showPronunciation;
+  final bool showTranslation;
 
   const _SyncedLyricsView({
     required this.lyrics,
     required this.colorScheme,
     required this.isActive,
+    required this.showPronunciation,
+    required this.showTranslation,
   });
 
   @override
@@ -2551,8 +2701,10 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   bool _userScrolling = false;
   static const double _estimatedLyricExtent = 64;
   List<double>? _lineExtents;
+  List<(double, double, double)> _lineMeasurements = [];
   Object? _lineLayoutKey;
   double? _viewportHeight;
+  Offset? _layoutVisibility;
 
   @override
   void initState() {
@@ -2716,22 +2868,31 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       textScaler: scaler,
       locale: locale,
     );
-    final extents = <double>[];
+    final measurements = <(double, double, double)>[];
     for (final line in widget.lyrics.lines) {
       painter.text = TextSpan(
         text: line.text.trim().isEmpty ? '\u00b7\u00b7\u00b7' : line.text,
         style: style,
       );
       painter.layout(maxWidth: width);
-      var height = painter.height + 32;
-      for (final (text, style, _) in _lyricSupplements(context, line)) {
+      final height = painter.height + 32;
+      var pronunciationHeight = 0.0;
+      var translationHeight = 0.0;
+      for (final (text, style, _, translation) in _lyricSupplements(
+        context,
+        line,
+      )) {
         painter.text = TextSpan(text: text, style: style);
         painter.layout(maxWidth: width);
-        height += 6 + painter.height;
+        if (translation) {
+          translationHeight = 6 + painter.height;
+        } else {
+          pronunciationHeight = 6 + painter.height;
+        }
       }
-      extents.add(height);
+      measurements.add((height, pronunciationHeight, translationHeight));
     }
-    _lineExtents = extents;
+    _lineMeasurements = measurements;
     painter.dispose();
   }
 
@@ -2774,7 +2935,9 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
           lineContext,
           alignment: 0.5,
           alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
-          duration: const Duration(milliseconds: 380),
+          duration: immediate
+              ? Duration.zero
+              : const Duration(milliseconds: 380),
           curve: Curves.easeOutCubic,
         );
         return;
@@ -2809,7 +2972,21 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => TweenAnimationBuilder<Offset>(
+    tween: Tween(
+      end: Offset(
+        widget.showPronunciation ? 1 : 0,
+        widget.showTranslation ? 1 : 0,
+      ),
+    ),
+    duration: MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 320),
+    curve: Curves.easeInOutCubic,
+    builder: (context, visibility, _) => _buildLyrics(context, visibility),
+  );
+
+  Widget _buildLyrics(BuildContext context, Offset visibility) {
     final lines = widget.lyrics.lines;
     final active = _active;
     final mornye = context.isMornye;
@@ -2842,14 +3019,25 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
             _measureMornyeLines(
               (constraints.maxWidth - 48).clamp(0, double.infinity),
             );
-            if (_viewportHeight != constraints.maxHeight) {
-              _viewportHeight = constraints.maxHeight;
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  unawaited(_maybeAutoScroll(_active, immediate: true));
-                }
-              });
-            }
+            // Reuse text measurements; only interpolate row heights as the
+            // supplements fade. Scrolling follows the same animation clock.
+            _lineExtents = [
+              for (final (primary, pronunciation, translation)
+                  in _lineMeasurements)
+                primary +
+                    pronunciation * visibility.dx +
+                    translation * visibility.dy,
+            ];
+          }
+          if (_viewportHeight != constraints.maxHeight ||
+              _layoutVisibility != visibility) {
+            _viewportHeight = constraints.maxHeight;
+            _layoutVisibility = visibility;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                unawaited(_maybeAutoScroll(_active, immediate: true));
+              }
+            });
           }
           final centerPadding = syncedLyricsCenterPadding(
             viewportDimension: constraints.maxHeight,
@@ -2896,6 +3084,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                   colorScheme: widget.colorScheme,
                   animate: widget.isActive,
                   initialPosition: _activeTransitionPosition,
+                  supplementVisibility: visibility,
                 );
               } else {
                 content = Text(
@@ -2914,7 +3103,13 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                             color: color,
                           ),
                 );
-                content = _withLyricSupplements(context, line, content, color);
+                content = _withLyricSupplements(
+                  context,
+                  line,
+                  content,
+                  color,
+                  visibility: visibility,
+                );
               }
               content = AnimatedSwitcher(
                 duration: const Duration(milliseconds: 320),
@@ -2984,7 +3179,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   }
 }
 
-Iterable<(String, TextStyle, List<LyricWord>)> _lyricSupplements(
+Iterable<(String, TextStyle, List<LyricWord>, bool)> _lyricSupplements(
   BuildContext context,
   LyricLine line,
 ) sync* {
@@ -3004,6 +3199,7 @@ Iterable<(String, TextStyle, List<LyricWord>)> _lyricSupplements(
         fontWeight: FontWeight.w500,
       ),
       translation ? const <LyricWord>[] : line.romanizationWords,
+      translation,
     );
   }
 }
@@ -3013,6 +3209,7 @@ Widget _withLyricSupplements(
   LyricLine line,
   Widget primary,
   Color color, {
+  required Offset visibility,
   Widget Function(String, List<LyricWord>, TextStyle)? timedText,
 }) {
   if (line.romanization == null && line.translation == null) return primary;
@@ -3022,19 +3219,36 @@ Widget _withLyricSupplements(
         : CrossAxisAlignment.center,
     children: [
       primary,
-      for (final (text, style, words) in _lyricSupplements(context, line)) ...[
-        const SizedBox(height: 6),
-        if (words.isNotEmpty && timedText != null)
-          timedText(text, words, style)
-        else
-          Text(
-            text,
-            textAlign: context.isMornye ? TextAlign.start : TextAlign.center,
-            style: style.copyWith(
-              color: color.withValues(alpha: color.a * 0.8),
+      for (final (text, style, words, translation) in _lyricSupplements(
+        context,
+        line,
+      ))
+        if ((translation ? visibility.dy : visibility.dx) > 0)
+          ClipRect(
+            child: Align(
+              alignment: context.isMornye
+                  ? Alignment.topLeft
+                  : Alignment.topCenter,
+              heightFactor: translation ? visibility.dy : visibility.dx,
+              child: Opacity(
+                opacity: translation ? visibility.dy : visibility.dx,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: words.isNotEmpty && timedText != null
+                      ? timedText(text, words, style)
+                      : Text(
+                          text,
+                          textAlign: context.isMornye
+                              ? TextAlign.start
+                              : TextAlign.center,
+                          style: style.copyWith(
+                            color: color.withValues(alpha: color.a * 0.8),
+                          ),
+                        ),
+                ),
+              ),
             ),
           ),
-      ],
     ],
   );
 }
@@ -3044,12 +3258,14 @@ class _WordHighlightedLyricLine extends ConsumerStatefulWidget {
   final ColorScheme colorScheme;
   final bool animate;
   final Duration initialPosition;
+  final Offset supplementVisibility;
 
   const _WordHighlightedLyricLine({
     required this.line,
     required this.colorScheme,
     required this.animate,
     required this.initialPosition,
+    required this.supplementVisibility,
   });
 
   @override
@@ -3217,6 +3433,7 @@ class _WordHighlightedLyricLineState
       primary,
       widget.colorScheme.onSurface,
       timedText: _buildTimedText,
+      visibility: widget.supplementVisibility,
     );
   }
 

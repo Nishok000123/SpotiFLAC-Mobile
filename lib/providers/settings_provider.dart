@@ -912,6 +912,16 @@ class SettingsNotifier extends Notifier<AppSettings> {
     state = state.copyWith(playerMode: normalized);
     _saveSettings();
   }
+
+  void setPlayerShowPronunciation(bool visible) {
+    state = state.copyWith(playerShowPronunciation: visible);
+    _saveSettings();
+  }
+
+  void setPlayerShowTranslation(bool visible) {
+    state = state.copyWith(playerShowTranslation: visible);
+    _saveSettings();
+  }
 }
 
 final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(

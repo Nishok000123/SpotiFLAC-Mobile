@@ -6348,6 +6348,14 @@
     "description": "Tab label for the lyrics view"
   },
   "nowPlayingNoLyrics": "No lyrics in this file",
+  "nowPlayingLyricsLanguageOptions": "Lyrics language options",
+  "@nowPlayingLyricsLanguageOptions": {
+    "description": "Tooltip for the player menu that shows or hides existing lyric pronunciation and translation"
+  },
+  "nowPlayingHidePronunciation": "Hide Pronunciation",
+  "nowPlayingShowPronunciation": "Show Pronunciation",
+  "nowPlayingHideTranslation": "Hide Translation",
+  "nowPlayingShowTranslation": "Show Translation",
   "@nowPlayingNoLyrics": {
     "description": "Empty state when the playing file has no embedded lyrics"
   },

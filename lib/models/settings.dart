@@ -126,6 +126,8 @@ class AppSettings {
   final bool saveDownloadHistory;
 
   final String playerMode;
+  final bool playerShowPronunciation;
+  final bool playerShowTranslation;
 
   const AppSettings({
     this.defaultService = '',
@@ -202,6 +204,8 @@ class AppSettings {
     this.allowQualityVariants = false,
     this.saveDownloadHistory = true,
     this.playerMode = 'external',
+    this.playerShowPronunciation = true,
+    this.playerShowTranslation = true,
   });
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -291,6 +295,8 @@ class AppSettings {
     bool? allowQualityVariants,
     bool? saveDownloadHistory,
     String? playerMode,
+    bool? playerShowPronunciation,
+    bool? playerShowTranslation,
   }) {
     return AppSettings(
       defaultService: defaultService ?? this.defaultService,
@@ -395,6 +401,10 @@ class AppSettings {
       allowQualityVariants: allowQualityVariants ?? this.allowQualityVariants,
       saveDownloadHistory: saveDownloadHistory ?? this.saveDownloadHistory,
       playerMode: playerMode ?? this.playerMode,
+      playerShowPronunciation:
+          playerShowPronunciation ?? this.playerShowPronunciation,
+      playerShowTranslation:
+          playerShowTranslation ?? this.playerShowTranslation,
     );
   }
 
