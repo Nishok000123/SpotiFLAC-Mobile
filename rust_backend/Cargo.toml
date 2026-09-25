@@ -1,6 +1,12 @@
 [workspace]
 members = ["crates/core", "crates/network", "crates/providers", "crates/extensions", "crates/mobile", "crates/bindgen"]
+exclude = ["vendor/rustix-1.1.4"]
 resolver = "3"
+
+[patch.crates-io]
+# Android < 30 may kill processes that probe statx directly (SIGSYS).
+# Keep all direct and transitive users on the same compatibility fix.
+rustix = { path = "vendor/rustix-1.1.4" }
 
 [workspace.package]
 version = "0.1.0"

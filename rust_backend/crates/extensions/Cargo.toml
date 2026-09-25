@@ -35,6 +35,7 @@ cap-std.workspace = true
 rustix.workspace = true
 
 [dev-dependencies]
+libc = "=0.2.189"
 rustls.workspace = true
 rcgen = { version = "=0.14.10", default-features = false, features = ["crypto", "ring", "pem"] }
 
