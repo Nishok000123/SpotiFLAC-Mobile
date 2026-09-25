@@ -1696,6 +1696,11 @@ void main() {
       } else {
         await tester.tap(options);
         await tester.pumpAndSettle();
+        final glass = tester.widget<MornyeGlassPanel>(
+          find.byType(MornyeGlassPanel).last,
+        );
+        expect(glass.liquidGlass, isTrue);
+        expect(glass.tintOpacity, lessThan(0.5));
         expect(
           find.text('Hide Pronunciation'),
           supplement == 'pronunciation' ? findsOneWidget : findsNothing,

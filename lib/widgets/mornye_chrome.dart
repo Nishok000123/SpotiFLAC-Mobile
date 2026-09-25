@@ -127,6 +127,7 @@ class MornyeGlassPanel extends ConsumerWidget {
     this.lastInGroup = true,
     this.strongTint = false,
     this.tintOpacity,
+    this.liquidGlass = false,
   });
 
   /// Shared glass material for confirmation dialogs and floating sheets.
@@ -137,6 +138,7 @@ class MornyeGlassPanel extends ConsumerWidget {
     this.firstInGroup = true,
     this.lastInGroup = true,
     this.tintOpacity = 0.78,
+    this.liquidGlass = false,
   }) : strongTint = false;
 
   final Widget child;
@@ -145,25 +147,37 @@ class MornyeGlassPanel extends ConsumerWidget {
   final bool lastInGroup;
   final bool strongTint;
   final double? tintOpacity;
+  final bool liquidGlass;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => MornyeGlass.navigation(
-    radius: radius,
-    firstInGroup: firstInGroup,
-    lastInGroup: lastInGroup,
-    strongTint: strongTint,
-    tintOpacity: tintOpacity,
-    blurEnabled:
+  Widget build(BuildContext context, WidgetRef ref) {
+    final blur =
         !MediaQuery.highContrastOf(context) &&
         (!ref.watch(lowEndDeviceProvider) ||
-            ref.watch(backdropBlurEnabledProvider)),
-    child: Material(
-      color: strongTint
-          ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.60)
-          : Colors.transparent,
-      child: child,
-    ),
-  );
+            ref.watch(backdropBlurEnabledProvider));
+    if (liquidGlass) {
+      return MornyeGlass(
+        radius: radius,
+        tintOpacity: tintOpacity,
+        blurEnabled: blur,
+        child: Material(color: Colors.transparent, child: child),
+      );
+    }
+    return MornyeGlass.navigation(
+      radius: radius,
+      firstInGroup: firstInGroup,
+      lastInGroup: lastInGroup,
+      strongTint: strongTint,
+      tintOpacity: tintOpacity,
+      blurEnabled: blur,
+      child: Material(
+        color: strongTint
+            ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.60)
+            : Colors.transparent,
+        child: child,
+      ),
+    );
+  }
 }
 
 class MornyeGlass extends StatelessWidget {

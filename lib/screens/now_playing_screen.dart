@@ -1802,13 +1802,30 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     setState(() => _lyricsOptionsOpen = true);
     try {
       final anchor = mornyeMenuAnchor(buttonContext);
+      var menuWidth = 240.0;
+      for (final (_, label, _) in actions) {
+        final painter = TextPainter(
+          text: TextSpan(
+            text: label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontSize: 15),
+          ),
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        )..layout();
+        if (painter.width + 80 > menuWidth) menuWidth = painter.width + 80;
+        painter.dispose();
+      }
       final action = context.isMornye
           ? await showMornyeContextMenu<String>(
               context: buttonContext,
               anchor: anchor,
               preferAbove: true,
+              maxWidth: menuWidth,
               builder: (menuContext) => MornyeContextMenu(
                 dense: true,
+                liquidGlass: true,
                 groups: [
                   [
                     for (final (value, label, icon) in actions)

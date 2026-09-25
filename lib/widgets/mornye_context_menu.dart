@@ -18,6 +18,7 @@ Future<T?> showMornyeContextMenu<T>({
   required WidgetBuilder builder,
   Rect? anchor,
   bool preferAbove = false,
+  double maxWidth = 320,
 }) {
   final navigator = Navigator.of(context, rootNavigator: true);
   final themes = InheritedTheme.capture(from: context, to: navigator.context);
@@ -42,6 +43,7 @@ Future<T?> showMornyeContextMenu<T>({
             delegate: _MenuLayout(
               anchor: target,
               preferAbove: preferAbove,
+              maxWidth: maxWidth,
               padding: media.padding.copyWith(
                 bottom: math.max(media.padding.bottom, media.viewInsets.bottom),
               ),
@@ -63,17 +65,19 @@ class _MenuLayout extends SingleChildLayoutDelegate {
     required this.anchor,
     required this.padding,
     required this.preferAbove,
+    required this.maxWidth,
   });
 
   final Rect? anchor;
   final EdgeInsets padding;
   final bool preferAbove;
+  final double maxWidth;
   static const double _margin = 16;
 
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
     final width = math.min(
-      320.0,
+      maxWidth,
       math.max(0.0, constraints.maxWidth - padding.horizontal - _margin * 2),
     );
     var height = math.max(
@@ -125,6 +129,7 @@ class _MenuLayout extends SingleChildLayoutDelegate {
   bool shouldRelayout(_MenuLayout oldDelegate) =>
       anchor != oldDelegate.anchor ||
       padding != oldDelegate.padding ||
+      maxWidth != oldDelegate.maxWidth ||
       preferAbove != oldDelegate.preferAbove;
 }
 
@@ -154,12 +159,14 @@ class MornyeContextMenu extends StatelessWidget {
     required this.groups,
     this.inheritSurface = false,
     this.dense = false,
+    this.liquidGlass = false,
   });
 
   final List<MornyeMenuAction> quickActions;
   final List<List<MornyeMenuAction>> groups;
   final bool inheritSurface;
   final bool dense;
+  final bool liquidGlass;
 
   @override
   Widget build(BuildContext context) {
@@ -204,6 +211,8 @@ class MornyeContextMenu extends StatelessWidget {
       data: theme,
       child: MornyeGlassPanel.overlay(
         radius: 28,
+        liquidGlass: liquidGlass,
+        tintOpacity: liquidGlass ? 0.24 : 0.78,
         child: LayoutBuilder(
           builder: (context, constraints) {
             // Let the entire menu scroll when pinning the shortcuts would
