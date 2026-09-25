@@ -135,62 +135,63 @@ jobs:
       - name: Generate app icons
         run: dart run flutter_launcher_icons
 
-      - name: Build APK (Release - unsigned)
+      - name: Build release APKs
         run: |
           bash scripts/build_android.sh --target lib/main.dart
           ls -la build/app/outputs/flutter-apk/
 
-      - name: Sign APKs
-        uses: r0adkll/sign-android-release@349ebdef58775b1e0d8099458af0816dc79b6407 # v1
-        id: sign_arm64
-        with:
-          releaseDirectory: build/app/outputs/flutter-apk
-          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: "37.0.0"
-
-      - name: Rename APKs
+      - name: Sign and verify release APKs (V1/V2/V3)
         env:
           VERSION: ${{ needs.get-version.outputs.version }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          cd build/app/outputs/flutter-apk
+          set -euo pipefail
+          : "${KEYSTORE_BASE64:?Missing KEYSTORE_BASE64}"
+          : "${KEY_ALIAS:?Missing KEY_ALIAS}"
+          : "${KEYSTORE_PASSWORD:?Missing KEYSTORE_PASSWORD}"
+          export KEY_PASSWORD="${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
 
-          rename_required_apk() {
-            unsigned="$1"
-            destination="$2"
-            signed="${unsigned%.apk}-signed.apk"
-            if [ -f "$signed" ]; then
-              mv "$signed" "$destination"
-            else
-              echo "ERROR: Missing signed APK: $signed"
-              exit 1
-            fi
-          }
+          umask 077
+          signing_dir="$(mktemp -d "$RUNNER_TEMP/spotiflac-signing.XXXXXX")"
+          trap 'rm -rf "$signing_dir"' EXIT
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$signing_dir/release.jks"
+          apksigner="$ANDROID_HOME/build-tools/37.0.0/apksigner"
+          apk_dir=build/app/outputs/flutter-apk
 
-          rename_required_apk \
-            app-arm64-v8a-release.apk \
-            "SpotiFLAC-${VERSION}-arm64.apk"
-          rename_required_apk \
-            app-armeabi-v7a-release.apk \
-            "SpotiFLAC-${VERSION}-arm32.apk"
+          for target in arm64-v8a:arm64 armeabi-v7a:arm32; do
+            abi="${target%%:*}"
+            label="${target##*:}"
+            apk="$apk_dir/SpotiFLAC-${VERSION}-${label}.apk"
+            "$apksigner" sign \
+              --ks "$signing_dir/release.jks" \
+              --ks-key-alias "$KEY_ALIAS" \
+              --ks-pass env:KEYSTORE_PASSWORD \
+              --key-pass env:KEY_PASSWORD \
+              --v1-signing-enabled true \
+              --v2-signing-enabled true \
+              --v3-signing-enabled true \
+              --v4-signing-enabled false \
+              --out "$apk" "$apk_dir/app-${abi}-release.apk"
 
-          apksigner="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner -print | sort -V | tail -n 1)"
-          if [ -z "$apksigner" ]; then
-            echo "ERROR: apksigner is unavailable" >&2
-            exit 1
-          fi
-
-          for apk in SpotiFLAC-*.apk; do
-            "$apksigner" verify --verbose --print-certs "$apk"
-            if "$apksigner" verify --print-certs "$apk" | grep -qi "Android Debug"; then
+            # Verify the app's supported Android versions, then explicitly
+            # exercise V1 too: the manifest's minSdk 24 normally skips it.
+            "$apksigner" verify "$apk"
+            report="$("$apksigner" verify --verbose --print-certs --min-sdk-version 21 "$apk")"
+            for scheme in 1 2 3; do
+              if ! grep -Eq "Verified using v${scheme} scheme.*: true" <<< "$report"; then
+                echo "ERROR: APK signature V${scheme} did not verify: $apk" >&2
+                exit 1
+              fi
+            done
+            if grep -qi "Android Debug" <<< "$report"; then
               echo "ERROR: Refusing to publish a debug-signed APK" >&2
               exit 1
             fi
+            printf '%s\n' "$report" | grep -E '^Verifies$|^Verified using v[123] scheme|certificate SHA-256 digest:'
           done
-          ls -la
 
       - name: Audit signed Rust APKs before upload
         env:

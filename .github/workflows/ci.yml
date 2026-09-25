@@ -250,3 +250,8 @@ jobs:
           python3 scripts/check_backend_apk.py \
             build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
             --backend rust --abis armeabi-v7a
+          # PR builds use Gradle's test key; production signing stays in Release.
+          for abi in arm64-v8a armeabi-v7a; do
+            "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose \
+              "build/app/outputs/flutter-apk/app-${abi}-release.apk"
+          done
