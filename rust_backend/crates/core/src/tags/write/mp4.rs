@@ -82,8 +82,8 @@ pub(super) fn edit(
     }
     let replay_gain = replay_gain(fields);
     if !replay_gain.is_empty() {
-        // Go replaces the entire ReplayGain group when any supplied value is
-        // nonempty. A request containing only empty values leaves it alone.
+        // Replace the entire group, or explicitly clear it when all four
+        // ReplayGain fields are supplied empty (including derived Sound Check).
         remove_names.extend(
             [
                 "REPLAYGAIN_TRACK_GAIN",
@@ -95,7 +95,9 @@ pub(super) fn edit(
             .map(str::to_owned),
         );
         for (name, value) in replay_gain {
-            appended.extend(freeform(&name, &value));
+            if !value.is_empty() {
+                appended.extend(freeform(&name, &value));
+            }
         }
     }
     let edit_track = fields.contains_key("track_number") || fields.contains_key("track_total");
@@ -499,8 +501,12 @@ fn replay_gain(fields: &Fields) -> Fields {
             .get(name)
             .map(|v| (name.to_owned(), v.trim().to_owned()))
     })
-    .filter(|(_, value)| !value.is_empty())
     .collect();
+    // Preserve partial empty updates as no-ops; clearing the whole group is an
+    // explicit request so ordinary metadata edits cannot discard normalization.
+    if !super::clears_replay_gain(fields) {
+        result.retain(|_, value| !value.is_empty());
+    }
     static NUMBER: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"[+-]?[0-9]+(?:\.[0-9]+)?").unwrap());
     let gain = result

@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/providers/download_history_provider.dart';
 import 'package:spotiflac_android/screens/track_metadata_screen.dart';
+import 'package:spotiflac_android/widgets/app_alert_dialog.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -28,10 +29,26 @@ void main() {
               'replaygain_album_peak': '1.234567',
             }
           : {'replaygain_track_gain': ' ', 'replaygain_album_peak': null};
+      var edits = 0;
       messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'editFileMetadata') {
+          edits++;
+          final args = call.arguments as Map;
+          final fields = Map<String, String>.from(
+            jsonDecode(args['metadata_json'] as String) as Map,
+          );
+          metadata.addAll(fields);
+          return jsonEncode({'success': true, 'method': 'native'});
+        }
         return switch (call.method) {
           'safStat' => jsonEncode({'exists': true, 'size': 100}),
           'readAudioMetadata' => jsonEncode(metadata),
+          'readFileMetadata' => jsonEncode({
+            ...metadata,
+            'audio_codec': 'flac',
+          }),
+          'safCopyToTemp' => 'temporary-song.flac',
+          'writeTempToSaf' => jsonEncode({'success': true}),
           'getLyricsLRCWithSource' => jsonEncode({'lyrics': '', 'source': ''}),
           'getSafFileModTimes' => '{}',
           _ => null,
@@ -74,6 +91,36 @@ void main() {
       ]) {
         expect(find.text(text), hasTags ? findsOneWidget : findsNothing);
       }
+      Future<void> openRemoval() async {
+        await tester.tap(find.byIcon(Icons.more_vert));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Remove ReplayGain'));
+        await tester.tap(find.text('Remove ReplayGain'));
+        await tester.pumpAndSettle();
+        expect(find.byType(AppAlertDialog), findsOneWidget);
+      }
+
+      await openRemoval();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(edits, 0);
+      if (hasTags) expect(find.text('-6.20 dB'), findsOneWidget);
+
+      await openRemoval();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AppDialogAction),
+          matching: find.text('Remove ReplayGain'),
+        ),
+      );
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pumpAndSettle();
+      expect(edits, 1);
+      expect(find.text('ReplayGain tags removed'), findsOneWidget);
+      expect(find.text('ReplayGain Track Gain'), findsNothing);
+      expect(find.text('ReplayGain Album Gain'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   }

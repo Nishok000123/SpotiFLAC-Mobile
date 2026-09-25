@@ -1,6 +1,6 @@
 use super::{Fields, Section, bytes, id3, metadata_fields, seek};
 use crate::tags::{file::ObservedReader, read_audio_tags};
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{Cursor, Read, Seek, SeekFrom};
 
 pub(super) fn edit(
     source: &mut (impl Read + Seek),
@@ -30,6 +30,7 @@ pub(super) fn edit(
     let mut start = 12_u64;
     let mut body_size = 4_u64;
     let mut embedded_cover = None;
+    let remove_gain_only = fields.len() == 4 && super::clears_replay_gain(fields);
     for _ in 0..65536 {
         check()?;
         if start + 8 > length {
@@ -44,6 +45,38 @@ pub(super) fn edit(
         };
         let end = start + 8 + u64::from(size) + u64::from(size & 1);
         if header[..4].eq_ignore_ascii_case(b"id3 ") {
+            if remove_gain_only {
+                // Edit the existing ID3 frames so unknown tags and all artwork
+                // survive removal, instead of rebuilding from parsed metadata.
+                if size as usize > super::MAX_TAG_BYTES || end > length {
+                    return Err("invalid RIFF ID3 chunk size".into());
+                }
+                let (tag, _) = id3::header(
+                    &mut Cursor::new(bytes(source, size as usize)?),
+                    fields,
+                    None,
+                    check,
+                )?;
+                let tag_size = tag.len() as u32;
+                let mut chunk = header[..4].to_vec();
+                chunk.extend(if aiff {
+                    tag_size.to_be_bytes()
+                } else {
+                    tag_size.to_le_bytes()
+                });
+                chunk.extend(tag);
+                if tag_size & 1 == 1 {
+                    chunk.push(0);
+                }
+                body_size += chunk.len() as u64;
+                sections.push(Section {
+                    start,
+                    end,
+                    data: chunk,
+                });
+                start = end;
+                continue;
+            }
             if cover.is_none()
                 && size > 0
                 && size <= 16 * 1024 * 1024
@@ -67,6 +100,20 @@ pub(super) fn edit(
     }
     if start + 8 <= length {
         return Err("RIFF chunk count exceeds 65536".into());
+    }
+    if remove_gain_only {
+        let size = u32::try_from(body_size).map_err(|_| "RIFF container exceeds 32-bit size")?;
+        sections.push(Section {
+            start: 4,
+            end: 8,
+            data: if aiff {
+                size.to_be_bytes()
+            } else {
+                size.to_le_bytes()
+            }
+            .to_vec(),
+        });
+        return Ok(sections);
     }
     let cover_path = fields.get("cover_path").map(|p| p.trim()).unwrap_or("");
     if !cover_path.is_empty() && cover.is_none() {

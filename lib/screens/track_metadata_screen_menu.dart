@@ -72,7 +72,13 @@ extension _TrackMetadataMenu on _TrackMetadataScreenState {
           _MetadataOption(
             icon: Icons.graphic_eq,
             label: l10n.trackReplayGain,
-            onTap: () => _rescanReplayGain(),
+            onTap: () => _updateReplayGain(),
+          ),
+        if (_fileExists && !_isCueFile)
+          _MetadataOption(
+            icon: Icons.remove_circle_outline,
+            label: l10n.trackRemoveReplayGain,
+            onTap: () => _removeReplayGain(),
           ),
         if (_fileExists && _isCueFile)
           _MetadataOption(

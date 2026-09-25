@@ -16,7 +16,7 @@ pub(super) fn edit(
     cover: Option<&[u8]>,
     check: &dyn Fn() -> Result<(), String>,
 ) -> Result<Section, String> {
-    let end = seek(source, SeekFrom::End(0))?;
+    let mut end = seek(source, SeekFrom::End(0))?;
     let mut start = end;
     let mut existing = None;
     for offset in [end.checked_sub(32), end.checked_sub(161).map(|_| end - 160)]
@@ -32,6 +32,11 @@ pub(super) fn edit(
             start = (offset + 32)
                 .checked_sub(size)
                 .ok_or("invalid APE tag size")?;
+            if fields.len() == 4 && super::clears_replay_gain(fields) {
+                // A legacy ID3v1 tag can follow the APE footer. Removing gain
+                // must leave that unrelated metadata in place too.
+                end = offset + 32;
+            }
         }
         if existing.is_none()
             && let Ok(begin) = footer.items_start(offset)
@@ -140,6 +145,13 @@ pub(super) fn edit(
     items.retain(|item| !remove.contains(&uppercase(&String::from_utf8_lossy(&item.key))));
     items.extend(added);
     if items.is_empty() {
+        if super::clears_replay_gain(fields) {
+            return Ok(Section {
+                start,
+                end,
+                data: Vec::new(),
+            });
+        }
         return Err("empty APE tag".into());
     }
     let mut body = Vec::new();

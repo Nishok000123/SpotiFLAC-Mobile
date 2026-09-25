@@ -194,4 +194,78 @@ void main() {
     expect(metadata['replaygain_track_peak'], '1.258925');
     expect(calls, ['editFileMetadata', 'readFileMetadata']);
   });
+
+  test('removal clears both scopes and verifies before saving SAF', () async {
+    metadata['title'] = 'Preserved title';
+    expect(
+      await ReplayGainService.removeFromFile('content://music/document/42'),
+      isTrue,
+    );
+    expect(editedFields, {
+      'replaygain_track_gain': '',
+      'replaygain_track_peak': '',
+      'replaygain_album_gain': '',
+      'replaygain_album_peak': '',
+    });
+    expect(metadata['title'], 'Preserved title');
+    expect(calls, [
+      'safCopyToTemp',
+      'editFileMetadata',
+      'readFileMetadata',
+      'writeTempToSaf',
+    ]);
+    expect(await File(tempPath).exists(), isFalse);
+  });
+
+  test('removal refuses to save when the gain tags remain', () async {
+    applyEdits = false;
+    expect(
+      await ReplayGainService.removeFromFile('content://music/document/42'),
+      isFalse,
+    );
+    expect(calls, ['safCopyToTemp', 'editFileMetadata', 'readFileMetadata']);
+    expect(await File(tempPath).exists(), isFalse);
+  });
+
+  test('removal does not treat a fallback instruction as success', () async {
+    method = 'ffmpeg';
+    expect(
+      await ReplayGainService.removeFromFile('content://music/document/42'),
+      isFalse,
+    );
+    expect(calls, ['safCopyToTemp', 'editFileMetadata']);
+    expect(await File(tempPath).exists(), isFalse);
+  });
+
+  test(
+    'removal reports SAF save failure and cleans its temporary copy',
+    () async {
+      saveSaf = false;
+      expect(
+        await ReplayGainService.removeFromFile('content://music/document/42'),
+        isFalse,
+      );
+      expect(calls.last, 'writeTempToSaf');
+      expect(await File(tempPath).exists(), isFalse);
+    },
+  );
+
+  test('removal rejects an empty metadata response', () async {
+    metadata = {};
+    expect(
+      await ReplayGainService.removeFromFile('content://music/document/42'),
+      isFalse,
+    );
+    expect(calls, ['safCopyToTemp', 'editFileMetadata', 'readFileMetadata']);
+  });
+
+  test('removal is idempotent for an untagged local file', () async {
+    method = 'native';
+    metadata = {'audio_codec': 'flac'};
+    expect(
+      await ReplayGainService.removeFromFile('${directory.path}/song.flac'),
+      isTrue,
+    );
+    expect(calls, ['editFileMetadata', 'readFileMetadata']);
+  });
 }

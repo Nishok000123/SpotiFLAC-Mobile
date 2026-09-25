@@ -191,7 +191,32 @@ extension _TrackMetadataConvertAndCueSplit on _TrackMetadataScreenState {
     return normalized;
   }
 
-  Future<void> _rescanReplayGain() async {
+  Future<void> _removeReplayGain() async {
+    if (!_fileExists) return;
+    final sourcePath = cleanFilePath;
+    final confirmed = await showAppDialog<bool>(
+      context: context,
+      builder: (ctx) => AppAlertDialog(
+        title: Text(ctx.l10n.trackRemoveReplayGain),
+        content: Text(ctx.l10n.replayGainRemoveConfirmMessage(1)),
+        actions: [
+          AppDialogAction(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(ctx.l10n.dialogCancel),
+          ),
+          AppDialogAction(
+            filled: true,
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(ctx.l10n.trackRemoveReplayGain),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || sourcePath != cleanFilePath) return;
+    await _updateReplayGain(remove: true);
+  }
+
+  Future<void> _updateReplayGain({bool remove = false}) async {
     if (!_fileExists) return;
     final sourcePath = cleanFilePath;
     final generation = _metadataLoadGeneration;
@@ -199,15 +224,21 @@ extension _TrackMetadataConvertAndCueSplit on _TrackMetadataScreenState {
     messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
-        content: Text(context.l10n.trackReplayGainScanning),
+        content: Text(
+          remove
+              ? context.l10n.replayGainRemoving
+              : context.l10n.trackReplayGainScanning,
+        ),
         duration: const Duration(seconds: 30),
       ),
     );
     bool ok = false;
     try {
-      ok = await ReplayGainService.applyToFile(sourcePath);
+      ok = remove
+          ? await ReplayGainService.removeFromFile(sourcePath)
+          : await ReplayGainService.applyToFile(sourcePath);
     } catch (e) {
-      _log.w('ReplayGain rescan failed: $e');
+      _log.w('ReplayGain update failed: $e');
     }
     if (!mounted) return;
     if (ok &&
@@ -221,9 +252,13 @@ extension _TrackMetadataConvertAndCueSplit on _TrackMetadataScreenState {
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          ok
-              ? context.l10n.trackReplayGainSuccess
-              : context.l10n.trackReplayGainFailed,
+          remove
+              ? (ok
+                    ? context.l10n.trackRemoveReplayGainSuccess
+                    : context.l10n.trackRemoveReplayGainFailed)
+              : (ok
+                    ? context.l10n.trackReplayGainSuccess
+                    : context.l10n.trackReplayGainFailed),
         ),
       ),
     );

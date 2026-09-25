@@ -119,11 +119,15 @@ extension _QueueTabBatchActions on _QueueTabState {
     );
   }
 
-  Future<void> _runBatchReplayGain(List<UnifiedLibraryItem> allItems) {
+  Future<void> _runBatchReplayGain(
+    List<UnifiedLibraryItem> allItems, {
+    bool remove = false,
+  }) {
     return runBatchReplayGain(
       context,
       _selectedItemsFromAll(allItems),
       onExitSelectionMode: _exitSelectionMode,
+      remove: remove,
       onConfirmOpen: () {
         _suppressSelectionOverlay = true;
         _hideSelectionOverlay();

@@ -7,7 +7,7 @@ import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 
-/// Standalone ReplayGain (re)scanning for existing audio files.
+/// ReplayGain scanning and tag removal for existing audio files.
 ///
 /// Computes EBU R128 loudness via FFmpeg and writes gain tags using the native
 /// metadata editors where supported. Opus uses R128_* rather than legacy tags.
@@ -104,6 +104,33 @@ class ReplayGainService {
     (path) => _writeLocalTags(path, gain, peak, album: true),
   );
 
+  /// Removes track/album tags, including Opus R128 and M4A Sound Check tags.
+  /// Native editors copy the audio payload unchanged and publish atomically.
+  static Future<bool> removeFromFile(String filePath) =>
+      _updateFile(filePath, (path) async {
+        if (!_isNativeWritableFormat(path)) return false;
+        const fields = {
+          'replaygain_track_gain': '',
+          'replaygain_track_peak': '',
+          'replaygain_album_gain': '',
+          'replaygain_album_peak': '',
+        };
+        final result = await PlatformBridge.editFileMetadata(path, fields);
+        final method = result['method'];
+        if (result['success'] != true ||
+            result['error'] != null ||
+            method is! String ||
+            !(method == 'native' || method.startsWith('native_'))) {
+          return false;
+        }
+        final metadata = await PlatformBridge.readFileMetadata(path);
+        return metadata['error'] == null &&
+            metadata['audio_codec'] != null &&
+            fields.keys.every(
+              (key) => (metadata[key]?.toString() ?? '').trim().isEmpty,
+            );
+      });
+
   static Future<bool> _writeLocalTags(
     String path,
     String gain,
@@ -182,7 +209,7 @@ class ReplayGainService {
       if (isSaf) {
         safTempPath = await PlatformBridge.copyContentUriToTemp(filePath);
         if (safTempPath == null || safTempPath.isEmpty) {
-          _log.w('Failed to copy SAF file to temp for ReplayGain scan');
+          _log.w('Failed to copy SAF file to temp for ReplayGain update');
           return false;
         }
         workingPath = safTempPath;
@@ -199,10 +226,10 @@ class ReplayGainService {
       }
 
       refreshPlaybackNormalization(filePath);
-      _log.i('ReplayGain tags written and verified: $filePath');
+      _log.i('ReplayGain tags updated and verified: $filePath');
       return true;
     } catch (e) {
-      _log.e('Failed to apply ReplayGain', e);
+      _log.e('Failed to update ReplayGain', e);
       return false;
     } finally {
       if (safTempPath != null) {

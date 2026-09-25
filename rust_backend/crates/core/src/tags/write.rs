@@ -19,6 +19,21 @@ use std::sync::LazyLock;
 type Fields = BTreeMap<String, String>;
 const MAX_TAG_BYTES: usize = 64 * 1024 * 1024;
 
+fn clears_replay_gain(fields: &Fields) -> bool {
+    [
+        "replaygain_track_gain",
+        "replaygain_track_peak",
+        "replaygain_album_gain",
+        "replaygain_album_peak",
+    ]
+    .iter()
+    .all(|key| {
+        fields
+            .get(*key)
+            .is_some_and(|value| value.trim().is_empty())
+    })
+}
+
 struct Section {
     start: u64,
     end: u64,

@@ -116,20 +116,17 @@ impl Backend {
             });
         check()?;
         let mut replay_gain = false;
-        let only_replay_gain = fields
-            .iter()
-            .filter(|(_, value)| !value.trim().is_empty())
-            .all(|(key, _)| {
-                let allowed = matches!(
-                    key.trim().to_lowercase().as_str(),
-                    "replaygain_track_gain"
-                        | "replaygain_track_peak"
-                        | "replaygain_album_gain"
-                        | "replaygain_album_peak"
-                );
-                replay_gain |= allowed;
-                allowed
-            });
+        let only_replay_gain = fields.iter().all(|(key, _)| {
+            let allowed = matches!(
+                key.trim().to_lowercase().as_str(),
+                "replaygain_track_gain"
+                    | "replaygain_track_peak"
+                    | "replaygain_album_gain"
+                    | "replaygain_album_peak"
+            );
+            replay_gain |= allowed;
+            allowed
+        });
         let success = |method: &str| json!({"success":true,"method":method});
         if only_replay_gain && replay_gain && (m4a || mp4) {
             self.edit_m4a_freeform(path, &fields, true, &check)
@@ -251,7 +248,7 @@ impl Backend {
                 "replaygain_album_peak",
             ]
             .iter()
-            .any(|key| fields.get(*key).is_some_and(|v| !v.trim().is_empty()))
+            .any(|key| fields.contains_key(*key))
         } else {
             fields.contains_key("isrc") || fields.contains_key("label")
         };

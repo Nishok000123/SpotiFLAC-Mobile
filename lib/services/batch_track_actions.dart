@@ -536,7 +536,7 @@ Future<void> _performBatchConversion(
   }
 }
 
-/// Batch-scans loudness and writes ReplayGain tags to [selectedItems].
+/// Adds or removes ReplayGain tags for [selectedItems].
 ///
 /// [onConfirmOpen] / [onConfirmClosed] let the caller hide and restore any
 /// selection UI around the confirmation dialog; [onConfirmClosed] receives
@@ -545,6 +545,7 @@ Future<void> runBatchReplayGain(
   BuildContext context,
   List<UnifiedLibraryItem> selectedItems, {
   required VoidCallback onExitSelectionMode,
+  bool remove = false,
   VoidCallback? onConfirmOpen,
   Future<void> Function(bool confirmed)? onConfirmClosed,
 }) async {
@@ -555,9 +556,15 @@ Future<void> runBatchReplayGain(
   final confirmed = await showAppDialog<bool>(
     context: context,
     builder: (ctx) => AppAlertDialog(
-      title: Text(ctx.l10n.replayGainBatchConfirmTitle),
+      title: Text(
+        remove
+            ? ctx.l10n.trackRemoveReplayGain
+            : ctx.l10n.replayGainBatchConfirmTitle,
+      ),
       content: Text(
-        ctx.l10n.replayGainBatchConfirmMessage(selectedItems.length),
+        remove
+            ? ctx.l10n.replayGainRemoveConfirmMessage(selectedItems.length)
+            : ctx.l10n.replayGainBatchConfirmMessage(selectedItems.length),
       ),
       actions: [
         AppDialogAction(
@@ -568,7 +575,11 @@ Future<void> runBatchReplayGain(
           filled: true,
           isDefault: true,
           onPressed: () => Navigator.pop(ctx, true),
-          child: Text(ctx.l10n.replayGainBatchConfirmTitle),
+          child: Text(
+            remove
+                ? ctx.l10n.trackRemoveReplayGain
+                : ctx.l10n.replayGainBatchConfirmTitle,
+          ),
         ),
       ],
     ),
@@ -585,7 +596,9 @@ Future<void> runBatchReplayGain(
 
   BatchProgressDialog.show(
     context: context,
-    title: context.l10n.replayGainBatchAnalyzing,
+    title: remove
+        ? context.l10n.replayGainRemoving
+        : context.l10n.replayGainBatchAnalyzing,
     total: total,
     icon: Icons.graphic_eq,
     onCancel: () {
@@ -599,10 +612,12 @@ Future<void> runBatchReplayGain(
     final item = selectedItems[i];
     BatchProgressDialog.update(current: i + 1, detail: item.trackName);
     try {
-      final ok = await ReplayGainService.applyToFile(
-        item.filePath,
-        onUnsupportedDecoder: () => unsupportedDecoder = true,
-      );
+      final ok = remove
+          ? await ReplayGainService.removeFromFile(item.filePath)
+          : await ReplayGainService.applyToFile(
+              item.filePath,
+              onUnsupportedDecoder: () => unsupportedDecoder = true,
+            );
       if (ok) successCount++;
     } catch (_) {}
   }
@@ -618,7 +633,9 @@ Future<void> runBatchReplayGain(
     SnackBar(
       content: Text(
         [
-          context.l10n.replayGainBatchSuccess(successCount, total),
+          remove
+              ? context.l10n.replayGainRemoveBatchSuccess(successCount, total)
+              : context.l10n.replayGainBatchSuccess(successCount, total),
           if (unsupportedDecoder) context.l10n.replayGainUnsupportedDecoder,
         ].join('\n'),
       ),

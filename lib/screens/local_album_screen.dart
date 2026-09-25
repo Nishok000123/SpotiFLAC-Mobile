@@ -572,20 +572,27 @@ class _LocalAlbumScreenState extends ConsumerState<LocalAlbumScreen>
               ),
             );
 
-            actions.add(
-              SelectionActionButton(
-                icon: Icons.graphic_eq,
-                label: context.l10n.selectionReplayGainCount(selectedCount),
-                onPressed: selectedCount > 0
-                    ? () => runBatchReplayGain(
-                        this.context,
-                        _selectedUnifiedItems(tracks),
-                        onExitSelectionMode: exitSelectionMode,
-                      )
-                    : null,
-                colorScheme: colorScheme,
-              ),
-            );
+            for (final remove in [false, true]) {
+              actions.add(
+                SelectionActionButton(
+                  icon: remove ? Icons.remove_circle_outline : Icons.graphic_eq,
+                  label: remove
+                      ? context.l10n.selectionRemoveReplayGainCount(
+                          selectedCount,
+                        )
+                      : context.l10n.selectionReplayGainCount(selectedCount),
+                  onPressed: selectedCount > 0
+                      ? () => runBatchReplayGain(
+                          this.context,
+                          _selectedUnifiedItems(tracks),
+                          onExitSelectionMode: exitSelectionMode,
+                          remove: remove,
+                        )
+                      : null,
+                  colorScheme: colorScheme,
+                ),
+              );
+            }
 
             return Wrap(
               spacing: spacing,
