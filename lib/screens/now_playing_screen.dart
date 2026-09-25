@@ -2552,6 +2552,9 @@ class _PlaybackControls extends ConsumerWidget {
     final mornye = context.isMornye;
     final isPlaying = ref.watch(playbackPlayingProvider);
     final isLoading = ref.watch(playbackLoadingProvider);
+    final playPauseSize = compact
+        ? (isPlaying ? 44.0 : 40.0)
+        : (isPlaying ? 60.0 : 54.0);
     final timeStyle = Theme.of(
       context,
     ).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant);
@@ -2694,10 +2697,10 @@ class _PlaybackControls extends ConsumerWidget {
                       ? context.l10n.actionPause
                       : context.l10n.tooltipPlay,
                   color: colorScheme.onSurface,
-                  iconSize: compact ? 44 : 60,
-                  // Keep the button's height stable as the glyph grows, so the
-                  // timeline and artwork retain their existing positions.
-                  padding: EdgeInsets.all(compact ? 12 : 4),
+                  iconSize: playPauseSize,
+                  // A smaller play glyph keeps the same 68dp touch target and
+                  // does not move the timeline, artwork or adjacent buttons.
+                  padding: EdgeInsets.all((68 - playPauseSize) / 2),
                   loading: isLoading,
                   onPressed: () => controller.togglePlayPause(isPlaying),
                 )

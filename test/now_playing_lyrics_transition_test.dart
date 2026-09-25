@@ -1097,6 +1097,61 @@ void main() {
     },
   );
 
+  for (final landscape in [false, true]) {
+    testWidgets(
+      'paused play glyph is smaller without moving controls (landscape: $landscape)',
+      (tester) async {
+        final playback = StreamController<PlaybackState>();
+        addTearDown(playback.close);
+        await pumpNowPlaying(
+          tester,
+          theme: MornyeTheme.build(Brightness.dark),
+          size: landscape ? const Size(852, 393) : const Size(393, 852),
+          playbackEvents: playback.stream,
+        );
+        playback.add(PlaybackState(playing: true));
+        mediaItems.add(item('first'));
+        await tester.pumpAndSettle();
+        final pause = find.widgetWithIcon(
+          MornyePlaybackButton,
+          CupertinoIcons.pause_fill,
+        );
+        final pauseBounds = tester.getRect(pause);
+        final pauseSize = tester.getSize(
+          find.byIcon(CupertinoIcons.pause_fill),
+        );
+        final previous = find.byIcon(CupertinoIcons.backward_fill);
+        final next = find.byIcon(CupertinoIcons.forward_fill);
+        final previousBounds = tester.getRect(previous);
+        final nextBounds = tester.getRect(next);
+        final volumeBounds = tester.getRect(find.byType(MornyeVolumeControl));
+
+        playback.add(PlaybackState(playing: false));
+        await tester.pumpAndSettle();
+        final play = find.widgetWithIcon(
+          MornyePlaybackButton,
+          CupertinoIcons.play_fill,
+        );
+        final playSize = tester.getSize(find.byIcon(CupertinoIcons.play_fill));
+        expect(playSize.width, lessThan(pauseSize.width));
+        expect(playSize.width / pauseSize.width, inInclusiveRange(0.85, 0.95));
+        expect(tester.getRect(play), pauseBounds);
+        expect(tester.getRect(previous), previousBounds);
+        expect(tester.getRect(next), nextBounds);
+        expect(tester.getRect(find.byType(MornyeVolumeControl)), volumeBounds);
+
+        playback.add(PlaybackState(playing: true));
+        await tester.pumpAndSettle();
+        expect(
+          tester.getSize(find.byIcon(CupertinoIcons.pause_fill)),
+          pauseSize,
+        );
+        expect(tester.getRect(pause), pauseBounds);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('Mornye player renders Apple-style transport controls', (
     tester,
   ) async {
