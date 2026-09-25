@@ -30,6 +30,7 @@ import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/utils/synced_lyrics_scroll.dart';
 import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
+import 'package:spotiflac_android/widgets/audio_output_button.dart';
 import 'package:spotiflac_android/widgets/player_artwork.dart';
 import 'package:spotiflac_android/widgets/overflow_marquee.dart';
 import 'package:spotiflac_android/widgets/playback_seek_slider.dart';
@@ -331,6 +332,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   String? _failedMotionSource;
   bool _lyricsControlsHidden = false;
   bool _lyricsOptionsOpen = false;
+  bool _audioOutputOpen = false;
   double _lyricsScrollDistance = 0;
   Timer? _lyricsIdleTimer;
   final _lyricsPointers = <int, Offset>{};
@@ -654,6 +656,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           actions: mornye
               ? null
               : [
+                  const AudioOutputButton(),
                   IconButton(
                     tooltip: context.l10n.nowPlayingUpNext,
                     icon: const Icon(Icons.queue_music),
@@ -736,6 +739,14 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                 ),
                                 icon: const Icon(CupertinoIcons.quote_bubble),
                                 onPressed: _toggleMornyeLyrics,
+                              ),
+                              AudioOutputButton(
+                                color: Colors.white,
+                                onPickerChanged: (open) {
+                                  if (!mounted) return;
+                                  setState(() => _audioOutputOpen = open);
+                                  _scheduleLyricsControlsHide();
+                                },
                               ),
                               IconButton(
                                 tooltip: context.l10n.nowPlayingUpNext,
@@ -1034,6 +1045,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     _lyricsIdleTimer?.cancel();
     if (!_canAutoHideLyricsControls ||
         _lyricsOptionsOpen ||
+        _audioOutputOpen ||
         _lyricsControlsHidden ||
         _lyricsPointers.isNotEmpty) {
       return;

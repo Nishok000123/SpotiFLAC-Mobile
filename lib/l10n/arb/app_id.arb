@@ -4577,6 +4577,8 @@
     "description": "Description for audio analysis tap-to-analyze prompt"
   },
   "nowPlayingUpNext": "Up next",
+  "nowPlayingAudioOutput": "Output Audio",
+  "nowPlayingAudioOutputUnavailable": "Tidak dapat membuka pengaturan output audio.",
   "@nowPlayingUpNext": {
     "description": "Title for the playback queue sheet"
   },

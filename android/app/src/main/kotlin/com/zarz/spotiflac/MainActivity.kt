@@ -77,6 +77,7 @@ class MainActivity: FlutterFragmentActivity() {
     private val LARGE_JSON_RESULT_FILE_THRESHOLD_BYTES = 256 * 1024
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var backendChannel: MethodChannel? = null
+    private var audioOutputChannel: MethodChannel? = null
     internal val coreBackend: CoreBackend by lazy { createCoreBackend(applicationContext) }
     private val nativeBackendMethods = setOf(
         "getBackendImplementations",
@@ -933,6 +934,8 @@ class MainActivity: FlutterFragmentActivity() {
     }
 
     override fun onDestroy() {
+        audioOutputChannel?.setMethodCallHandler(null)
+        audioOutputChannel = null
         libraryStorageReceiver?.let {
             try {
                 unregisterReceiver(it)
@@ -971,6 +974,26 @@ class MainActivity: FlutterFragmentActivity() {
         onBackPressedDispatcher.addCallback(this, flutterBackCallback!!)
 
         val messenger = flutterEngine.dartExecutor.binaryMessenger
+        audioOutputChannel = MethodChannel(messenger, "com.zarz.spotiflac/audio_output").also { channel ->
+            channel.setMethodCallHandler { call, result ->
+                if (call.method != "show") {
+                    result.notImplemented()
+                } else {
+                    try {
+                        val shown = if (Build.VERSION.SDK_INT >= 34) {
+                            android.media.MediaRouter2.getInstance(this).showSystemOutputSwitcher()
+                        } else {
+                            // Older Android releases do not expose a public output picker.
+                            startActivity(Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
+                            true
+                        }
+                        result.success(shown)
+                    } catch (_: Exception) {
+                        result.success(false)
+                    }
+                }
+            }
+        }
 
         EventChannel(
             messenger,

@@ -6281,6 +6281,8 @@
     "description": "Tooltip for minimizing the now playing screen"
   },
   "nowPlayingUpNext": "Up next",
+  "nowPlayingAudioOutput": "Audio Output",
+  "nowPlayingAudioOutputUnavailable": "Unable to open audio output settings.",
   "@nowPlayingUpNext": {
     "description": "Title for the playback queue sheet"
   },

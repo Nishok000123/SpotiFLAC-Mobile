@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/widgets/audio_output_button.dart';
 
 /// Landscape opens on the player. Lyrics can hide their bottom actions until
 /// the user touches the player, while the cover and header stay in place.
@@ -37,6 +38,7 @@ class MornyeLandscapePlayer extends StatefulWidget {
 class _MornyeLandscapePlayerState extends State<MornyeLandscapePlayer> {
   Timer? _hideTimer;
   bool _actionsVisible = true;
+  bool _audioOutputOpen = false;
 
   @override
   void didChangeDependencies() {
@@ -62,6 +64,7 @@ class _MornyeLandscapePlayerState extends State<MornyeLandscapePlayer> {
     _hideTimer?.cancel();
     if (widget.page != 1 ||
         !_actionsVisible ||
+        _audioOutputOpen ||
         MediaQuery.accessibleNavigationOf(context)) {
       return;
     }
@@ -151,7 +154,35 @@ class _MornyeLandscapePlayerState extends State<MornyeLandscapePlayer> {
                                   ),
                                   child: widget.page == 2
                                       ? widget.queue
-                                      : widget.lyrics,
+                                      : Stack(
+                                          fit: StackFit.expand,
+                                          children: [
+                                            widget.lyrics,
+                                            if (widget.lyricsOptions != null)
+                                              Positioned(
+                                                left: 20,
+                                                bottom: 52,
+                                                child: IgnorePointer(
+                                                  ignoring: !_actionsVisible,
+                                                  child: AnimatedOpacity(
+                                                    opacity: _actionsVisible
+                                                        ? 1
+                                                        : 0,
+                                                    duration:
+                                                        MediaQuery.disableAnimationsOf(
+                                                          context,
+                                                        )
+                                                        ? Duration.zero
+                                                        : const Duration(
+                                                            milliseconds: 180,
+                                                          ),
+                                                    child:
+                                                        widget.lyricsOptions!,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
                                 ),
                         ),
                         Positioned(
@@ -195,9 +226,15 @@ class _MornyeLandscapePlayerState extends State<MornyeLandscapePlayer> {
                                             widget.page == 1 ? 0 : 1,
                                           ),
                                         ),
-                                        if (widget.page == 1 &&
-                                            widget.lyricsOptions != null)
-                                          widget.lyricsOptions!,
+                                        AudioOutputButton(
+                                          onPickerChanged: (open) {
+                                            if (!mounted) return;
+                                            setState(
+                                              () => _audioOutputOpen = open,
+                                            );
+                                            _scheduleHide();
+                                          },
+                                        ),
                                         IconButton(
                                           tooltip:
                                               context.l10n.nowPlayingUpNext,

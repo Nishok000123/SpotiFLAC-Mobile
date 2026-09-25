@@ -106,6 +106,10 @@ import UniformTypeIdentifiers
         )
 
         GeneratedPluginRegistrant.register(with: registry)
+        registry.registrar(forPlugin: "AudioOutputView")?.register(
+            AudioOutputViewFactory(messenger: messenger),
+            withId: "com.zarz.spotiflac/audio_output"
+        )
     }
 
     /// The window of the foreground scene. Under the UIScene lifecycle the
