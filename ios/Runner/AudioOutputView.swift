@@ -1,6 +1,40 @@
 import AVKit
 import Flutter
+import MediaPlayer
 import UIKit
+
+/// iOS owns the lock-screen layout, transport glyphs and AirPlay button.
+/// Supply its favorite command with the same state/action as the Mornye player.
+final class PlaybackNotificationBridge {
+    private let channel: FlutterMethodChannel
+    private var target: Any?
+
+    init(messenger: FlutterBinaryMessenger) {
+        channel = FlutterMethodChannel(name: "com.zarz.spotiflac/playback_notification", binaryMessenger: messenger)
+        let command = MPRemoteCommandCenter.shared().likeCommand
+        target = command.addTarget { [weak self] _ in
+            guard let self else { return .commandFailed }
+            self.channel.invokeMethod("favorite", arguments: nil)
+            return .success
+        }
+        command.isEnabled = false
+        channel.setMethodCallHandler { call, result in
+            guard call.method == "update", let values = call.arguments as? [String: Any] else {
+                result(FlutterMethodNotImplemented)
+                return
+            }
+            command.isEnabled = values["enabled"] as? Bool ?? false
+            command.isActive = values["loved"] as? Bool ?? false
+            command.localizedTitle = values["label"] as? String ?? "Favorite"
+            result(nil)
+        }
+    }
+
+    deinit {
+        if let target { MPRemoteCommandCenter.shared().likeCommand.removeTarget(target) }
+        channel.setMethodCallHandler(nil)
+    }
+}
 
 final class AudioOutputViewFactory: NSObject, FlutterPlatformViewFactory {
     private let messenger: FlutterBinaryMessenger

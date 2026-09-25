@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotiflac_android/services/automix_analysis.dart';
 import 'package:spotiflac_android/services/automix_analyzer.dart';
 import 'package:spotiflac_android/services/music_player_service.dart';
+import 'package:spotiflac_android/services/playback_notification.dart';
 
 class _Analyzer extends AutoMixAnalyzer {
   final calls = <String>[];
@@ -141,12 +142,99 @@ void main() {
 
   tearDown(() async {
     await handler.dispose();
+    configurePlaybackNotification(
+      presentation: const PlaybackNotification(),
+      toggleFavorite: (_) async {},
+    );
     analyzer.pending?.complete(null);
     setAutoMixEnabled(false);
     await Future<void>.delayed(const Duration(milliseconds: 30));
     expect(native.live, isEmpty);
     expect(native.playing, isEmpty);
   });
+
+  test('Mornye notification follows theme and keeps transport state', () async {
+    await handler.restoreSession(
+      items: _tracks,
+      index: 0,
+      position: const Duration(seconds: 12),
+      shuffle: false,
+    );
+    configurePlaybackNotification(
+      presentation: const PlaybackNotification(
+        mornye: true,
+        mediaId: 'one',
+        source: '/one.flac',
+        loved: true,
+      ),
+      toggleFavorite: (_) async {},
+    );
+    final state = handler.playbackState.value;
+    expect(state.playing, isFalse);
+    expect(state.updatePosition, const Duration(seconds: 12));
+    expect(state.controls.map((control) => control.action), [
+      MediaAction.custom,
+      MediaAction.skipToPrevious,
+      MediaAction.play,
+      MediaAction.skipToNext,
+      MediaAction.custom,
+    ]);
+    expect(state.controls.first.androidIcon, contains('star_filled'));
+    expect(state.androidCompactActionIndices, [1, 2, 3]);
+
+    configurePlaybackNotification(
+      presentation: const PlaybackNotification(),
+      toggleFavorite: (_) async {},
+    );
+    expect(handler.playbackState.value.controls, [
+      MediaControl.skipToPrevious,
+      MediaControl.play,
+      MediaControl.skipToNext,
+    ]);
+    expect(handler.playbackState.value.androidCompactActionIndices, [0, 1, 2]);
+    expect(handler.playbackState.value.updatePosition, state.updatePosition);
+    handler.playbackState.add(
+      PlaybackState(
+        playing: true,
+        processingState: AudioProcessingState.ready,
+        updatePosition: const Duration(seconds: 12),
+        updateTime: DateTime.now().subtract(const Duration(seconds: 5)),
+      ),
+    );
+    configurePlaybackNotification(
+      presentation: const PlaybackNotification(mornye: true),
+      toggleFavorite: (_) async {},
+    );
+    expect(
+      handler.playbackState.value.updatePosition.inMilliseconds,
+      inInclusiveRange(17000, 17200),
+      reason: 'Changing icons must not reset the live playback position',
+    );
+  });
+
+  test(
+    'notification favorite retains clicked track and ignores double taps',
+    () async {
+      final save = Completer<void>();
+      final selected = <String>[];
+      configurePlaybackNotification(
+        presentation: const PlaybackNotification(mornye: true),
+        toggleFavorite: (item) async {
+          selected.add(item.id);
+          await save.future;
+        },
+      );
+      handler.mediaItem.add(_tracks.first.toMediaItem());
+      final first = handler.customAction(PlaybackNotification.favoriteAction);
+      handler.mediaItem.add(_tracks.last.toMediaItem());
+      await handler.customAction(PlaybackNotification.favoriteAction);
+      expect(selected, ['one']);
+      save.complete();
+      await first;
+      await handler.customAction(PlaybackNotification.favoriteAction);
+      expect(selected, ['one', 'three']);
+    },
+  );
 
   Future<void> prepare() async {
     setAutoMixEnabled(true);

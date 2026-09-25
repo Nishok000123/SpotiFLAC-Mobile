@@ -122,8 +122,12 @@ class PlayerWidgetService {
       'album': item?.album ?? '',
       'playing': item != null && state.playing,
       'canPlay': item != null,
-      'canPrevious': state.controls.contains(MediaControl.skipToPrevious),
-      'canNext': state.controls.contains(MediaControl.skipToNext),
+      'canPrevious': state.controls.any(
+        (control) => control.action == MediaAction.skipToPrevious,
+      ),
+      'canNext': state.controls.any(
+        (control) => control.action == MediaAction.skipToNext,
+      ),
       'artworkKey': _artwork == null ? '' : _artUri.toString(),
       'background': _artwork?.background ?? 0xff292433,
     };

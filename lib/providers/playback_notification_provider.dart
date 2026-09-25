@@ -1,0 +1,54 @@
+import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:spotiflac_android/models/theme_settings.dart';
+import 'package:spotiflac_android/providers/library_collections_provider.dart';
+import 'package:spotiflac_android/providers/music_player_provider.dart';
+import 'package:spotiflac_android/providers/theme_provider.dart';
+import 'package:spotiflac_android/services/music_player_service.dart';
+import 'package:spotiflac_android/services/playback_notification.dart';
+
+/// Kept alive by the app shell so notification favorites share the exact
+/// Library identity and refresh when the same track is starred inside the app.
+final playbackNotificationProvider = Provider.autoDispose
+    .family<void, ({String favorite, String unfavorite, String output})>((
+      ref,
+      labels,
+    ) {
+      final mornye = ref.watch(
+        themeProvider.select((theme) => theme.style == AppThemeStyle.mornye),
+      );
+      final item = ref.watch(currentMediaItemProvider).value;
+      final track = item == null
+          ? null
+          : ref.watch(playerCollectionTrackProvider(item)).value;
+      final loved = ref.watch(
+        libraryCollectionsProvider.select(
+          (state) => track != null && state.isLoved(track),
+        ),
+      );
+      // Publishing playback state inside a provider build would synchronously
+      // modify the stream provider this binding is observing.
+      var active = true;
+      ref.onDispose(() => active = false);
+      scheduleMicrotask(() {
+        if (!active) return;
+        configurePlaybackNotification(
+          presentation: PlaybackNotification(
+            mornye: mornye,
+            mediaId: item?.id,
+            source: item?.extras?['source']?.toString(),
+            loved: loved,
+            favoriteLabel: loved ? labels.unfavorite : labels.favorite,
+            outputLabel: labels.output,
+          ),
+          toggleFavorite: (selected) async {
+            final collections = ref.read(libraryCollectionsProvider.notifier);
+            final selectedTrack = await ref.read(
+              playerCollectionTrackProvider(selected).future,
+            );
+            await collections.toggleLoved(selectedTrack);
+          },
+        );
+      });
+    });

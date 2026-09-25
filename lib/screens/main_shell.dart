@@ -14,6 +14,7 @@ import 'package:spotiflac_android/screens/upgrade_intro_screen.dart';
 import 'package:spotiflac_android/services/upgrade_intro_service.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
+import 'package:spotiflac_android/providers/playback_notification_provider.dart';
 import 'package:spotiflac_android/providers/repo_provider.dart';
 import 'package:spotiflac_android/providers/runtime_profile_provider.dart';
 import 'package:spotiflac_android/providers/track_provider.dart';
@@ -721,6 +722,13 @@ class _MainShellState extends ConsumerState<MainShell>
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(
+      playbackNotificationProvider((
+        favorite: context.l10n.trackOptionAddToLoved,
+        unfavorite: context.l10n.trackOptionRemoveFromLoved,
+        output: context.l10n.nowPlayingAudioOutput,
+      )),
+    );
     ref.listen(settingsProvider.select((s) => s.playbackNormalization), (
       _,
       enabled,

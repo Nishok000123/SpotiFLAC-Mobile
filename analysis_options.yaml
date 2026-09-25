@@ -16,6 +16,7 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+    - third_party/audio_service/**
   language:
     strict-casts: true
     strict-inference: true

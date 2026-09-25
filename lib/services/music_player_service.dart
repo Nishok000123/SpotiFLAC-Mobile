@@ -3,6 +3,8 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/services.dart';
+import 'package:spotiflac_android/services/playback_notification.dart';
 import 'package:spotiflac_android/services/player_widget_service.dart';
 import 'package:audio_session/audio_session.dart'
     show AudioSession, AudioSessionConfiguration, AudioInterruptionType;
@@ -38,6 +40,46 @@ void updateMusicPlayerStrings({
 bool _playbackNormalizationEnabled = false;
 bool _autoMixEnabled = false;
 MusicPlayerHandler? _activeMusicPlayerHandler;
+PlaybackNotification _notificationPresentation = const PlaybackNotification();
+Future<void> Function(MediaItem)? _toggleNotificationFavorite;
+const _notificationChannel = MethodChannel(
+  'com.zarz.spotiflac/playback_notification',
+);
+
+void configurePlaybackNotification({
+  required PlaybackNotification presentation,
+  required Future<void> Function(MediaItem) toggleFavorite,
+}) {
+  _notificationPresentation = presentation;
+  _toggleNotificationFavorite = toggleFavorite;
+  _activeMusicPlayerHandler?._refreshNotificationControls();
+  if (Platform.isIOS) {
+    _notificationChannel.setMethodCallHandler((call) async {
+      if (call.method == 'favorite') {
+        await _activeMusicPlayerHandler?.customAction(
+          PlaybackNotification.favoriteAction,
+        );
+      }
+    });
+    unawaited(_publishIosNotificationFavorite());
+  }
+}
+
+Future<void> _publishIosNotificationFavorite() async {
+  try {
+    await _notificationChannel.invokeMethod<void>('update', {
+      'enabled':
+          _notificationPresentation.mornye &&
+          _notificationPresentation.mediaId != null,
+      'loved': _notificationPresentation.loved,
+      'label': _notificationPresentation.favoriteLabel,
+    });
+  } on MissingPluginException {
+    // Unit tests do not install the iOS remote-command bridge.
+  } on PlatformException catch (error) {
+    _log.w('Could not update the system favorite action: ${error.code}');
+  }
+}
 
 /// Enables/disables ReplayGain volume normalization and re-applies it to the
 /// track currently playing.
@@ -559,11 +601,10 @@ class MusicPlayerHandler extends BaseAudioHandler
 
     playbackState.add(
       playbackState.value.copyWith(
-        controls: [
-          MediaControl.skipToPrevious,
-          if (playing) MediaControl.pause else MediaControl.play,
-          MediaControl.skipToNext,
-        ],
+        controls: _notificationPresentation.controls(
+          playing: playing,
+          item: mediaItem.value,
+        ),
         systemActions: const {
           MediaAction.seek,
           MediaAction.seekForward,
@@ -571,7 +612,9 @@ class MusicPlayerHandler extends BaseAudioHandler
           MediaAction.skipToPrevious,
           MediaAction.skipToNext,
         },
-        androidCompactActionIndices: const [0, 1, 2],
+        androidCompactActionIndices: _notificationPresentation.mornye
+            ? const [1, 2, 3]
+            : const [0, 1, 2],
         processingState: (loading == true)
             ? AudioProcessingState.loading
             : _mapProcessingState(state),
@@ -584,6 +627,48 @@ class MusicPlayerHandler extends BaseAudioHandler
         repeatMode: _repeatMode,
       ),
     );
+  }
+
+  void _refreshNotificationControls() {
+    if (_disposed) return;
+    final state = playbackState.value;
+    playbackState.add(
+      state.copyWith(
+        // copyWith creates a fresh updateTime; keep the extrapolated position
+        // so changing a star or theme cannot pull the scrubber backwards.
+        updatePosition: state.position,
+        controls: _notificationPresentation.controls(
+          playing: state.playing,
+          item: mediaItem.value,
+        ),
+        androidCompactActionIndices: _notificationPresentation.mornye
+            ? const [1, 2, 3]
+            : const [0, 1, 2],
+      ),
+    );
+  }
+
+  bool _savingNotificationFavorite = false;
+
+  @override
+  Future<dynamic> customAction(
+    String name, [
+    Map<String, dynamic>? extras,
+  ]) async {
+    if (name == PlaybackNotification.favoriteAction) {
+      final item = mediaItem.value;
+      if (item == null || _savingNotificationFavorite) return;
+      _savingNotificationFavorite = true;
+      try {
+        await _toggleNotificationFavorite?.call(item);
+      } catch (error) {
+        _log.w('Notification favorite failed: $error');
+      } finally {
+        _savingNotificationFavorite = false;
+      }
+    } else {
+      return super.customAction(name, extras);
+    }
   }
 
   void _broadcastPosition(Duration position, {bool force = false}) {
