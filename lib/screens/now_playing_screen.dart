@@ -1268,24 +1268,41 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       ),
                     ),
                   ),
-                  Positioned.fromRect(
-                    rect: Rect.lerp(
-                      Rect.fromLTWH(
-                        fullBleed ? 0 : (stage.maxWidth - artWidth) / 2,
-                        fullBleed
-                            ? -artworkTopInset
-                            : (stage.maxHeight - artHeight) / 2,
-                        fullBleed ? stage.maxWidth : artWidth,
-                        fullBleed ? motionHeight : artHeight,
+                  Consumer(
+                    builder: (context, ref, child) => TweenAnimationBuilder<double>(
+                      tween: Tween(
+                        end: !insetArtwork || ref.watch(playbackPlayingProvider)
+                            ? 1
+                            : 0.73,
                       ),
-                      const Rect.fromLTWH(
-                        28,
-                        8,
-                        compactCoverSize,
-                        compactCoverSize,
+                      duration: motion,
+                      curve: Curves.easeInOutCubic,
+                      builder: (context, scale, child) => Positioned.fromRect(
+                        // Both cover layers travel to the actual resting size,
+                        // including the smaller cover used while paused.
+                        rect: Rect.lerp(
+                          Rect.fromLTWH(
+                            fullBleed
+                                ? 0
+                                : (stage.maxWidth - artWidth * scale) / 2,
+                            fullBleed
+                                ? -artworkTopInset
+                                : (stage.maxHeight - artHeight * scale) / 2,
+                            fullBleed ? stage.maxWidth : artWidth * scale,
+                            fullBleed ? motionHeight : artHeight * scale,
+                          ),
+                          const Rect.fromLTWH(
+                            28,
+                            8,
+                            compactCoverSize,
+                            compactCoverSize,
+                          ),
+                          progress,
+                        )!,
+                        child: child!,
                       ),
-                      progress,
-                    )!,
+                      child: child,
+                    ),
                     // Both layers share the header's progress, so reversing a
                     // transition reuses the live cover instead of inserting a
                     // duplicate while its previous instance is still fading.
@@ -1318,50 +1335,26 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                       Hero(
                                         tag: kNowPlayingArtworkHeroTag,
                                         child: expanded
-                                            ? Consumer(
-                                                builder:
-                                                    (
-                                                      context,
-                                                      ref,
-                                                      child,
-                                                    ) => AnimatedScale(
-                                                      scale:
-                                                          !insetArtwork ||
-                                                              ref.watch(
-                                                                playbackPlayingProvider,
-                                                              )
-                                                          ? 1
-                                                          : 0.73,
-                                                      duration: motion,
-                                                      curve:
-                                                          Curves.easeInOutCubic,
-                                                      child: child,
+                                            ? DecoratedBox(
+                                                decoration: BoxDecoration(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  boxShadow: const [
+                                                    BoxShadow(
+                                                      color: Color(0x40000000),
+                                                      blurRadius: 28,
+                                                      offset: Offset(0, 16),
                                                     ),
-                                                child: DecoratedBox(
-                                                  decoration: BoxDecoration(
+                                                  ],
+                                                ),
+                                                child: _transitionArtwork(
+                                                  _expandedArtworkKey,
+                                                  ClipRRect(
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                           12,
                                                         ),
-                                                    boxShadow: const [
-                                                      BoxShadow(
-                                                        color: Color(
-                                                          0x40000000,
-                                                        ),
-                                                        blurRadius: 28,
-                                                        offset: Offset(0, 16),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  child: _transitionArtwork(
-                                                    _expandedArtworkKey,
-                                                    ClipRRect(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            12,
-                                                          ),
-                                                      child: motionArtwork,
-                                                    ),
+                                                    child: motionArtwork,
                                                   ),
                                                 ),
                                               )

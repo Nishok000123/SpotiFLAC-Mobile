@@ -2099,6 +2099,49 @@ void main() {
     );
   }
 
+  for (final playing in [false, true]) {
+    testWidgets(
+      'cover returns from lyrics to its resting size (playing: $playing)',
+      (tester) async {
+        await pumpNowPlaying(
+          tester,
+          theme: MornyeTheme.build(Brightness.dark),
+          size: const Size(393, 852),
+          playback: PlaybackState(
+            playing: playing,
+            processingState: AudioProcessingState.ready,
+            updatePosition: const Duration(seconds: 2),
+          ),
+        );
+        mediaItems.add(item('first'));
+        await tester.pumpAndSettle();
+        final artwork = find.byType(MornyePlayerArtwork);
+        final restingBounds = tester.getRect(artwork);
+        final lyrics = find.byIcon(CupertinoIcons.quote_bubble);
+        final compact = find.byKey(const ValueKey('compact-player-artwork'));
+        await tester.tap(lyrics);
+        await tester.pumpAndSettle();
+        final compactBounds = tester.getRect(compact);
+        await tester.tap(lyrics);
+        await tester.pump();
+        expect(tester.getRect(artwork), compactBounds);
+        var previous = compactBounds;
+        for (var frame = 0; frame < 4; frame++) {
+          await tester.pump(const Duration(milliseconds: 80));
+          final bounds = tester.getRect(artwork);
+          expect(bounds.width, greaterThan(previous.width));
+          expect(bounds.width, lessThanOrEqualTo(restingBounds.width));
+          expect(tester.getRect(compact), bounds);
+          previous = bounds;
+        }
+        await tester.pumpAndSettle();
+        expect(tester.getRect(artwork), restingBounds);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
   testWidgets('header reverses in place and stays beside cover across panels', (
     tester,
   ) async {
