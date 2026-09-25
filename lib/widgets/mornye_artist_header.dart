@@ -198,7 +198,6 @@ class MornyeArtistHeader extends StatelessWidget {
               ? 0.0
               : 7 + textHeight(listeners!, const TextStyle(fontSize: 13));
           final photoHeight = (width * 0.76).clamp(240.0, 340.0);
-          final badgeHeight = badge == null ? 0.0 : textScaler.scale(13) + 39;
           final expandedHeight =
               photoHeight +
               identityHeight +
@@ -246,13 +245,15 @@ class MornyeArtistHeader extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (badge != null)
-                            SizedBox(
-                              height: badgeHeight,
-                              child: Center(child: badge),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: badge,
                             ),
-                          SizedBox(
-                            height: identityHeight,
-                            child: Center(child: _buildIdentity()),
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight: identityHeight,
+                            ),
+                            child: _buildIdentity(),
                           ),
                           if (listeners != null) ...[
                             const SizedBox(height: 7),
@@ -266,7 +267,7 @@ class MornyeArtistHeader extends StatelessWidget {
                             ),
                           ],
                           if (actions.isNotEmpty) ...[
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 16),
                             SizedBox(
                               height: 74,
                               child: Row(
@@ -310,7 +311,7 @@ class MornyeArtistHeader extends StatelessWidget {
         fadeInDuration: Duration.zero,
         fadeOutDuration: Duration.zero,
         imageBuilder: (_, provider) => ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 260, maxHeight: 96),
+          constraints: const BoxConstraints(maxWidth: 320, maxHeight: 96),
           child: Image(image: provider, fit: BoxFit.contain),
         ),
         placeholder: (_, _) => fallback,
