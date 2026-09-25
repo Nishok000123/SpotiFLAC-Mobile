@@ -41,6 +41,7 @@ import 'package:spotiflac_android/utils/extension_auth_launcher.dart';
 import 'package:spotiflac_android/utils/nav_bar_inset.dart';
 import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
+import 'package:spotiflac_android/utils/editorial_notes.dart';
 import 'package:spotiflac_android/screens/playlist_screen.dart';
 import 'package:spotiflac_android/screens/downloaded_album_screen.dart';
 import 'package:spotiflac_android/widgets/download_service_picker.dart';
@@ -627,6 +628,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
           builder: (context) => AlbumScreen(
             albumId: trackState.albumId!,
             albumName: trackState.albumName!,
+            description: trackState.albumDescription,
             coverUrl: trackState.coverUrl,
             tracks: trackState.tracks,
             extensionId: extensionId,

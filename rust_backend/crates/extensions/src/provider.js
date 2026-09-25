@@ -160,7 +160,8 @@
             ["cover_url","s","coverUrl","images"],["header_image","s","headerImage"],
             ["header_video","s","headerVideo"],["release_date","s","releaseDate"],
             ["total_tracks","i","totalTracks"],["album_type","s","albumType"],
-            ["audio_traits","a","audioTraits"],["provider_id","s","providerId"]
+            ["audio_traits","a","audioTraits"],["provider_id","s","providerId"],
+            ["editorial_notes","M","editorialNotes"],["description","s"]
         ], ["id","name","artists","total_tracks","provider_id"]);
         result.tracks = tracks;
         if (!trim(result.artists)) {

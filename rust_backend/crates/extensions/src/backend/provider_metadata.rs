@@ -64,6 +64,11 @@ impl Backend {
                 ],
             );
             info.insert("audio_traits".into(), value["audio_traits"].clone());
+            for key in ["editorial_notes", "description"] {
+                if let Some(notes) = value.get(key) {
+                    info.insert(key.into(), notes.clone());
+                }
+            }
             info.insert(
                 "total_tracks".into(),
                 json!(value["total_tracks"].as_i64().unwrap_or_default()),
@@ -386,6 +391,11 @@ fn album(value: &Value, full: bool) -> Value {
             &["artist_id", "header_image", "header_video"],
         ));
         result.insert("audio_traits".into(), json!(array(value, "audio_traits")));
+        for key in ["editorial_notes", "description"] {
+            if let Some(notes) = value.get(key) {
+                result.insert(key.into(), notes.clone());
+            }
+        }
     }
     result.into()
 }

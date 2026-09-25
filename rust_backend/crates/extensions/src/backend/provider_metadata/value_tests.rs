@@ -12,6 +12,8 @@ function collection(id) {
     const count = Number(id);
     return {id, name: "Album 音楽 🎵", artists: "Artist Café", provider_id: "supplied",
         cover_url: "https://example.invalid/cover.jpg", total_tracks: count,
+        editorialNotes: {standard: "<p>A <i>new</i> direction &amp; sound.</p>", short: "A new direction."},
+        description: "Collection notes",
         tracks: Array.from({length: count}, (_, i) => ({id: "track-" + i,
             name: "歌 🎵 " + i, artists: "Artist Café", album_name: "Album 音楽 🎵",
             provider_id: "supplied-track", duration_ms: 123456, track_number: i + 1,
@@ -24,7 +26,10 @@ function getArtist(id) {
             url: "https://example.invalid/events/1", detailId: "event-1"}],
         headerLogo: "https://example.invalid/logo.png", albumsNext: "artist-page-2", albums: []};
 }
-function handleUrl() { return {type: "artist", artist: getArtist("artist-1")}; }
+function handleUrl(url) {
+    if (url.includes("/album/")) return {type: "album", album: collection("1"), tracks: collection("1").tracks};
+    return {type: "artist", artist: getArtist("artist-1")};
+}
 function getConcert(id) {
     return {id, artistName: "Example Artist", title: "Example Show", venue: "Example Hall",
         address: "123 Example Street", startAt: "2026-10-07T01:00:00Z",
@@ -84,6 +89,31 @@ fn concert_details_preserve_generic_actions_and_set_list() {
         "https://example.invalid/list.jpg"
     );
     assert_eq!(detail["attribution"], "Example Events");
+}
+
+#[test]
+fn album_editorial_notes_survive_metadata_and_url_routes() {
+    let (_root, backend) = fixture();
+    let direct: Value = serde_json::from_str(
+        &backend
+            .get_provider_metadata_json(ID, "album", "1", &|| Ok(()))
+            .unwrap(),
+    )
+    .unwrap();
+    let linked: Value = serde_json::from_str(
+        &backend
+            .handle_url_json("https://example.invalid/album/1")
+            .unwrap(),
+    )
+    .unwrap();
+    for album in [&direct["album_info"], &linked["album"]] {
+        assert_eq!(
+            album["editorial_notes"]["standard"],
+            "<p>A <i>new</i> direction &amp; sound.</p>"
+        );
+        assert_eq!(album["editorial_notes"]["short"], "A new direction.");
+        assert_eq!(album["description"], "Collection notes");
+    }
 }
 
 #[test]

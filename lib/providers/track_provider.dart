@@ -6,6 +6,7 @@ import 'package:spotiflac_android/models/artist_concert.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
+import 'package:spotiflac_android/utils/editorial_notes.dart';
 import 'package:spotiflac_android/utils/extension_auth_launcher.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
@@ -19,6 +20,7 @@ class TrackState {
   final String? error;
   final String? albumId;
   final String? albumName;
+  final String? albumDescription;
   final String? playlistName;
   final String? playlistId;
   final String? artistId;
@@ -44,6 +46,7 @@ class TrackState {
     this.error,
     this.albumId,
     this.albumName,
+    this.albumDescription,
     this.playlistName,
     this.playlistId,
     this.artistId,
@@ -72,6 +75,7 @@ class TrackState {
     String? error,
     String? albumId,
     String? albumName,
+    String? albumDescription,
     String? playlistName,
     String? playlistId,
     String? artistId,
@@ -99,6 +103,7 @@ class TrackState {
       error: error,
       albumId: albumId ?? this.albumId,
       albumName: albumName ?? this.albumName,
+      albumDescription: albumDescription ?? this.albumDescription,
       playlistName: playlistName ?? this.playlistName,
       playlistId: playlistId ?? this.playlistId,
       artistId: artistId ?? this.artistId,
@@ -262,6 +267,12 @@ class TrackNotifier extends Notifier<TrackState> {
             albumName:
                 collectionName ??
                 (result['album'] as Map<String, dynamic>?)?['name'] as String?,
+            albumDescription: type == 'album'
+                ? albumDescriptionFromMetadata(
+                        result['album'] as Map<String, dynamic>?,
+                      ) ??
+                      albumDescriptionFromMetadata(result)
+                : null,
             playlistName: type == 'playlist' ? collectionName : null,
             playlistId: type == 'playlist' ? result['id'] as String? : null,
             coverUrl: normalizeCoverReference(result['cover_url']?.toString()),

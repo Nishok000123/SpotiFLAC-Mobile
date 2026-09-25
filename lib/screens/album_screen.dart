@@ -20,6 +20,8 @@ import 'package:spotiflac_android/screens/collapsing_header_scroll_mixin.dart';
 import 'package:spotiflac_android/screens/selection_mode_mixin.dart';
 import 'package:spotiflac_android/widgets/error_card.dart';
 import 'package:spotiflac_android/widgets/album_detail_header.dart';
+import 'package:spotiflac_android/widgets/album_description.dart';
+import 'package:spotiflac_android/utils/editorial_notes.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 import 'package:spotiflac_android/utils/provider_resource_ids.dart';
 import 'package:spotiflac_android/utils/ttl_cache.dart';
@@ -37,15 +39,16 @@ import 'package:spotiflac_android/widgets/downloadable_cover.dart';
 import 'package:spotiflac_android/widgets/mornye_artist_header.dart';
 
 class _AlbumCache {
-  static final _cache = TtlCache<List<Track>>(
+  static final _cache = TtlCache<({List<Track> tracks, String? description})>(
     const Duration(minutes: 10),
     maxEntries: 40,
   );
 
-  static List<Track>? get(String albumId) => _cache.get(albumId);
+  static ({List<Track> tracks, String? description})? get(String key) =>
+      _cache.get(key);
 
-  static void set(String albumId, List<Track> tracks) =>
-      _cache.set(albumId, tracks);
+  static void set(String key, List<Track> tracks, String? description) =>
+      _cache.set(key, (tracks: tracks, description: description));
 }
 
 class AlbumScreen extends ConsumerStatefulWidget {
@@ -59,6 +62,7 @@ class AlbumScreen extends ConsumerStatefulWidget {
   final String? extensionId;
   final String? artistId;
   final String? artistName;
+  final String? description;
 
   const AlbumScreen({
     super.key,
@@ -72,6 +76,7 @@ class AlbumScreen extends ConsumerStatefulWidget {
     this.extensionId,
     this.artistId,
     this.artistName,
+    this.description,
   });
 
   @override
@@ -92,6 +97,10 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
   String? _headerVideoUrl;
   String? _headerImageUrl;
   List<String> _audioTraits = const [];
+  String? _description;
+
+  String get _cacheKey =>
+      '${_effectiveMetadataProviderIdFromAlbumId()}:${widget.albumId}';
 
   String _effectiveMetadataProviderIdFromAlbumId() {
     if (widget.extensionId != null && widget.extensionId!.isNotEmpty) {
@@ -123,10 +132,12 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
           );
     });
 
+    final cached = _AlbumCache.get(_cacheKey);
+    _description = widget.description ?? cached?.description;
     if (widget.tracks != null && widget.tracks!.isNotEmpty) {
       _tracks = widget.tracks;
     } else {
-      _tracks = _AlbumCache.get(widget.albumId);
+      _tracks = cached?.tracks;
     }
     _artistId = widget.artistId;
     _albumType = _tracks?.firstOrNull?.albumType;
@@ -154,8 +165,8 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
           _metadataResourceId(directProviderId),
         );
         _applyAlbumMetadata(
-          metadata['track_list'] as List<dynamic>,
-          metadata['album_info'] as Map<String, dynamic>?,
+          (metadata['track_list'] ?? metadata['tracks']) as List<dynamic>,
+          metadata['album_info'] as Map<String, dynamic>? ?? metadata,
         );
         return;
       } else {
@@ -217,11 +228,15 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
         )
         .toList();
 
-    _AlbumCache.set(widget.albumId, tracks);
+    final description =
+        albumDescriptionFromMetadata(albumInfo) ??
+        albumDescriptionFromMetadata(fallbackSource);
+    _AlbumCache.set(_cacheKey, tracks, description);
 
     if (mounted) {
       setState(() {
         _tracks = tracks;
+        _description = description;
         _artistId = artistId;
         _albumType = albumType;
         _albumTotalTracks = totalTracks;
@@ -384,6 +399,13 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
       ),
       appBar: _buildAppBar(context, colorScheme, pageBackgroundColor),
       slivers: [
+        if (_description != null)
+          SliverToBoxAdapter(
+            child: AlbumDescription(
+              title: widget.albumName,
+              description: _description!,
+            ),
+          ),
         if (_isLoading)
           SliverToBoxAdapter(
             child: Padding(

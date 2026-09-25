@@ -1014,6 +1014,7 @@ class ExtensionAlbumScreen extends ConsumerStatefulWidget {
 class _ExtensionAlbumScreenState extends ConsumerState<ExtensionAlbumScreen> {
   List<Track>? _tracks;
   String? _albumName;
+  String? _description;
   bool _isLoading = true;
   String? _error;
   String? _artistId;
@@ -1095,6 +1096,7 @@ class _ExtensionAlbumScreenState extends ConsumerState<ExtensionAlbumScreen> {
       setState(() {
         _tracks = tracks;
         _albumName = albumName;
+        _description = albumDescriptionFromMetadata(albumInfo);
         _artistId = artistId;
         _artistName = artistName;
         _albumType = albumType;
@@ -1165,6 +1167,7 @@ class _ExtensionAlbumScreenState extends ConsumerState<ExtensionAlbumScreen> {
     return AlbumScreen(
       albumId: widget.albumId,
       albumName: _albumName ?? widget.albumName,
+      description: _description,
       coverUrl: widget.coverUrl,
       headerVideoUrl: _headerVideoUrl,
       headerImageUrl: _headerImageUrl,

@@ -11,6 +11,7 @@ import 'package:spotiflac_android/screens/album_screen.dart';
 import 'package:spotiflac_android/screens/home_tab.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
+import 'package:spotiflac_android/widgets/album_description.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
 import 'package:spotiflac_android/widgets/track_list_tile.dart';
 
@@ -54,6 +55,10 @@ void main() {
               'name': fetchedName,
               'artists': 'Example Artist',
               'total_tracks': 1,
+              'editorial_notes': {
+                'standard': '<p>A <i>new direction</i> for the band.</p>',
+                'short': 'A new direction.',
+              },
             };
             final tracks = [
               {
@@ -89,6 +94,10 @@ void main() {
           final expected = fetchedName.trim().isEmpty ? 'Album' : fetchedName;
           final album = tester.widget<AlbumScreen>(find.byType(AlbumScreen));
           expect(album.albumName, expected);
+          expect(
+            album.description,
+            '<p>A <i>new direction</i> for the band.</p>',
+          );
           expect(album.tracks!.single.albumName, expected);
           expect(find.text(expected), findsWidgets);
           expect(requests, 1);
@@ -124,7 +133,7 @@ void main() {
       'audio_modes': 'DOLBY_ATMOS',
       'explicit': true,
     };
-    var albumRequested = false;
+    var albumRequests = 0;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
           if (call.method == 'getProviderMetadata') {
@@ -133,7 +142,7 @@ void main() {
               'resource_type': 'album',
               'resource_id': 'metadata-album',
             });
-            albumRequested = true;
+            albumRequests++;
             return jsonEncode({
               'track_list': [payload],
               'album_info': {
@@ -141,6 +150,7 @@ void main() {
                 'total_tracks': 1,
                 'album_type': 'album',
                 'audio_traits': ['lossless', 'dolby_atmos'],
+                'editorial_notes': {'standard': '<p>A new direction.</p>'},
               },
             });
           }
@@ -156,22 +166,22 @@ void main() {
     expect(searchTrack.label, 'Example Label');
     expect(searchTrack.copyright, 'Example Copyright');
 
-    await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp(
-          theme: MornyeTheme.build(Brightness.light),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: const AlbumScreen(
-            albumId: 'metadata-album',
-            albumName: 'Example Album',
-            extensionId: 'example-metadata',
-          ),
+    final page = ProviderScope(
+      child: MaterialApp(
+        theme: MornyeTheme.build(Brightness.light),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const AlbumScreen(
+          albumId: 'metadata-album',
+          albumName: 'Example Album',
+          extensionId: 'example-metadata',
         ),
       ),
     );
+    await tester.pumpWidget(page);
     await tester.pumpAndSettle();
-    expect(albumRequested, isTrue);
+    expect(albumRequests, 1);
+    expect(find.byType(AlbumDescription), findsOneWidget);
     final albumTrack = tester
         .widget<TrackListTile>(find.byType(TrackListTile).first)
         .track;
@@ -191,6 +201,17 @@ void main() {
     expect(find.byType(AudioQualityBadge), findsNothing);
     expect(find.byType(DolbyAtmosBadge), findsNothing);
     expect(find.byType(ExplicitBadge), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(page);
+    await tester.pumpAndSettle();
+    expect(albumRequests, 1);
+    expect(
+      tester
+          .widget<AlbumDescription>(find.byType(AlbumDescription))
+          .description,
+      '<p>A new direction.</p>',
+    );
     await tester.pumpWidget(const SizedBox());
     await tester.pumpAndSettle();
   });
