@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoColors;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:spotiflac_android/providers/runtime_profile_provider.dart';
@@ -31,6 +32,7 @@ class AppSwitch extends StatelessWidget {
     return Consumer(
       builder: (context, ref, _) {
         final scheme = Theme.of(context).colorScheme;
+        final active = CupertinoColors.systemGreen.resolveFrom(context);
         final enabled = onChanged != null;
         final useGlass =
             enabled &&
@@ -49,7 +51,7 @@ class AppSwitch extends StatelessWidget {
             child: LiquidGlassSwitch(
               value: value,
               onChanged: onChanged!,
-              activeColor: scheme.primary,
+              activeColor: active,
               inactiveColor: inactive,
             ),
           );
@@ -59,7 +61,7 @@ class AppSwitch extends StatelessWidget {
             height: 28,
             padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
-              color: value ? scheme.primary : inactive,
+              color: value ? active : inactive,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Align(

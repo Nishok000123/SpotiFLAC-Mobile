@@ -204,7 +204,9 @@ class SettingsGroup extends StatelessWidget {
 
     final decoration = BoxDecoration(
       color: cardColor,
-      borderRadius: BorderRadius.circular(context.tokens.radiusCard),
+      borderRadius: BorderRadius.circular(
+        context.isMornye ? 28 : context.tokens.radiusCard,
+      ),
       border: context.isMornye
           ? null
           : Border.all(
@@ -286,6 +288,7 @@ class SettingsItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final showIcon = icon != null && !context.isMornye;
 
     final content = Column(
       mainAxisSize: MainAxisSize.min,
@@ -305,14 +308,8 @@ class SettingsItem extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  if (icon != null) ...[
-                    Icon(
-                      context.adaptiveIcon(icon!),
-                      color: context.isMornye
-                          ? colorScheme.primary
-                          : colorScheme.onSurfaceVariant,
-                      size: 24,
-                    ),
+                  if (showIcon) ...[
+                    Icon(icon, color: colorScheme.onSurfaceVariant, size: 24),
                     SizedBox(width: context.tokens.rowIconGap),
                   ],
                   Expanded(
@@ -373,7 +370,7 @@ class SettingsItem extends StatelessWidget {
         if (showDivider)
           Divider(
             height: 1,
-            indent: icon != null
+            indent: showIcon
                 ? context.tokens.rowIconDividerIndent
                 : context.tokens.rowPaddingH,
             endIndent: context.tokens.rowPaddingH,
@@ -413,6 +410,7 @@ class SettingsSwitchItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDisabled = !enabled || onChanged == null;
+    final showIcon = icon != null && !context.isMornye;
 
     final content = Column(
       mainAxisSize: MainAxisSize.min,
@@ -430,13 +428,11 @@ class SettingsSwitchItem extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  if (icon != null) ...[
+                  if (showIcon) ...[
                     Icon(
-                      context.adaptiveIcon(icon!),
+                      icon,
                       color: isDisabled
                           ? colorScheme.outline
-                          : context.isMornye
-                          ? colorScheme.primary
                           : colorScheme.onSurfaceVariant,
                       size: 24,
                     ),
@@ -495,7 +491,7 @@ class SettingsSwitchItem extends StatelessWidget {
         if (showDivider)
           Divider(
             height: 1,
-            indent: icon != null
+            indent: showIcon
                 ? context.tokens.rowIconDividerIndent
                 : context.tokens.rowPaddingH,
             endIndent: context.tokens.rowPaddingH,
@@ -519,18 +515,16 @@ class SettingsSectionHeader extends StatelessWidget {
     final content = Padding(
       padding: const EdgeInsets.fromLTRB(32, 24, 32, 8),
       child: Text(
-        context.isMornye ? title.toUpperCase() : title,
+        title,
         style:
             (context.isMornye
-                    ? Theme.of(context).textTheme.bodySmall
+                    ? Theme.of(context).textTheme.bodyLarge
                     : Theme.of(context).textTheme.titleSmall)
                 ?.copyWith(
                   color: context.isMornye
                       ? Theme.of(context).colorScheme.onSurfaceVariant
                       : Theme.of(context).colorScheme.primary,
-                  fontWeight: context.isMornye
-                      ? FontWeight.normal
-                      : FontWeight.w600,
+                  fontWeight: FontWeight.w600,
                 ),
       ),
     );

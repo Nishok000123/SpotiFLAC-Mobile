@@ -7,7 +7,6 @@ import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/theme_provider.dart';
 import 'package:spotiflac_android/models/theme_settings.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
-import 'package:spotiflac_android/theme/mornye_icons.dart';
 import 'package:spotiflac_android/widgets/mornye_chrome.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
@@ -68,17 +67,13 @@ class AppearanceSettingsPage extends ConsumerWidget {
                             ),
                         ],
                       ),
-                      leading: Icon(
-                        context.isMornye
-                            ? mornyeIconFor(
-                                style == AppThemeStyle.mornye
-                                    ? Icons.music_note_outlined
-                                    : Icons.palette_outlined,
-                              )
-                            : style == AppThemeStyle.mornye
-                            ? Icons.music_note_outlined
-                            : Icons.palette_outlined,
-                      ),
+                      leading: context.isMornye
+                          ? null
+                          : Icon(
+                              style == AppThemeStyle.mornye
+                                  ? Icons.music_note_outlined
+                                  : Icons.palette_outlined,
+                            ),
                       trailing: themeSettings.style == style
                           ? Icon(
                               Icons.check_circle,
@@ -708,12 +703,9 @@ class _LanguageSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final content = ListTile(
-      leading: Icon(
-        context.adaptiveIcon(Icons.language),
-        color: context.isMornye
-            ? colorScheme.primary
-            : colorScheme.onSurfaceVariant,
-      ),
+      leading: context.isMornye
+          ? null
+          : Icon(Icons.language, color: colorScheme.onSurfaceVariant),
       title: Text(context.l10n.appearanceLanguage),
       subtitle: Text(_getLanguageName(currentLocale)),
       trailing: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
