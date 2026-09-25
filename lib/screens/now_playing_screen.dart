@@ -17,6 +17,7 @@ import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/screens/downloaded_album_screen.dart';
 import 'package:spotiflac_android/screens/local_album_screen.dart';
 import 'package:spotiflac_android/services/library_database.dart';
+import 'package:spotiflac_android/services/app_orientation.dart';
 import 'package:spotiflac_android/services/music_player_service.dart';
 import 'package:spotiflac_android/theme/app_tokens.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
@@ -63,7 +64,11 @@ const _mornyeLyricFocusAlignment = 0.22;
 /// page follows the finger (via [startDrag]/[updateDrag]/[endDrag]) and
 /// settles open or pops based on release position and velocity.
 class NowPlayingRoute extends PageRoute<void> {
-  NowPlayingRoute({this.miniPlayerGeometry}) : super(fullscreenDialog: true);
+  NowPlayingRoute({this.miniPlayerGeometry})
+    : super(
+        fullscreenDialog: true,
+        settings: const RouteSettings(name: fullPlayerRouteName),
+      );
 
   /// Read at dismissal so rotation and collapsing navigation cannot leave a
   /// stale destination from when the player was opened.
@@ -188,7 +193,9 @@ class NowPlayingRoute extends PageRoute<void> {
     Widget child,
   ) {
     final target = _dismissTarget;
-    if (target != null) {
+    // Restoring portrait can resize the window during dismissal. Geometry
+    // captured in landscape no longer points at the mini player in that case.
+    if (target != null && _dismissStart?.size == MediaQuery.sizeOf(context)) {
       final progress = Curves.easeInOutCubic.transform(
         (1 - animation.value / _dismissStartValue).clamp(0.0, 1.0),
       );

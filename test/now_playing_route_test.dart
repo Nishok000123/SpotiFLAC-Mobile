@@ -12,6 +12,8 @@ import 'package:spotiflac_android/theme/mornye_theme.dart';
 const _sheet = Key('player-sheet');
 
 class _TestPlayerRoute extends NowPlayingRoute {
+  _TestPlayerRoute({super.miniPlayerGeometry});
+
   @override
   Widget buildPage(
     BuildContext context,
@@ -21,6 +23,43 @@ class _TestPlayerRoute extends NowPlayingRoute {
 }
 
 void main() {
+  testWidgets('rotation on close discards stale mini-player bounds', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(852, 393);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final navigator = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigator,
+        theme: MornyeTheme.build(Brightness.dark),
+        home: const SizedBox(),
+      ),
+    );
+    navigator.currentState!.push(
+      _TestPlayerRoute(
+        miniPlayerGeometry: () => (
+          surface: const Rect.fromLTWH(80, 310, 700, 52),
+          artwork: const Rect.fromLTWH(88, 314, 44, 44),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    navigator.currentState!.pop();
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('player-minimize-surface')),
+      findsOneWidget,
+    );
+    tester.view.physicalSize = const Size(393, 852);
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(find.byKey(const ValueKey('player-minimize-surface')), findsNothing);
+    await tester.pumpAndSettle();
+    expect(find.byKey(_sheet), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final brightness in Brightness.values) {
     testWidgets(
       'player fills safe areas and reveals the page only when dragged in $brightness',

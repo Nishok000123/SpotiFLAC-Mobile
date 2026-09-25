@@ -23,6 +23,7 @@ import 'package:spotiflac_android/services/share_intent_service.dart';
 import 'package:spotiflac_android/services/cover_cache_manager.dart';
 import 'package:spotiflac_android/services/app_state_database.dart';
 import 'package:spotiflac_android/services/app_navigation_service.dart';
+import 'package:spotiflac_android/services/app_orientation.dart';
 import 'package:spotiflac_android/services/music_player_service.dart';
 import 'package:spotiflac_android/services/player_widget_service.dart';
 import 'package:spotiflac_android/screens/now_playing_screen.dart';
@@ -42,6 +43,7 @@ void main() {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      await setAppOrientation();
       LicenseRegistry.addLicense(() async* {
         yield LicenseEntryWithLineBreaks(const [
           'Inter',
