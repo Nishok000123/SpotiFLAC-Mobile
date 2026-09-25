@@ -357,11 +357,7 @@ void main() {
     void expectUpperFocus(Finder line) {
       final bounds = tester.getRect(line);
       final viewport = tester.getRect(list);
-      final space = (viewport.height - bounds.height - 32).clamp(
-        0.0,
-        double.infinity,
-      );
-      expect(bounds.top, closeTo(viewport.top + 16 + space * 0.22, 2));
+      expect(bounds.top, closeTo(viewport.top + 16 + 780 * 0.06, 2));
     }
 
     expectUpperFocus(current);
@@ -448,6 +444,8 @@ void main() {
     testWidgets(
       'lyrics hide controls after five idle seconds and restore on tap (reduced motion: $reducedMotion)',
       (tester) async {
+        const lyric = 'First lyric with several words on this line';
+        metadataOverrides['lyrics'] = '[00:00.00]$lyric\n[01:00.00]Second line';
         await pumpNowPlaying(
           tester,
           theme: MornyeTheme.build(Brightness.dark),
@@ -477,7 +475,15 @@ void main() {
         expect(play.hitTestable(), findsOneWidget);
         final list = find.byType(ListView);
         final originalHeight = tester.getSize(list).height;
+        final originalTop = tester.getTopLeft(find.text(lyric)).dy;
         await tester.pump(const Duration(milliseconds: 100));
+        for (var frame = 0; frame < 10; frame++) {
+          await tester.pump(const Duration(milliseconds: 40));
+          expect(
+            tester.getTopLeft(find.text(lyric)).dy,
+            closeTo(originalTop, 1),
+          );
+        }
         await tester.pumpAndSettle();
         expect(play.hitTestable(), findsNothing);
         expect(volume.hitTestable(), findsNothing);
@@ -492,6 +498,13 @@ void main() {
         Future<void> reveal() async {
           final bounds = tester.getRect(list);
           await tester.tapAt(Offset(bounds.right - 6, bounds.top + 10));
+          for (var frame = 0; frame < 10; frame++) {
+            await tester.pump(const Duration(milliseconds: 40));
+            expect(
+              tester.getTopLeft(find.text(lyric)).dy,
+              closeTo(originalTop, 1),
+            );
+          }
           await tester.pumpAndSettle();
           expect(play.hitTestable(), findsOneWidget);
           expect(lyricsButton.hitTestable(), findsOneWidget);

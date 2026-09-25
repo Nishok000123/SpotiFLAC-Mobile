@@ -59,7 +59,6 @@ final _log = AppLogger('NowPlaying');
 const kNowPlayingArtworkHeroTag = 'now-playing-artwork';
 
 const _mornyeLyricFontSize = 34.0;
-const _mornyeLyricFocusAlignment = 0.22;
 
 /// Slide-up route for the full player. Supports live drag-to-dismiss: the
 /// page follows the finger (via [startDrag]/[updateDrag]/[endDrag]) and
@@ -2829,6 +2828,11 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   double? _viewportHeight;
   Offset? _layoutVisibility;
 
+  // The header stays fixed when controls collapse. Anchor lyrics to it, not
+  // to a fraction of the growing viewport, including during the transition.
+  double get _focusInset =>
+      (MediaQuery.sizeOf(context).height * 0.06).clamp(16.0, 48.0);
+
   @override
   void initState() {
     super.initState();
@@ -3037,18 +3041,9 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     final extents = _lineExtents;
     if (context.isMornye && extents != null && index < extents.length) {
       final position = _scroll.position;
-      final padding = syncedLyricsCenterPadding(
-        viewportDimension: position.viewportDimension,
-        estimatedLineExtent: _estimatedLyricExtent,
-      );
-      final target =
-          extents.take(index).fold(0.0, (sum, extent) => sum + extent) +
-          padding -
-          (position.viewportDimension - extents[index]).clamp(
-                0.0,
-                double.infinity,
-              ) *
-              _mornyeLyricFocusAlignment;
+      final target = extents
+          .take(index)
+          .fold(0.0, (sum, extent) => sum + extent);
       final offset = target.clamp(
         position.minScrollExtent,
         position.maxScrollExtent,
@@ -3175,17 +3170,20 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
               }
             });
           }
-          final centerPadding = syncedLyricsCenterPadding(
-            viewportDimension: constraints.maxHeight,
-            estimatedLineExtent: _estimatedLyricExtent,
-          );
+          final topPadding = mornye
+              ? _focusInset
+              : syncedLyricsCenterPadding(
+                  viewportDimension: constraints.maxHeight,
+                  estimatedLineExtent: _estimatedLyricExtent,
+                );
           // Leave enough trailing space for the final line to reach the same
           // upper focus position as every other line.
           final bottomPadding = mornye && _lineExtents!.isNotEmpty
-              ? ((constraints.maxHeight - _lineExtents!.last) *
-                        (1 - _mornyeLyricFocusAlignment))
-                    .clamp(centerPadding, double.infinity)
-              : centerPadding;
+              ? (constraints.maxHeight - _lineExtents!.last - topPadding).clamp(
+                  topPadding,
+                  double.infinity,
+                )
+              : topPadding;
           return ListView.builder(
             controller: _scroll,
             itemExtentBuilder: mornye
@@ -3196,7 +3194,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                           constraints.maxWidth - 48,
                         )
                 : null,
-            padding: EdgeInsets.fromLTRB(24, centerPadding, 24, bottomPadding),
+            padding: EdgeInsets.fromLTRB(24, topPadding, 24, bottomPadding),
             itemCount: lines.length + (widget.credits == null ? 0 : 1),
             itemBuilder: (context, index) {
               if (index == lines.length) return widget.credits!;
