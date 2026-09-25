@@ -8,8 +8,6 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 OUTPUT_DIR="$PROJECT_DIR/build/app/outputs/flutter-apk"
 
 cd "$PROJECT_DIR"
-SPOTIFLAC_DISCORD_SDK_DIR="$(python3 scripts/prepare_discord_sdk.py)"
-export SPOTIFLAC_DISCORD_SDK_DIR
 BUILD_GIT_COMMIT="$(git rev-parse --short=8 HEAD)"
 flutter build apk \
   --release \
@@ -30,7 +28,7 @@ for target in armeabi-v7a arm64-v8a universal; do
     exit 1
   fi
   python3 scripts/check_backend_apk.py "$OUTPUT_DIR/$apk" \
-    --backend rust --abis "$abis" --require-discord
+    --backend rust --abis "$abis"
 done
 
 echo "Built Android release APKs in $OUTPUT_DIR"

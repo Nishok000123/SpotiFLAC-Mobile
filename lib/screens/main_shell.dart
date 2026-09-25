@@ -12,7 +12,6 @@ import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/constants/app_info.dart';
 import 'package:spotiflac_android/screens/upgrade_intro_screen.dart';
 import 'package:spotiflac_android/services/upgrade_intro_service.dart';
-import 'package:spotiflac_android/services/discord_presence_service.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/repo_provider.dart';
@@ -92,11 +91,6 @@ class _MainShellState extends ConsumerState<MainShell>
       ref.read(settingsProvider).playbackNormalization,
     );
     setAutoMixEnabled(ref.read(settingsProvider).autoMix);
-    unawaited(
-      DiscordPresenceService.instance.setEnabled(
-        ref.read(settingsProvider).discordRichPresence,
-      ),
-    );
     // Deezer & co. localize artist/genre names by IP unless told the app's
     // language (issue #480).
     unawaited(
@@ -727,12 +721,6 @@ class _MainShellState extends ConsumerState<MainShell>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(settingsProvider.select((s) => s.discordRichPresence), (
-      _,
-      enabled,
-    ) {
-      unawaited(DiscordPresenceService.instance.setEnabled(enabled));
-    });
     ref.listen(settingsProvider.select((s) => s.playbackNormalization), (
       _,
       enabled,

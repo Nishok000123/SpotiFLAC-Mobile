@@ -15,19 +15,6 @@ if (keystorePropertiesFile.exists()) {
 }
 
 val rustBackendDir = rootProject.file("../rust_backend")
-val cachedDiscordSdkDir = rootProject.file("../.dart_tool/discord-sdk/1.10.19337")
-val discordSdkDir = providers.environmentVariable("SPOTIFLAC_DISCORD_SDK_DIR").orNull
-    ?: cachedDiscordSdkDir.takeIf { it.isDirectory }?.absolutePath
-val discordSdkAar = discordSdkDir?.let { file("$it/lib/release/discord_partner_sdk.aar") }
-if (discordSdkAar != null) {
-    require(discordSdkAar.isFile) { "SPOTIFLAC_DISCORD_SDK_DIR must contain the official Social SDK" }
-    require(file("$discordSdkDir/License-Notices.txt").isFile) { "Discord SDK license notices are required" }
-}
-val discordNotices = if (discordSdkDir != null) tasks.register<Copy>("copyDiscordNotices") {
-    from(file("$discordSdkDir/License-Notices.txt"))
-    into(layout.buildDirectory.dir("generated/discordAssets"))
-    rename { "discord-sdk-notices.txt" }
-} else null
 val rustAndroidAbis = providers.environmentVariable("SPOTIFLAC_RUST_ANDROID_ABIS")
     .orElse("arm64-v8a,armeabi-v7a")
     .get()
@@ -47,16 +34,12 @@ android {
 
     buildFeatures {
         buildConfig = true
-        prefab = discordSdkAar != null
     }
 
     sourceSets.getByName("main") {
         java.srcDir("src/rust/kotlin")
         java.srcDir(rustBackendDir.resolve("target/bindings/kotlin"))
         jniLibs.srcDir(rustBackendDir.resolve("target/android/jniLibs"))
-        if (discordNotices != null) {
-            assets.srcDir(layout.buildDirectory.dir("generated/discordAssets").get().asFile)
-        }
     }
 
     compileOptions {
@@ -87,7 +70,6 @@ android {
 
     defaultConfig {
         applicationId = "com.zarz.spotiflac"
-        buildConfigField("boolean", "HAS_DISCORD_SDK", (discordSdkAar != null).toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk = flutter.minSdkVersion
         targetSdk = 37
@@ -98,15 +80,6 @@ android {
         ndk {
             abiFilters.clear()
             abiFilters += rustAndroidAbis
-        }
-    }
-
-    if (discordSdkAar != null) {
-        externalNativeBuild {
-            cmake {
-                path = file("src/main/cpp/CMakeLists.txt")
-                version = "3.22.1"
-            }
         }
     }
 
@@ -175,24 +148,12 @@ val buildRustBackend = tasks.register<Exec>("buildRustBackend") {
     outputs.dir(rustBackendDir.resolve("target/android/jniLibs"))
 }
 tasks.named("preBuild").configure { dependsOn(buildRustBackend) }
-if (discordNotices != null) tasks.named("preBuild").configure { dependsOn(discordNotices) }
-tasks.matching { it.name == "preReleaseBuild" }.configureEach {
-    doFirst {
-        check(discordSdkAar != null) {
-            "Release APKs require Discord SDK. Run python3 scripts/prepare_discord_sdk.py; see DISCORD.md."
-        }
-    }
-}
 
 flutter {
     source = "../.."
 }
 
 dependencies {
-    if (discordSdkAar != null) {
-        implementation(files(discordSdkAar))
-        implementation("androidx.browser:browser:1.10.0")
-    }
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation("net.java.dev.jna:jna:5.19.1@aar")
 

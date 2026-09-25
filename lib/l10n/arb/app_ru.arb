@@ -39,10 +39,6 @@
   "@appearanceStyle": {
     "description": "Appearance section for choosing the app visual style"
   },
-  "discordRichPresence": "Discord Rich Presence",
-  "discordPresenceDescription": "Share the track playing in the built-in player on Discord. Requires Discord to be installed and signed in.",
-  "discordPresenceMissing": "Установите Discord и войдите в систему, а затем отключите и снова включите этот параметр.",
-  "discordPresenceUnavailable": "Discord Rich Presence не доступен в этой сборке или на этом устройстве.",
   "@@locale": "ru",
   "@@last_modified": "2026-04-28",
   "appName": "Spotify",

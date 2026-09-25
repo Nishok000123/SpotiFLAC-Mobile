@@ -53,9 +53,8 @@ AGENTS.md
 /android/*.keystore
 /android/app/*.jks
 
-# Only the encrypted Discord SDK archive belongs in the checkout.
+# Keep obsolete local SDK copies out of the checkout.
 /third_party/discord/*
-!/third_party/discord/*.zip.gpg
 
 # iOS generated state
 /ios/build/

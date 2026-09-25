@@ -39,10 +39,6 @@
   "@appearanceStyle": {
     "description": "Appearance section for choosing the app visual style"
   },
-  "discordRichPresence": "Discord Rich Presence",
-  "discordPresenceDescription": "Share the track playing in the built-in player on Discord. Requires Discord to be installed and signed in.",
-  "discordPresenceMissing": "Install Discord and sign in, then turn this setting off and on again.",
-  "discordPresenceUnavailable": "Discord Rich Presence is unavailable in this build or on this device.",
   "@@locale": "zh_CN",
   "@@last_modified": "2026-04-28",
   "appName": "SpotiFLAC 移动版",

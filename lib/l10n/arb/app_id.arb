@@ -39,10 +39,6 @@
   "@appearanceStyle": {
     "description": "Bagian tampilan untuk memilih gaya visual aplikasi"
   },
-  "discordRichPresence": "Discord Rich Presence",
-  "discordPresenceDescription": "Bagikan lagu yang diputar di pemutar bawaan ke Discord. Discord harus terpasang dan sudah login.",
-  "discordPresenceMissing": "Pasang Discord dan login, lalu matikan dan nyalakan kembali pengaturan ini.",
-  "discordPresenceUnavailable": "Discord Rich Presence tidak tersedia pada build atau perangkat ini.",
   "@@locale": "id",
   "@@last_modified": "2026-04-28",
   "appName": "SpotiFLAC Mobile",

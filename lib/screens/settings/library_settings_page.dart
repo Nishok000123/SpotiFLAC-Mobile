@@ -11,7 +11,6 @@ import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
 import 'package:spotiflac_android/services/library_database.dart';
-import 'package:spotiflac_android/services/discord_presence_service.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 import 'package:spotiflac_android/widgets/duplicate_review_sheet.dart';
@@ -891,27 +890,8 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
                   value: settings.autoMix,
                   onChanged: (value) =>
                       ref.read(settingsProvider.notifier).setAutoMix(value),
-                  showDivider: Platform.isAndroid,
+                  showDivider: false,
                 ),
-                if (Platform.isAndroid)
-                  ValueListenableBuilder<String>(
-                    valueListenable: DiscordPresenceService.instance.status,
-                    builder: (context, status, _) => SettingsSwitchItem(
-                      icon: Icons.share_outlined,
-                      title: context.l10n.discordRichPresence,
-                      subtitle: status == 'discord_missing'
-                          ? context.l10n.discordPresenceMissing
-                          : status == 'sdk_unavailable' ||
-                                status == 'unavailable'
-                          ? context.l10n.discordPresenceUnavailable
-                          : context.l10n.discordPresenceDescription,
-                      value: settings.discordRichPresence,
-                      onChanged: (value) => ref
-                          .read(settingsProvider.notifier)
-                          .setDiscordRichPresence(value),
-                      showDivider: false,
-                    ),
-                  ),
               ],
             ),
           ),
