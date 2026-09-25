@@ -7,6 +7,65 @@ String _tag(String kind, int time, String text) =>
     '[x-$kind:$time:${base64.encode(utf8.encode(text))}]';
 
 void main() {
+  test(
+    'writer tags and stored provider attribution remain separate from lyric rows',
+    () {
+      final lyrics = LyricsParser.parse('''
+[au:Example Writer, Another Writer]
+[by:SpotiFLAC-Mobile via Example Lyrics API (source: upstream)]
+[00:01.00]First line
+[00:04.00]Last line
+''');
+      expect(lyrics.writers, 'Example Writer, Another Writer');
+      expect(lyrics.provider, 'Example Lyrics');
+      expect(lyrics.lines, hasLength(2));
+      expect(lyrics.lines.last.time, const Duration(seconds: 4));
+    },
+  );
+
+  test(
+    'an LRC uploader or performing artist is not invented as the songwriter or provider',
+    () {
+      final lyrics = LyricsParser.parse(
+        '[ar:Performer]\n[by:Uploader]\n[00:01.00]Line',
+      );
+      expect(lyrics.writers, isNull);
+      expect(lyrics.provider, isNull);
+      expect(
+        LyricsParser.parse(
+          '[by:SpotiFLAC-Mobile (source: extension:example.lyrics)]\n[00:01]Line',
+        ).provider,
+        'example.lyrics',
+      );
+    },
+  );
+
+  test(
+    'explicit ending credits become a footer rather than a seekable lyric',
+    () {
+      final lyrics = LyricsParser.parse(
+        '[00:01]Last lyric\n[00:04]Written By: Example Writer',
+      );
+      expect(lyrics.lines.single.text, 'Last lyric');
+      expect(lyrics.writers, 'Example Writer');
+      expect(lyrics.plainText, 'Last lyric');
+    },
+  );
+
+  test(
+    'TTML songwriter metadata is retained without treating performers as writers',
+    () {
+      final lyrics = LyricsParser.parse('''
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:meta="urn:example:metadata">
+<head><metadata><meta:songwriters><meta:songwriter>Example Writer</meta:songwriter>
+<meta:songwriter>Second Writer</meta:songwriter></meta:songwriters></metadata></head>
+<body><div><p begin="00:01.00">Lyric</p></div></body></tt>
+''');
+      expect(lyrics.writers, 'Example Writer, Second Writer');
+      expect(lyrics.lines.single.text, 'Lyric');
+    },
+  );
+
   test('retains all three texts, word ends and millisecond timing', () {
     final lyrics = LyricsParser.parse('''
 ${_tag('romaji', 1009, 'Romanized')}

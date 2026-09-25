@@ -1693,6 +1693,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         children: [
           _SyncedLyricsView(
             lyrics: _lyrics,
+            credits: _lyricsCredits(),
             colorScheme: colorScheme,
             isActive: isActive,
             showPronunciation: visibility.$1,
@@ -1709,15 +1710,34 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     }
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-      child: Text(
-        _lyrics.plainText,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          height: 1.6,
-          color: colorScheme.onSurface,
-        ),
-        textAlign: TextAlign.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            _lyrics.plainText,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              height: 1.6,
+              color: colorScheme.onSurface,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          ?_lyricsCredits(),
+        ],
       ),
     );
+  }
+
+  _LyricsCredits? _lyricsCredits() {
+    String? metadata(String key) {
+      final value = _metadata?[key];
+      return value is String && value.trim().isNotEmpty ? value.trim() : null;
+    }
+
+    final writers =
+        _lyrics.writers ?? metadata('lyricist') ?? metadata('composer');
+    final provider = _lyrics.provider ?? metadata('lyrics_provider');
+    if (writers == null && provider == null) return null;
+    return _LyricsCredits(writers: writers, provider: provider);
   }
 
   Widget? _lyricsOptionsButton(ColorScheme colorScheme) {
@@ -2680,6 +2700,7 @@ class _PlaybackControls extends ConsumerWidget {
 
 class _SyncedLyricsView extends ConsumerStatefulWidget {
   final ParsedLyrics lyrics;
+  final _LyricsCredits? credits;
   final ColorScheme colorScheme;
   final bool isActive;
   final bool showPronunciation;
@@ -2687,6 +2708,7 @@ class _SyncedLyricsView extends ConsumerStatefulWidget {
 
   const _SyncedLyricsView({
     required this.lyrics,
+    this.credits,
     required this.colorScheme,
     required this.isActive,
     required this.showPronunciation,
@@ -3065,11 +3087,17 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
           return ListView.builder(
             controller: _scroll,
             itemExtentBuilder: mornye
-                ? (index, _) => _lineExtents![index]
+                ? (index, _) => index < lines.length
+                      ? _lineExtents![index]
+                      : widget.credits!.heightFor(
+                          context,
+                          constraints.maxWidth - 48,
+                        )
                 : null,
             padding: EdgeInsets.fromLTRB(24, centerPadding, 24, bottomPadding),
-            itemCount: lines.length,
+            itemCount: lines.length + (widget.credits == null ? 0 : 1),
             itemBuilder: (context, index) {
+              if (index == lines.length) return widget.credits!;
               final line = lines[index];
               final isActive = index == active;
               final isPast = index < active;
@@ -3189,6 +3217,43 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       ),
     );
   }
+}
+
+class _LyricsCredits extends StatelessWidget {
+  const _LyricsCredits({this.writers, this.provider});
+
+  final String? writers;
+  final String? provider;
+
+  String _text(BuildContext context) => [
+    if (writers != null) context.l10n.nowPlayingWrittenBy(writers!),
+    if (provider != null) context.l10n.nowPlayingLyricsProvider(provider!),
+  ].join('\n');
+
+  TextStyle _style(BuildContext context) =>
+      Theme.of(context).textTheme.bodyMedium!.copyWith(
+        fontSize: context.isMornye ? 17 : 14,
+        fontWeight: FontWeight.w600,
+        height: 1.4,
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.48),
+      );
+
+  double heightFor(BuildContext context, double width) {
+    final painter = TextPainter(
+      text: TextSpan(text: _text(context), style: _style(context)),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout(maxWidth: width.clamp(0, double.infinity));
+    final height = painter.height + 32;
+    painter.dispose();
+    return height;
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    child: Text(_text(context), style: _style(context)),
+  );
 }
 
 Iterable<(String, TextStyle, List<LyricWord>, bool)> _lyricSupplements(

@@ -4578,6 +4578,8 @@
   },
   "nowPlayingUpNext": "Up next",
   "nowPlayingAudioOutput": "Output Audio",
+  "nowPlayingWrittenBy": "Ditulis oleh: {writers}",
+  "nowPlayingLyricsProvider": "Lirik: {provider}",
   "concertGetTickets": "Beli Tiket",
   "concertSetList": "Set List Konser",
   "concertSetListButton": "Set List",

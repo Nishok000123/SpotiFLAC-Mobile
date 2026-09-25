@@ -37,12 +37,16 @@ class ParsedLyrics {
   final bool wordSynced;
   final List<LyricLine> lines;
   final String plainText;
+  final String? writers;
+  final String? provider;
 
   const ParsedLyrics({
     required this.synced,
     required this.wordSynced,
     required this.lines,
     required this.plainText,
+    this.writers,
+    this.provider,
   });
 
   bool get isEmpty => lines.isEmpty && plainText.trim().isEmpty;
@@ -84,10 +88,71 @@ class LyricsParser {
 
     if (_looksLikeTtml(text)) {
       final ttml = _parseTtml(text);
-      if (ttml != null && ttml.lines.isNotEmpty) return ttml;
+      if (ttml != null && ttml.lines.isNotEmpty) {
+        return _withCredits(text, ttml);
+      }
     }
 
-    return _parseLrcOrPlain(text);
+    return _withCredits(text, _parseLrcOrPlain(text));
+  }
+
+  static ParsedLyrics _withCredits(String raw, ParsedLyrics lyrics) {
+    String? tag(String name) => RegExp(
+      '^\\[$name:([^\\]\\r\\n]*)\\]\\s*\$',
+      multiLine: true,
+      caseSensitive: false,
+    ).firstMatch(raw)?.group(1)?.trim();
+    var writers = tag('au');
+    var provider = tag('x-provider');
+    final credit = tag('by') ?? '';
+    provider ??= RegExp(r'\bvia\s+([^\(]+)', caseSensitive: false)
+        .firstMatch(credit)
+        ?.group(1)
+        ?.trim()
+        .replaceFirst(RegExp(r'\s+API$', caseSensitive: false), '');
+    provider ??= RegExp(
+      r'\(source:\s*([^\)]+)\)',
+      caseSensitive: false,
+    ).firstMatch(credit)?.group(1)?.trim();
+    provider = provider?.replaceFirst(
+      RegExp(r'^extension:', caseSensitive: false),
+      '',
+    );
+    if (_looksLikeTtml(raw)) {
+      try {
+        final doc = XmlDocument.parse(raw);
+        final names = doc.descendants
+            .whereType<XmlElement>()
+            .where((node) => node.name.local == 'songwriter')
+            .map((node) => node.innerText.trim())
+            .where((name) => name.isNotEmpty)
+            .toSet();
+        if (names.isNotEmpty) writers = names.join(', ');
+      } on XmlParserException {
+        // Malformed optional credits must not prevent lyric playback.
+      }
+    }
+    var lines = lyrics.lines;
+    if (lines.isNotEmpty) {
+      final trailer = RegExp(
+        r'^Written\s+by\s*:\s*(.+)$',
+        caseSensitive: false,
+      ).firstMatch(lines.last.text.trim());
+      if (trailer != null) {
+        writers ??= trailer.group(1)?.trim();
+        lines = lines.sublist(0, lines.length - 1);
+      }
+    }
+    return ParsedLyrics(
+      synced: lyrics.synced,
+      wordSynced: lyrics.wordSynced,
+      lines: lines,
+      plainText: identical(lines, lyrics.lines)
+          ? lyrics.plainText
+          : lines.map((line) => line.text).join('\n'),
+      writers: writers?.isNotEmpty == true ? writers : null,
+      provider: provider?.isNotEmpty == true ? provider : null,
+    );
   }
 
   static bool _looksLikeTtml(String text) {

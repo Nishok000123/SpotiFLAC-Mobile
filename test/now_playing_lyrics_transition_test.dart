@@ -1641,6 +1641,38 @@ void main() {
     },
   );
 
+  testWidgets(
+    'lyrics end with writer and provider credits and clear them on track change',
+    (tester) async {
+      metadataOverrides['composer'] = 'Example Composer';
+      metadataOverrides['lyrics'] =
+          '[by:SpotiFLAC-Mobile via Example Lyrics API (source: upstream)]\n[00:01]Last lyric';
+      await pumpNowPlaying(
+        tester,
+        theme: MornyeTheme.build(Brightness.dark),
+        size: const Size(390, 844),
+      );
+      mediaItems.add(item('first'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
+      await tester.pumpAndSettle();
+      final credit = find.text(
+        'Written by: Example Composer\nLyrics: Example Lyrics',
+      );
+      expect(credit, findsOneWidget);
+      expect(
+        tester.getTopLeft(credit).dy,
+        greaterThan(tester.getBottomLeft(find.text('Last lyric')).dy),
+      );
+      metadataOverrides.clear();
+      mediaItems.add(item('second'));
+      await tester.pumpAndSettle();
+      expect(credit, findsNothing);
+      expect(find.text('Second lyric'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final supplement in ['none', 'pronunciation', 'translation']) {
     testWidgets('language menu only offers available $supplement', (
       tester,
