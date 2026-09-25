@@ -1240,11 +1240,20 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                               Stack(
                                 fit: StackFit.expand,
                                 children: [
-                                  for (final child in previousChildren)
+                                  // Preserve each panel's parent and key when
+                                  // it becomes outgoing, including lyric scroll.
+                                  for (final child in [
+                                    ...previousChildren,
+                                    ?currentChild,
+                                  ])
                                     IgnorePointer(
-                                      child: ExcludeSemantics(child: child),
+                                      key: child.key,
+                                      ignoring: child != currentChild,
+                                      child: ExcludeSemantics(
+                                        excluding: child != currentChild,
+                                        child: child,
+                                      ),
                                     ),
-                                  ?currentChild,
                                 ],
                               ),
                           // Keep the outgoing panel until it fades out;

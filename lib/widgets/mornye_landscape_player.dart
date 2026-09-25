@@ -134,11 +134,15 @@ class _MornyeLandscapePlayerState extends State<MornyeLandscapePlayer> {
                           layoutBuilder: (current, previous) => Stack(
                             fit: StackFit.expand,
                             children: [
-                              for (final child in previous)
+                              for (final child in [...previous, ?current])
                                 IgnorePointer(
-                                  child: ExcludeSemantics(child: child),
+                                  key: child.key,
+                                  ignoring: child != current,
+                                  child: ExcludeSemantics(
+                                    excluding: child != current,
+                                    child: child,
+                                  ),
                                 ),
-                              ?current,
                             ],
                           ),
                           child: widget.page == 0

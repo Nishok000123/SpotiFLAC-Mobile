@@ -2142,6 +2142,52 @@ void main() {
     );
   }
 
+  for (final landscape in [false, true]) {
+    testWidgets(
+      'outgoing lyrics keep their scroll state while queue fades in (landscape: $landscape)',
+      (tester) async {
+        metadataOverrides['lyrics'] = List.generate(
+          16,
+          (index) =>
+              '[00:${(index * 2).toString().padLeft(2, '0')}.00]Line $index',
+        ).join('\n');
+        await pumpNowPlaying(
+          tester,
+          theme: MornyeTheme.build(Brightness.dark),
+          size: landscape ? const Size(852, 393) : const Size(393, 852),
+          playback: PlaybackState(
+            processingState: AudioProcessingState.ready,
+            updatePosition: const Duration(seconds: 20),
+          ),
+        );
+        mediaItems.add(item('first'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
+        await tester.pumpAndSettle();
+        final scrollable = find
+            .ancestor(
+              of: find.text('Line 10'),
+              matching: find.byType(Scrollable),
+            )
+            .first;
+        final state = tester.state<ScrollableState>(scrollable);
+        final offset = state.position.pixels;
+        expect(offset, greaterThan(0));
+        await tester.tap(find.byIcon(CupertinoIcons.list_bullet));
+        await tester.pump();
+        for (var frame = 0; frame < 3; frame++) {
+          expect(state.mounted, isTrue);
+          expect(tester.state<ScrollableState>(scrollable), same(state));
+          expect(state.position.pixels, offset);
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        await tester.pumpAndSettle();
+        expect(state.mounted, isFalse);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('header reverses in place and stays beside cover across panels', (
     tester,
   ) async {
