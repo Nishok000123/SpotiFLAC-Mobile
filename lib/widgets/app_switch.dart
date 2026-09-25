@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:spotiflac_android/providers/runtime_profile_provider.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
+import 'package:spotiflac_android/widgets/native_glass_metrics.dart';
 
 /// One switch style for settings, extension controls and editing sheets.
 /// Mornye keeps its wide oval thumb even when glass or motion is disabled.
@@ -48,11 +49,13 @@ class AppSwitch extends StatelessWidget {
         if (useGlass) {
           control = Transform.flip(
             flipX: Directionality.of(context) == TextDirection.rtl,
-            child: LiquidGlassSwitch(
-              value: value,
-              onChanged: onChanged!,
-              activeColor: active,
-              inactiveColor: inactive,
+            child: NativeGlassMetrics(
+              child: LiquidGlassSwitch(
+                value: value,
+                onChanged: onChanged!,
+                activeColor: active,
+                inactiveColor: inactive,
+              ),
             ),
           );
         } else {

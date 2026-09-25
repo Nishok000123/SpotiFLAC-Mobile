@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:spotiflac_android/providers/runtime_profile_provider.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
+import 'package:spotiflac_android/widgets/native_glass_metrics.dart';
 
 class MornyeSegmentedControl extends ConsumerWidget {
   const MornyeSegmentedControl({
@@ -53,59 +54,61 @@ class MornyeSegmentedControl extends ConsumerWidget {
                     child: const SizedBox.expand(),
                   ),
                 ),
-                LiquidGlassTabBar.withImpeller(
-                  width: constraints.maxWidth,
-                  height: height,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  itemPadding: 4,
-                  selectedIndex: logicalIndex(selectedIndex),
-                  onChanged: (index) => onChanged(logicalIndex(index)),
-                  style: const LiquidGlassStyle(
-                    shape: LiquidGlassShape.continuousRoundedRectangle(
-                      cornerRadius: 32,
-                      borderWidth: 0,
-                      lightIntensity: 0,
+                NativeGlassMetrics(
+                  child: LiquidGlassTabBar.withImpeller(
+                    width: constraints.maxWidth,
+                    height: height,
+                    margin: const EdgeInsets.only(bottom: 8),
+                    itemPadding: 4,
+                    selectedIndex: logicalIndex(selectedIndex),
+                    onChanged: (index) => onChanged(logicalIndex(index)),
+                    style: const LiquidGlassStyle(
+                      shape: LiquidGlassShape.continuousRoundedRectangle(
+                        cornerRadius: 32,
+                        borderWidth: 0,
+                        lightIntensity: 0,
+                      ),
+                      appearance: LiquidGlassAppearance(),
+                      refraction: LiquidGlassRefraction(
+                        distortion: 0,
+                        chromaticAberration: 0,
+                      ),
                     ),
-                    appearance: LiquidGlassAppearance(),
-                    refraction: LiquidGlassRefraction(
-                      distortion: 0,
-                      chromaticAberration: 0,
+                    pillStyle: LiquidGlassTabPillStyle(
+                      mode: blur && animate
+                          ? LiquidGlassPillMode.impellerOnly
+                          : LiquidGlassPillMode.none,
+                      animated: animate,
                     ),
-                  ),
-                  pillStyle: LiquidGlassTabPillStyle(
-                    mode: blur && animate
-                        ? LiquidGlassPillMode.impellerOnly
-                        : LiquidGlassPillMode.none,
-                    animated: animate,
-                  ),
-                  itemStyle: LiquidGlassTabItemStyle(
-                    selectedColor: scheme.onSurface,
-                    unselectedColor: scheme.onSurface,
-                    iconSize: 0,
-                    iconLabelGap: 0,
-                    labelFontSize: 15,
-                  ),
-                  items: [
-                    for (final label in visualLabels)
-                      LiquidGlassTabBarItem(
-                        label: label,
-                        iconBuilder: (_, _) => const SizedBox.shrink(),
-                        labelBuilder: (context, state) => Text(
-                          label,
-                          textDirection: rtl
-                              ? TextDirection.rtl
-                              : TextDirection.ltr,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurface,
-                            fontWeight: state.selected
-                                ? FontWeight.w600
-                                : FontWeight.w400,
+                    itemStyle: LiquidGlassTabItemStyle(
+                      selectedColor: scheme.onSurface,
+                      unselectedColor: scheme.onSurface,
+                      iconSize: 0,
+                      iconLabelGap: 0,
+                      labelFontSize: 15,
+                    ),
+                    items: [
+                      for (final label in visualLabels)
+                        LiquidGlassTabBarItem(
+                          label: label,
+                          iconBuilder: (_, _) => const SizedBox.shrink(),
+                          labelBuilder: (context, state) => Text(
+                            label,
+                            textDirection: rtl
+                                ? TextDirection.rtl
+                                : TextDirection.ltr,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: scheme.onSurface,
+                              fontWeight: state.selected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -235,32 +238,36 @@ class MornyeGlass extends StatelessWidget {
       tintOpacity: tintOpacity,
       tintColor: tintColor,
       child: useGlass
-          ? LiquidGlassLens(
-              style: LiquidGlassStyle(
-                shape: LiquidGlassShape.continuousRoundedRectangle(
-                  cornerRadius: radius,
-                  borderWidth: dark && tintOpacity == null ? 0 : 0.6,
-                  lightIntensity: dark && tintOpacity == null ? 0 : 0.18,
+          ? NativeGlassMetrics(
+              child: LiquidGlassLens(
+                style: LiquidGlassStyle(
+                  shape: LiquidGlassShape.continuousRoundedRectangle(
+                    cornerRadius: radius,
+                    borderWidth: dark && tintOpacity == null ? 0 : 0.6,
+                    lightIntensity: dark && tintOpacity == null ? 0 : 0.18,
+                  ),
+                  appearance: LiquidGlassAppearance(
+                    color: tintOpacity != null
+                        ? Colors.transparent
+                        : dark
+                        ? scheme.surfaceContainerHigh.withValues(alpha: 0.28)
+                        : Colors.white.withValues(
+                            alpha: strongTint ? 0.20 : 0.55,
+                          ),
+                    // The surface already blurs the backdrop. Refracting that
+                    // frosted result needs no second Gaussian blur pass.
+                    blur: const LiquidGlassBlur(),
+                  ),
+                  refraction: const LiquidGlassRefraction(
+                    distortion: 0.02,
+                    distortionWidth: 8,
+                    chromaticAberration: 0,
+                  ),
                 ),
-                appearance: LiquidGlassAppearance(
-                  color: tintOpacity != null
-                      ? Colors.transparent
-                      : dark
-                      ? scheme.surfaceContainerHigh.withValues(alpha: 0.28)
-                      : Colors.white.withValues(
-                          alpha: strongTint ? 0.20 : 0.55,
-                        ),
-                  // The surface already blurs the backdrop. Refracting that
-                  // frosted result needs no second Gaussian blur pass.
-                  blur: const LiquidGlassBlur(),
-                ),
-                refraction: const LiquidGlassRefraction(
-                  distortion: 0.02,
-                  distortionWidth: 8,
-                  chromaticAberration: 0,
-                ),
+                // Only the shader uses window metrics; responsive content and
+                // decoded artwork retain the surrounding tablet layout scale.
+                child: MediaQuery(data: MediaQuery.of(context), child: child),
               ),
-              child: child,
             )
           : child,
     );
@@ -494,76 +501,80 @@ class MornyeTabBar extends StatelessWidget {
                     child: const SizedBox.expand(),
                   ),
                 ),
-                LiquidGlassTabBar.withImpeller(
-                  width: constraints.maxWidth,
-                  height: 64,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
-                  onChanged: onSelected,
-                  style: LiquidGlassTabBar.defaultStyle.copyWith(
-                    // The frosted base owns the subtle outline. Disable the
-                    // package's default specular rim around the whole capsule.
-                    shape: const LiquidGlassShape.continuousRoundedRectangle(
-                      cornerRadius: 32,
-                      borderWidth: 0,
-                      lightIntensity: 0,
-                    ),
-                    // The sibling surface already supplies tint and blur. Keep
-                    // the lens clear so the moving pill can refract the icons.
-                    appearance: const LiquidGlassAppearance(),
-                    refraction: const LiquidGlassRefraction(
-                      distortion: 0,
-                      chromaticAberration: 0,
-                    ),
-                  ),
-                  itemStyle: LiquidGlassTabItemStyle(
-                    selectedColor: scheme.primary,
-                    unselectedColor: scheme.onSurface,
-                    iconSize: 25,
-                    labelFontSize: 11,
-                  ),
-                  pillStyle: LiquidGlassTabPillStyle(
-                    mode: LiquidGlassPillMode.impellerOnly,
-                    show: selectedIndex >= 0,
-                    color: selectionFill,
-                    animated: true,
-                    // Keep the moving refractive pill, without stacking the
-                    // package's second magnifier lens beneath it.
-                    magnifierPill: const LiquidGlassTabMagnifierPillStyle(
-                      enabled: false,
-                    ),
-                  ),
-                  items: [
-                    for (final (index, destination) in destinations.indexed)
-                      LiquidGlassTabBarItem(
-                        label: destination.label,
-                        iconBuilder: (context, icon) => IconTheme(
-                          data: IconThemeData(
-                            size: icon.size,
-                            color: icon.selected && selectedIndex >= 0
-                                ? scheme.primary
-                                : inactiveIconColor,
-                          ),
-                          child: Opacity(
-                            opacity: hiddenIconIndices.contains(index) ? 0 : 1,
-                            child: destination.icon,
-                          ),
-                        ),
-                        labelBuilder: (context, label) => Text(
-                          destination.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                fontSize: label.textStyle.fontSize,
-                                fontWeight: FontWeight.w600,
-                                color: selectedIndex < 0
-                                    ? scheme.onSurface
-                                    : label.textStyle.color,
-                              ),
-                        ),
+                NativeGlassMetrics(
+                  child: LiquidGlassTabBar.withImpeller(
+                    width: constraints.maxWidth,
+                    height: 64,
+                    margin: const EdgeInsets.only(bottom: 8),
+                    selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
+                    onChanged: onSelected,
+                    style: LiquidGlassTabBar.defaultStyle.copyWith(
+                      // The frosted base owns the subtle outline. Disable the
+                      // package's default specular rim around the whole capsule.
+                      shape: const LiquidGlassShape.continuousRoundedRectangle(
+                        cornerRadius: 32,
+                        borderWidth: 0,
+                        lightIntensity: 0,
                       ),
-                  ],
+                      // The sibling surface already supplies tint and blur. Keep
+                      // the lens clear so the moving pill can refract the icons.
+                      appearance: const LiquidGlassAppearance(),
+                      refraction: const LiquidGlassRefraction(
+                        distortion: 0,
+                        chromaticAberration: 0,
+                      ),
+                    ),
+                    itemStyle: LiquidGlassTabItemStyle(
+                      selectedColor: scheme.primary,
+                      unselectedColor: scheme.onSurface,
+                      iconSize: 25,
+                      labelFontSize: 11,
+                    ),
+                    pillStyle: LiquidGlassTabPillStyle(
+                      mode: LiquidGlassPillMode.impellerOnly,
+                      show: selectedIndex >= 0,
+                      color: selectionFill,
+                      animated: true,
+                      // Keep the moving refractive pill, without stacking the
+                      // package's second magnifier lens beneath it.
+                      magnifierPill: const LiquidGlassTabMagnifierPillStyle(
+                        enabled: false,
+                      ),
+                    ),
+                    items: [
+                      for (final (index, destination) in destinations.indexed)
+                        LiquidGlassTabBarItem(
+                          label: destination.label,
+                          iconBuilder: (context, icon) => IconTheme(
+                            data: IconThemeData(
+                              size: icon.size,
+                              color: icon.selected && selectedIndex >= 0
+                                  ? scheme.primary
+                                  : inactiveIconColor,
+                            ),
+                            child: Opacity(
+                              opacity: hiddenIconIndices.contains(index)
+                                  ? 0
+                                  : 1,
+                              child: destination.icon,
+                            ),
+                          ),
+                          labelBuilder: (context, label) => Text(
+                            destination.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  fontSize: label.textStyle.fontSize,
+                                  fontWeight: FontWeight.w600,
+                                  color: selectedIndex < 0
+                                      ? scheme.onSurface
+                                      : label.textStyle.color,
+                                ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 // With no selected tab the package still needs an internal
                 // index; handle taps here so
