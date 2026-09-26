@@ -159,7 +159,7 @@ class MornyeContextMenu extends StatelessWidget {
     required this.groups,
     this.inheritSurface = false,
     this.dense = false,
-    this.liquidGlass = false,
+    this.liquidGlass = true,
   });
 
   final List<MornyeMenuAction> quickActions;
@@ -212,7 +212,11 @@ class MornyeContextMenu extends StatelessWidget {
       child: MornyeGlassPanel.overlay(
         radius: 28,
         liquidGlass: liquidGlass,
-        tintOpacity: liquidGlass ? 0.24 : 0.78,
+        tintOpacity: liquidGlass
+            ? theme.brightness == Brightness.dark
+                  ? 0.30
+                  : 0.52
+            : 0.78,
         child: LayoutBuilder(
           builder: (context, constraints) {
             // Let the entire menu scroll when pinning the shortcuts would
