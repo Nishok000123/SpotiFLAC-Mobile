@@ -2415,20 +2415,20 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
               );
             },
           ),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               _quickSelectButton(
                 label: context.l10n.editMetadataSelectAll,
                 onTap: _selectAllFields,
                 cs: cs,
               ),
-              const SizedBox(width: 8),
               _quickSelectButton(
                 label: context.l10n.editMetadataSelectEmpty,
                 onTap: _selectEmptyFields,
                 cs: cs,
               ),
-              const SizedBox(width: 8),
               _quickSelectButton(
                 label: context.l10n.editMetadataSelectNone,
                 onTap: _selectNoFields,
@@ -2438,8 +2438,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           ),
           const SizedBox(height: 12),
           Wrap(
-            spacing: 6,
-            runSpacing: 4,
+            spacing: 8,
+            runSpacing: 8,
             children: _fieldDefs.keys.map((key) {
               final selected = _autoFillFields.contains(key);
               if (context.isMornye) {
@@ -2447,8 +2447,9 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
                   label: _fieldLabel(key),
                   selected: selected,
                   glass: false,
-                  tonal: false,
-                  icon: selected ? CupertinoIcons.checkmark : null,
+                  icon: selected
+                      ? CupertinoIcons.checkmark_circle_fill
+                      : CupertinoIcons.circle,
                   onTap: _fetching
                       ? null
                       : () => setState(() {
@@ -2476,13 +2477,12 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
                           }
                         });
                       },
+                backgroundColor: cs.surfaceContainerHigh,
                 selectedColor: cs.primaryContainer,
                 checkmarkColor: cs.onPrimaryContainer,
-                labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+                labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
                 ),
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               );
             }).toList(),
           ),
@@ -2490,7 +2490,6 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           SizedBox(
             width: double.infinity,
             child: AppActionButton(
-              outlined: context.isMornye,
               glass: false,
               onPressed: (_fetching || _saving || _autoFillFields.isEmpty)
                   ? null
@@ -2528,10 +2527,12 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
             child: AppActionButton(
               outlined: true,
               glass: false,
+              tonal: true,
               onPressed: (_fetching || _fetchingMusicBrainz || _saving)
                   ? null
                   : _fetchFromMusicBrainz,
               style: OutlinedButton.styleFrom(
+                backgroundColor: cs.surfaceContainerHigh,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
