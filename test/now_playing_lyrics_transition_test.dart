@@ -200,13 +200,17 @@ void main() {
           .hitTestable();
       final rect = tester.getRect(cover);
       final gesture = await tester.startGesture(rect.center);
-      await gesture.moveBy(const Offset(110, 0));
+      await gesture.moveBy(const Offset(-110, 0));
       await tester.pump();
       expect(tester.getRect(cover), rect);
       await gesture.up();
       await tester.pumpAndSettle();
       expect(controller.selected, [1]);
       expect(find.text('Second').hitTestable(), findsOneWidget);
+      await tester.drag(cover, const Offset(110, 0));
+      await tester.pumpAndSettle();
+      expect(controller.selected, [1, 0]);
+      expect(find.text('First').hitTestable(), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }

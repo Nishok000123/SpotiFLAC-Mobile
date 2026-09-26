@@ -32,7 +32,7 @@ class _PlayerTrackSwipeState extends State<PlayerTrackSwipe>
 
   MediaItem? _neighbor(double direction) {
     if (widget.currentIndex < 0) return null;
-    final at = widget.currentIndex + (direction > 0 ? 1 : -1);
+    final at = widget.currentIndex + (direction < 0 ? 1 : -1);
     return at >= 0 && at < widget.queue.length ? widget.queue[at] : null;
   }
 

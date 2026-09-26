@@ -12,7 +12,7 @@ void main() {
 
   for (final reducedMotion in [false, true]) {
     testWidgets(
-      'cover drag moves only titles and selects once ($reducedMotion)',
+      'left swipe advances and right swipe returns without moving cover ($reducedMotion)',
       (tester) async {
         var index = 0;
         final selected = <int>[];
@@ -41,6 +41,7 @@ void main() {
                                   key: ValueKey('cover'),
                                   width: 200,
                                   height: 200,
+                                  child: ColoredBox(color: Colors.black),
                                 ),
                               ),
                               PlayerTrackSwipeTitles(
@@ -68,27 +69,39 @@ void main() {
         final coverRect = tester.getRect(cover);
         final titleX = tester.getTopLeft(find.text('Song 0')).dx;
         final gesture = await tester.startGesture(coverRect.center);
-        await gesture.moveBy(const Offset(110, 0));
+        await gesture.moveBy(const Offset(-110, 0));
         await tester.pump();
         expect(tester.getRect(cover), coverRect);
-        expect(tester.getTopLeft(find.text('Song 0')).dx, greaterThan(titleX));
+        expect(tester.getTopLeft(find.text('Song 0')).dx, lessThan(titleX));
         expect(find.text('Song 1'), findsOneWidget);
         await gesture.up();
         await tester.pumpAndSettle();
         expect(selected, [1]);
         expect(tester.getTopLeft(find.text('Song 1')).dx, closeTo(titleX, 0.1));
 
-        await tester.drag(find.text('Song 1'), const Offset(-180, 0));
+        await tester.drag(find.text('Song 1'), const Offset(180, 0));
         await tester.pumpAndSettle();
         expect(selected, [1, 0]);
         // At the first song the previous direction resists, then returns.
-        await tester.drag(cover, const Offset(-200, 0));
+        await tester.drag(cover, const Offset(200, 0));
         await tester.pumpAndSettle();
         expect(selected, [1, 0]);
         expect(tester.getTopLeft(find.text('Song 0')).dx, closeTo(titleX, 0.1));
-        await tester.drag(cover, const Offset(20, 0));
+        await tester.drag(cover, const Offset(-20, 0));
         await tester.pumpAndSettle();
         expect(selected, [1, 0]);
+        await tester.drag(cover, const Offset(-200, 0));
+        await tester.pumpAndSettle();
+        await tester.drag(cover, const Offset(-200, 0));
+        await tester.pumpAndSettle();
+        expect(selected, [1, 0, 1, 2]);
+        // At the last song, only the next direction is blocked.
+        await tester.drag(cover, const Offset(-200, 0));
+        await tester.pumpAndSettle();
+        expect(selected, [1, 0, 1, 2]);
+        await tester.drag(cover, const Offset(200, 0));
+        await tester.pumpAndSettle();
+        expect(selected, [1, 0, 1, 2, 1]);
         expect(tester.takeException(), isNull);
       },
     );
