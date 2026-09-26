@@ -13,6 +13,7 @@ static LEADING_TIME: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\[[0-9]{1,3}:[0-9]{1,2}(?:[.:][0-9]{1,3})?\]").unwrap());
 static INLINE_TIME: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"<[0-9]{1,3}:[0-9]{1,2}(?:[.:][0-9]{1,3})?>").unwrap());
+static VOICE_PREFIX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)^v[1-9][0-9]*:").unwrap());
 static INSTRUMENTAL: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)^\[instrumental:true\]$").unwrap());
 
@@ -40,9 +41,8 @@ pub fn has_usable_content(raw: &str) -> bool {
         }
         let without_inline = INLINE_TIME.replace_all(cleaned, "");
         cleaned = without_inline.trim();
-        let lower = lowercase(cleaned);
-        if lower.starts_with("v1:") || lower.starts_with("v2:") {
-            cleaned = cleaned[3..].trim();
+        if let Some(voice) = VOICE_PREFIX.find(cleaned) {
+            cleaned = cleaned[voice.end()..].trim();
         }
         if !cleaned.is_empty() {
             return true;
@@ -220,6 +220,30 @@ pub fn with_metadata(lyrics: &LyricsResponse, track: &str, artist: &str) -> Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn usability_matches_the_app_and_native_finalizer() {
+        let cases = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../android/app/src/test/resources/lyrics_usability_cases.tsv"
+        ));
+        for line in cases
+            .lines()
+            .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        {
+            let fields: Vec<_> = line.splitn(3, '\t').collect();
+            let raw = fields[2]
+                .replace("\\n", "\n")
+                .replace("\\r", "\r")
+                .replace("\\t", "\t");
+            assert_eq!(
+                has_usable_content(&raw),
+                fields[1] == "true",
+                "{}",
+                fields[0]
+            );
+        }
+    }
 
     #[test]
     fn writing_timestamps_never_discards_milliseconds() {

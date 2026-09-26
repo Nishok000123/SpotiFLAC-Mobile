@@ -45,11 +45,13 @@ void main() {
 [00:01.25]Lead line
 [bg:Background line]
 [00:02:500]<00:02.500>v2: Harmony line
+[00:03.00]v3:Third voice
+[00:04.00]V12:Twelfth voice
 ''';
 
       expect(
         cleanLyricsForDisplay(raw),
-        'Lead line\nBackground line\nHarmony line',
+        'Lead line\nBackground line\nHarmony line\nThird voice\nTwelfth voice',
       );
       expect(hasUsableLyricsContent(raw), isTrue);
     });

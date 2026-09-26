@@ -2491,6 +2491,124 @@ void main() {
   }
 
   for (final mornye in [false, true]) {
+    testWidgets(
+      'singers keep their side before and during overlapping vocals ($mornye)',
+      (tester) async {
+        metadataOverrides['lyrics'] =
+            '[x-romaji:2000:${base64.encode(utf8.encode('Guest reading'))}]\n'
+            '[x-translation:2000:${base64.encode(utf8.encode('Guest translation'))}]\n'
+            '[00:01.00]v1:<00:01.00>Lead<00:08.00>\n'
+            '[00:02.00]v2:<00:02.00>Guest<00:06.00>';
+        final playback = StreamController<PlaybackState>.broadcast();
+        addTearDown(playback.close);
+        await pumpNowPlaying(
+          tester,
+          theme: mornye ? MornyeTheme.build(Brightness.dark) : null,
+          size: const Size(390, 1100),
+          playbackEvents: playback.stream,
+        );
+        mediaItems.add(item('first'));
+        await tester.pumpAndSettle();
+        if (mornye) {
+          await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
+        } else {
+          await tester.drag(find.byType(PageView), const Offset(-350, 0));
+        }
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<Text>(find.text('Lead')).textAlign,
+          TextAlign.left,
+        );
+        for (final text in ['Guest', 'Guest reading', 'Guest translation']) {
+          expect(
+            tester.widget<Text>(find.text(text)).textAlign,
+            TextAlign.right,
+          );
+        }
+        expect(find.textContaining('v1:'), findsNothing);
+        expect(find.textContaining('v2:'), findsNothing);
+
+        playback.add(
+          PlaybackState(
+            processingState: AudioProcessingState.ready,
+            playing: false,
+            updatePosition: const Duration(seconds: 3),
+          ),
+        );
+        await tester.pumpAndSettle();
+        for (final text in ['Lead', 'Guest']) {
+          final paint = find.descendant(
+            of: find.byWidgetPredicate(
+              (widget) =>
+                  widget is Semantics && widget.properties.label == text,
+            ),
+            matching: find.byType(CustomPaint),
+          );
+          expect(
+            paint,
+            findsOneWidget,
+            reason: 'Both overlapping parts stay highlighted',
+          );
+          final painter = tester.widget<CustomPaint>(paint).painter!;
+          final size = tester.getSize(paint);
+          final bounds = await tester.runAsync(() async {
+            final recorder = ui.PictureRecorder();
+            painter.paint(Canvas(recorder), size);
+            final picture = recorder.endRecording();
+            final image = await picture.toImage(
+              size.width.ceil(),
+              size.height.ceil(),
+            );
+            final bytes = (await image.toByteData(
+              format: ui.ImageByteFormat.rawRgba,
+            ))!;
+            var left = image.width;
+            var right = 0;
+            for (var y = 0; y < image.height; y++) {
+              for (var x = 0; x < image.width; x++) {
+                if (bytes.getUint8((y * image.width + x) * 4 + 3) > 10) {
+                  if (x < left) left = x;
+                  if (x > right) right = x;
+                }
+              }
+            }
+            image.dispose();
+            picture.dispose();
+            return (left, right);
+          });
+          if (text == 'Lead') {
+            expect(bounds!.$1, lessThan(5));
+          } else {
+            expect(bounds!.$2, greaterThan(size.width - 5));
+          }
+        }
+        expect(
+          tester.widget<Text>(find.text('Guest translation')).textAlign,
+          TextAlign.right,
+        );
+        playback.add(
+          PlaybackState(
+            processingState: AudioProcessingState.ready,
+            playing: false,
+            updatePosition: const Duration(seconds: 7),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Guest'), findsOneWidget);
+        expect(find.text('Lead'), findsNothing);
+        playback.add(
+          PlaybackState(
+            processingState: AudioProcessingState.ready,
+            playing: false,
+            updatePosition: const Duration(seconds: 9),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Lead'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('player shows original, romanization and English ($mornye)', (
       tester,
     ) async {

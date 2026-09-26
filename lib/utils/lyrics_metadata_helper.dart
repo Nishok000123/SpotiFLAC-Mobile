@@ -14,7 +14,7 @@ final RegExp _lrcDisplayInlineTimestampPattern = RegExp(
   r'<\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?>',
 );
 final RegExp _lrcDisplaySpeakerPrefixPattern = RegExp(
-  r'^(v1|v2):\s*',
+  r'^v[1-9]\d*:\s*',
   caseSensitive: false,
 );
 final RegExp _lrcDisplayBackgroundLinePattern = RegExp(

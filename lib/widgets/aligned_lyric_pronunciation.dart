@@ -171,6 +171,7 @@ class AlignedLyricPronunciation extends StatelessWidget {
   final double visibility;
   final TextStyle primaryStyle;
   final TextStyle pronunciationStyle;
+  final TextAlign textAlign;
   final Widget Function(String, List<LyricWord>, TextStyle) textBuilder;
   final Widget Function(String, List<LyricWord>, TextStyle)?
   pronunciationBuilder;
@@ -183,6 +184,7 @@ class AlignedLyricPronunciation extends StatelessWidget {
     required this.pronunciationStyle,
     required this.textBuilder,
     this.pronunciationBuilder,
+    this.textAlign = TextAlign.start,
   });
 
   @override
@@ -194,6 +196,15 @@ class AlignedLyricPronunciation extends StatelessWidget {
         if (i > 0) const SizedBox(height: LyricPronunciationLayout._rowGap),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: textAlign == TextAlign.center
+              ? MainAxisAlignment.center
+              : (textAlign == TextAlign.right &&
+                        Directionality.of(context) == TextDirection.ltr) ||
+                    (textAlign == TextAlign.left &&
+                        Directionality.of(context) == TextDirection.rtl) ||
+                    textAlign == TextAlign.end
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
           children: [
             for (var j = 0; j < layout._rows[i].groups.length; j++) ...[
               if (j > 0)
@@ -214,6 +225,7 @@ class AlignedLyricPronunciation extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
+              width: double.infinity,
               height: row.primaryHeight,
               child: textBuilder(
                 group.original.map((word) => word.text).join(),
@@ -233,6 +245,7 @@ class AlignedLyricPronunciation extends StatelessWidget {
                         top: LyricPronunciationLayout._pronunciationGap,
                       ),
                       child: SizedBox(
+                        width: double.infinity,
                         height: row.pronunciationHeight,
                         child: (pronunciationBuilder ?? textBuilder)(
                           group.pronunciation.map((word) => word.text).join(),

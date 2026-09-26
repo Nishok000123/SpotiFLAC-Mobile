@@ -2841,6 +2841,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   late List<LyricLine> _lines;
   late List<GlobalKey> _lineKeys;
   int _active = -1;
+  Set<int> _activeLines = {};
   Duration _activeTransitionPosition = Duration.zero;
   bool _playing = false;
   bool _loading = false;
@@ -2915,6 +2916,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     _playing = ref.read(playbackPlayingProvider);
     _loading = ref.read(playbackLoadingProvider);
     _active = _activeIndexAt(position);
+    _activeLines = activeLyricIndices(_lines, position, _active);
     _activeTransitionPosition = position;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_maybeAutoScroll(_active, immediate: true));
@@ -2925,7 +2927,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       (previous, next) {
         if (widget.seekPreview.value != null) return;
         final active = _activeIndexAt(next);
-        if (active != _active) _setActiveLine(active, position: next);
+        _setActiveLine(active, position: next);
         _scheduleNextLine(next);
       },
     );
@@ -2987,11 +2989,20 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   }
 
   void _setActiveLine(int active, {required Duration position}) {
-    if (!mounted || active == _active) return;
+    if (!mounted) return;
+    final activeLines = activeLyricIndices(_lines, position, active);
+    final indexChanged = active != _active;
+    if (!indexChanged &&
+        activeLines.length == _activeLines.length &&
+        activeLines.containsAll(_activeLines)) {
+      return;
+    }
     setState(() {
       _active = active;
+      _activeLines = activeLines;
       _activeTransitionPosition = position;
     });
+    if (!indexChanged) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && active == _active) unawaited(_maybeAutoScroll(active));
     });
@@ -3012,13 +3023,25 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       currentIndex: _active,
       position: position,
     );
-    if (dueIndex != _active) {
-      _setActiveLine(dueIndex, position: position);
-    }
+    _setActiveLine(dueIndex, position: position);
 
     final nextIndex = dueIndex + 1;
-    if (nextIndex >= lines.length) return;
-    final boundary = lines[nextIndex].time;
+    Duration? nextBoundary = nextIndex < lines.length
+        ? lines[nextIndex].time
+        : null;
+    for (final index in _activeLines) {
+      final end = lines[index].end;
+      if ((index != dueIndex ||
+              lines[index].voice != null ||
+              lines[index].isBackground) &&
+          end != null &&
+          end > position &&
+          (nextBoundary == null || end < nextBoundary)) {
+        nextBoundary = end;
+      }
+    }
+    if (nextBoundary == null) return;
+    final boundary = nextBoundary;
     _lineBoundaryTimer = Timer(boundary - position, () {
       if (!mounted || !widget.isActive || !_playing || _loading) return;
       _scheduleNextLine(boundary);
@@ -3275,7 +3298,8 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
             itemBuilder: (context, index) {
               if (index == lines.length) return widget.credits!;
               final line = lines[index];
-              final isActive = index == active;
+              final textAlign = _lyricTextAlign(context, line);
+              final isActive = _activeLines.contains(index);
               final isPast = index < active;
 
               final color = mornye
@@ -3331,11 +3355,12 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                   initialPosition: _activeTransitionPosition,
                   seekPreview: widget.seekPreview,
                   supplementVisibility: visibility,
+                  textAlign: textAlign,
                 );
               } else {
                 content = Text(
                   line.text,
-                  textAlign: mornye ? TextAlign.start : TextAlign.center,
+                  textAlign: textAlign,
                   style:
                       (mornye || isActive
                               ? Theme.of(context).textTheme.headlineSmall
@@ -3355,6 +3380,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                   content,
                   color,
                   visibility: visibility,
+                  textAlign: textAlign,
                 );
               }
               content = AnimatedSwitcher(
@@ -3364,9 +3390,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                 switchOutCurve: Curves.easeInCubic,
                 child: KeyedSubtree(
                   key: ValueKey(timed),
-                  child: mornye
-                      ? SizedBox(width: double.infinity, child: content)
-                      : content,
+                  child: SizedBox(width: double.infinity, child: content),
                 ),
               );
               if (mornye) {
@@ -3496,21 +3520,34 @@ TextStyle _mornyeLyricStyle(BuildContext context) =>
       fontWeight: FontWeight.bold,
     );
 
+TextAlign _lyricTextAlign(BuildContext context, LyricLine line) {
+  final voice = line.voice;
+  if (voice == null) {
+    return context.isMornye ? TextAlign.start : TextAlign.center;
+  }
+  if (voice.isGroup) return TextAlign.center;
+  return voice.index.isEven ? TextAlign.left : TextAlign.right;
+}
+
 Widget _withLyricSupplements(
   BuildContext context,
   LyricLine line,
   Widget primary,
   Color color, {
   required Offset visibility,
+  required TextAlign textAlign,
   Widget Function(String, List<LyricWord>, TextStyle)? timedText,
   Widget Function(String, List<LyricWord>, TextStyle)? timedSupplementText,
 }) {
   if (line.romanization == null && line.translation == null) return primary;
+  final alignment = switch (textAlign) {
+    TextAlign.right => Alignment.topRight,
+    TextAlign.center => Alignment.topCenter,
+    _ => Alignment.topLeft,
+  };
   final supplements = _lyricSupplements(context, line).toList();
   Widget withSupplements(Widget primary, {bool aligned = false}) => Column(
-    crossAxisAlignment: context.isMornye
-        ? CrossAxisAlignment.start
-        : CrossAxisAlignment.center,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       primary,
       for (final (text, style, words, translation) in supplements)
@@ -3518,9 +3555,7 @@ Widget _withLyricSupplements(
             (translation ? visibility.dy : visibility.dx) > 0)
           ClipRect(
             child: Align(
-              alignment: context.isMornye
-                  ? Alignment.topLeft
-                  : Alignment.topCenter,
+              alignment: alignment,
               heightFactor: translation ? visibility.dy : visibility.dx,
               child: Opacity(
                 opacity: translation ? visibility.dy : visibility.dx,
@@ -3530,9 +3565,7 @@ Widget _withLyricSupplements(
                       ? timedSupplementText(text, words, style)
                       : Text(
                           text,
-                          textAlign: context.isMornye
-                              ? TextAlign.start
-                              : TextAlign.center,
+                          textAlign: textAlign,
                           style: style.copyWith(
                             color: color.withValues(alpha: color.a * 0.8),
                           ),
@@ -3570,11 +3603,15 @@ Widget _withLyricSupplements(
           visibility: visibility.dx,
           primaryStyle: primaryStyle,
           pronunciationStyle: pronunciationStyle,
+          textAlign: textAlign,
           pronunciationBuilder: timedSupplementText,
           textBuilder:
               timedText ??
-              (text, words, style) =>
-                  Text(text, style: style.copyWith(color: color)),
+              (text, words, style) => Text(
+                text,
+                textAlign: textAlign,
+                style: style.copyWith(color: color),
+              ),
         ),
         aligned: true,
       );
@@ -3589,6 +3626,7 @@ class _WordHighlightedLyricLine extends ConsumerStatefulWidget {
   final Duration initialPosition;
   final ValueListenable<Duration?> seekPreview;
   final Offset supplementVisibility;
+  final TextAlign textAlign;
 
   const _WordHighlightedLyricLine({
     required this.line,
@@ -3597,6 +3635,7 @@ class _WordHighlightedLyricLine extends ConsumerStatefulWidget {
     required this.initialPosition,
     required this.seekPreview,
     required this.supplementVisibility,
+    required this.textAlign,
   });
 
   @override
@@ -3774,7 +3813,7 @@ class _WordHighlightedLyricLineState
         ? _buildTimedText(widget.line.text, widget.line.words, style)
         : Text(
             widget.line.text,
-            textAlign: context.isMornye ? TextAlign.start : TextAlign.center,
+            textAlign: widget.textAlign,
             style: style.copyWith(color: widget.colorScheme.onSurface),
           );
     // Both scripts share this state's position interpolation and animation
@@ -3788,6 +3827,7 @@ class _WordHighlightedLyricLineState
       timedSupplementText: (text, words, style) =>
           _buildTimedText(text, words, style, lift: false),
       visibility: widget.supplementVisibility,
+      textAlign: widget.textAlign,
     );
   }
 
@@ -3819,7 +3859,7 @@ class _WordHighlightedLyricLineState
       currentPosition: _currentPosition,
       repaint: _animationClock,
       style: style,
-      textAlign: mornye ? TextAlign.start : TextAlign.center,
+      textAlign: widget.textAlign,
       pendingColor: pendingColor,
       highlightedColor: highlightedColor,
       semanticsLabel: text,

@@ -7,6 +7,104 @@ String _tag(String kind, int time, String text) =>
     '[x-$kind:$time:${base64.encode(utf8.encode(text))}]';
 
 void main() {
+  test('all eLRC voices retain timing and supplements without visible IDs', () {
+    final lyrics = LyricsParser.parse('''
+[offset:100]
+${_tag('romaji', 2000, 'Second reading')}
+${_tag('translation', 2000, 'Second translation')}
+[00:01.00]v1:<00:01.00>First<00:03.00>
+[00:02.00]<00:02.00> V2: Second<00:04.00>
+[00:04.00]v3:Third
+[00:06.00]v12:Twelfth
+[00:08.00]The v2: label stays inside a sentence
+''');
+    expect(lyrics.lines.map((line) => line.voice?.id), [
+      'v1',
+      'v2',
+      'v3',
+      'v12',
+      null,
+    ]);
+    expect(lyrics.lines.map((line) => line.voice?.index), [0, 1, 2, 11, null]);
+    final second = lyrics.lines[1];
+    expect(second.text, 'Second');
+    expect(second.words.single.text, 'Second');
+    expect(second.words.single.time.inMilliseconds, 1900);
+    expect(second.end?.inMilliseconds, 3900);
+    expect(second.romanization, 'Second reading');
+    expect(second.translation, 'Second translation');
+    expect(lyrics.lines.last.text, 'The v2: label stays inside a sentence');
+  });
+
+  test('background eLRC retains the parent voice and its own word times', () {
+    final lyrics = LyricsParser.parse('''
+[00:01.00]v2:<00:01.00>Main<00:05.00>
+[bg:<00:02.00>Backing<00:04.00>]
+''');
+    expect(lyrics.lines.map((line) => line.text), ['Main', 'Backing']);
+    final backing = lyrics.lines.last;
+    expect(backing.voice?.id, 'v2');
+    expect(backing.isBackground, isTrue);
+    expect(backing.time.inMilliseconds, 2000);
+    expect(backing.end?.inMilliseconds, 4000);
+  });
+
+  test('TTML resolves inherited voices and explicit groups by namespace', () {
+    final lyrics = LyricsParser.parse('''
+<t:tt xmlns:t="http://www.w3.org/ns/ttml" xmlns:m="http://www.w3.org/ns/ttml#metadata">
+<t:head><t:metadata>
+<m:agent xml:id="lead" type="person"/>
+<m:agent xml:id="guest" type="person"/>
+<m:agent xml:id="v3" type="group"/>
+<m:agent xml:id="third" type="person"/>
+</t:metadata></t:head>
+<t:body><t:div m:agent="lead">
+<t:p begin="1s" end="3s">Lead</t:p>
+<t:p begin="3s" end="5s" m:agent="guest">Guest</t:p>
+<t:p begin="5s" end="7s" m:agent="v3">Together</t:p>
+<t:p begin="7s" end="9s" m:agent="third">Third</t:p>
+</t:div></t:body></t:tt>
+''');
+    expect(lyrics.lines.map((line) => line.voice?.id), [
+      'lead',
+      'guest',
+      'v3',
+      'third',
+    ]);
+    expect(lyrics.lines.map((line) => line.voice?.index), [0, 1, 2, 2]);
+    expect(lyrics.lines.map((line) => line.voice?.isGroup), [
+      false,
+      false,
+      true,
+      false,
+    ]);
+  });
+
+  test(
+    'TTML splits span voices and backing parts without adding syllable gaps',
+    () {
+      final lyrics = LyricsParser.parse('''
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:m="http://www.w3.org/ns/ttml#metadata">
+<head><metadata><m:agent xml:id="v1" type="person"/><m:agent xml:id="v2" type="person"/></metadata></head>
+<body><div><p begin="1s" end="5s"><span m:agent="v1"><span begin="1s" end="2s">日本</span><span begin="2s" end="3s">語</span></span><span m:agent="v2" begin="2s" end="4s">Reply</span><span m:agent="v1" m:role="x-bg" begin="2s" end="3s">Echo</span></p></div></body></tt>
+''');
+      expect(lyrics.lines.map((line) => line.text), ['日本語', 'Reply', 'Echo']);
+      expect(lyrics.lines.first.words.map((word) => word.text), ['日本', '語']);
+      expect(lyrics.lines.map((line) => line.time.inSeconds), [1, 2, 2]);
+      expect(lyrics.lines.map((line) => line.end?.inSeconds), [3, 4, 3]);
+      expect(lyrics.lines.last.isBackground, isTrue);
+      expect(lyrics.lines.last.voice?.id, 'v1');
+    },
+  );
+
+  test('TTML partial word timing never loses untimed text', () {
+    final line = LyricsParser.parse('''
+<tt><body><p begin="1s" end="5s">Untimed <span begin="2s" end="3s">timed</span> ending</p></body></tt>
+''').lines.single;
+    expect(line.text, 'Untimed timed ending');
+    expect(line.words, isEmpty);
+  });
+
   test(
     'writer tags and stored provider attribution remain separate from lyric rows',
     () {

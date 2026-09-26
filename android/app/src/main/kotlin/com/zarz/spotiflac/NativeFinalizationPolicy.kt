@@ -43,6 +43,7 @@ internal object NativeFinalizationPolicy {
     private val lyricsInlineTimestampPattern = Regex(
         "<\\d{1,3}:\\d{1,2}(?:[.:]\\d{1,3})?>",
     )
+    private val lyricsVoicePrefixPattern = Regex("^v[1-9][0-9]*:", RegexOption.IGNORE_CASE)
 
     fun hasUsableLyricsContent(raw: String?): Boolean {
         val lyrics = raw.orEmpty().trim()
@@ -63,12 +64,7 @@ internal object NativeFinalizationPolicy {
                 cleaned = lyricsTimestampPattern.replaceFirst(cleaned, "").trim()
             }
             cleaned = lyricsInlineTimestampPattern.replace(cleaned, "").trim()
-            if (
-                cleaned.startsWith("v1:", ignoreCase = true) ||
-                cleaned.startsWith("v2:", ignoreCase = true)
-            ) {
-                cleaned = cleaned.drop(3).trim()
-            }
+            cleaned = lyricsVoicePrefixPattern.replaceFirst(cleaned, "").trim()
             if (cleaned.isNotEmpty()) return true
         }
         return false

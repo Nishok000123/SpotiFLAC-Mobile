@@ -10,6 +10,18 @@ class LyricWord {
   const LyricWord({required this.time, this.end, required this.text});
 }
 
+class LyricVoice {
+  final String id;
+  final int index;
+  final bool isGroup;
+
+  const LyricVoice({
+    required this.id,
+    required this.index,
+    this.isGroup = false,
+  });
+}
+
 class LyricLine {
   final Duration time;
   final Duration? end;
@@ -18,6 +30,8 @@ class LyricLine {
   final String? romanization;
   final List<LyricWord> romanizationWords;
   final String? translation;
+  final LyricVoice? voice;
+  final bool isBackground;
 
   const LyricLine({
     required this.time,
@@ -27,6 +41,8 @@ class LyricLine {
     this.romanization,
     this.romanizationWords = const [],
     this.translation,
+    this.voice,
+    this.isBackground = false,
   });
 
   bool get hasWordTiming => words.isNotEmpty;
@@ -71,6 +87,29 @@ class LyricsParser {
   static final RegExp _wordTimeTag = RegExp(
     r'<(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?>',
   );
+  static final RegExp _voicePrefix = RegExp(
+    r'^(\s*(?:<\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?>\s*)*)(v[1-9]\d*):[ \t]*',
+    caseSensitive: false,
+  );
+  static final RegExp _backgroundLine = RegExp(
+    r'^\[bg:(.*)\]$',
+    caseSensitive: false,
+  );
+
+  static (String, LyricVoice?) _vocalText(String content) {
+    final match = _voicePrefix.firstMatch(content);
+    if (match == null) return (content, null);
+    final id = match.group(2)!.toLowerCase();
+    final number = int.tryParse(id.substring(1));
+    return (
+      content.replaceRange(
+        0,
+        match.end,
+        match.group(1)!.replaceAll(RegExp(r'\s+'), ''),
+      ),
+      LyricVoice(id: id, index: (number ?? 1) - 1),
+    );
+  }
 
   // ID tags such as [ti:..], [ar:..], [offset:..].
   static final RegExp _idTag = RegExp(
@@ -188,8 +227,11 @@ class LyricsParser {
     var offsetMs = 0;
 
     for (final rawLine in rawLines) {
-      final line = rawLine.trimRight();
+      var line = rawLine.trimRight();
       if (line.trim().isEmpty) continue;
+
+      final background = _backgroundLine.firstMatch(line.trim());
+      if (background != null) line = background.group(1)!.trim();
 
       final supplement = _supplementTag.firstMatch(line.trim());
       if (supplement != null) {
@@ -230,8 +272,24 @@ class LyricsParser {
 
       final timeMatches = _lineTimeTag.allMatches(line).toList();
       if (timeMatches.isEmpty) {
-        // No timestamp: treat as plain text line.
-        plainBuffer.add(line.trim());
+        final (content, voice) = _vocalText(line.trim());
+        final clean = content.replaceAll(_wordTimeTag, '').trim();
+        plainBuffer.add(clean);
+        if (background != null && parsed.isNotEmpty && clean.isNotEmpty) {
+          final words = _parseWords(content);
+          final previous = parsed.last;
+          parsed.add(
+            LyricLine(
+              time: words.firstOrNull?.time ?? previous.time,
+              end: words.lastOrNull?.end ?? previous.end,
+              text: clean,
+              words: words,
+              voice: voice ?? previous.voice,
+              isBackground: true,
+            ),
+          );
+          sawWordTiming |= words.isNotEmpty;
+        }
         continue;
       }
 
@@ -239,7 +297,7 @@ class LyricsParser {
 
       // Strip leading line timestamps to obtain the lyric content.
       final lastTag = timeMatches.last;
-      final content = line.substring(lastTag.end).trim();
+      final (content, voice) = _vocalText(line.substring(lastTag.end).trim());
 
       // Enhanced LRC word timestamps inside the content.
       final words = _parseWords(content);
@@ -257,6 +315,8 @@ class LyricsParser {
             end: words.lastOrNull?.end,
             text: cleanContent,
             words: words,
+            voice: voice,
+            isBackground: background != null,
           ),
         );
       }
@@ -272,7 +332,7 @@ class LyricsParser {
       );
     }
 
-    parsed.sort((a, b) => a.time.compareTo(b.time));
+    _sortLines(parsed);
     final alignedRomanization = _alignSupplements(parsed, romanization);
     final alignedRomanizationWords = _alignSupplements(
       parsed,
@@ -300,6 +360,8 @@ class LyricsParser {
               time: _shift(l.time, offsetMs),
               end: l.end == null ? null : _shift(l.end!, offsetMs),
               text: l.text,
+              voice: l.voice,
+              isBackground: l.isBackground,
               romanization: romanization,
               romanizationWords: _shiftWords(validWords, offsetMs),
               translation: alignedTranslation[l.time.inMilliseconds],
@@ -436,8 +498,39 @@ class LyricsParser {
   static ParsedLyrics? _parseTtml(String text) {
     try {
       final doc = XmlDocument.parse(text);
-      final paragraphs = doc.findAllElements('p').toList();
+      const metadataNamespace = 'http://www.w3.org/ns/ttml#metadata';
+      final elements = doc.descendants.whereType<XmlElement>().toList();
+      final paragraphs = elements.where((node) => node.name.local == 'p');
       if (paragraphs.isEmpty) return null;
+
+      final voices = <String, LyricVoice>{};
+      var individualIndex = 0;
+      for (final agent in elements.where(
+        (node) =>
+            node.name.local == 'agent' &&
+            node.name.namespaceUri == metadataNamespace,
+      )) {
+        final id = agent.getAttribute(
+          'id',
+          namespaceUri: 'http://www.w3.org/XML/1998/namespace',
+        );
+        if (id == null || id.isEmpty) continue;
+        final group = agent.getAttribute('type') == 'group';
+        voices[id] = LyricVoice(id: id, index: individualIndex, isGroup: group);
+        if (!group) individualIndex++;
+      }
+
+      LyricVoice? voiceOf(XmlElement element, LyricVoice? inherited) {
+        final id = element.getAttribute(
+          'agent',
+          namespaceUri: metadataNamespace,
+        );
+        if (id == null || id.isEmpty) return inherited;
+        return voices.putIfAbsent(
+          id,
+          () => LyricVoice(id: id, index: individualIndex++),
+        );
+      }
 
       final lines = <LyricLine>[];
       final plain = <String>[];
@@ -447,34 +540,78 @@ class LyricsParser {
         final begin = _parseClock(p.getAttribute('begin'));
         final end = _parseClock(p.getAttribute('end'));
 
-        // Word/syllable spans carry their own begin attribute.
-        final spans = p.findElements('span').toList();
-        final words = <LyricWord>[];
-        if (spans.isNotEmpty) {
-          for (final span in spans) {
-            final sBegin = _parseClock(span.getAttribute('begin'));
-            final spanText = span.innerText;
-            if (sBegin != null && spanText.trim().isNotEmpty) {
-              final sEnd = _parseClock(span.getAttribute('end'));
-              words.add(
-                LyricWord(
-                  time: sBegin,
-                  end: sEnd != null && sEnd >= sBegin ? sEnd : null,
-                  text: '$spanText ',
-                ),
+        LyricVoice? inheritedVoice;
+        for (final ancestor
+            in p.ancestors.whereType<XmlElement>().toList().reversed) {
+          inheritedVoice = voiceOf(ancestor, inheritedVoice);
+        }
+        final runs = <_TtmlVocalRun>[];
+        void visit(
+          XmlNode node,
+          LyricVoice? voice,
+          bool background,
+          Duration? wordBegin,
+          Duration? wordEnd,
+        ) {
+          if (node is XmlText) {
+            if (node.value.trim().isEmpty && runs.isEmpty) return;
+            var run = runs
+                .where(
+                  (run) =>
+                      run.voice?.id == voice?.id &&
+                      run.background == background,
+                )
+                .firstOrNull;
+            if (run == null) {
+              if (node.value.trim().isEmpty) return;
+              run = _TtmlVocalRun(voice, background);
+              runs.add(run);
+            }
+            run.add(node.value, wordBegin, wordEnd);
+          } else if (node is XmlElement) {
+            final nextVoice = voiceOf(node, voice);
+            final nextBackground =
+                background ||
+                node.getAttribute('role', namespaceUri: metadataNamespace) ==
+                    'x-bg';
+            final spanBegin = node == p
+                ? null
+                : _parseClock(node.getAttribute('begin'));
+            final spanEnd = node == p
+                ? null
+                : _parseClock(node.getAttribute('end'));
+            for (final child in node.children) {
+              visit(
+                child,
+                nextVoice,
+                nextBackground,
+                spanBegin ?? wordBegin,
+                spanEnd ?? wordEnd,
               );
             }
           }
         }
-        if (words.isNotEmpty) sawWords = true;
 
-        final lineText = p.innerText.replaceAll(RegExp(r'\s+'), ' ').trim();
-        if (lineText.isEmpty && words.isEmpty) continue;
-        plain.add(lineText);
-
-        if (begin != null) {
+        visit(p, inheritedVoice, false, null, null);
+        for (final run in runs) {
+          final lineText = run.text;
+          if (lineText.isEmpty) continue;
+          plain.add(lineText);
+          final words = run.words;
+          final lineBegin = runs.length == 1
+              ? begin
+              : words.firstOrNull?.time ?? begin;
+          if (lineBegin == null) continue;
+          sawWords |= words.isNotEmpty;
           lines.add(
-            LyricLine(time: begin, end: end, text: lineText, words: words),
+            LyricLine(
+              time: lineBegin,
+              end: runs.length == 1 ? end : words.lastOrNull?.end ?? end,
+              text: lineText,
+              words: words,
+              voice: run.voice,
+              isBackground: run.background,
+            ),
           );
         }
       }
@@ -488,7 +625,7 @@ class LyricsParser {
         );
       }
 
-      lines.sort((a, b) => a.time.compareTo(b.time));
+      _sortLines(lines);
       return ParsedLyrics(
         synced: true,
         wordSynced: sawWords,
@@ -544,5 +681,58 @@ class LyricsParser {
       }
     }
     return result;
+  }
+
+  static void _sortLines(List<LyricLine> lines) {
+    // Simultaneous singers retain their document order.
+    final order = {for (var i = 0; i < lines.length; i++) lines[i]: i};
+    lines.sort((a, b) {
+      final timing = a.time.compareTo(b.time);
+      return timing != 0 ? timing : order[a]!.compareTo(order[b]!);
+    });
+  }
+}
+
+class _TtmlVocalRun {
+  final LyricVoice? voice;
+  final bool background;
+  final List<(String, Duration?, Duration?)> _fragments = [];
+
+  _TtmlVocalRun(this.voice, this.background);
+
+  void add(String value, Duration? begin, Duration? end) {
+    var text = value.replaceAll(RegExp(r'\s+'), ' ');
+    if (_fragments.isEmpty || _fragments.last.$1.endsWith(' ')) {
+      text = text.trimLeft();
+    }
+    if (text.isEmpty) return;
+    if (_fragments.isNotEmpty &&
+        (text.trim().isEmpty ||
+            (begin == _fragments.last.$2 && end == _fragments.last.$3))) {
+      final previous = _fragments.removeLast();
+      _fragments.add(('${previous.$1}$text', previous.$2, previous.$3));
+    } else {
+      _fragments.add((text, begin, end));
+    }
+  }
+
+  String get text => _fragments.map((fragment) => fragment.$1).join().trim();
+
+  List<LyricWord> get words {
+    // Never drop untimed text from a partially timed paragraph.
+    if (_fragments.any((fragment) => fragment.$2 == null)) return const [];
+    return [
+      for (var i = 0; i < _fragments.length; i++)
+        LyricWord(
+          time: _fragments[i].$2!,
+          end:
+              _fragments[i].$3 != null && _fragments[i].$3! >= _fragments[i].$2!
+              ? _fragments[i].$3
+              : null,
+          text: i == _fragments.length - 1
+              ? _fragments[i].$1.trimRight()
+              : _fragments[i].$1,
+        ),
+    ];
   }
 }

@@ -3,6 +3,46 @@ import 'package:spotiflac_android/utils/lyrics_parser.dart';
 import 'package:spotiflac_android/utils/lyrics_timeline.dart';
 
 void main() {
+  test(
+    'backing vocals do not dim an unlabelled lead that is still singing',
+    () {
+      final lines = LyricsParser.parse('''
+[00:01.00]<00:01.00>Main<00:05.00>
+[bg:<00:02.00>Echo<00:03.00>]
+''').lines;
+      expect(activeLyricIndices(lines, const Duration(seconds: 2), 1), {0, 1});
+      expect(activeLyricIndices(lines, const Duration(seconds: 4), 1), {0});
+    },
+  );
+
+  test(
+    'overlapping singers stay active until their ends, including seek back',
+    () {
+      final lines = LyricsParser.parse('''
+[00:01.00]v1:<00:01.00>Lead<00:05.00>
+[00:02.00]v2:<00:02.00>Guest<00:04.00>
+[00:06.00]v3:Third
+''').lines;
+      Set<int> active(int seconds) {
+        final position = Duration(seconds: seconds);
+        return activeLyricIndices(
+          lines,
+          position,
+          LyricsParser.activeIndex(lines, position),
+        );
+      }
+
+      expect(active(0), isEmpty);
+      expect(active(1), {0});
+      expect(active(3), {0, 1});
+      expect(active(4), {0});
+      expect(active(5), isEmpty);
+      expect(active(6), {2});
+      expect(active(3), {0, 1});
+      expect(active(1), {0});
+    },
+  );
+
   List<(int, int)> gaps(String text) =>
       lyricsTimelineWithGaps(LyricsParser.parse(text).lines)
           .where((line) => line.text.isEmpty)

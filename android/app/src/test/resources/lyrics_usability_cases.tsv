@@ -1,4 +1,4 @@
-# Shared Dart/Go/Kotlin lyric-usability cases.
+# Shared Dart/Rust/Kotlin lyric-usability cases.
 # Columns: name<TAB>expected boolean<TAB>lyrics. Decode literal \n, \r, \t in lyrics.
 empty	false	
 whitespace	false	 \t\r\n 
@@ -8,6 +8,8 @@ instrumental	true	 [Instrumental:TRUE]
 timestamps_only	false	[00:01.00]\n<00:01.10>
 multiple_timestamps	false	[00:01.00][01:02:500] 
 speaker_only	false	v1:\n V2: 
+multiple_singers_only	false	[00:01.00]v3:\n[00:02.00]<00:02.00>V12:
+third_singer_text	true	[00:01.00]v3:Third singer
 inline_before_spaced_speaker	false	[00:00.00]<00:00.01> v1:
 inline_before_tabbed_speaker	false	[00:00.00]<00:00.01>\tV2:\t
 multiple_inline_speaker	false	[00:00.00]<00:00.01> <00:00.02> v2: 

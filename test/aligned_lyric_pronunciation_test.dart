@@ -44,6 +44,38 @@ LyricPronunciationLayout? _layout(
 );
 
 void main() {
+  testWidgets('right-aligned voices move original and pronunciation together', (
+    tester,
+  ) async {
+    Future<void> pump(TextAlign alignment) => tester.pumpWidget(
+      MaterialApp(
+        home: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: 400,
+            child: AlignedLyricPronunciation(
+              layout: _layout(_line(), width: 400)!,
+              visibility: 1,
+              textAlign: alignment,
+              primaryStyle: _primaryStyle,
+              pronunciationStyle: _pronunciationStyle,
+              textBuilder: (text, words, style) => Text(text, style: style),
+            ),
+          ),
+        ),
+      ),
+    );
+    await pump(TextAlign.left);
+    final original = tester.getTopLeft(find.text('今日'));
+    final reading = tester.getTopLeft(find.text('kyou'));
+    await pump(TextAlign.right);
+    final shift = tester.getTopLeft(find.text('今日')) - original;
+    expect(shift.dx, greaterThan(0));
+    expect(shift.dy, 0);
+    expect(tester.getTopLeft(find.text('kyou')) - reading, shift);
+    expect(tester.takeException(), isNull);
+  });
+
   test('does not guess alignment without matching word timing', () {
     expect(_layout(_line(pronunciationOffset: 100)), isNull);
     expect(
