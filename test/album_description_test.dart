@@ -44,6 +44,88 @@ void main() {
   );
 
   for (final style in ['mornye-light', 'mornye-dark', 'material']) {
+    testWidgets('short album notes have no More action ($style)', (
+      tester,
+    ) async {
+      final mornye = style.startsWith('mornye');
+      tester.view.physicalSize = const Size(393, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      for (final description in [
+        'A short description.',
+        '<p>A <b>bold</b> sound.</p>\n\n',
+        '<div><p>First line.<br>Second line.</p></div>',
+      ]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: mornye
+                ? MornyeTheme.build(
+                    style.endsWith('light')
+                        ? Brightness.light
+                        : Brightness.dark,
+                  )
+                : ThemeData(),
+            home: Scaffold(
+              body: AlbumDescription(title: 'Album', description: description),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text(mornye ? 'MORE' : 'More'), findsNothing);
+        final tap = tester.widget<InkWell>(find.byType(InkWell));
+        expect(tap.onTap, isNull);
+        expect(tester.takeException(), isNull);
+      }
+    });
+
+    testWidgets('More responds to album preview width and text size ($style)', (
+      tester,
+    ) async {
+      final mornye = style.startsWith('mornye');
+      final scale = ValueNotifier(1.0);
+      addTearDown(scale.dispose);
+      tester.view.physicalSize = const Size(393, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: mornye
+              ? MornyeTheme.build(
+                  style.endsWith('light') ? Brightness.light : Brightness.dark,
+                )
+              : ThemeData(),
+          home: ValueListenableBuilder<double>(
+            valueListenable: scale,
+            builder: (context, value, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(value)),
+              child: child!,
+            ),
+            child: const Scaffold(
+              body: AlbumDescription(
+                title: 'Album',
+                description: 'New sounds and new stories.',
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final more = find.text(mornye ? 'MORE' : 'More');
+      expect(more, findsNothing);
+      tester.view.physicalSize = const Size(180, 700);
+      await tester.pumpAndSettle();
+      expect(more, findsOneWidget);
+      tester.view.physicalSize = const Size(393, 700);
+      await tester.pumpAndSettle();
+      expect(more, findsNothing);
+      scale.value = 2.5;
+      await tester.pumpAndSettle();
+      expect(more, findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('album description opens a formatted reading sheet ($style)', (
       tester,
     ) async {

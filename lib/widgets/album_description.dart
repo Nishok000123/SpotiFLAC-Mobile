@@ -46,7 +46,25 @@ class AlbumDescription extends StatelessWidget {
               const TextSpan(text: '\n\n'),
           ],
     ];
-    return TextSpan(children: spans(fragment.nodes));
+    TextSpan trimEnd(TextSpan span) {
+      final children = List<InlineSpan>.of(span.children ?? const []);
+      while (children.isNotEmpty) {
+        final last = trimEnd(children.last as TextSpan);
+        if (last.toPlainText().isNotEmpty) {
+          children[children.length - 1] = last;
+          return TextSpan(
+            text: span.text,
+            style: span.style,
+            children: children,
+          );
+        }
+        children.removeLast();
+      }
+      return TextSpan(text: span.text?.trimRight(), style: span.style);
+    }
+
+    // Paragraph separators at the end are not hidden editorial content.
+    return trimEnd(TextSpan(children: spans(fragment.nodes)));
   }
 
   void _showFullDescription(BuildContext context, TextSpan text) {
@@ -121,43 +139,71 @@ class AlbumDescription extends StatelessWidget {
     if (text.toPlainText().trim().isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(context);
     final more = MaterialLocalizations.of(context).moreButtonTooltip;
+    final previewStyle = theme.textTheme.bodyLarge?.copyWith(
+      fontSize: context.isMornye ? 17 : 16,
+      height: 1.4,
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          InkWell(
-            onTap: () => _showFullDescription(context, text),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Text.rich(
-                      text,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontSize: context.isMornye ? 17 : 16,
-                        height: 1.4,
-                        color: theme.colorScheme.onSurfaceVariant,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          var effectiveStyle = DefaultTextStyle.of(
+            context,
+          ).style.merge(previewStyle);
+          if (MediaQuery.boldTextOf(context)) {
+            effectiveStyle = effectiveStyle.merge(
+              const TextStyle(fontWeight: FontWeight.bold),
+            );
+          }
+          final painter = TextPainter(
+            text: TextSpan(style: effectiveStyle, children: [text]),
+            maxLines: 2,
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+            locale: Localizations.maybeLocaleOf(context),
+          )..layout(maxWidth: constraints.maxWidth);
+          final hasMore = painter.didExceedMaxLines;
+          painter.dispose();
+          return Column(
+            children: [
+              InkWell(
+                onTap: hasMore
+                    ? () => _showFullDescription(context, text)
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Text.rich(
+                          text,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: previewStyle,
+                        ),
                       ),
-                    ),
+                      if (hasMore) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          context.isMornye ? more.toUpperCase() : more,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    context.isMornye ? more.toUpperCase() : more,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
-          Divider(color: theme.colorScheme.onSurface.withValues(alpha: 0.15)),
-        ],
+              Divider(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
