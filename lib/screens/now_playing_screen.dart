@@ -34,6 +34,7 @@ import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/utils/synced_lyrics_scroll.dart';
 import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/aligned_lyric_pronunciation.dart';
+import 'package:spotiflac_android/widgets/lyric_supplement_transition.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
 import 'package:spotiflac_android/widgets/audio_output_button.dart';
 import 'package:spotiflac_android/widgets/lyric_gap_indicator.dart';
@@ -2850,6 +2851,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   static const double _estimatedLyricExtent = 64;
   List<double>? _lineExtents;
   List<(double, double, double)> _lineMeasurements = [];
+  List<LyricPronunciationLayout?> _pronunciationLayouts = [];
   Object? _lineLayoutKey;
   double? _viewportHeight;
   Offset? _layoutVisibility;
@@ -2881,6 +2883,16 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     }
     if (oldWidget.lyrics != widget.lyrics) {
       _resetLineKeys();
+    }
+    if (oldWidget.showPronunciation != widget.showPronunciation ||
+        oldWidget.showTranslation != widget.showTranslation) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_userScrolling && _scroll.hasClients) {
+          // Cancel a pending line-scroll once, then let layout preserve the
+          // current anchor throughout the supplement animation.
+          _scroll.jumpTo(_scroll.offset);
+        }
+      });
     }
     if (oldWidget.isActive != widget.isActive ||
         oldWidget.lyrics != widget.lyrics) {
@@ -3078,9 +3090,11 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       locale: locale,
     );
     final measurements = <(double, double, double)>[];
+    final layouts = <LyricPronunciationLayout?>[];
     for (final line in _lines) {
       if (line.text.isEmpty) {
         measurements.add((56, 0, 0));
+        layouts.add(null);
         continue;
       }
       painter.text = TextSpan(text: line.text, style: style);
@@ -3088,6 +3102,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       var height = painter.height + 32;
       var pronunciationHeight = 0.0;
       var translationHeight = 0.0;
+      LyricPronunciationLayout? pronunciationLayout;
       for (final (text, style, _, translation) in _lyricSupplements(
         context,
         line,
@@ -3108,14 +3123,17 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
             locale: locale,
           );
           if (aligned != null) {
+            pronunciationLayout = aligned;
             height = aligned.primaryHeight + 32;
             pronunciationHeight = aligned.pronunciationHeight;
           }
         }
       }
       measurements.add((height, pronunciationHeight, translationHeight));
+      layouts.add(pronunciationLayout);
     }
     _lineMeasurements = measurements;
+    _pronunciationLayouts = layouts;
     painter.dispose();
   }
 
@@ -3210,7 +3228,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     ),
     duration: MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
-        : const Duration(milliseconds: 320),
+        : const Duration(milliseconds: 420),
     curve: Curves.easeInOutCubic,
     builder: (context, visibility, _) => _buildLyrics(context, visibility),
   );
@@ -3246,6 +3264,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           if (mornye) {
+            final previousExtents = _lineExtents;
             _measureMornyeLines(
               (constraints.maxWidth - 48).clamp(0, double.infinity),
             );
@@ -3258,11 +3277,32 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                     pronunciation * visibility.dx +
                     translation * visibility.dy,
             ];
+            if (previousExtents != null &&
+                _layoutVisibility != null &&
+                _layoutVisibility != visibility &&
+                previousExtents.length == _lineExtents!.length &&
+                _scroll.hasClients) {
+              var anchor = _active.clamp(0, previousExtents.length);
+              if (_userScrolling) {
+                anchor = 0;
+                var extent = 0.0;
+                while (anchor < previousExtents.length &&
+                    extent + previousExtents[anchor] <= _scroll.offset) {
+                  extent += previousExtents[anchor++];
+                }
+              }
+              var correction = 0.0;
+              for (var i = 0; i < anchor; i++) {
+                correction += _lineExtents![i] - previousExtents[i];
+              }
+              // Correct before the ListView lays out/paints. A post-frame
+              // jump leaves every painted frame one animation step behind.
+              if (correction != 0) _scroll.position.correctBy(correction);
+            }
           }
-          if (_viewportHeight != constraints.maxHeight ||
-              _layoutVisibility != visibility) {
+          _layoutVisibility = visibility;
+          if (_viewportHeight != constraints.maxHeight) {
             _viewportHeight = constraints.maxHeight;
-            _layoutVisibility = visibility;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
                 unawaited(_maybeAutoScroll(_active, immediate: true));
@@ -3355,6 +3395,9 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                   initialPosition: _activeTransitionPosition,
                   seekPreview: widget.seekPreview,
                   supplementVisibility: visibility,
+                  pronunciationLayout: mornye
+                      ? _pronunciationLayouts[index]
+                      : null,
                   textAlign: textAlign,
                 );
               } else {
@@ -3380,6 +3423,9 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                   content,
                   color,
                   visibility: visibility,
+                  pronunciationLayout: mornye
+                      ? _pronunciationLayouts[index]
+                      : null,
                   textAlign: textAlign,
                 );
               }
@@ -3535,6 +3581,7 @@ Widget _withLyricSupplements(
   Widget primary,
   Color color, {
   required Offset visibility,
+  required LyricPronunciationLayout? pronunciationLayout,
   required TextAlign textAlign,
   Widget Function(String, List<LyricWord>, TextStyle)? timedText,
   Widget Function(String, List<LyricWord>, TextStyle)? timedSupplementText,
@@ -3553,25 +3600,20 @@ Widget _withLyricSupplements(
       for (final (text, style, words, translation) in supplements)
         if ((translation || !aligned) &&
             (translation ? visibility.dy : visibility.dx) > 0)
-          ClipRect(
-            child: Align(
-              alignment: alignment,
-              heightFactor: translation ? visibility.dy : visibility.dx,
-              child: Opacity(
-                opacity: translation ? visibility.dy : visibility.dx,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: words.isNotEmpty && timedSupplementText != null
-                      ? timedSupplementText(text, words, style)
-                      : Text(
-                          text,
-                          textAlign: textAlign,
-                          style: style.copyWith(
-                            color: color.withValues(alpha: color.a * 0.8),
-                          ),
-                        ),
-                ),
-              ),
+          LyricSupplementTransition(
+            alignment: alignment,
+            visibility: translation ? visibility.dy : visibility.dx,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: words.isNotEmpty && timedSupplementText != null
+                  ? timedSupplementText(text, words, style)
+                  : Text(
+                      text,
+                      textAlign: textAlign,
+                      style: style.copyWith(
+                        color: color.withValues(alpha: color.a * 0.8),
+                      ),
+                    ),
             ),
           ),
     ],
@@ -3585,37 +3627,25 @@ Widget _withLyricSupplements(
   final pronunciationStyle = supplements
       .firstWhere((supplement) => !supplement.$4)
       .$2;
-  return LayoutBuilder(
-    builder: (context, constraints) {
-      final layout = LyricPronunciationLayout.measure(
-        line: line,
-        primaryStyle: primaryStyle,
-        pronunciationStyle: pronunciationStyle,
-        maxWidth: constraints.maxWidth,
-        textScaler: MediaQuery.textScalerOf(context),
-        textDirection: Directionality.of(context),
-        locale: Localizations.maybeLocaleOf(context),
-      );
-      if (layout == null) return withSupplements(primary);
-      return withSupplements(
-        AlignedLyricPronunciation(
-          layout: layout,
-          visibility: visibility.dx,
-          primaryStyle: primaryStyle,
-          pronunciationStyle: pronunciationStyle,
-          textAlign: textAlign,
-          pronunciationBuilder: timedSupplementText,
-          textBuilder:
-              timedText ??
-              (text, words, style) => Text(
-                text,
-                textAlign: textAlign,
-                style: style.copyWith(color: color),
-              ),
-        ),
-        aligned: true,
-      );
-    },
+  final layout = pronunciationLayout;
+  if (layout == null) return withSupplements(primary);
+  return withSupplements(
+    AlignedLyricPronunciation(
+      layout: layout,
+      visibility: visibility.dx,
+      primaryStyle: primaryStyle,
+      pronunciationStyle: pronunciationStyle,
+      textAlign: textAlign,
+      pronunciationBuilder: timedSupplementText,
+      textBuilder:
+          timedText ??
+          (text, words, style) => Text(
+            text,
+            textAlign: textAlign,
+            style: style.copyWith(color: color),
+          ),
+    ),
+    aligned: true,
   );
 }
 
@@ -3626,6 +3656,7 @@ class _WordHighlightedLyricLine extends ConsumerStatefulWidget {
   final Duration initialPosition;
   final ValueListenable<Duration?> seekPreview;
   final Offset supplementVisibility;
+  final LyricPronunciationLayout? pronunciationLayout;
   final TextAlign textAlign;
 
   const _WordHighlightedLyricLine({
@@ -3635,6 +3666,7 @@ class _WordHighlightedLyricLine extends ConsumerStatefulWidget {
     required this.initialPosition,
     required this.seekPreview,
     required this.supplementVisibility,
+    required this.pronunciationLayout,
     required this.textAlign,
   });
 
@@ -3827,6 +3859,7 @@ class _WordHighlightedLyricLineState
       timedSupplementText: (text, words, style) =>
           _buildTimedText(text, words, style, lift: false),
       visibility: widget.supplementVisibility,
+      pronunciationLayout: widget.pronunciationLayout,
       textAlign: widget.textAlign,
     );
   }

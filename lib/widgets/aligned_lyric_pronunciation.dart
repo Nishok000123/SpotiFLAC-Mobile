@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/widgets/lyric_supplement_transition.dart';
 import 'package:spotiflac_android/utils/lyrics_parser.dart';
 
 /// Keeps each pronunciation phrase under the lyric with the same start time.
@@ -234,25 +235,19 @@ class AlignedLyricPronunciation extends StatelessWidget {
               ),
             ),
             if (visibility > 0)
-              ClipRect(
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  heightFactor: visibility,
-                  child: Opacity(
-                    opacity: visibility,
-                    child: Padding(
-                      padding: const EdgeInsets.only(
-                        top: LyricPronunciationLayout._pronunciationGap,
-                      ),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: row.pronunciationHeight,
-                        child: (pronunciationBuilder ?? textBuilder)(
-                          group.pronunciation.map((word) => word.text).join(),
-                          group.pronunciation,
-                          pronunciationStyle,
-                        ),
-                      ),
+              LyricSupplementTransition(
+                visibility: visibility,
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    top: LyricPronunciationLayout._pronunciationGap,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: row.pronunciationHeight,
+                    child: (pronunciationBuilder ?? textBuilder)(
+                      group.pronunciation.map((word) => word.text).join(),
+                      group.pronunciation,
+                      pronunciationStyle,
                     ),
                   ),
                 ),

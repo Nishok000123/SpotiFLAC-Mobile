@@ -2392,6 +2392,53 @@ void main() {
     },
   );
 
+  testWidgets('language toggles keep a later active lyric anchored in every frame', (
+    tester,
+  ) async {
+    metadataOverrides['lyrics'] = [
+      for (var i = 0; i < 12; i++) ...[
+        '[x-romaji:${(i + 1) * 10000}:${base64.encode(utf8.encode('Pronunciation $i'))}]',
+        '[x-translation:${(i + 1) * 10000}:${base64.encode(utf8.encode('Translation $i'))}]',
+        '[${((i + 1) * 10 ~/ 60).toString().padLeft(2, '0')}:${((i + 1) * 10 % 60).toString().padLeft(2, '0')}.000]Original $i',
+      ],
+    ].join('\n');
+    await pumpNowPlaying(
+      tester,
+      theme: MornyeTheme.build(Brightness.dark),
+      size: const Size(390, 844),
+      playback: PlaybackState(
+        processingState: AudioProcessingState.ready,
+        updatePosition: const Duration(seconds: 45),
+      ),
+    );
+    mediaItems.add(item('anchored-supplements'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
+    await tester.pumpAndSettle();
+    final original = find.text('Original 3');
+    final anchor = tester.getTopLeft(original).dy;
+    for (final action in [
+      'Hide Pronunciation',
+      'Show Pronunciation',
+      'Hide Translation',
+      'Show Translation',
+    ]) {
+      await tester.tap(find.byKey(const ValueKey('lyrics-language-options')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(action));
+      await tester.pump();
+      for (var frame = 0; frame < 32; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(
+          tester.getTopLeft(original).dy,
+          closeTo(anchor, 1),
+          reason: '$action frame $frame',
+        );
+      }
+    }
+    expect(tester.takeException(), isNull);
+  });
+
   for (final supplement in ['none', 'pronunciation', 'translation']) {
     testWidgets('language menu only offers available $supplement', (
       tester,
