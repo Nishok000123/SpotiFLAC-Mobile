@@ -38,15 +38,15 @@ dependencies:
   archive: ^4.2.0
 
   # UI Components
-  cached_network_image: ^4.0.0
-  flutter_cache_manager: ^3.4.2
-  liquid_glass_easy: ^4.3.1
+  cached_network_image: ^4.0.2
+  flutter_cache_manager: ^3.4.5
+  liquid_glass_easy: ^4.3.2
   cupertino_icons: ^1.0.9
-  volume_controller: ^3.6.1
+  volume_controller: ^3.7.1
 
   # Material Expressive 3 / Dynamic Color
   dynamic_color: ^2.1.0
-  material_ui: ^1.1.0
+  material_ui: ^1.4.0
 
   # Permissions
   permission_handler: ^13.0.1
@@ -86,7 +86,7 @@ dev_dependencies:
   analyzer: ^14.4.0
   flutter_lints: ^6.0.0
   build_runner: ^2.16.0
-  riverpod_lint: ^3.1.8
+  riverpod_lint: ^3.1.9
   json_serializable: ^6.14.1
   flutter_launcher_icons: ^0.14.4
   video_player_platform_interface: 6.9.0

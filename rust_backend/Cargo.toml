@@ -21,7 +21,7 @@ spotiflac-core = { path = "crates/core" }
 spotiflac-extensions = { path = "crates/extensions" }
 spotiflac-network = { path = "crates/network" }
 spotiflac-providers = { path = "crates/providers" }
-rquickjs = { version = "=0.13.0", features = ["bindgen"] }
+rquickjs = { version = "=0.14.0", features = ["bindgen"] }
 base64 = "0.23"
 sha2 = "0.11"
 sha1 = "0.11"
@@ -37,14 +37,14 @@ zip = { version = "=8.6.0", default-features = false, features = ["deflate-flate
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["float_roundtrip", "raw_value"] }
 thiserror = "2.0"
-uniffi = { version = "=0.32.1", default-features = false }
+uniffi = { version = "=0.32.2", default-features = false }
 tokio = { version = "=1.53.1", features = ["rt-multi-thread", "net", "time", "sync", "io-util", "macros"] }
 hyper = { version = "=1.11.1", features = ["client", "http1", "http2"] }
-hyper-util = { version = "=0.1.20", features = ["client-legacy", "http1", "http2", "tokio"] }
-hyper-rustls = { version = "=0.27.9", default-features = false, features = ["http1", "http2", "ring", "tls12"] }
+hyper-util = { version = "=0.1.21", features = ["client-legacy", "http1", "http2", "tokio"] }
+hyper-rustls = { version = "=0.27.10", default-features = false, features = ["http1", "http2", "ring", "tls12"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-native-certs = "=0.8.4"
-rustls-platform-verifier = "=0.7.0"
+rustls-platform-verifier = "=0.7.1"
 rustls-pemfile = "2.2"
 http = "1.4"
 http-body-util = "0.1"
