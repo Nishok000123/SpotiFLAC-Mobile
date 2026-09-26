@@ -41,6 +41,7 @@ class _AudioNative {
   final sources = <String, String>{};
   final sourceGates = <String, Completer<void>>{};
   final resumedSources = <String>[];
+  bool emitsDuration = true;
 
   void install() {
     for (final name in [
@@ -71,7 +72,7 @@ class _AudioNative {
             await sourceGates[source]?.future;
             sources[id] = source;
             unawaited(event(id, 'audio.onPrepared', true));
-            unawaited(event(id, 'audio.onDuration', 60000));
+            if (emitsDuration) unawaited(event(id, 'audio.onDuration', 60000));
           case 'seek':
             positions[id] = args['position']! as int;
             unawaited(event(id, 'audio.onSeekComplete'));
@@ -403,6 +404,26 @@ void main() {
       expect(handler.playbackState.value.queueIndex, 0);
       expect(handler.mediaItem.value?.id, 'two');
       expect(native.sources['music-player'], '/two.flac');
+    },
+  );
+
+  test(
+    'removing an earlier row during preparation preserves duration probing',
+    () async {
+      native.emitsDuration = false;
+      final gate = Completer<void>();
+      native.sourceGates['/three.flac'] = gate;
+      final loading = handler.setQueueAndPlay(_tracks, initialIndex: 2);
+      await _until(() => native.calls.any((call) => call.$2 == 'setSourceUrl'));
+      handler.removeQueuedItem(handler.queue.value.first);
+      gate.complete();
+      await loading;
+      await _until(
+        () => handler.mediaItem.value?.duration == const Duration(seconds: 60),
+      );
+      expect(handler.playbackState.value.queueIndex, 1);
+      expect(handler.mediaItem.value?.id, 'three');
+      expect(native.resumedSources, ['/three.flac']);
     },
   );
 

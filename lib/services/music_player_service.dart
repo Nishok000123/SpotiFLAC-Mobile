@@ -1273,7 +1273,6 @@ class MusicPlayerHandler extends BaseAudioHandler
         await _player.stop();
         if (!_isCurrentPlayRequest(generation, media)) return;
         await _loadIndex(
-          index,
           generation,
           media,
           recordHistory: recordHistory,
@@ -1312,7 +1311,6 @@ class MusicPlayerHandler extends BaseAudioHandler
   }
 
   Future<void> _loadIndex(
-    int index,
     int generation,
     PlayableMedia media, {
     required bool recordHistory,
@@ -1322,7 +1320,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     _interruptionActive = false;
     _userPaused = false;
 
-    if (recordHistory) _recordPlayHistory(index);
+    if (recordHistory) _recordPlayHistory(_index);
 
     final effectiveStartPosition = normalizedPlaybackResumePosition(
       startPosition,
@@ -1454,7 +1452,7 @@ class MusicPlayerHandler extends BaseAudioHandler
       unawaited(_persistSession(position: effectiveStartPosition));
       // Some files do not emit onDurationChanged reliably (stuck at 0:00);
       // poll the engine for the real duration as a fallback.
-      unawaited(_ensureDurationKnown(index, generation));
+      unawaited(_ensureDurationKnown(media, generation));
     } catch (e) {
       if (!_isCurrentPlayRequest(generation, media)) return;
       _sourceReady = false;
@@ -1473,16 +1471,16 @@ class MusicPlayerHandler extends BaseAudioHandler
   /// Resolves the real track duration when the initial metadata had none and
   /// the duration-changed event did not fire, so the seek bar and total time
   /// do not get stuck at 0:00.
-  Future<void> _ensureDurationKnown(int index, int generation) async {
+  Future<void> _ensureDurationKnown(PlayableMedia media, int generation) async {
     for (var attempt = 0; attempt < 15; attempt++) {
-      if (_index != index || generation != _playRequestGeneration) return;
+      if (!_isCurrentPlayRequest(generation, media)) return;
       final current = mediaItem.value;
       final existing = current?.duration;
       if (existing != null && existing > Duration.zero) return;
 
       try {
         final d = await _player.getDuration();
-        if (_index != index || generation != _playRequestGeneration) return;
+        if (!_isCurrentPlayRequest(generation, media)) return;
         if (d != null && d > Duration.zero) {
           final item = mediaItem.value;
           if (item != null) {
