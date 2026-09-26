@@ -1927,7 +1927,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               maxWidth: menuWidth,
               builder: (menuContext) => MornyeContextMenu(
                 dense: true,
-                liquidGlass: true,
                 groups: [
                   [
                     for (final (value, label, icon) in actions)

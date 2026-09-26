@@ -159,14 +159,12 @@ class MornyeContextMenu extends StatelessWidget {
     required this.groups,
     this.inheritSurface = false,
     this.dense = false,
-    this.liquidGlass = true,
   });
 
   final List<MornyeMenuAction> quickActions;
   final List<List<MornyeMenuAction>> groups;
   final bool inheritSurface;
   final bool dense;
-  final bool liquidGlass;
 
   @override
   Widget build(BuildContext context) {
@@ -211,12 +209,10 @@ class MornyeContextMenu extends StatelessWidget {
       data: theme,
       child: MornyeGlassPanel.overlay(
         radius: 28,
-        liquidGlass: liquidGlass,
-        tintOpacity: liquidGlass
-            ? theme.brightness == Brightness.dark
-                  ? 0.30
-                  : 0.52
-            : 0.78,
+        // Keep one local, clipped backdrop. A second screen-space lens pass
+        // can shift its outline inside an offset/scaled popover on Impeller.
+        tintColor: Colors.white,
+        tintOpacity: theme.brightness == Brightness.dark ? 0.12 : 0.50,
         child: LayoutBuilder(
           builder: (context, constraints) {
             // Let the entire menu scroll when pinning the shortcuts would
@@ -292,7 +288,11 @@ class MornyeContextMenu extends StatelessWidget {
                           const SizedBox(height: 3),
                           Text(
                             action.subtitle!,
-                            style: theme.textTheme.bodySmall,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.78,
+                              ),
+                            ),
                           ),
                         ],
                       ],

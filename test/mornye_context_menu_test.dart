@@ -1,8 +1,12 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:spotiflac_android/providers/runtime_profile_provider.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/widgets/mornye_context_menu.dart';
 
@@ -18,23 +22,36 @@ void main() {
     double textScale = 1,
     bool reduceMotion = false,
     bool preferAbove = false,
+    bool highContrast = false,
+    bool lowEnd = false,
+    Color? backgroundColor,
+    GlobalKey? capture,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
+        overrides: [
+          lowEndDeviceProvider.overrideWithValue(lowEnd),
+          backdropBlurEnabledProvider.overrideWithValue(false),
+        ],
         child: MaterialApp(
           theme: MornyeTheme.build(brightness),
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              padding: const EdgeInsets.fromLTRB(0, 24, 0, 24),
-              textScaler: TextScaler.linear(textScale),
-              disableAnimations: reduceMotion,
+          builder: (context, child) => RepaintBoundary(
+            key: capture,
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                padding: const EdgeInsets.fromLTRB(0, 24, 0, 24),
+                textScaler: TextScaler.linear(textScale),
+                disableAnimations: reduceMotion,
+                highContrast: highContrast,
+              ),
+              child: child!,
             ),
-            child: child!,
           ),
           home: Scaffold(
+            backgroundColor: backgroundColor,
             body: Builder(
               builder: (context) => Center(
                 child: TextButton(
@@ -91,7 +108,76 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<List<Color>> samplePixels(
+    WidgetTester tester,
+    GlobalKey capture,
+    List<Offset> positions,
+  ) async => (await tester.runAsync(() async {
+    final boundary = tester.renderObject<RenderRepaintBoundary>(
+      find.byKey(capture),
+    );
+    final image = await boundary.toImage();
+    try {
+      final pixels = (await image.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      ))!;
+      return positions.map((position) {
+        final local = boundary.globalToLocal(position);
+        final index = (local.dy.floor() * image.width + local.dx.floor()) * 4;
+        return Color.fromARGB(
+          pixels.getUint8(index + 3),
+          pixels.getUint8(index),
+          pixels.getUint8(index + 1),
+          pixels.getUint8(index + 2),
+        );
+      }).toList();
+    } finally {
+      image.dispose();
+    }
+  }))!;
+
   for (final brightness in Brightness.values) {
+    testWidgets('menu glass lightens its backdrop evenly ($brightness)', (
+      tester,
+    ) async {
+      final originalDisableShadows = debugDisableShadows;
+      debugDisableShadows = false;
+      try {
+        final capture = GlobalKey();
+        await openMenu(
+          tester,
+          anchor: const Rect.fromLTWH(330, 144, 44, 44),
+          brightness: brightness,
+          backgroundColor: const Color(0xff6c3a22),
+          capture: capture,
+          onResult: (_) {},
+        );
+        final menu = tester.getRect(find.byType(MornyeContextMenu));
+        final pixels = await samplePixels(tester, capture, [
+          const Offset(8, 80),
+          for (final x in [menu.left + 8, menu.right - 8])
+            for (final fraction in [0.25, 0.5, 0.75])
+              Offset(x, menu.top + menu.height * fraction),
+        ]);
+        final outside = pixels.first;
+        for (final inside in pixels.skip(1)) {
+          // The white wash lightens all channels while retaining the backdrop's
+          // warm hue. Sampling both sides catches an extra, offset glass panel.
+          expect(inside.r, greaterThan(outside.r + 0.04));
+          expect(inside.g, greaterThan(outside.g + 0.04));
+          expect(inside.b, greaterThan(outside.b + 0.04));
+          expect(inside.r, greaterThan(inside.g + 0.04));
+          expect(inside.g, greaterThan(inside.b + 0.02));
+          expect(inside.r, closeTo(pixels[1].r, 0.015));
+          expect(inside.g, closeTo(pixels[1].g, 0.015));
+          expect(inside.b, closeTo(pixels[1].b, 0.015));
+        }
+        expect(tester.takeException(), isNull);
+      } finally {
+        debugDisableShadows = originalDisableShadows;
+      }
+    });
+
     testWidgets('menu stays on screen near a bottom edge ($brightness)', (
       tester,
     ) async {
@@ -113,6 +199,39 @@ void main() {
       await tester.pumpAndSettle();
       expect(result, 'Share');
       expect(find.byType(MornyeContextMenu), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final highContrast in [false, true]) {
+    testWidgets('menu stays readable without blur (contrast: $highContrast)', (
+      tester,
+    ) async {
+      final capture = GlobalKey();
+      await openMenu(
+        tester,
+        anchor: const Rect.fromLTWH(330, 144, 44, 44),
+        brightness: Brightness.dark,
+        backgroundColor: const Color(0xff6c3a22),
+        highContrast: highContrast,
+        lowEnd: !highContrast,
+        capture: capture,
+        onResult: (_) {},
+      );
+      final menu = find.byType(MornyeContextMenu);
+      final rect = tester.getRect(menu);
+      final pixels = await samplePixels(tester, capture, [
+        Offset(rect.left + 8, rect.center.dy),
+      ]);
+      final theme = MornyeTheme.build(Brightness.dark);
+      expect(pixels.single, theme.colorScheme.surfaceContainerHigh);
+      expect(
+        find.descendant(of: menu, matching: find.byType(BackdropFilter)),
+        findsNothing,
+      );
+      await tester.tap(find.text('Share'));
+      await tester.pumpAndSettle();
+      expect(menu, findsNothing);
       expect(tester.takeException(), isNull);
     });
   }

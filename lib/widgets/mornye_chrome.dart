@@ -130,6 +130,7 @@ class MornyeGlassPanel extends ConsumerWidget {
     this.lastInGroup = true,
     this.strongTint = false,
     this.tintOpacity,
+    this.tintColor,
     this.liquidGlass = false,
     this.blurEnabled = true,
   });
@@ -142,6 +143,7 @@ class MornyeGlassPanel extends ConsumerWidget {
     this.firstInGroup = true,
     this.lastInGroup = true,
     this.tintOpacity = 0.78,
+    this.tintColor,
     this.liquidGlass = false,
     this.blurEnabled = true,
   }) : strongTint = false;
@@ -152,6 +154,7 @@ class MornyeGlassPanel extends ConsumerWidget {
   final bool lastInGroup;
   final bool strongTint;
   final double? tintOpacity;
+  final Color? tintColor;
   final bool liquidGlass;
 
   /// Disable backdrop sampling for surfaces that scroll over a plain page.
@@ -168,6 +171,7 @@ class MornyeGlassPanel extends ConsumerWidget {
       return MornyeGlass(
         radius: radius,
         tintOpacity: tintOpacity,
+        tintColor: tintColor,
         blurEnabled: blur,
         child: Material(color: Colors.transparent, child: child),
       );
@@ -178,6 +182,7 @@ class MornyeGlassPanel extends ConsumerWidget {
       lastInGroup: lastInGroup,
       strongTint: strongTint,
       tintOpacity: tintOpacity,
+      tintColor: tintColor,
       blurEnabled: blur,
       child: Material(
         color: strongTint
@@ -326,9 +331,14 @@ class _MornyeGlassSurface extends StatelessWidget {
       left: rim,
       right: rim,
     );
+    // A translucent white tint must not become solid white behind light
+    // text when accessibility or the device profile disables blur.
+    final tint = useBlur
+        ? tintColor ?? scheme.surfaceContainerHigh
+        : scheme.surfaceContainerHigh;
     final surface = DecoratedBox(
       decoration: BoxDecoration(
-        color: (tintColor ?? scheme.surfaceContainerHigh).withValues(
+        color: tint.withValues(
           alpha: useBlur ? (tintOpacity ?? (strongTint ? 0.80 : 0.60)) : 1,
         ),
         gradient: useBlur && !dark && tintOpacity == null
@@ -359,6 +369,11 @@ class _MornyeGlassSurface extends StatelessWidget {
                 BoxShadow(
                   color: Colors.black.withValues(alpha: dark ? 0.2 : 0.06),
                   blurRadius: dark ? 18 : 10,
+                  // Clear glass keeps its tint; the shadow belongs outside
+                  // the panel, not underneath its translucent center.
+                  blurStyle: tintColor == null
+                      ? BlurStyle.normal
+                      : BlurStyle.outer,
                   offset: Offset(0, dark ? 4 : 2),
                 ),
               ]

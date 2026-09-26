@@ -2608,7 +2608,7 @@ void main() {
         final glass = tester.widget<MornyeGlassPanel>(
           find.byType(MornyeGlassPanel).last,
         );
-        expect(glass.liquidGlass, isTrue);
+        expect(glass.tintColor, Colors.white);
         expect(glass.tintOpacity, lessThan(0.5));
         expect(
           find.text('Hide Pronunciation'),
