@@ -8,8 +8,8 @@ import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/widgets/mini_player.dart';
 import 'package:spotiflac_android/widgets/mornye_chrome.dart';
 
-/// Only deliberate vertical drags change the chrome. Horizontal artwork rows,
-/// programmatic scrolling and edge bounce must not minimize the navigation.
+/// Deliberate vertical drags minimize the chrome until the page returns to its
+/// top. Horizontal rows, programmatic scrolling and bounce must not minimize it.
 class MornyeChromeController extends ValueNotifier<bool> {
   MornyeChromeController() : super(false);
 
@@ -30,16 +30,22 @@ class MornyeChromeController extends ValueNotifier<bool> {
         notification is ScrollEndNotification) {
       _distance = 0;
     }
-    if (notification is! ScrollUpdateNotification ||
-        notification.dragDetails == null) {
-      return false;
-    }
+    if (notification is! ScrollUpdateNotification) return false;
     final metrics = notification.metrics;
     if (metrics.pixels <= metrics.minScrollExtent + 12) {
+      // The Library list can reach its start while its outer header is still
+      // collapsed. Restore the tabs only when both scroll positions return.
+      final outer = notification.context
+          ?.findAncestorStateOfType<NestedScrollViewState>()
+          ?.outerController;
+      if (outer != null &&
+          outer.positions.any((p) => p.pixels > p.minScrollExtent + 12)) {
+        return false;
+      }
       expand();
       return false;
     }
-    if (metrics.outOfRange) return false;
+    if (metrics.outOfRange || notification.dragDetails == null) return false;
     final delta = notification.scrollDelta ?? 0;
     if (delta == 0) return false;
     if (_distance.sign != delta.sign) _distance = 0;
@@ -47,8 +53,6 @@ class MornyeChromeController extends ValueNotifier<bool> {
     if (_distance >= 28) {
       value = true;
       _distance = 0;
-    } else if (_distance <= -18) {
-      expand();
     }
     return false;
   }
@@ -199,13 +203,9 @@ class MornyeBottomBar extends ConsumerWidget {
                               width: size,
                               height: size,
                             ),
-                            color: Color.lerp(
-                              index == selectedIndex
-                                  ? scheme.primary
-                                  : inactiveIconColor,
-                              scheme.primary,
-                              amount,
-                            ),
+                            color: index == selectedIndex
+                                ? scheme.primary
+                                : inactiveIconColor,
                             icon: Opacity(
                               opacity: amount == 0 ? 0 : 1,
                               child: destinations[index].icon,

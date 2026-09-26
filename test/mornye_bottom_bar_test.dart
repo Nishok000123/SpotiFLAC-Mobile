@@ -136,8 +136,14 @@ void main() {
     ) async {
       final activeTab = ValueNotifier(0);
       addTearDown(activeTab.dispose);
-      await pumpShell(tester, blur: blur, activeTab: activeTab);
-      final primary = MornyeTheme.build(Brightness.light).colorScheme.primary;
+      await pumpShell(
+        tester,
+        blur: blur,
+        activeTab: activeTab,
+        brightness: Brightness.dark,
+      );
+      final scheme = MornyeTheme.build(Brightness.dark).colorScheme;
+      final primary = scheme.primary;
       Color? iconColor(String key, IconData data) {
         final icon = find.descendant(
           of: find.byKey(ValueKey(key)),
@@ -186,11 +192,11 @@ void main() {
             2 => Icons.grid_view,
             _ => Icons.home,
           }),
-          index == 3 ? isNot(primary) : primary,
+          index == 3 ? scheme.onSurface : primary,
         );
         expect(
           iconColor('mornye-compact-search', Icons.search),
-          index == 3 ? primary : isNot(primary),
+          index == 3 ? primary : scheme.onSurface,
         );
         final movingIcon = switch (index) {
           1 => Icons.music_note,
@@ -221,6 +227,14 @@ void main() {
           {index == 3 ? 0 : index, 3},
         );
         await tester.pumpAndSettle();
+        expect(
+          iconColor('mornye-compact-leading', movingIcon),
+          index == 3 ? scheme.onSurface : primary,
+        );
+        expect(
+          iconColor('mornye-compact-search', Icons.search),
+          index == 3 ? primary : scheme.onSurface,
+        );
         expect(
           tester.widget<IconButton>(leading).tooltip,
           index == 3 ? 'Home' : label,
@@ -608,7 +622,7 @@ void main() {
   }
 
   testWidgets(
-    'scrolling up expands; programmatic and horizontal movement do not collapse',
+    'compact tabs survive upward scrolling until the page returns to the top',
     (tester) async {
       await pumpShell(tester);
       scroll.jumpTo(500);
@@ -622,11 +636,14 @@ void main() {
       expect(chrome.value, isTrue);
       await tester.drag(find.byType(ListView), const Offset(0, 90));
       await tester.pumpAndSettle();
+      expect(chrome.value, isTrue);
+      await tester.drag(find.byType(ListView), const Offset(0, 900));
+      await tester.pumpAndSettle();
       expect(chrome.value, isFalse);
     },
   );
 
-  testWidgets('Library inner scrolling expands before the header returns', (
+  testWidgets('Library keeps compact tabs until the outer header returns', (
     tester,
   ) async {
     await pumpShell(
@@ -650,6 +667,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(chrome.value, isTrue);
     await tester.drag(find.byType(ListView), const Offset(0, 100));
+    await tester.pumpAndSettle();
+    expect(chrome.value, isTrue);
+    await tester.drag(find.byType(ListView), const Offset(0, 900));
     await tester.pumpAndSettle();
     expect(chrome.value, isFalse);
     expect(tester.takeException(), isNull);
