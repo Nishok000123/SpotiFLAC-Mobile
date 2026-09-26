@@ -1,5 +1,6 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 /// Shares one horizontal gesture between artwork and metadata. Only the
@@ -135,6 +136,8 @@ class PlayerTrackSwipeRegion extends StatelessWidget {
     if (state == null) return child;
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
+      // Keep the initial movement when a cover/title tap competes with a swipe.
+      dragStartBehavior: DragStartBehavior.down,
       onHorizontalDragStart: state._start,
       onHorizontalDragUpdate: state._update,
       onHorizontalDragEnd: state._finish,

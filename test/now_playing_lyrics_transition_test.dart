@@ -2027,7 +2027,7 @@ void main() {
 
   for (final lyrics in [true, false]) {
     testWidgets(
-      'motion cover moves into and expands out of ${lyrics ? 'lyrics' : 'queue'}',
+      'tapping the compact motion cover returns from ${lyrics ? 'lyrics' : 'queue'}',
       (tester) async {
         tester.view.padding = FakeViewPadding(top: 59, bottom: 34);
         tester.view.viewPadding = FakeViewPadding(top: 59, bottom: 34);
@@ -2075,7 +2075,7 @@ void main() {
         final header = find.byKey(const ValueKey('player-track-header'));
         expect(tester.getRect(header).left, compactBounds.right + 12);
         expect(tester.getRect(header).center.dy, compactBounds.center.dy);
-        await tester.tap(toggle);
+        await tester.tap(compact);
         await tester.pump();
         expect(tester.getRect(compact), compactBounds);
         previous = compactBounds;
@@ -2169,7 +2169,7 @@ void main() {
 
   for (final playing in [false, true]) {
     testWidgets(
-      'cover returns from lyrics to its resting size (playing: $playing)',
+      'tapping the lyrics cover returns to its resting size (playing: $playing)',
       (tester) async {
         await pumpNowPlaying(
           tester,
@@ -2190,7 +2190,7 @@ void main() {
         await tester.tap(lyrics);
         await tester.pumpAndSettle();
         final compactBounds = tester.getRect(compact);
-        await tester.tap(lyrics);
+        await tester.tap(compact);
         await tester.pump();
         expect(tester.getRect(artwork), compactBounds);
         var previous = compactBounds;

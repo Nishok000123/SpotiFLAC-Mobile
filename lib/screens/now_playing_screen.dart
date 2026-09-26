@@ -1395,21 +1395,36 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                                   ),
                                                 ),
                                               )
-                                            : _transitionArtwork(
-                                                _compactArtworkKey,
-                                                ClipRRect(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                  child: PlayerArtwork(
-                                                    artUri: mediaItem.artUri
-                                                        ?.toString(),
-                                                    colorScheme: colorScheme,
-                                                    cacheWidth:
-                                                        (360 *
-                                                                MediaQuery.devicePixelRatioOf(
-                                                                  context,
-                                                                ))
-                                                            .round(),
+                                            : Semantics(
+                                                button: true,
+                                                label: context
+                                                    .l10n
+                                                    .nowPlayingTabPlayer,
+                                                child: GestureDetector(
+                                                  behavior:
+                                                      HitTestBehavior.opaque,
+                                                  onTap: () =>
+                                                      _setMornyePage(0),
+                                                  child: _transitionArtwork(
+                                                    _compactArtworkKey,
+                                                    ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            12,
+                                                          ),
+                                                      child: PlayerArtwork(
+                                                        artUri: mediaItem.artUri
+                                                            ?.toString(),
+                                                        colorScheme:
+                                                            colorScheme,
+                                                        cacheWidth:
+                                                            (360 *
+                                                                    MediaQuery.devicePixelRatioOf(
+                                                                      context,
+                                                                    ))
+                                                                .round(),
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
                                               ),
