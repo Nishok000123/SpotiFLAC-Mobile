@@ -9,10 +9,15 @@ import 'package:spotiflac_android/theme/app_tokens.dart';
 /// in the Mornye project; keep this palette independent of wallpaper colors.
 @immutable
 class MornyeTheme extends ThemeExtension<MornyeTheme> {
-  const MornyeTheme({this.chromeSurface, this.accent = MornyeAccent.red});
+  const MornyeTheme({
+    this.chromeSurface,
+    this.accent = MornyeAccent.red,
+    this.useSystemFont = false,
+  });
 
   final Color? chromeSurface;
   final MornyeAccent accent;
+  final bool useSystemFont;
 
   /// A single translucent fill for controls inside an existing glass surface.
   static Color controlFill(BuildContext context, {bool enabled = true}) {
@@ -97,14 +102,21 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
   // many artists cannot grow the cache indefinitely. Platform is part of the
   // key because it controls fonts and route transitions.
   static final _themeCache =
-      <(TargetPlatform, Brightness, Color?, MornyeAccent), ThemeData>{};
+      <(TargetPlatform, Brightness, Color?, MornyeAccent, bool), ThemeData>{};
 
   static ThemeData build(
     Brightness brightness, {
     Color? chromeSurface,
     MornyeAccent accent = MornyeAccent.red,
+    bool useSystemFont = false,
   }) {
-    final key = (defaultTargetPlatform, brightness, chromeSurface, accent);
+    final key = (
+      defaultTargetPlatform,
+      brightness,
+      chromeSurface,
+      accent,
+      useSystemFont,
+    );
     final cached = _themeCache.remove(key);
     if (cached != null) {
       _themeCache[key] = cached;
@@ -114,6 +126,7 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
       brightness,
       chromeSurface: chromeSurface,
       selectedAccent: accent,
+      useSystemFont: useSystemFont,
     );
     if (_themeCache.length >= 16) {
       _themeCache.remove(_themeCache.keys.first);
@@ -134,6 +147,7 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
       brightness ?? theme.brightness,
       chromeSurface: chromeSurface,
       accent: preferences?.accent ?? MornyeAccent.red,
+      useSystemFont: preferences?.useSystemFont ?? false,
     );
   }
 
@@ -141,6 +155,7 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
     Brightness brightness, {
     Color? chromeSurface,
     required MornyeAccent selectedAccent,
+    required bool useSystemFont,
   }) {
     final dark = brightness == Brightness.dark;
     final accent = accentColor(selectedAccent, brightness);
@@ -179,8 +194,8 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
               : const Color(0xffc6c6c8),
           surfaceTint: Colors.transparent,
         );
-    // Apple platforms use the installed SF system faces. Inter is bundled for
-    // other platforms; Cupertino's family names alone cannot provide SF there.
+    // Cupertino's font proxies resolve to SF on Apple and the platform fallback
+    // elsewhere. Inter remains the default on other platforms unless opted out.
     final apple =
         defaultTargetPlatform == TargetPlatform.iOS ||
         defaultTargetPlatform == TargetPlatform.macOS;
@@ -188,12 +203,14 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
     final text = type.textStyle.copyWith(
       inherit: true,
       color: foreground,
-      fontFamily: apple ? type.textStyle.fontFamily : 'Inter',
+      fontFamily: apple || useSystemFont ? type.textStyle.fontFamily : 'Inter',
     );
     final display = type.navLargeTitleTextStyle.copyWith(
       inherit: true,
       color: foreground,
-      fontFamily: apple ? type.navLargeTitleTextStyle.fontFamily : 'Inter',
+      fontFamily: apple || useSystemFont
+          ? type.navLargeTitleTextStyle.fontFamily
+          : 'Inter',
     );
     // Supply complete styles: replacing a Material role with a bare TextStyle
     // loses its system family and retains Material tracking in other roles.
@@ -243,7 +260,11 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
       fontFamily: text.fontFamily,
       splashFactory: NoSplash.splashFactory,
       extensions: <ThemeExtension<dynamic>>[
-        MornyeTheme(chromeSurface: chromeSurface, accent: selectedAccent),
+        MornyeTheme(
+          chromeSurface: chromeSurface,
+          accent: selectedAccent,
+          useSystemFont: useSystemFont,
+        ),
         tokens,
       ],
     );
@@ -335,16 +356,23 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
   }
 
   @override
-  MornyeTheme copyWith({Color? chromeSurface, MornyeAccent? accent}) =>
-      MornyeTheme(
-        chromeSurface: chromeSurface ?? this.chromeSurface,
-        accent: accent ?? this.accent,
-      );
+  MornyeTheme copyWith({
+    Color? chromeSurface,
+    MornyeAccent? accent,
+    bool? useSystemFont,
+  }) => MornyeTheme(
+    chromeSurface: chromeSurface ?? this.chromeSurface,
+    accent: accent ?? this.accent,
+    useSystemFont: useSystemFont ?? this.useSystemFont,
+  );
 
   @override
   MornyeTheme lerp(covariant MornyeTheme? other, double t) => MornyeTheme(
     chromeSurface: Color.lerp(chromeSurface, other?.chromeSurface, t),
     accent: t < 0.5 ? accent : other?.accent ?? accent,
+    useSystemFont: t < 0.5
+        ? useSystemFont
+        : other?.useSystemFont ?? useSystemFont,
   );
 }
 

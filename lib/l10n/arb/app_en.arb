@@ -43,6 +43,8 @@
   "appearanceAccentBlue": "Blue",
   "appearanceAccentPurple": "Purple",
   "appearanceAccentPink": "Pink",
+  "appearanceUseSystemFont": "Use system font",
+  "appearanceUseSystemFontSubtitle": "Use your device’s default typeface for app text.",
   "@appearanceStyle": {
     "description": "Appearance section for choosing the app visual style"
   },

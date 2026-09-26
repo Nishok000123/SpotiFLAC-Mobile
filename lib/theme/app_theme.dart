@@ -28,7 +28,11 @@ class AppTheme {
         },
       );
 
-  static ThemeData light({ColorScheme? dynamicScheme, Color? seedColor}) {
+  static ThemeData light({
+    ColorScheme? dynamicScheme,
+    Color? seedColor,
+    bool useSystemFont = false,
+  }) {
     final scheme =
         dynamicScheme ??
         ColorScheme.fromSeed(
@@ -58,7 +62,7 @@ class AppTheme {
       chipTheme: _chipTheme(scheme),
       dividerTheme: _dividerTheme(scheme),
       extensions: const <ThemeExtension<dynamic>>[AppTokens.standard],
-      fontFamily: 'Google Sans Flex',
+      fontFamily: useSystemFont ? null : 'Google Sans Flex',
     );
   }
 
@@ -66,6 +70,7 @@ class AppTheme {
     ColorScheme? dynamicScheme,
     Color? seedColor,
     bool isAmoled = false,
+    bool useSystemFont = false,
   }) {
     final scheme =
         dynamicScheme ??
@@ -97,7 +102,7 @@ class AppTheme {
       chipTheme: _chipTheme(scheme),
       dividerTheme: _dividerTheme(scheme),
       extensions: const <ThemeExtension<dynamic>>[AppTokens.standard],
-      fontFamily: 'Google Sans Flex',
+      fontFamily: useSystemFont ? null : 'Google Sans Flex',
     );
   }
 

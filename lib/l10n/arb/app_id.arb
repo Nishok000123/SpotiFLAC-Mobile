@@ -43,6 +43,8 @@
   "appearanceAccentBlue": "Biru",
   "appearanceAccentPurple": "Ungu",
   "appearanceAccentPink": "Merah muda",
+  "appearanceUseSystemFont": "Gunakan font sistem",
+  "appearanceUseSystemFontSubtitle": "Gunakan jenis huruf bawaan perangkat untuk teks aplikasi.",
   "@appearanceStyle": {
     "description": "Bagian tampilan untuk memilih gaya visual aplikasi"
   },

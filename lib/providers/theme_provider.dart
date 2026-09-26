@@ -15,6 +15,7 @@ ThemeSettings loadBootstrapThemeSettings(SharedPreferences prefs) {
     useAmoled: prefs.getBool(kUseAmoledKey) ?? false,
     style: themeStyleFromString(prefs.getString(kThemeStyleKey)),
     mornyeAccent: mornyeAccentFromString(prefs.getString(kMornyeAccentKey)),
+    useSystemFont: prefs.getBool(kUseSystemFontKey) ?? false,
   );
 }
 
@@ -49,6 +50,7 @@ class ThemeNotifier extends Notifier<ThemeSettings> {
       await prefs.setBool(kUseAmoledKey, state.useAmoled);
       await prefs.setString(kThemeStyleKey, state.style.name);
       await prefs.setString(kMornyeAccentKey, state.mornyeAccent.name);
+      await prefs.setBool(kUseSystemFontKey, state.useSystemFont);
     } catch (e) {
       debugPrint('Error saving theme settings: $e');
     }
@@ -86,6 +88,11 @@ class ThemeNotifier extends Notifier<ThemeSettings> {
 
   Future<void> setMornyeAccent(MornyeAccent accent) async {
     state = state.copyWith(mornyeAccent: accent);
+    await _saveToStorage();
+  }
+
+  Future<void> setUseSystemFont(bool value) async {
+    state = state.copyWith(useSystemFont: value);
     await _saveToStorage();
   }
 }

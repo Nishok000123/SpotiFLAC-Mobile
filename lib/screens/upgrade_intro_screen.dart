@@ -325,13 +325,21 @@ class _ThemePicker extends ConsumerWidget {
             padding: const EdgeInsets.only(bottom: 16),
             child: Theme(
               data: style == AppThemeStyle.mornye
-                  ? MornyeTheme.build(brightness, accent: settings.mornyeAccent)
+                  ? MornyeTheme.build(
+                      brightness,
+                      accent: settings.mornyeAccent,
+                      useSystemFont: settings.useSystemFont,
+                    )
                   : brightness == Brightness.dark
                   ? AppTheme.dark(
                       seedColor: settings.seedColor,
                       isAmoled: settings.useAmoled,
+                      useSystemFont: settings.useSystemFont,
                     )
-                  : AppTheme.light(seedColor: settings.seedColor),
+                  : AppTheme.light(
+                      seedColor: settings.seedColor,
+                      useSystemFont: settings.useSystemFont,
+                    ),
               child: _ThemeOption(
                 style: style,
                 selected: settings.style == style,

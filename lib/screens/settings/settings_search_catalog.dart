@@ -115,6 +115,18 @@ class SettingsSearchCatalog {
           keywords: const ['black theme', 'oled'],
         ),
         SettingsSearchEntry(
+          icon: Icons.font_download_outlined,
+          title: l10n.appearanceUseSystemFont,
+          subtitle: l10n.appearanceUseSystemFontSubtitle,
+          keywords: const [
+            'font',
+            'typeface',
+            'typography',
+            'system font',
+            'huruf',
+          ],
+        ),
+        SettingsSearchEntry(
           icon: Icons.animation,
           title: l10n.appearanceHeroAnimations,
           subtitle: l10n.appearanceHeroAnimationsSubtitle,

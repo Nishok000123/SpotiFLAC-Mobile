@@ -1109,6 +1109,7 @@ void main() {
         useAmoled: true,
         style: AppThemeStyle.mornye,
         mornyeAccent: MornyeAccent.blue,
+        useSystemFont: true,
       );
 
       final decoded = ThemeSettings.fromJson(settings.toJson());
@@ -1122,6 +1123,9 @@ void main() {
       expect(decoded.style, AppThemeStyle.mornye);
       expect(decoded.mornyeAccent, MornyeAccent.blue);
       expect(copied.mornyeAccent, MornyeAccent.blue);
+      expect(decoded.useSystemFont, isTrue);
+      expect(copied.useSystemFont, isTrue);
+      expect(ThemeSettings.fromJson({}).useSystemFont, isFalse);
       expect(ThemeSettings.fromJson({}).mornyeAccent, MornyeAccent.red);
       expect(
         ThemeSettings.fromJson({kMornyeAccentKey: 'unknown'}).mornyeAccent,

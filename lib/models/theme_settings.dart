@@ -6,6 +6,7 @@ const String kSeedColorKey = 'seed_color';
 const String kUseAmoledKey = 'use_amoled';
 const String kThemeStyleKey = 'theme_style';
 const String kMornyeAccentKey = 'mornye_accent';
+const String kUseSystemFontKey = 'use_system_font';
 
 enum AppThemeStyle { material, mornye }
 
@@ -33,6 +34,7 @@ class ThemeSettings {
   final bool useAmoled;
   final AppThemeStyle style;
   final MornyeAccent mornyeAccent;
+  final bool useSystemFont;
 
   const ThemeSettings({
     this.themeMode = ThemeMode.system,
@@ -41,6 +43,7 @@ class ThemeSettings {
     this.useAmoled = false,
     this.style = AppThemeStyle.material,
     this.mornyeAccent = MornyeAccent.red,
+    this.useSystemFont = false,
   });
 
   Color get seedColor => Color(seedColorValue);
@@ -52,6 +55,7 @@ class ThemeSettings {
     bool? useAmoled,
     AppThemeStyle? style,
     MornyeAccent? mornyeAccent,
+    bool? useSystemFont,
   }) {
     return ThemeSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -60,6 +64,7 @@ class ThemeSettings {
       useAmoled: useAmoled ?? this.useAmoled,
       style: style ?? this.style,
       mornyeAccent: mornyeAccent ?? this.mornyeAccent,
+      useSystemFont: useSystemFont ?? this.useSystemFont,
     );
   }
 
@@ -70,6 +75,7 @@ class ThemeSettings {
     kUseAmoledKey: useAmoled,
     kThemeStyleKey: style.name,
     kMornyeAccentKey: mornyeAccent.name,
+    kUseSystemFontKey: useSystemFont,
   };
 
   factory ThemeSettings.fromJson(Map<String, dynamic> json) {
@@ -80,6 +86,7 @@ class ThemeSettings {
       useAmoled: json[kUseAmoledKey] as bool? ?? false,
       style: themeStyleFromString(json[kThemeStyleKey] as String?),
       mornyeAccent: mornyeAccentFromString(json[kMornyeAccentKey] as String?),
+      useSystemFont: json[kUseSystemFontKey] as bool? ?? false,
     );
   }
 
@@ -92,7 +99,8 @@ class ThemeSettings {
         other.seedColorValue == seedColorValue &&
         other.useAmoled == useAmoled &&
         other.style == style &&
-        other.mornyeAccent == mornyeAccent;
+        other.mornyeAccent == mornyeAccent &&
+        other.useSystemFont == useSystemFont;
   }
 
   @override
@@ -102,7 +110,8 @@ class ThemeSettings {
       seedColorValue.hashCode ^
       useAmoled.hashCode ^
       style.hashCode ^
-      mornyeAccent.hashCode;
+      mornyeAccent.hashCode ^
+      useSystemFont.hashCode;
 }
 
 ThemeMode themeModeFromString(String? value) {

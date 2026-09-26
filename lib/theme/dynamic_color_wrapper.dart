@@ -19,8 +19,16 @@ class DynamicColorWrapper extends ConsumerWidget {
 
     if (themeSettings.style == AppThemeStyle.mornye) {
       return builder(
-        MornyeTheme.build(Brightness.light, accent: themeSettings.mornyeAccent),
-        MornyeTheme.build(Brightness.dark, accent: themeSettings.mornyeAccent),
+        MornyeTheme.build(
+          Brightness.light,
+          accent: themeSettings.mornyeAccent,
+          useSystemFont: themeSettings.useSystemFont,
+        ),
+        MornyeTheme.build(
+          Brightness.dark,
+          accent: themeSettings.mornyeAccent,
+          useSystemFont: themeSettings.useSystemFont,
+        ),
         themeSettings.themeMode,
       );
     }
@@ -51,10 +59,14 @@ class DynamicColorWrapper extends ConsumerWidget {
           darkScheme = _applyAmoledColors(darkScheme);
         }
 
-        final lightTheme = AppTheme.light(dynamicScheme: lightScheme);
+        final lightTheme = AppTheme.light(
+          dynamicScheme: lightScheme,
+          useSystemFont: themeSettings.useSystemFont,
+        );
         final darkTheme = AppTheme.dark(
           dynamicScheme: darkScheme,
           isAmoled: themeSettings.useAmoled,
+          useSystemFont: themeSettings.useSystemFont,
         );
 
         return builder(lightTheme, darkTheme, themeSettings.themeMode);

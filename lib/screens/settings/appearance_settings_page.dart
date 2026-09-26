@@ -178,6 +178,15 @@ class AppearanceSettingsPage extends ConsumerWidget {
               child: SettingsGroup(
                 children: [
                   SettingsSwitchItem(
+                    icon: Icons.font_download_outlined,
+                    title: context.l10n.appearanceUseSystemFont,
+                    subtitle: context.l10n.appearanceUseSystemFontSubtitle,
+                    value: themeSettings.useSystemFont,
+                    onChanged: ref
+                        .read(themeProvider.notifier)
+                        .setUseSystemFont,
+                  ),
+                  SettingsSwitchItem(
                     icon: Icons.animation,
                     title: context.l10n.appearanceHeroAnimations,
                     subtitle: context.l10n.appearanceHeroAnimationsSubtitle,
