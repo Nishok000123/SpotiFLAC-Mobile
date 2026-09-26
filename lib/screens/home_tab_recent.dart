@@ -2,12 +2,43 @@ part of 'home_tab.dart';
 
 extension _HomeTabRecentUI on _HomeTabState {
   Widget _buildRecentAccess(_RecentAccessView view, ColorScheme colorScheme) {
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverToBoxAdapter(child: _buildRecentAccessHeader(view, colorScheme)),
+        if (view.uniqueItems.isNotEmpty)
+          SliverPadding(
+            padding:
+                const EdgeInsets.fromLTRB(16, 0, 16, 8) +
+                EdgeInsets.symmetric(horizontal: wideListInset(context)),
+            sliver: SliverList.builder(
+              itemCount: view.uniqueItems.length,
+              itemBuilder: (context, index) {
+                final item = view.uniqueItems[index];
+                return KeyedSubtree(
+                  key: ValueKey('${item.type.name}:${item.id}'),
+                  child: _buildRecentAccessItem(
+                    item,
+                    colorScheme,
+                    view.downloadFilePathByRecentKey,
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildRecentAccessHeader(
+    _RecentAccessView view,
+    ColorScheme colorScheme,
+  ) {
     final uniqueItems = view.uniqueItems;
     final hasHiddenDownloads = view.hasHiddenDownloads;
 
     return Padding(
       padding:
-          const EdgeInsets.fromLTRB(16, 8, 16, 8) +
+          EdgeInsets.fromLTRB(16, 8, 16, uniqueItems.isEmpty ? 8 : 0) +
           EdgeInsets.symmetric(horizontal: wideListInset(context)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,14 +129,6 @@ extension _HomeTabRecentUI on _HomeTabState {
                     ],
                   ],
                 ),
-              ),
-            )
-          else
-            ...uniqueItems.map(
-              (item) => _buildRecentAccessItem(
-                item,
-                colorScheme,
-                view.downloadFilePathByRecentKey,
               ),
             ),
         ],

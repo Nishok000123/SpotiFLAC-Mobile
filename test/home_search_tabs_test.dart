@@ -4,14 +4,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:spotiflac_android/l10n/app_localizations.dart';
 import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/models/track.dart';
-import 'package:spotiflac_android/providers/download_history_provider.dart';
+import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/providers/explore_provider.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
+import 'package:spotiflac_android/providers/music_player_provider.dart';
 import 'package:spotiflac_android/providers/recent_access_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/track_provider.dart';
 import 'package:spotiflac_android/screens/home_tab.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
+import 'package:spotiflac_android/widgets/app_search_field.dart';
+import 'package:spotiflac_android/widgets/mornye_chrome.dart';
 
 void main() {
   testWidgets(
@@ -124,6 +127,128 @@ void main() {
     expect(find.text('Found artist'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  for (final (brightness, itemType) in [
+    for (final brightness in Brightness.values)
+      for (final itemType in ['artist', 'track']) (brightness, itemType),
+  ]) {
+    testWidgets(
+      'Search keeps field glass and scrolls $itemType results without blur in $brightness',
+      (tester) async {
+        tester.view.physicalSize = const Size(430, 650);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final search = _Search(resultCount: 120, itemType: itemType);
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              settingsProvider.overrideWith(_Settings.new),
+              extensionProvider.overrideWith(_Extensions.new),
+              exploreProvider.overrideWith(_Explore.new),
+              downloadHistoryProvider.overrideWith(_History.new),
+              downloadHistoryBatchExistsProvider.overrideWith(
+                (ref, request) async => <String>{},
+              ),
+              downloadQueueLookupProvider.overrideWith(
+                (ref) => DownloadQueueState().lookup,
+              ),
+              currentMediaItemProvider.overrideWith(
+                (ref) => Stream.value(null),
+              ),
+              recentAccessProvider.overrideWith(_Recent.new),
+              trackProvider.overrideWith(() => search),
+            ],
+            child: MaterialApp(
+              theme: MornyeTheme.build(brightness),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: const HomeTab(mode: HomeTabMode.search),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: find.byType(AppSearchField),
+            matching: find.byType(BackdropFilter),
+          ),
+          findsOneWidget,
+        );
+        await tester.enterText(find.byType(TextField), 'Example');
+        await tester.testTextInput.receiveAction(TextInputAction.search);
+        await tester.pumpAndSettle();
+        expect(find.text('Found $itemType 0'), findsOneWidget);
+        expect(find.text('Found $itemType 119'), findsNothing);
+        expect(
+          find.descendant(
+            of: find.ancestor(
+              of: find.text('Found $itemType 0'),
+              matching: find.byType(MornyeGlassPanel),
+            ),
+            matching: find.byType(BackdropFilter),
+          ),
+          findsNothing,
+        );
+
+        await tester.scrollUntilVisible(
+          find.text('Found $itemType 119'),
+          500,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Found $itemType 119').hitTestable(), findsOneWidget);
+        expect(search._requests, 1);
+        expect(
+          find.descendant(
+            of: find.ancestor(
+              of: find.text('Found $itemType 119'),
+              matching: find.byType(MornyeGlassPanel),
+            ),
+            matching: find.byType(BackdropFilter),
+          ),
+          findsNothing,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets('Search builds recent items as they enter the viewport', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(_Settings.new),
+          extensionProvider.overrideWith(_Extensions.new),
+          exploreProvider.overrideWith(_Explore.new),
+          downloadHistoryProvider.overrideWith(_History.new),
+          recentAccessProvider.overrideWith(() => _Recent(itemCount: 10)),
+          trackProvider.overrideWith(_Search.new),
+        ],
+        child: MaterialApp(
+          theme: MornyeTheme.build(Brightness.dark),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const HomeTab(mode: HomeTabMode.search),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Recent artist 0'), findsOneWidget);
+    expect(find.text('Recent artist 9'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text('Recent artist 9'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Recent artist 9').hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _Tabs extends StatefulWidget {
@@ -211,25 +336,38 @@ class _History extends DownloadHistoryNotifier {
 }
 
 class _Recent extends RecentAccessNotifier {
+  _Recent({this.itemCount = 1});
+
+  final int itemCount;
+
   @override
   RecentAccessState build() => RecentAccessState(
     isLoaded: true,
-    items: [
-      RecentAccessItem(
-        id: 'recent',
-        name: 'Recently visited artist',
+    items: List.generate(
+      itemCount,
+      (index) => RecentAccessItem(
+        id: 'recent-$index',
+        name: itemCount == 1
+            ? 'Recently visited artist'
+            : 'Recent artist $index',
         type: RecentAccessType.artist,
-        accessedAt: DateTime(2026),
+        accessedAt: DateTime(2026, 1, itemCount - index),
         providerId: 'example',
       ),
-    ],
+    ),
   );
 }
 
 class _Search extends TrackNotifier {
-  _Search({bool failFirst = false}) : _failFirst = failFirst;
+  _Search({
+    bool failFirst = false,
+    this.resultCount = 1,
+    this.itemType = 'artist',
+  }) : _failFirst = failFirst;
 
   final bool _failFirst;
+  final int resultCount;
+  final String itemType;
   int _requests = 0;
 
   @override
@@ -248,20 +386,21 @@ class _Search extends TrackNotifier {
       );
       return;
     }
-    state = const TrackState(
+    state = TrackState(
       hasSearchText: true,
       searchExtensionId: 'example',
-      tracks: [
-        Track(
-          id: 'artist',
-          name: 'Found artist',
+      tracks: List.generate(
+        resultCount,
+        (index) => Track(
+          id: '$itemType-$index',
+          name: resultCount == 1 ? 'Found $itemType' : 'Found $itemType $index',
           artistName: '',
           albumName: '',
           duration: 0,
-          itemType: 'artist',
+          itemType: itemType,
           source: 'example',
         ),
-      ],
+      ),
     );
   }
 }

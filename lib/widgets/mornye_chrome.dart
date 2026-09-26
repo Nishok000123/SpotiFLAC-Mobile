@@ -131,6 +131,7 @@ class MornyeGlassPanel extends ConsumerWidget {
     this.strongTint = false,
     this.tintOpacity,
     this.liquidGlass = false,
+    this.blurEnabled = true,
   });
 
   /// Shared glass material for confirmation dialogs and floating sheets.
@@ -142,6 +143,7 @@ class MornyeGlassPanel extends ConsumerWidget {
     this.lastInGroup = true,
     this.tintOpacity = 0.78,
     this.liquidGlass = false,
+    this.blurEnabled = true,
   }) : strongTint = false;
 
   final Widget child;
@@ -152,9 +154,13 @@ class MornyeGlassPanel extends ConsumerWidget {
   final double? tintOpacity;
   final bool liquidGlass;
 
+  /// Disable backdrop sampling for surfaces that scroll over a plain page.
+  final bool blurEnabled;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final blur =
+        blurEnabled &&
         !MediaQuery.highContrastOf(context) &&
         (!ref.watch(lowEndDeviceProvider) ||
             ref.watch(backdropBlurEnabledProvider));

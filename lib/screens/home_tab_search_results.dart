@@ -299,6 +299,7 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
   }
 
   List<Widget> _buildSearchResults({
+    required WidgetRef resultsRef,
     required List<Track> tracks,
     required bool isLoading,
     required String? error,
@@ -418,7 +419,7 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
     if (sortedTracks.isNotEmpty) {
       _historySnapshot.update(sortedTracks);
       final historyLookups = _historySnapshot.lookups;
-      final existingHistoryKeys = ref.watch(
+      final existingHistoryKeys = resultsRef.watch(
         downloadHistoryVisibleBatchExistsProvider(_historySnapshot.request),
       );
       slivers.addAll(
@@ -540,6 +541,7 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: MornyeGlassPanel.overlay(
+                  blurEnabled: false,
                   radius: 24,
                   firstInGroup: isFirst,
                   lastInGroup: isLast,

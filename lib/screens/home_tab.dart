@@ -765,22 +765,25 @@ class _HomeTabState extends ConsumerState<HomeTab>
       ),
     );
 
-    final hasExploreContent = ref.watch(
-      exploreProvider.select((s) => s.sections.isNotEmpty),
-    );
-    final exploreLoading = ref.watch(
-      exploreProvider.select((s) => s.isLoading),
-    );
-    final hasHomeFeedExtension = ref.watch(
-      extensionProvider.select(
-        (s) => s.extensions.any((e) => e.enabled && e.hasHomeFeed),
-      ),
-    );
-    final homeFeedDisabled = ref.watch(
-      settingsProvider.select(
-        (s) => s.homeFeedProvider == AppSettings.homeFeedProviderOff,
-      ),
-    );
+    final hasExploreContent =
+        _showsHome &&
+        ref.watch(exploreProvider.select((s) => s.sections.isNotEmpty));
+    final exploreLoading =
+        _showsHome && ref.watch(exploreProvider.select((s) => s.isLoading));
+    final hasHomeFeedExtension =
+        _showsHome &&
+        ref.watch(
+          extensionProvider.select(
+            (s) => s.extensions.any((e) => e.enabled && e.hasHomeFeed),
+          ),
+        );
+    final homeFeedDisabled =
+        _showsHome &&
+        ref.watch(
+          settingsProvider.select(
+            (s) => s.homeFeedProvider == AppSettings.homeFeedProviderOff,
+          ),
+        );
 
     final colorScheme = Theme.of(context).colorScheme;
     final searchText = _showsSearch ? _urlController.text.trim() : '';
@@ -804,9 +807,11 @@ class _HomeTabState extends ConsumerState<HomeTab>
         _showsSearch &&
         ref.watch(trackProvider.select((s) => s.isShowingRecentAccess));
     final screenHeight = MediaQuery.sizeOf(context).height;
-    final hasHistoryItems = ref.watch(
-      _homeHistoryPreviewProvider.select((items) => items.isNotEmpty),
-    );
+    final hasHistoryItems =
+        _showsHome &&
+        ref.watch(
+          _homeHistoryPreviewProvider.select((items) => items.isNotEmpty),
+        );
 
     final recentModeRequested =
         widget.mode == HomeTabMode.search ||
@@ -982,9 +987,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
                     final recentAccessView = ref.watch(
                       recentAccessViewProvider,
                     );
-                    return SliverToBoxAdapter(
-                      child: _buildRecentAccess(recentAccessView, colorScheme),
-                    );
+                    return _buildRecentAccess(recentAccessView, colorScheme);
                   },
                 ),
 
@@ -1113,6 +1116,7 @@ class _HomeTabState extends ConsumerState<HomeTab>
 
                     return SliverMainAxisGroup(
                       slivers: _buildSearchResults(
+                        resultsRef: ref,
                         tracks: tracks,
                         isLoading: isLoading,
                         error: error,

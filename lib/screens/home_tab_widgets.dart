@@ -219,9 +219,9 @@ class _TrackItemWithStatus extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    final queueItem = ref.watch(
+    final isQueued = ref.watch(
       downloadQueueLookupProvider.select(
-        (lookup) => lookup.byTrackId[track.id],
+        (lookup) => lookup.byTrackId.containsKey(track.id),
       ),
     );
 
@@ -249,7 +249,6 @@ class _TrackItemWithStatus extends ConsumerWidget {
       thumbHeight = thumbSize.$2;
     }
 
-    final isQueued = queueItem != null;
     final hasCover = track.coverUrl?.isNotEmpty == true;
 
     return Column(
