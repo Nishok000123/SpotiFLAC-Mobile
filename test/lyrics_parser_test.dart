@@ -47,7 +47,35 @@ ${_tag('translation', 2000, 'Second translation')}
     expect(backing.isBackground, isTrue);
     expect(backing.time.inMilliseconds, 2000);
     expect(backing.end?.inMilliseconds, 4000);
+    expect(backing.vocalGroup, lyrics.lines.first.vocalGroup);
   });
+
+  test(
+    'backing groups survive sorting, offsets and repeated backing parts',
+    () {
+      final lyrics = LyricsParser.parse('''
+[offset:100]
+[00:01.00]v2:<00:01.00>Lead<00:06.00>
+[bg:<00:04.00>Echo<00:05.00>]
+[bg:[00:05.00]<00:05.00>Again<00:06.00>]
+[00:03.00]v1:<00:03.00>Other lead<00:06.00>
+''');
+      expect(lyrics.lines.map((line) => line.text), [
+        'Lead',
+        'Other lead',
+        'Echo',
+        'Again',
+      ]);
+      final lead = lyrics.lines.first;
+      expect(lyrics.lines[1].vocalGroup, isNot(lead.vocalGroup));
+      for (final backing in lyrics.lines.skip(2)) {
+        expect(backing.vocalGroup, lead.vocalGroup);
+        expect(backing.voice?.id, 'v2');
+        expect(backing.isBackground, isTrue);
+      }
+      expect(lyrics.lines[2].time.inMilliseconds, 3900);
+    },
+  );
 
   test('TTML resolves inherited voices and explicit groups by namespace', () {
     final lyrics = LyricsParser.parse('''
@@ -94,6 +122,8 @@ ${_tag('translation', 2000, 'Second translation')}
       expect(lyrics.lines.map((line) => line.end?.inSeconds), [3, 4, 3]);
       expect(lyrics.lines.last.isBackground, isTrue);
       expect(lyrics.lines.last.voice?.id, 'v1');
+      expect(lyrics.lines.last.vocalGroup, lyrics.lines.first.vocalGroup);
+      expect(lyrics.lines[1].vocalGroup, isNot(lyrics.lines.first.vocalGroup));
     },
   );
 

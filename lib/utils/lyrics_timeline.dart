@@ -1,5 +1,57 @@
 import 'package:spotiflac_android/utils/lyrics_parser.dart';
 
+/// Visual order is separate from the chronological timeline: a backing part
+/// stays directly under its lead, including when another singer starts first.
+class LyricDisplayLayout {
+  final List<int> lineOrder;
+  final List<int> rowForLine;
+  final List<int> leadForLine;
+  final List<int> focusForLine;
+
+  LyricDisplayLayout(List<LyricLine> lines)
+    : lineOrder = [],
+      rowForLine = List.filled(lines.length, 0),
+      leadForLine = List.generate(lines.length, (index) => index),
+      focusForLine = List.filled(lines.length, 0) {
+    final leads = {
+      for (var i = 0; i < lines.length; i++)
+        if (!lines[i].isBackground && lines[i].vocalGroup != null)
+          lines[i].vocalGroup!: i,
+    };
+    final backing = <int, List<int>>{};
+    int? previousLead;
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      if (!line.isBackground) {
+        if (line.text.isNotEmpty) previousLead = i;
+        continue;
+      }
+      final lead = line.vocalGroup == null
+          ? previousLead
+          : leads[line.vocalGroup];
+      if (lead == null) continue;
+      leadForLine[i] = lead;
+      backing.putIfAbsent(lead, () => []).add(i);
+    }
+    for (var i = 0; i < lines.length; i++) {
+      if (leadForLine[i] != i) continue;
+      lineOrder.add(i);
+      lineOrder.addAll(backing[i] ?? const []);
+    }
+    for (var row = 0; row < lineOrder.length; row++) {
+      rowForLine[lineOrder[row]] = row;
+    }
+    var latestLead = 0;
+    for (var i = 0; i < lines.length; i++) {
+      if (!lines[i].isBackground) latestLead = i;
+      // A delayed echo must not scroll backwards after the next lead starts.
+      focusForLine[i] = leadForLine[i] > latestLead
+          ? leadForLine[i]
+          : latestLead;
+    }
+  }
+}
+
 /// Keep overlapping vocal parts lit until their explicit end. Untimed lines
 /// retain the normal single-line behavior instead of guessing a vocal length.
 Set<int> activeLyricIndices(

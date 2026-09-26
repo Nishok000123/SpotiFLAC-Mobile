@@ -3,6 +3,61 @@ import 'package:spotiflac_android/utils/lyrics_parser.dart';
 import 'package:spotiflac_android/utils/lyrics_timeline.dart';
 
 void main() {
+  test('backing stays under its lead without changing the timing order', () {
+    final lines = LyricsParser.parse('''
+[00:01.00]v1:<00:01.00>Lead<00:06.00>
+[bg:<00:04.00>Echo<00:06.00>]
+[bg:<00:05.00>Again<00:06.00>]
+[00:03.00]v2:<00:03.00>Guest<00:06.00>
+''').lines;
+    final layout = LyricDisplayLayout(lines);
+    expect(lines.map((line) => line.text), ['Lead', 'Guest', 'Echo', 'Again']);
+    expect(layout.lineOrder.map((i) => lines[i].text), [
+      'Lead',
+      'Echo',
+      'Again',
+      'Guest',
+    ]);
+    expect(layout.rowForLine, [0, 3, 1, 2]);
+    expect(layout.leadForLine, [0, 1, 0, 0]);
+    expect(layout.focusForLine, [0, 1, 1, 1]);
+    expect(activeLyricIndices(lines, const Duration(seconds: 5), 3), {
+      0,
+      1,
+      2,
+      3,
+    });
+  });
+
+  test('background onset keeps focus on the lead and gaps remain separate', () {
+    final lines = lyricsTimelineWithGaps(
+      LyricsParser.parse('''
+[00:05.00]v2:<00:05.00>Lead<00:10.00>
+[bg:<00:06.00>Echo<00:11.00>]
+[00:15.00]Next
+''').lines,
+    );
+    final layout = LyricDisplayLayout(lines);
+    expect(lines.map((line) => line.text), ['', 'Lead', 'Echo', '', 'Next']);
+    expect(layout.lineOrder, [0, 1, 2, 3, 4]);
+    expect(layout.focusForLine, [0, 1, 1, 3, 4]);
+    expect(lines[3].time, const Duration(seconds: 11));
+  });
+
+  test(
+    'a backing pickup can start before the lead without losing its parent',
+    () {
+      final lines = LyricsParser.parse('''
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:m="http://www.w3.org/ns/ttml#metadata">
+<body><p begin="1s" end="6s" m:agent="v2"><span m:role="x-bg" begin="1s" end="5s">Pickup</span><span begin="2s" end="6s">Lead</span></p></body></tt>
+''').lines;
+      final layout = LyricDisplayLayout(lines);
+      expect(lines.map((line) => line.text), ['Pickup', 'Lead']);
+      expect(layout.lineOrder, [1, 0]);
+      expect(layout.focusForLine, [1, 1]);
+    },
+  );
+
   test(
     'backing vocals do not dim an unlabelled lead that is still singing',
     () {

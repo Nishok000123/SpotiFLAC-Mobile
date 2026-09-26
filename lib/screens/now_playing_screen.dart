@@ -2903,6 +2903,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   Timer? _lineBoundaryTimer;
   Timer? _userScrollIdleTimer;
   late List<LyricLine> _lines;
+  late LyricDisplayLayout _displayLayout;
   late List<GlobalKey> _lineKeys;
   int _active = -1;
   Set<int> _activeLines = {};
@@ -2968,6 +2969,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     _lineExtents = null;
     _lineLayoutKey = null;
     _lines = lyricsTimelineWithGaps(widget.lyrics.lines);
+    _displayLayout = LyricDisplayLayout(_lines);
     _lineKeys = List<GlobalKey>.generate(
       _lines.length,
       (index) => GlobalKey(debugLabel: 'lyric-line-$index'),
@@ -3067,6 +3069,9 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     if (!mounted) return;
     final activeLines = activeLyricIndices(_lines, position, active);
     final indexChanged = active != _active;
+    final previousFocus = _active < 0
+        ? -1
+        : _displayLayout.focusForLine[_active];
     if (!indexChanged &&
         activeLines.length == _activeLines.length &&
         activeLines.containsAll(_activeLines)) {
@@ -3077,7 +3082,10 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       _activeLines = activeLines;
       _activeTransitionPosition = position;
     });
-    if (!indexChanged) return;
+    if (!indexChanged ||
+        (active >= 0 && _displayLayout.focusForLine[active] == previousFocus)) {
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && active == _active) unawaited(_maybeAutoScroll(active));
     });
@@ -3136,11 +3144,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   }
 
   void _measureMornyeLines(double width) {
-    final style = Theme.of(context).textTheme.headlineSmall?.copyWith(
-      height: 1.3,
-      fontSize: _mornyeLyricFontSize,
-      fontWeight: FontWeight.bold,
-    );
+    final style = _mornyeLyricStyle(context);
     final scaler = MediaQuery.textScalerOf(context);
     final direction = Directionality.of(context);
     final locale = Localizations.maybeLocaleOf(context);
@@ -3153,16 +3157,20 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       locale: locale,
     );
     final measurements = <(double, double, double)>[];
-    final layouts = <LyricPronunciationLayout?>[];
-    for (final line in _lines) {
+    final layouts = List<LyricPronunciationLayout?>.filled(_lines.length, null);
+    for (final index in _displayLayout.lineOrder) {
+      final line = _lines[index];
       if (line.text.isEmpty) {
         measurements.add((56, 0, 0));
-        layouts.add(null);
         continue;
       }
-      painter.text = TextSpan(text: line.text, style: style);
+      painter.text = TextSpan(
+        text: line.text,
+        style: _mornyeLyricStyle(context, background: line.isBackground),
+      );
       painter.layout(maxWidth: width);
-      var height = painter.height + 32;
+      final padding = _linePadding(index).vertical;
+      var height = painter.height + padding;
       var pronunciationHeight = 0.0;
       var translationHeight = 0.0;
       LyricPronunciationLayout? pronunciationLayout;
@@ -3178,7 +3186,10 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
           pronunciationHeight = 6 + painter.height;
           final aligned = LyricPronunciationLayout.measure(
             line: line,
-            primaryStyle: _mornyeLyricStyle(context),
+            primaryStyle: _mornyeLyricStyle(
+              context,
+              background: line.isBackground,
+            ),
             pronunciationStyle: style,
             maxWidth: width,
             textScaler: scaler,
@@ -3187,13 +3198,13 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
           );
           if (aligned != null) {
             pronunciationLayout = aligned;
-            height = aligned.primaryHeight + 32;
+            height = aligned.primaryHeight + padding;
             pronunciationHeight = aligned.pronunciationHeight;
           }
         }
       }
       measurements.add((height, pronunciationHeight, translationHeight));
-      layouts.add(pronunciationLayout);
+      layouts[index] = pronunciationLayout;
     }
     _lineMeasurements = measurements;
     _pronunciationLayouts = layouts;
@@ -3204,16 +3215,21 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     // A short intro may have no countdown row. Still return to the first
     // upcoming lyric when the user scrubs back before any vocals.
     if (index < 0 && widget.seekPreview.value != null) index = 0;
-    if (_userScrolling || index < 0 || !_scroll.hasClients) return;
+    if (_userScrolling ||
+        index < 0 ||
+        index >= _lines.length ||
+        !_scroll.hasClients) {
+      return;
+    }
+    index = _displayLayout.focusForLine[index];
+    final row = _displayLayout.rowForLine[index];
     final duration = immediate || MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : Duration(milliseconds: widget.seekPreview.value != null ? 220 : 380);
     final extents = _lineExtents;
-    if (context.isMornye && extents != null && index < extents.length) {
+    if (context.isMornye && extents != null && row < extents.length) {
       final position = _scroll.position;
-      final target = extents
-          .take(index)
-          .fold(0.0, (sum, extent) => sum + extent);
+      final target = extents.take(row).fold(0.0, (sum, extent) => sum + extent);
       final offset = target.clamp(
         position.minScrollExtent,
         position.maxScrollExtent,
@@ -3245,7 +3261,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
 
     final position = _scroll.position;
     final target = syncedLyricsEstimatedOffset(
-      index: index,
+      index: row,
       estimatedLineExtent: _estimatedLyricExtent,
     );
     final clamped = target.clamp(
@@ -3263,7 +3279,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     }
     if (!mounted ||
         _userScrolling ||
-        index != _active ||
+        (_active >= 0 && index != _displayLayout.focusForLine[_active]) ||
         index >= _lineKeys.length) {
       return;
     }
@@ -3345,7 +3361,10 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                 _layoutVisibility != visibility &&
                 previousExtents.length == _lineExtents!.length &&
                 _scroll.hasClients) {
-              var anchor = _active.clamp(0, previousExtents.length);
+              var anchor = _active < 0
+                  ? 0
+                  : _displayLayout.rowForLine[_displayLayout
+                        .focusForLine[_active]];
               if (_userScrolling) {
                 anchor = 0;
                 var extent = 0.0;
@@ -3398,10 +3417,12 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                 : null,
             padding: EdgeInsets.fromLTRB(24, topPadding, 24, bottomPadding),
             itemCount: lines.length + (widget.credits == null ? 0 : 1),
-            itemBuilder: (context, index) {
-              if (index == lines.length) return widget.credits!;
+            itemBuilder: (context, row) {
+              if (row == lines.length) return widget.credits!;
+              final index = _displayLayout.lineOrder[row];
               final line = lines[index];
-              final textAlign = _lyricTextAlign(context, line);
+              final leadIndex = _displayLayout.leadForLine[index];
+              final textAlign = _lyricTextAlign(context, lines[leadIndex]);
               final isActive = _activeLines.contains(index);
               final isPast = index < active;
 
@@ -3473,7 +3494,11 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                               : Theme.of(context).textTheme.titleLarge)
                           ?.copyWith(
                             height: context.tokens.lyricsLineHeight,
-                            fontSize: mornye ? _mornyeLyricFontSize : null,
+                            fontSize: line.isBackground
+                                ? (mornye ? _mornyeLyricFontSize * 0.68 : 18)
+                                : mornye
+                                ? _mornyeLyricFontSize
+                                : null,
                             fontWeight: mornye || isActive
                                 ? FontWeight.bold
                                 : FontWeight.w500,
@@ -3503,10 +3528,17 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                 ),
               );
               if (mornye) {
-                final distance = (index - active).abs();
+                final activeLead = active < 0
+                    ? -1
+                    : _displayLayout.focusForLine[active];
+                final distance = activeLead < 0
+                    ? row + 1
+                    : (_displayLayout.rowForLine[leadIndex] -
+                              _displayLayout.rowForLine[activeLead])
+                          .abs();
                 // Nearby lines need visible defocus at the larger lyric size;
                 // progressively soften lines further from the current one.
-                final sigma = !blurLyrics || isActive
+                final sigma = !blurLyrics || isActive || leadIndex == activeLead
                     ? 0.0
                     : active < 0
                     ? 4.8
@@ -3529,9 +3561,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
 
               return Padding(
                 key: _lineKeys[index],
-                padding: EdgeInsets.symmetric(
-                  vertical: context.tokens.lyricsLinePaddingV,
-                ),
+                padding: _linePadding(index),
                 child: GestureDetector(
                   onTap: () =>
                       ref.read(musicPlayerControllerProvider).seek(line.time),
@@ -3554,6 +3584,20 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
           );
         },
       ),
+    );
+  }
+
+  EdgeInsets _linePadding(int index) {
+    final row = _displayLayout.rowForLine[index];
+    final order = _displayLayout.lineOrder;
+    final hasBackingBelow =
+        row + 1 < order.length &&
+        _lines[order[row + 1]].isBackground &&
+        _displayLayout.leadForLine[order[row + 1]] ==
+            _displayLayout.leadForLine[index];
+    return EdgeInsets.only(
+      top: _lines[index].isBackground ? 6 : context.tokens.lyricsLinePaddingV,
+      bottom: hasBackingBelow ? 0 : context.tokens.lyricsLinePaddingV,
     );
   }
 }
@@ -3608,9 +3652,11 @@ Iterable<(String, TextStyle, List<LyricWord>, bool)> _lyricSupplements(
     yield (
       text,
       base.copyWith(
-        fontSize: context.isMornye
-            ? (translation ? 18 : 22)
-            : (translation ? 14 : 16),
+        fontSize:
+            (context.isMornye
+                ? (translation ? 18.0 : 22.0)
+                : (translation ? 14.0 : 16.0)) *
+            (line.isBackground ? 0.8 : 1),
         height: 1.35,
         fontWeight: context.isMornye
             ? (translation ? FontWeight.w600 : FontWeight.bold)
@@ -3622,9 +3668,9 @@ Iterable<(String, TextStyle, List<LyricWord>, bool)> _lyricSupplements(
   }
 }
 
-TextStyle _mornyeLyricStyle(BuildContext context) =>
+TextStyle _mornyeLyricStyle(BuildContext context, {bool background = false}) =>
     (Theme.of(context).textTheme.headlineSmall ?? const TextStyle()).copyWith(
-      fontSize: _mornyeLyricFontSize,
+      fontSize: _mornyeLyricFontSize * (background ? 0.68 : 1),
       height: context.tokens.lyricsLineHeight,
       fontWeight: FontWeight.bold,
     );
@@ -3686,7 +3732,10 @@ Widget _withLyricSupplements(
       line.romanization?.trim().isNotEmpty != true) {
     return withSupplements(primary);
   }
-  final primaryStyle = _mornyeLyricStyle(context);
+  final primaryStyle = _mornyeLyricStyle(
+    context,
+    background: line.isBackground,
+  );
   final pronunciationStyle = supplements
       .firstWhere((supplement) => !supplement.$4)
       .$2;
@@ -3900,7 +3949,11 @@ class _WordHighlightedLyricLineState
     final style =
         (Theme.of(context).textTheme.headlineSmall ?? const TextStyle())
             .copyWith(
-              fontSize: context.isMornye ? _mornyeLyricFontSize : null,
+              fontSize: widget.line.isBackground
+                  ? (context.isMornye ? _mornyeLyricFontSize * 0.68 : 18)
+                  : context.isMornye
+                  ? _mornyeLyricFontSize
+                  : null,
               height: context.tokens.lyricsLineHeight,
               fontWeight: FontWeight.bold,
             );

@@ -33,6 +33,9 @@ class LyricLine {
   final LyricVoice? voice;
   final bool isBackground;
 
+  /// Links backing vocals to their lead even when another singer overlaps.
+  final int? vocalGroup;
+
   const LyricLine({
     required this.time,
     this.end,
@@ -43,6 +46,7 @@ class LyricLine {
     this.translation,
     this.voice,
     this.isBackground = false,
+    this.vocalGroup,
   });
 
   bool get hasWordTiming => words.isNotEmpty;
@@ -286,6 +290,7 @@ class LyricsParser {
               words: words,
               voice: voice ?? previous.voice,
               isBackground: true,
+              vocalGroup: previous.vocalGroup,
             ),
           );
           sawWordTiming |= words.isNotEmpty;
@@ -315,8 +320,12 @@ class LyricsParser {
             end: words.lastOrNull?.end,
             text: cleanContent,
             words: words,
-            voice: voice,
+            voice:
+                voice ?? (background != null ? parsed.lastOrNull?.voice : null),
             isBackground: background != null,
+            vocalGroup: background != null
+                ? parsed.lastOrNull?.vocalGroup
+                : parsed.length,
           ),
         );
       }
@@ -362,6 +371,7 @@ class LyricsParser {
               text: l.text,
               voice: l.voice,
               isBackground: l.isBackground,
+              vocalGroup: l.vocalGroup,
               romanization: romanization,
               romanizationWords: _shiftWords(validWords, offsetMs),
               translation: alignedTranslation[l.time.inMilliseconds],
@@ -535,6 +545,7 @@ class LyricsParser {
       final lines = <LyricLine>[];
       final plain = <String>[];
       var sawWords = false;
+      var nextVocalGroup = 0;
 
       for (final p in paragraphs) {
         final begin = _parseClock(p.getAttribute('begin'));
@@ -593,6 +604,10 @@ class LyricsParser {
         }
 
         visit(p, inheritedVoice, false, null, null);
+        final leadGroups = {
+          for (final run in runs)
+            if (!run.background && run.text.isNotEmpty) run: nextVocalGroup++,
+        };
         for (final run in runs) {
           final lineText = run.text;
           if (lineText.isEmpty) continue;
@@ -603,6 +618,12 @@ class LyricsParser {
               : words.firstOrNull?.time ?? begin;
           if (lineBegin == null) continue;
           sawWords |= words.isNotEmpty;
+          final lead = run.background
+              ? leadGroups.keys
+                        .where((lead) => lead.voice?.id == run.voice?.id)
+                        .firstOrNull ??
+                    leadGroups.keys.firstOrNull
+              : run;
           lines.add(
             LyricLine(
               time: lineBegin,
@@ -611,6 +632,9 @@ class LyricsParser {
               words: words,
               voice: run.voice,
               isBackground: run.background,
+              vocalGroup:
+                  leadGroups[lead] ??
+                  (run.background ? lines.lastOrNull?.vocalGroup : null),
             ),
           );
         }
