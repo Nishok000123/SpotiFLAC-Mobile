@@ -17,7 +17,7 @@ class MornyePlayerNavigationMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = MornyeTheme.build(Brightness.dark);
+    final theme = MornyeTheme.fromContext(context, brightness: Brightness.dark);
     final art = mediaItem.artUri;
     final source = art?.scheme == 'file' ? art!.toFilePath() : art?.toString();
     return Theme(

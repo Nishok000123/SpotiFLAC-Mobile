@@ -36,6 +36,13 @@
     "description": "Label kontrol volume sistem di pemutar Mornye"
   },
   "appearanceStyle": "Gaya Aplikasi",
+  "appearanceAccentRed": "Merah (bawaan)",
+  "appearanceAccentOrange": "Oranye",
+  "appearanceAccentGreen": "Hijau",
+  "appearanceAccentTeal": "Hijau kebiruan",
+  "appearanceAccentBlue": "Biru",
+  "appearanceAccentPurple": "Ungu",
+  "appearanceAccentPink": "Merah muda",
   "@appearanceStyle": {
     "description": "Bagian tampilan untuk memilih gaya visual aplikasi"
   },

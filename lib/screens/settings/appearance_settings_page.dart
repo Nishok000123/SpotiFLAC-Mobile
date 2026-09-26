@@ -98,7 +98,23 @@ class AppearanceSettingsPage extends ConsumerWidget {
               ),
             ),
 
-            if (themeSettings.style == AppThemeStyle.material) ...[
+            if (themeSettings.style == AppThemeStyle.mornye) ...[
+              SliverToBoxAdapter(
+                child: SettingsSectionHeader(title: context.l10n.sectionColor),
+              ),
+              SliverToBoxAdapter(
+                child: SettingsGroup(
+                  children: [
+                    _MornyeAccentPicker(
+                      selected: themeSettings.mornyeAccent,
+                      onChanged: ref
+                          .read(themeProvider.notifier)
+                          .setMornyeAccent,
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
               SliverToBoxAdapter(
                 child: SettingsSectionHeader(title: context.l10n.sectionColor),
               ),
@@ -451,6 +467,65 @@ class _ThemePreviewCard extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _MornyeAccentPicker extends StatelessWidget {
+  const _MornyeAccentPicker({required this.selected, required this.onChanged});
+
+  final MornyeAccent selected;
+  final ValueChanged<MornyeAccent> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final labels = {
+      MornyeAccent.red: l10n.appearanceAccentRed,
+      MornyeAccent.orange: l10n.appearanceAccentOrange,
+      MornyeAccent.green: l10n.appearanceAccentGreen,
+      MornyeAccent.teal: l10n.appearanceAccentTeal,
+      MornyeAccent.blue: l10n.appearanceAccentBlue,
+      MornyeAccent.purple: l10n.appearanceAccentPurple,
+      MornyeAccent.pink: l10n.appearanceAccentPink,
+    };
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final accent in MornyeAccent.values)
+            Builder(
+              builder: (context) {
+                final color = MornyeTheme.accentColor(
+                  accent,
+                  Theme.of(context).brightness,
+                );
+                final foreground =
+                    ThemeData.estimateBrightnessForColor(color) ==
+                        Brightness.dark
+                    ? Colors.white
+                    : Colors.black;
+                return Semantics(
+                  selected: selected == accent,
+                  child: IconButton(
+                    tooltip: labels[accent],
+                    onPressed: () => onChanged(accent),
+                    style: IconButton.styleFrom(
+                      backgroundColor: color,
+                      foregroundColor: foreground,
+                      minimumSize: const Size.square(48),
+                    ),
+                    icon: selected == accent
+                        ? const Icon(Icons.check)
+                        : const SizedBox.square(dimension: 24),
+                  ),
+                );
+              },
+            ),
+        ],
       ),
     );
   }

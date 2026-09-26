@@ -83,7 +83,7 @@ class _ConcertDetailScreenState extends State<ConcertDetailScreen> {
   Widget build(BuildContext context) {
     final source = _detail.coverUrl ?? widget.coverUrl;
     final base = context.isMornye
-        ? MornyeTheme.build(Brightness.dark)
+        ? MornyeTheme.fromContext(context, brightness: Brightness.dark)
         : ThemeData.dark();
     return Theme(
       data: base,

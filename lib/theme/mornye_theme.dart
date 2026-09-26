@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:spotiflac_android/models/theme_settings.dart';
 import 'package:spotiflac_android/theme/app_tokens.dart';
 
 /// Flutter counterpart of Mornye's iPhone visual system. Reference values come
@@ -8,9 +9,10 @@ import 'package:spotiflac_android/theme/app_tokens.dart';
 /// in the Mornye project; keep this palette independent of wallpaper colors.
 @immutable
 class MornyeTheme extends ThemeExtension<MornyeTheme> {
-  const MornyeTheme({this.chromeSurface});
+  const MornyeTheme({this.chromeSurface, this.accent = MornyeAccent.red});
 
   final Color? chromeSurface;
+  final MornyeAccent accent;
 
   /// A single translucent fill for controls inside an existing glass surface.
   static Color controlFill(BuildContext context, {bool enabled = true}) {
@@ -45,6 +47,23 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
   static const lightAccent = Color.fromRGBO(204, 46, 51, 1);
   static const darkAccent = Color.fromRGBO(224, 61, 60, 1);
 
+  static Color accentColor(MornyeAccent accent, Brightness brightness) {
+    final dark = brightness == Brightness.dark;
+    final color = switch (accent) {
+      MornyeAccent.red => const CupertinoDynamicColor.withBrightness(
+        color: lightAccent,
+        darkColor: darkAccent,
+      ),
+      MornyeAccent.orange => CupertinoColors.systemOrange,
+      MornyeAccent.green => CupertinoColors.systemGreen,
+      MornyeAccent.teal => CupertinoColors.systemTeal,
+      MornyeAccent.blue => CupertinoColors.systemBlue,
+      MornyeAccent.purple => CupertinoColors.systemPurple,
+      MornyeAccent.pink => CupertinoColors.systemPink,
+    };
+    return dark ? color.darkColor : color.color;
+  }
+
   static final tokens = AppTokens.standard.copyWith(
     radiusBadge: 5,
     radiusThumb: 6,
@@ -78,16 +97,24 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
   // many artists cannot grow the cache indefinitely. Platform is part of the
   // key because it controls fonts and route transitions.
   static final _themeCache =
-      <(TargetPlatform, Brightness, Color?), ThemeData>{};
+      <(TargetPlatform, Brightness, Color?, MornyeAccent), ThemeData>{};
 
-  static ThemeData build(Brightness brightness, {Color? chromeSurface}) {
-    final key = (defaultTargetPlatform, brightness, chromeSurface);
+  static ThemeData build(
+    Brightness brightness, {
+    Color? chromeSurface,
+    MornyeAccent accent = MornyeAccent.red,
+  }) {
+    final key = (defaultTargetPlatform, brightness, chromeSurface, accent);
     final cached = _themeCache.remove(key);
     if (cached != null) {
       _themeCache[key] = cached;
       return cached;
     }
-    final theme = _build(brightness, chromeSurface: chromeSurface);
+    final theme = _build(
+      brightness,
+      chromeSurface: chromeSurface,
+      selectedAccent: accent,
+    );
     if (_themeCache.length >= 16) {
       _themeCache.remove(_themeCache.keys.first);
     }
@@ -95,9 +122,28 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
     return theme;
   }
 
-  static ThemeData _build(Brightness brightness, {Color? chromeSurface}) {
+  /// Rebuild local surfaces without losing the user's Mornye preferences.
+  static ThemeData fromContext(
+    BuildContext context, {
+    Brightness? brightness,
+    Color? chromeSurface,
+  }) {
+    final theme = Theme.of(context);
+    final preferences = theme.extension<MornyeTheme>();
+    return build(
+      brightness ?? theme.brightness,
+      chromeSurface: chromeSurface,
+      accent: preferences?.accent ?? MornyeAccent.red,
+    );
+  }
+
+  static ThemeData _build(
+    Brightness brightness, {
+    Color? chromeSurface,
+    required MornyeAccent selectedAccent,
+  }) {
     final dark = brightness == Brightness.dark;
-    final accent = dark ? darkAccent : lightAccent;
+    final accent = accentColor(selectedAccent, brightness);
     final foreground = dark ? Colors.white : Colors.black;
     final surface = dark ? Colors.black : Colors.white;
     final grouped = dark ? const Color(0xff1c1c1e) : const Color(0xfff2f2f7);
@@ -197,7 +243,7 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
       fontFamily: text.fontFamily,
       splashFactory: NoSplash.splashFactory,
       extensions: <ThemeExtension<dynamic>>[
-        MornyeTheme(chromeSurface: chromeSurface),
+        MornyeTheme(chromeSurface: chromeSurface, accent: selectedAccent),
         tokens,
       ],
     );
@@ -289,12 +335,16 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
   }
 
   @override
-  MornyeTheme copyWith({Color? chromeSurface}) =>
-      MornyeTheme(chromeSurface: chromeSurface ?? this.chromeSurface);
+  MornyeTheme copyWith({Color? chromeSurface, MornyeAccent? accent}) =>
+      MornyeTheme(
+        chromeSurface: chromeSurface ?? this.chromeSurface,
+        accent: accent ?? this.accent,
+      );
 
   @override
   MornyeTheme lerp(covariant MornyeTheme? other, double t) => MornyeTheme(
     chromeSurface: Color.lerp(chromeSurface, other?.chromeSurface, t),
+    accent: t < 0.5 ? accent : other?.accent ?? accent,
   );
 }
 

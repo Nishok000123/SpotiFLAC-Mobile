@@ -172,7 +172,7 @@ class MornyeContextMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = inheritSurface
         ? Theme.of(context)
-        : MornyeTheme.build(Theme.of(context).brightness);
+        : MornyeTheme.fromContext(context);
     final visibleGroups = groups.where((group) => group.isNotEmpty).toList();
     final shortcuts = quickActions.isEmpty
         ? null

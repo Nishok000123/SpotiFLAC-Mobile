@@ -549,7 +549,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   Widget build(BuildContext context) {
     final mornye = context.isMornye;
     final colorScheme = mornye
-        ? MornyeTheme.build(Brightness.dark).colorScheme
+        ? MornyeTheme.fromContext(
+            context,
+            brightness: Brightness.dark,
+          ).colorScheme
         : Theme.of(context).colorScheme;
     final mediaItem = ref.watch(currentMediaItemProvider).value;
     final controller = ref.read(musicPlayerControllerProvider);
@@ -633,7 +636,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           ),
           fullBleed: key == _motionArtworkKey,
           child: Theme(
-            data: MornyeTheme.build(Brightness.dark),
+            data: MornyeTheme.fromContext(context, brightness: Brightness.dark),
             child: key == _compactArtworkKey
                 ? PlayerArtwork(
                     artUri: mediaItem.artUri?.toString(),
@@ -825,7 +828,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       // exposing a detached rectangle. Keep Mornye artwork inside its panel.
       enabled: false,
       child: Theme(
-        data: MornyeTheme.build(Brightness.dark),
+        data: MornyeTheme.fromContext(context, brightness: Brightness.dark),
         child: Stack(
           fit: StackFit.expand,
           children: [

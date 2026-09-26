@@ -40,7 +40,10 @@ class _MornyeArtistSurfaceState extends State<MornyeArtistSurface> {
 
   @override
   Widget build(BuildContext context) {
-    final darkTheme = MornyeTheme.build(Brightness.dark);
+    final darkTheme = MornyeTheme.fromContext(
+      context,
+      brightness: Brightness.dark,
+    );
     return Theme(
       data: darkTheme.copyWith(
         colorScheme: darkTheme.colorScheme.copyWith(primary: Colors.grey),

@@ -36,6 +36,13 @@
     "description": "System volume control label in the Mornye player"
   },
   "appearanceStyle": "App Style",
+  "appearanceAccentRed": "Red (default)",
+  "appearanceAccentOrange": "Orange",
+  "appearanceAccentGreen": "Green",
+  "appearanceAccentTeal": "Teal",
+  "appearanceAccentBlue": "Blue",
+  "appearanceAccentPurple": "Purple",
+  "appearanceAccentPink": "Pink",
   "@appearanceStyle": {
     "description": "Appearance section for choosing the app visual style"
   },

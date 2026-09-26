@@ -5,8 +5,17 @@ const String kUseDynamicColorKey = 'use_dynamic_color';
 const String kSeedColorKey = 'seed_color';
 const String kUseAmoledKey = 'use_amoled';
 const String kThemeStyleKey = 'theme_style';
+const String kMornyeAccentKey = 'mornye_accent';
 
 enum AppThemeStyle { material, mornye }
+
+enum MornyeAccent { red, orange, green, teal, blue, purple, pink }
+
+MornyeAccent mornyeAccentFromString(String? value) =>
+    MornyeAccent.values.firstWhere(
+      (accent) => accent.name == value,
+      orElse: () => MornyeAccent.red,
+    );
 
 AppThemeStyle themeStyleFromString(String? value) =>
     AppThemeStyle.values.firstWhere(
@@ -23,6 +32,7 @@ class ThemeSettings {
   final int seedColorValue;
   final bool useAmoled;
   final AppThemeStyle style;
+  final MornyeAccent mornyeAccent;
 
   const ThemeSettings({
     this.themeMode = ThemeMode.system,
@@ -30,6 +40,7 @@ class ThemeSettings {
     this.seedColorValue = kDefaultSeedColor,
     this.useAmoled = false,
     this.style = AppThemeStyle.material,
+    this.mornyeAccent = MornyeAccent.red,
   });
 
   Color get seedColor => Color(seedColorValue);
@@ -40,6 +51,7 @@ class ThemeSettings {
     int? seedColorValue,
     bool? useAmoled,
     AppThemeStyle? style,
+    MornyeAccent? mornyeAccent,
   }) {
     return ThemeSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -47,6 +59,7 @@ class ThemeSettings {
       seedColorValue: seedColorValue ?? this.seedColorValue,
       useAmoled: useAmoled ?? this.useAmoled,
       style: style ?? this.style,
+      mornyeAccent: mornyeAccent ?? this.mornyeAccent,
     );
   }
 
@@ -56,6 +69,7 @@ class ThemeSettings {
     kSeedColorKey: seedColorValue,
     kUseAmoledKey: useAmoled,
     kThemeStyleKey: style.name,
+    kMornyeAccentKey: mornyeAccent.name,
   };
 
   factory ThemeSettings.fromJson(Map<String, dynamic> json) {
@@ -65,6 +79,7 @@ class ThemeSettings {
       seedColorValue: json[kSeedColorKey] as int? ?? kDefaultSeedColor,
       useAmoled: json[kUseAmoledKey] as bool? ?? false,
       style: themeStyleFromString(json[kThemeStyleKey] as String?),
+      mornyeAccent: mornyeAccentFromString(json[kMornyeAccentKey] as String?),
     );
   }
 
@@ -76,7 +91,8 @@ class ThemeSettings {
         other.useDynamicColor == useDynamicColor &&
         other.seedColorValue == seedColorValue &&
         other.useAmoled == useAmoled &&
-        other.style == style;
+        other.style == style &&
+        other.mornyeAccent == mornyeAccent;
   }
 
   @override
@@ -85,7 +101,8 @@ class ThemeSettings {
       useDynamicColor.hashCode ^
       seedColorValue.hashCode ^
       useAmoled.hashCode ^
-      style.hashCode;
+      style.hashCode ^
+      mornyeAccent.hashCode;
 }
 
 ThemeMode themeModeFromString(String? value) {

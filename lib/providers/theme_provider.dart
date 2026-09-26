@@ -14,6 +14,7 @@ ThemeSettings loadBootstrapThemeSettings(SharedPreferences prefs) {
     seedColorValue: prefs.getInt(kSeedColorKey) ?? kDefaultSeedColor,
     useAmoled: prefs.getBool(kUseAmoledKey) ?? false,
     style: themeStyleFromString(prefs.getString(kThemeStyleKey)),
+    mornyeAccent: mornyeAccentFromString(prefs.getString(kMornyeAccentKey)),
   );
 }
 
@@ -33,18 +34,7 @@ class ThemeNotifier extends Notifier<ThemeSettings> {
   Future<void> _loadFromStorage() async {
     try {
       final prefs = await _prefs;
-      final modeString = prefs.getString(kThemeModeKey);
-      final useDynamic = prefs.getBool(kUseDynamicColorKey);
-      final seedColor = prefs.getInt(kSeedColorKey);
-      final useAmoled = prefs.getBool(kUseAmoledKey);
-
-      state = ThemeSettings(
-        themeMode: themeModeFromString(modeString),
-        useDynamicColor: useDynamic ?? true,
-        seedColorValue: seedColor ?? kDefaultSeedColor,
-        useAmoled: useAmoled ?? false,
-        style: themeStyleFromString(prefs.getString(kThemeStyleKey)),
-      );
+      state = loadBootstrapThemeSettings(prefs);
     } catch (e) {
       debugPrint('Error loading theme settings: $e');
     }
@@ -58,6 +48,7 @@ class ThemeNotifier extends Notifier<ThemeSettings> {
       await prefs.setInt(kSeedColorKey, state.seedColorValue);
       await prefs.setBool(kUseAmoledKey, state.useAmoled);
       await prefs.setString(kThemeStyleKey, state.style.name);
+      await prefs.setString(kMornyeAccentKey, state.mornyeAccent.name);
     } catch (e) {
       debugPrint('Error saving theme settings: $e');
     }
@@ -90,6 +81,11 @@ class ThemeNotifier extends Notifier<ThemeSettings> {
 
   Future<void> setUseAmoled(bool value) async {
     state = state.copyWith(useAmoled: value);
+    await _saveToStorage();
+  }
+
+  Future<void> setMornyeAccent(MornyeAccent accent) async {
+    state = state.copyWith(mornyeAccent: accent);
     await _saveToStorage();
   }
 }

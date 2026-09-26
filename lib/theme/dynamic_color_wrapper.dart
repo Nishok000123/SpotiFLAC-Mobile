@@ -19,8 +19,8 @@ class DynamicColorWrapper extends ConsumerWidget {
 
     if (themeSettings.style == AppThemeStyle.mornye) {
       return builder(
-        MornyeTheme.build(Brightness.light),
-        MornyeTheme.build(Brightness.dark),
+        MornyeTheme.build(Brightness.light, accent: themeSettings.mornyeAccent),
+        MornyeTheme.build(Brightness.dark, accent: themeSettings.mornyeAccent),
         themeSettings.themeMode,
       );
     }

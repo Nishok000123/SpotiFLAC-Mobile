@@ -977,7 +977,10 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen>
           : colorScheme.surfaceContainerHigh,
       builder: (sheetContext) => sheetContext.isMornye
           ? Theme(
-              data: MornyeTheme.build(Brightness.dark),
+              data: MornyeTheme.fromContext(
+                sheetContext,
+                brightness: Brightness.dark,
+              ),
               child: MornyeGlassPanel(
                 tintOpacity: 0.78,
                 child: Builder(builder: buildSheet),

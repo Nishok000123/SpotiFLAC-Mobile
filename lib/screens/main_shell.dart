@@ -996,8 +996,10 @@ class _MainShellState extends ConsumerState<MainShell>
                   builder: (context, child) => Theme(
                     data: ShellNavigationService.chromeBrightness.value == null
                         ? Theme.of(context)
-                        : MornyeTheme.build(
-                            ShellNavigationService.chromeBrightness.value!,
+                        : MornyeTheme.fromContext(
+                            context,
+                            brightness:
+                                ShellNavigationService.chromeBrightness.value!,
                             chromeSurface:
                                 ShellNavigationService.chromeSurface.value,
                           ),

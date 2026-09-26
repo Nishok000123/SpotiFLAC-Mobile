@@ -1108,6 +1108,7 @@ void main() {
         seedColorValue: 0xff123456,
         useAmoled: true,
         style: AppThemeStyle.mornye,
+        mornyeAccent: MornyeAccent.blue,
       );
 
       final decoded = ThemeSettings.fromJson(settings.toJson());
@@ -1119,6 +1120,13 @@ void main() {
       expect(copied.themeMode, ThemeMode.light);
       expect(copied.useAmoled, isTrue);
       expect(decoded.style, AppThemeStyle.mornye);
+      expect(decoded.mornyeAccent, MornyeAccent.blue);
+      expect(copied.mornyeAccent, MornyeAccent.blue);
+      expect(ThemeSettings.fromJson({}).mornyeAccent, MornyeAccent.red);
+      expect(
+        ThemeSettings.fromJson({kMornyeAccentKey: 'unknown'}).mornyeAccent,
+        MornyeAccent.red,
+      );
       expect(
         ThemeSettings.fromJson({'theme_mode': 'invalid'}).themeMode,
         ThemeMode.system,
