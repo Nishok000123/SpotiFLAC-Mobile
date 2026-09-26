@@ -32,6 +32,7 @@ import 'package:spotiflac_android/widgets/profile_avatar.dart';
 class _Destination {
   const _Destination({
     required this.icon,
+    required this.iconColor,
     required this.title,
     required this.subtitle,
     required this.pageBuilder,
@@ -40,6 +41,7 @@ class _Destination {
   });
 
   final IconData icon;
+  final MaterialColor iconColor;
   final String title;
   final String subtitle;
   final Widget Function() pageBuilder;
@@ -105,6 +107,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
         destinations: [
           _Destination(
             icon: Icons.extension_outlined,
+            iconColor: Colors.teal,
             title: l10n.settingsExtensions,
             subtitle: l10n.settingsExtensionsSubtitle,
             keywords: const ['plugin', 'provider', 'priority', 'store'],
@@ -113,6 +116,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           ),
           _Destination(
             icon: Icons.palette_outlined,
+            iconColor: Colors.purple,
             title: l10n.settingsAppearance,
             subtitle: l10n.settingsAppearanceSubtitle,
             keywords: const [
@@ -135,6 +139,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
         destinations: [
           _Destination(
             icon: Icons.library_music_outlined,
+            iconColor: Colors.blue,
             title: l10n.settingsLocalLibrary,
             subtitle: l10n.settingsLocalLibrarySubtitle,
             keywords: const [
@@ -149,6 +154,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           ),
           _Destination(
             icon: Icons.sell_outlined,
+            iconColor: Colors.amber,
             title: l10n.settingsMetadata,
             subtitle: l10n.settingsMetadataSubtitle,
             keywords: const ['tag', 'cover', 'artwork', 'isrc', 'provider'],
@@ -157,6 +163,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           ),
           _Destination(
             icon: Icons.lyrics_outlined,
+            iconColor: Colors.cyan,
             title: l10n.settingsLyrics,
             subtitle: l10n.settingsLyricsSubtitle,
             keywords: const ['lrc', 'synced', 'provider'],
@@ -169,6 +176,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
         destinations: [
           _Destination(
             icon: Icons.download_outlined,
+            iconColor: Colors.green,
             title: l10n.settingsDownload,
             subtitle: l10n.settingsDownloadSubtitle,
             keywords: const [
@@ -185,6 +193,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           ),
           _Destination(
             icon: Icons.folder_outlined,
+            iconColor: Colors.orange,
             title: l10n.settingsFiles,
             subtitle: l10n.settingsFilesSubtitle,
             keywords: const [
@@ -204,6 +213,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
         destinations: [
           _Destination(
             icon: Icons.tune_outlined,
+            iconColor: Colors.blueGrey,
             title: l10n.settingsApp,
             subtitle: l10n.settingsAppSubtitle,
             keywords: const ['update', 'channel', 'debug', 'logging'],
@@ -212,6 +222,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           ),
           _Destination(
             icon: Icons.storage_outlined,
+            iconColor: Colors.indigo,
             title: l10n.settingsCache,
             subtitle: l10n.settingsCacheSubtitle,
             keywords: const ['clear', 'space', 'image', 'temp'],
@@ -220,6 +231,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           ),
           _Destination(
             icon: Icons.settings_backup_restore,
+            iconColor: Colors.teal,
             title: l10n.settingsBackup,
             subtitle: l10n.settingsBackupSubtitle,
             keywords: const ['export', 'import', 'restore', 'json'],
@@ -228,6 +240,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           ),
           _Destination(
             icon: Icons.article_outlined,
+            iconColor: Colors.brown,
             title: l10n.logTitle,
             subtitle: l10n.settingsLogsSubtitle,
             keywords: const ['debug', 'error', 'report'],
@@ -240,6 +253,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
         destinations: [
           _Destination(
             icon: Icons.favorite_outline,
+            iconColor: Colors.pink,
             title: l10n.settingsDonate,
             subtitle: l10n.settingsDonateSubtitle,
             keywords: const ['support', 'ko-fi', 'sponsor'],
@@ -247,6 +261,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           ),
           _Destination(
             icon: Icons.info_outline,
+            iconColor: Colors.grey,
             title: l10n.settingsAbout,
             subtitle: '${l10n.aboutVersion} ${AppInfo.displayVersion}',
             keywords: const ['version', 'license', 'contributor'],
@@ -288,9 +303,16 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     });
   }
 
+  Color _iconColorFor(_Destination destination) =>
+      destination.iconColor[Theme.of(context).brightness == Brightness.dark
+          ? 300
+          : 800]!;
+
   Widget _itemFor(_Destination destination, {required bool showDivider}) {
     return SettingsItem(
       icon: destination.icon,
+      iconColor: _iconColorFor(destination),
+      showIconInMornye: true,
       title: destination.title,
       subtitle: context.isMornye ? null : destination.subtitle,
       showDivider: showDivider,
@@ -309,6 +331,8 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
         'settings-search:${result.destination.title}:${entry.title}',
       ),
       icon: entry.icon,
+      iconColor: _iconColorFor(result.destination),
+      showIconInMornye: true,
       title: entry.title,
       subtitle: result.destination.title,
       showDivider: showDivider,

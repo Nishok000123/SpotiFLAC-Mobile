@@ -267,6 +267,10 @@ class SettingsGroup extends StatelessWidget {
 
 class SettingsItem extends StatelessWidget {
   final IconData? icon;
+  final Color? iconColor;
+
+  /// Show category icons in Mornye's top-level settings and search results.
+  final bool showIconInMornye;
   final String title;
   final Widget? titleTrailing;
   final String? subtitle;
@@ -277,6 +281,8 @@ class SettingsItem extends StatelessWidget {
   const SettingsItem({
     super.key,
     this.icon,
+    this.iconColor,
+    this.showIconInMornye = false,
     required this.title,
     this.titleTrailing,
     this.subtitle,
@@ -288,7 +294,7 @@ class SettingsItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final showIcon = icon != null && !context.isMornye;
+    final showIcon = icon != null && (!context.isMornye || showIconInMornye);
 
     final content = Column(
       mainAxisSize: MainAxisSize.min,
@@ -309,7 +315,11 @@ class SettingsItem extends StatelessWidget {
               child: Row(
                 children: [
                   if (showIcon) ...[
-                    Icon(icon, color: colorScheme.onSurfaceVariant, size: 24),
+                    Icon(
+                      context.adaptiveIcon(icon!),
+                      color: iconColor ?? colorScheme.onSurfaceVariant,
+                      size: 24,
+                    ),
                     SizedBox(width: context.tokens.rowIconGap),
                   ],
                   Expanded(
