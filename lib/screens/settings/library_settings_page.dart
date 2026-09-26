@@ -17,6 +17,7 @@ import 'package:spotiflac_android/widgets/duplicate_review_sheet.dart';
 import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/app_sliver_header.dart';
+import 'package:spotiflac_android/widgets/ios_library_folder_sheet.dart';
 
 class LibrarySettingsPage extends ConsumerStatefulWidget {
   const LibrarySettingsPage({super.key});
@@ -137,15 +138,16 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
         }
       }
     } else {
-      // Legacy: request permission and use file picker for older Android / iOS
+      // Older Android needs storage permission; iOS chooses internal or Files.
       if (!_hasStoragePermission) {
         final granted = await _requestStoragePermission();
         if (!granted) return;
       }
       if (Platform.isIOS) {
+        if (!mounted) return;
         IosPickedDirectory? picked;
         try {
-          picked = await PlatformBridge.pickIosDirectory();
+          picked = await showIosLibraryFolderSheet(context);
         } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -160,17 +162,16 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
           }
           return;
         }
-        if (picked != null) {
-          final source = await ref
-              .read(localLibraryProvider.notifier)
-              .addSource(
-                path: picked.path,
-                displayName: picked.path,
-                bookmark: picked.bookmark,
-              );
-          await ref
-              .read(localLibraryProvider.notifier)
-              .startSourceScan(source.id);
+        if (picked != null && mounted) {
+          final library = ref.read(localLibraryProvider.notifier);
+          final source = await library.addSource(
+            path: picked.path,
+            displayName: picked.bookmark.isEmpty
+                ? context.l10n.setupAppDocumentsFolder
+                : picked.path,
+            bookmark: picked.bookmark,
+          );
+          await library.startSourceScan(source.id);
         }
         return;
       }
