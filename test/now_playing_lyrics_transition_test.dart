@@ -1288,17 +1288,18 @@ void main() {
       final restingWidth = dotWidth();
       final restingCenter = tester.getCenter(firstDot);
       final rowSize = tester.getSize(find.byType(LyricGapIndicator));
-      await positionAt(6, playing: true);
-      await tester.pump(const Duration(milliseconds: 400));
+      // Leave enough intro time for the slower pulse to grow and shrink.
+      await positionAt(3, playing: true);
+      await tester.pump(const Duration(milliseconds: 800));
       final filling = dotAlphas();
       final growingWidth = dotWidth();
       expect(growingWidth, greaterThan(restingWidth));
       expectSynchronizedDots();
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(const Duration(milliseconds: 700));
       final peakWidth = dotWidth();
       expect(peakWidth, greaterThan(growingWidth));
       expectSynchronizedDots();
-      await tester.pump(const Duration(milliseconds: 750));
+      await tester.pump(const Duration(milliseconds: 1500));
       expect(dotWidth(), lessThan(peakWidth));
       expectSynchronizedDots();
       expect(tester.getCenter(firstDot), restingCenter);

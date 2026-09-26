@@ -29,7 +29,7 @@ class _LyricGapIndicatorState extends ConsumerState<LyricGapIndicator>
     with SingleTickerProviderStateMixin {
   late final _pulse = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1800),
+    duration: const Duration(milliseconds: 3600),
   );
 
   @override
