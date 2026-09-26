@@ -1065,10 +1065,12 @@ class PlatformBridge {
     String outputPath, {
     int maxDimension = 0,
   }) {
-    return _invokeMap('downloadCoverToFile', {
-      'cover_url': coverUrl,
-      'output_path': outputPath,
-      'max_dimension': maxDimension,
+    return _withMediaFileAccess([outputPath], () {
+      return _invokeMap('downloadCoverToFile', {
+        'cover_url': coverUrl,
+        'output_path': outputPath,
+        'max_dimension': maxDimension,
+      });
     });
   }
 

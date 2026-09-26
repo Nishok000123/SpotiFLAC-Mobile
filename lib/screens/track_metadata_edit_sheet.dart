@@ -172,7 +172,10 @@ class _EditMetadataSheet extends StatefulWidget {
 
 class _EditMetadataSheetState extends State<_EditMetadataSheet> {
   static const _coverResizeDimensions = <int>[500, 1000, 1500, 2000, 3000];
-  static final RegExp _metadataCollapsePattern = RegExp(r'[^a-z0-9]+');
+  static final RegExp _metadataCollapsePattern = RegExp(
+    r'[^\p{L}\p{M}\p{N}]+',
+    unicode: true,
+  );
   static final RegExp _metadataWhitespacePattern = RegExp(r'\s+');
   static final RegExp _spotifyTrackIdPattern = RegExp(r'^[A-Za-z0-9]{22}$');
   static final RegExp _deezerTrackIdPattern = RegExp(r'^\d+$');
@@ -599,7 +602,15 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     );
     final coverPath = '${tempDir.path}${Platform.pathSeparator}cover.jpg';
     try {
-      await PlatformBridge.downloadCoverToFile(coverUrl, coverPath);
+      final result = await PlatformBridge.downloadCoverToFile(
+        coverUrl,
+        coverPath,
+      );
+      if (result['error'] != null || result['success'] == false) {
+        throw StateError(
+          result['error']?.toString() ?? 'Cover download failed',
+        );
+      }
       final file = File(coverPath);
       if (!await file.exists() || await file.length() <= 0) {
         await tempDir.delete(recursive: true);
@@ -610,7 +621,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         tempDir: tempDir.path,
         details: await _readCoverDetails(coverPath),
       );
-    } catch (_) {
+    } catch (e) {
+      _log.w('Could not download metadata artwork: $e');
       await _deleteTempDirectory(tempDir.path);
       return null;
     }
@@ -1478,31 +1490,62 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
           return;
         }
 
-        if (!usesAutomaticProvider) {
-          final trackId = best['id']?.toString().trim() ?? '';
+        var resolvedBest = best;
+        final matchedProviderId = usesAutomaticProvider
+            ? resolvedBest['provider_id']?.toString().trim() ?? ''
+            : selectedProviderId;
+        if (matchedProviderId.isNotEmpty) {
+          final trackId = resolvedBest['id']?.toString().trim() ?? '';
           if (trackId.isNotEmpty) {
             try {
               final details = await PlatformBridge.getProviderMetadata(
-                selectedProviderId,
+                matchedProviderId,
                 'track',
                 trackId,
               );
-              final mergedDetails = <String, dynamic>{...best};
+              final mergedDetails = <String, dynamic>{...resolvedBest};
               for (final entry in _unwrapTrackPayload(details).entries) {
                 final value = entry.value;
                 if (value != null && value.toString().trim().isNotEmpty) {
                   mergedDetails[entry.key] = value;
                 }
               }
-              best = mergedDetails;
+              resolvedBest = mergedDetails;
             } catch (e) {
               _log.w(
                 'Detailed metadata lookup failed for '
-                '$selectedProviderId/$trackId: $e',
+                '$matchedProviderId/$trackId: $e',
               );
             }
           }
+
+          if (_autoFillFields.contains('cover') &&
+              _metadataCandidateCoverUrl(resolvedBest) == null) {
+            final albumId = resolvedBest['album_id']?.toString().trim() ?? '';
+            if (albumId.isNotEmpty) {
+              try {
+                final details = await PlatformBridge.getProviderMetadata(
+                  matchedProviderId,
+                  'album',
+                  albumId,
+                );
+                final albumData = details['album_info'] ?? details['album'];
+                final coverUrl = _metadataCandidateCoverUrl(
+                  albumData is Map<String, dynamic> ? albumData : details,
+                );
+                if (coverUrl != null) {
+                  resolvedBest = {...resolvedBest, 'cover_url': coverUrl};
+                }
+              } catch (e) {
+                _log.w(
+                  'Album artwork lookup failed for '
+                  '$matchedProviderId/$albumId: $e',
+                );
+              }
+            }
+          }
         }
+        best = resolvedBest;
       }
 
       final selectedBest = best;
@@ -1732,6 +1775,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
     setState(() => _fetching = true);
     try {
       var filledCount = 0;
+      var coverDownloadFailed = false;
       for (final key in _autoFillFields) {
         if (key == 'cover') continue;
         final value = preview.values[key];
@@ -1777,6 +1821,8 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
             }
             filledCount++;
           }
+        } else {
+          coverDownloadFailed = true;
         }
       }
 
@@ -1794,7 +1840,9 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
         }
       });
       _showSheetSnackBar(
-        filledCount > 0
+        coverDownloadFailed
+            ? context.l10n.updateDownloadFailed
+            : filledCount > 0
             ? context.l10n.editMetadataAutoFillDoneFromSource(
                 filledCount,
                 preview.sourceName,
