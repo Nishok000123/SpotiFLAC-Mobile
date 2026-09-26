@@ -490,10 +490,12 @@ class _CollectionHeaderSkeleton extends StatelessWidget {
             children: [
               const SkeletonBox(width: 48, height: 48, borderRadius: 24),
               const SizedBox(width: 16),
-              SkeletonBox(
-                width: screenWidth * 0.45,
-                height: 48,
-                borderRadius: 24,
+              Flexible(
+                child: SkeletonBox(
+                  width: screenWidth * 0.45,
+                  height: 48,
+                  borderRadius: 24,
+                ),
               ),
               const SizedBox(width: 16),
               const SkeletonBox(width: 48, height: 48, borderRadius: 24),

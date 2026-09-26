@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:spotiflac_android/l10n/l10n.dart';
+import 'package:spotiflac_android/theme/mornye_theme.dart';
 
 /// "Disc N" chip with a trailing hairline, shown between disc groups in
 /// album track lists.
@@ -11,6 +12,28 @@ class DiscSeparatorChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    if (context.isMornye) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Divider(
+              height: 1,
+              color: MornyeTheme.metadataDividerColor(context),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              context.l10n.downloadedAlbumDiscHeader(discNumber),
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),

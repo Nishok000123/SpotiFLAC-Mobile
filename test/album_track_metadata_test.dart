@@ -13,6 +13,7 @@ import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/widgets/album_description.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
+import 'package:spotiflac_android/widgets/disc_separator_chip.dart';
 import 'package:spotiflac_android/widgets/track_list_tile.dart';
 
 void main() {
@@ -106,6 +107,84 @@ void main() {
           await tester.pumpAndSettle();
         },
       );
+    }
+  }
+
+  for (final mornye in [false, true]) {
+    for (final discs in [1, 2]) {
+      testWidgets('online album disc groups (Mornye: $mornye, discs: $discs)', (
+        tester,
+      ) async {
+        await tester.binding.setSurfaceSize(const Size(430, 1200));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        backendMessenger.setMockMethodCallHandler(backendChannel, (call) async {
+          if (call.method != 'getProviderMetadata') return null;
+          return jsonEncode({
+            'album_info': {'name': 'Example Album', 'total_tracks': 2},
+            'track_list': [
+              for (var index = 0; index < 2; index++)
+                {
+                  'id': 'song-$index',
+                  'name': 'Song $index',
+                  'artists': 'Example Artist',
+                  'disc_number': index == 0 ? 1 : discs,
+                  'total_discs': discs,
+                  'track_number': discs == 1 ? index + 1 : 1,
+                },
+            ],
+          });
+        });
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              theme: mornye ? MornyeTheme.build(Brightness.dark) : ThemeData(),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: ExtensionAlbumScreen(
+                extensionId: 'example-metadata',
+                albumId: 'disc-album-$mornye-$discs',
+                albumName: 'Example Album',
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final tiles = tester.widgetList<TrackListTile>(
+          find.byType(TrackListTile),
+        );
+        expect(tiles.map((tile) => tile.track.discNumber), [1, discs]);
+        expect(tiles.map((tile) => tile.track.totalDiscs), [discs, discs]);
+        expect(
+          tiles.map((tile) => tile.track.trackNumber),
+          discs == 1 ? [1, 2] : [1, 1],
+        );
+        if (discs == 1) {
+          expect(find.byType(DiscSeparatorChip), findsNothing);
+        } else {
+          final headers = tester.widgetList<DiscSeparatorChip>(
+            find.byType(DiscSeparatorChip),
+          );
+          expect(headers.map((header) => header.discNumber), [1, 2]);
+          expect(
+            tester.getTopLeft(find.text('Disc 2')).dy,
+            inExclusiveRange(
+              tester.getBottomLeft(find.text('Song 0')).dy,
+              tester.getTopLeft(find.text('Song 1')).dy,
+            ),
+          );
+          await tester.longPress(find.text('Song 1'));
+          await tester.pumpAndSettle();
+          expect(
+            tester
+                .widgetList<TrackListTile>(find.byType(TrackListTile))
+                .map((tile) => tile.isSelected),
+            [false, true],
+          );
+        }
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpAndSettle();
+      });
     }
   }
 

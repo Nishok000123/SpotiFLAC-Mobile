@@ -36,6 +36,7 @@ import 'package:spotiflac_android/widgets/track_detail_actions.dart';
 import 'package:spotiflac_android/widgets/selection_action_button.dart';
 import 'package:spotiflac_android/widgets/selection_bottom_bar.dart';
 import 'package:spotiflac_android/widgets/downloadable_cover.dart';
+import 'package:spotiflac_android/widgets/disc_separator_chip.dart';
 import 'package:spotiflac_android/widgets/mornye_artist_header.dart';
 
 class _AlbumCache {
@@ -628,6 +629,14 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
     final existingHistoryKeys = ref.watch(
       downloadHistoryVisibleBatchExistsProvider(_historySnapshot.request),
     );
+    int discNumber(Track track) {
+      final number = track.discNumber ?? 1;
+      return number > 0 ? number : 1;
+    }
+
+    final hasMultipleDiscs = tracks.any(
+      (track) => discNumber(track) > 1 || (track.totalDiscs ?? 1) > 1,
+    );
     return SliverPadding(
       padding: EdgeInsets.symmetric(horizontal: wideListInset(context)),
       sliver: SliverList(
@@ -637,7 +646,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
           final isInHistory = existingHistoryKeys.contains(
             historyLookups[index].lookupKey,
           );
-          return KeyedSubtree(
+          final row = KeyedSubtree(
             key: ValueKey(selectionId),
             child: StaggeredListItem(
               index: index,
@@ -675,6 +684,18 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
               ),
             ),
           );
+          final disc = discNumber(track);
+          if (hasMultipleDiscs &&
+              (index == 0 || discNumber(tracks[index - 1]) != disc)) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DiscSeparatorChip(discNumber: disc),
+                row,
+              ],
+            );
+          }
+          return row;
         }, childCount: tracks.length),
       ),
     );
