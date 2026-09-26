@@ -89,6 +89,7 @@ double syncedLyricSegmentLift({
   required Duration position,
   required Duration start,
   required Duration end,
+  double progressOffset = 0,
 }) {
   if (end <= start) return 0;
   final elapsed = (position - start).inMicroseconds / 1000;
@@ -101,12 +102,17 @@ double syncedLyricSegmentLift({
   // Start gently before the color sweep and let the movement trail it. Keep
   // this envelope independent of word length: fast syllables must not snap
   // upwards just because their highlight finishes in a few frames.
-  final normalLift = ease((elapsed + 180) / 720);
+  // Each grapheme begins as the sweep approaches its own position. Retain the
+  // full word's held-note envelope rather than treating letters as syllables.
+  final offset = duration * progressOffset.clamp(0.0, 1.0);
+  final normalLift = ease((elapsed - offset + 180) / 720);
   final heldStrength = ((duration - 1000) / 1500).clamp(0.0, 1.0);
   if (heldStrength == 0) return normalLift;
   final rise = ease((elapsed - 400) / math.min(1200, (duration - 400) * 0.6));
   final settle = ease((duration - elapsed) / 600);
-  return normalLift + 1.3 * heldStrength * rise * settle;
+  final wordLift = ease((elapsed + 180) / 720);
+  final emphasis = wordLift > 0 ? normalLift / wordLift : 0;
+  return normalLift + 1.3 * heldStrength * rise * settle * emphasis;
 }
 
 /// Horizontal leading edge for a highlight that fills left to right.

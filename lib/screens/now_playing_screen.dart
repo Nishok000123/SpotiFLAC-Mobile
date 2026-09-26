@@ -4080,21 +4080,29 @@ class _SweepingTimedLyricTextState extends State<_SweepingTimedLyricText> {
         var segmentOffset = 0;
         for (final segment in widget.segments) {
           final segmentEnd = segmentOffset + segment.length;
-          final boxes =
+          final boxes = <Rect>[];
+          // Keep paragraph shaping/wrapping intact. Select whole graphemes so
+          // accents, surrogate pairs and joined emoji never lift in pieces.
+          final fragments = widget.liftEnabled ? segment.characters : [segment];
+          var offset = segmentOffset;
+          for (final fragment in fragments) {
+            boxes.addAll(
               highlightedPainter
                   .getBoxesForSelection(
                     TextSelection(
-                      baseOffset: segmentOffset,
-                      extentOffset: segmentEnd,
+                      baseOffset: offset,
+                      extentOffset: offset + fragment.length,
                     ),
                     boxHeightStyle: BoxHeightStyle.max,
                   )
-                  .map((box) => box.toRect())
-                  .toList()
-                ..sort((a, b) {
-                  final row = a.top.compareTo(b.top);
-                  return row == 0 ? a.left.compareTo(b.left) : row;
-                });
+                  .map((box) => box.toRect()),
+            );
+            offset += fragment.length;
+          }
+          boxes.sort((a, b) {
+            final row = a.top.compareTo(b.top);
+            return row == 0 ? a.left.compareTo(b.left) : row;
+          });
           segmentBoxes.add(boxes);
           segmentOffset = segmentEnd;
         }
@@ -4147,48 +4155,47 @@ class _TimedLyricSweepPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final pendingPaths = <double, Path>{};
     final completedPaths = <double, Path>{};
-    final partialBoxes = <(Rect, double, double)>[];
+    final partialBoxes = <(Rect, double, double, double)>[];
     final position = currentPosition();
     for (var index = 0; index < segmentBoxes.length; index++) {
-      final lift =
-          highlightLift > 0 && index < starts.length && index < ends.length
-          ? highlightLift *
-                syncedLyricSegmentLift(
-                  position: position,
-                  start: starts[index],
-                  end: ends[index],
-                )
-          : 0.0;
-      if (highlightLift > 0) {
-        final path = pendingPaths.putIfAbsent(lift, Path.new);
-        for (final box in segmentBoxes[index]) {
-          path.addRect(box);
-        }
-      }
-      final value = index < starts.length && index < ends.length
+      final timed = index < starts.length && index < ends.length;
+      final value = timed
           ? syncedLyricSegmentProgress(
               position: position,
               start: starts[index],
               end: ends[index],
             )
           : 0.0;
-      if (value > 0) {
-        final boxes = segmentBoxes[index];
-        // Font fallback and wrapping can split one timed segment into several
-        // boxes. Consume its progress once, instead of lighting every box at
-        // the same time (which starts highlights in the middle of the text).
-        var revealWidth =
-            boxes.fold<double>(0, (width, box) => width + box.width) * value;
-        for (final box in boxes) {
-          if (revealWidth <= 0) break;
-          if (box.width <= 0) continue;
-          if (revealWidth >= box.width) {
-            completedPaths.putIfAbsent(lift, Path.new).addRect(box);
-          } else {
-            partialBoxes.add((box, revealWidth / box.width, lift));
-          }
-          revealWidth -= box.width;
+      final boxes = segmentBoxes[index];
+      final width = boxes.fold<double>(0, (sum, box) => sum + box.width);
+      var consumed = 0.0;
+      for (final box in boxes) {
+        if (box.width <= 0) continue;
+        final lift = highlightLift > 0 && timed
+            ? highlightLift *
+                  syncedLyricSegmentLift(
+                    position: position,
+                    start: starts[index],
+                    end: ends[index],
+                    progressOffset: consumed / width,
+                  )
+            : 0.0;
+        if (highlightLift > 0) {
+          pendingPaths.putIfAbsent(lift, Path.new).addRect(box);
         }
+        // Consume the same word progress across graphemes, wrapping and font
+        // fallback. The sweep timing never restarts at a glyph boundary.
+        final revealWidth = width * value - consumed;
+        final feather = ((highlightLift > 0 ? width : box.width) * 0.18).clamp(
+          3.0,
+          10.0,
+        );
+        if (value > 0 && revealWidth >= box.width) {
+          completedPaths.putIfAbsent(lift, Path.new).addRect(box);
+        } else if (value > 0 && revealWidth > -feather) {
+          partialBoxes.add((box, revealWidth / box.width, lift, feather));
+        }
+        consumed += box.width;
       }
     }
 
@@ -4205,13 +4212,10 @@ class _TimedLyricSweepPainter extends CustomPainter {
       _paintLiftedText(canvas, highlightedPainter, entry.value, entry.key);
     }
 
-    for (final (box, value, lift) in partialBoxes) {
-      final boundary = syncedLyricsLeftToRightBoundary(
-        left: box.left,
-        right: box.right,
-        progress: value,
-      );
-      final feather = (box.width * 0.18).clamp(3.0, 10.0);
+    for (final (box, value, lift, feather) in partialBoxes) {
+      // The feather can cross into the following grapheme before its solid
+      // fill arrives, avoiding a hard flash at each letter boundary.
+      final boundary = box.left + box.width * value;
       final revealRight = (boundary + feather).clamp(box.left, box.right);
       final revealRect = Rect.fromLTRB(
         box.left,
@@ -4219,8 +4223,6 @@ class _TimedLyricSweepPainter extends CustomPainter {
         revealRight,
         box.bottom,
       );
-      final gradientStart = boundary.clamp(box.left, revealRight - 0.01);
-
       canvas.save();
       canvas.translate(0, -lift);
       canvas.clipRect(revealRect);
@@ -4232,7 +4234,7 @@ class _TimedLyricSweepPainter extends CustomPainter {
             LinearGradient(
               colors: const [Colors.white, Colors.transparent],
             ).createShader(
-              Rect.fromLTRB(gradientStart, box.top, revealRight, box.bottom),
+              Rect.fromLTRB(boundary, box.top, boundary + feather, box.bottom),
             );
       canvas.drawRect(revealRect, mask);
       canvas.restore();

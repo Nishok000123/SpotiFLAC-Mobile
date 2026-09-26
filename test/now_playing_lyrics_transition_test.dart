@@ -2919,7 +2919,7 @@ void main() {
         for (final text in ['First second', 'Firsu secondu']) {
           final singingFirst = await pixelsAt(1100, text);
           final moves = mornye && text == 'First second';
-          final firstEnded = await pixelsAt(moves ? 1600 : 1307, text);
+          final firstEnded = await pixelsAt(moves ? 1800 : 1307, text);
           expect(firstEnded, isNot(orderedEquals(singingFirst)));
           if (moves) {
             expect(
@@ -2928,11 +2928,11 @@ void main() {
               reason: 'Movement trails the finished color sweep',
             );
           }
-          expect(await pixelsAt(1800, text), orderedEquals(firstEnded));
+          expect(await pixelsAt(1820, text), orderedEquals(firstEnded));
           final singingLast = await pixelsAt(2150, text);
-          final lastEnded = await pixelsAt(moves ? 2600 : 2497, text);
+          final lastEnded = await pixelsAt(moves ? 3100 : 2497, text);
           expect(lastEnded, isNot(orderedEquals(singingLast)));
-          expect(await pixelsAt(2900, text), orderedEquals(lastEnded));
+          expect(await pixelsAt(3400, text), orderedEquals(lastEnded));
           expect(await pixelsAt(1100, text), orderedEquals(singingFirst));
         }
         final originalPixels = await pixelsAt(1100, 'First second');
@@ -2994,7 +2994,9 @@ void main() {
           matching: find.byType(CustomPaint),
         );
 
-        Future<(double, double)> paintedHeights() async {
+        Future<(double, double)> paintedHeights({
+          bool firstWordLetters = false,
+        }) async {
           final painter = tester.widget<CustomPaint>(paintFinder).painter!;
           final size = tester.getSize(paintFinder);
           return (await tester.runAsync(() async {
@@ -3025,10 +3027,18 @@ void main() {
               return (top + bottom) / 2;
             }
 
-            final result = (
-              centerFor(0, (image.width * 0.4).floor()),
-              centerFor((image.width * 0.6).ceil(), image.width),
-            );
+            final result = firstWordLetters
+                ? (
+                    centerFor(0, (image.width * 0.1).floor()),
+                    centerFor(
+                      (image.width * 0.31).ceil(),
+                      (image.width * 0.39).floor(),
+                    ),
+                  )
+                : (
+                    centerFor(0, (image.width * 0.4).floor()),
+                    centerFor((image.width * 0.6).ceil(), image.width),
+                  );
             image.dispose();
             picture.dispose();
             return result;
@@ -3048,25 +3058,36 @@ void main() {
 
         final pending = await seek(800);
         final bounds = tester.getRect(paintFinder);
-        final firstEnded = await seek(1600);
+        await seek(1300);
+        final letters = await paintedHeights(firstWordLetters: true);
+        if (reducedMotion) {
+          expect(letters.$1, letters.$2);
+        } else {
+          expect(
+            letters.$1,
+            lessThan(letters.$2),
+            reason: 'Letters in one timed word must not rise as a block',
+          );
+        }
+        final firstEnded = await seek(1900);
         expect(firstEnded.$2, pending.$2);
         if (reducedMotion) {
           expect(firstEnded, pending);
         } else {
           expect(pending.$1 - firstEnded.$1, inInclusiveRange(1, 2.5));
         }
-        final held = await seek(4500);
+        final held = await seek(5500);
         final settled = await seek(6000);
         expect(held.$1, firstEnded.$1);
         if (reducedMotion) {
           expect(held, pending);
           expect(settled, pending);
         } else {
-          expect(settled.$2 - held.$2, greaterThan(1));
+          expect(settled.$2 - held.$2, greaterThan(0));
           expect(pending.$2 - settled.$2, inInclusiveRange(1, 2.5));
         }
         expect(tester.getRect(paintFinder), bounds);
-        expect(await seek(4500), held);
+        expect(await seek(5500), held);
         await tester.pump(const Duration(seconds: 1));
         expect(
           await paintedHeights(),
