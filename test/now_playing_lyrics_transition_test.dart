@@ -1096,7 +1096,7 @@ void main() {
       expect(find.text('Go to Artist'), findsOneWidget);
       expect(find.text('Favorite'), findsOneWidget);
       expect(find.text('Share'), findsOneWidget);
-      expect(tester.widget<Text>(find.text('Go to Album')).style?.fontSize, 15);
+      expect(tester.widget<Text>(find.text('Go to Album')).style?.fontSize, 17);
       await tester.ensureVisible(find.text('Sleep timer'));
       await tester.tap(find.text('Sleep timer'));
       await tester.pumpAndSettle();
@@ -2608,8 +2608,8 @@ void main() {
         final glass = tester.widget<MornyeGlassPanel>(
           find.byType(MornyeGlassPanel).last,
         );
-        expect(glass.tintColor, Colors.white);
-        expect(glass.tintOpacity, lessThan(0.5));
+        expect(glass.backdropFilter, isNotNull);
+        expect(glass.tintOpacity, inExclusiveRange(0, 1));
         expect(
           find.text('Hide Pronunciation'),
           supplement == 'pronunciation' ? findsOneWidget : findsNothing,

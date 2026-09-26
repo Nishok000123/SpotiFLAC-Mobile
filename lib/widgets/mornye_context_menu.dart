@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -153,6 +154,67 @@ class MornyeMenuAction {
 
 /// One frosted popover, with compact shortcuts and separated action groups.
 class MornyeContextMenu extends StatelessWidget {
+  // Compress bright artwork after blurring it, preserving more backdrop
+  // detail in the midtones than a thick, opaque gray fill would allow.
+  static final _darkBackdrop = ImageFilter.compose(
+    outer: const ColorFilter.matrix([
+      0.22,
+      0,
+      0,
+      0,
+      54,
+      0,
+      0.22,
+      0,
+      0,
+      54,
+      0,
+      0,
+      0.22,
+      0,
+      56,
+      0,
+      0,
+      0,
+      1,
+      0,
+    ]),
+    inner: _frostedBackdrop(1.8),
+  );
+  static final _lightBackdrop = _frostedBackdrop(1);
+
+  static ImageFilter _frostedBackdrop(double brightness) {
+    const saturation = 0.45;
+    const r = 0.2126 * (1 - saturation);
+    const g = 0.7152 * (1 - saturation);
+    const b = 0.0722 * (1 - saturation);
+    return ImageFilter.compose(
+      outer: ColorFilter.matrix([
+        (r + saturation) * brightness,
+        g * brightness,
+        b * brightness,
+        0,
+        0,
+        r * brightness,
+        (g + saturation) * brightness,
+        b * brightness,
+        0,
+        0,
+        r * brightness,
+        g * brightness,
+        (b + saturation) * brightness,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+      ]),
+      inner: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
+    );
+  }
+
   const MornyeContextMenu({
     super.key,
     this.quickActions = const [],
@@ -171,6 +233,7 @@ class MornyeContextMenu extends StatelessWidget {
     final theme = inheritSurface
         ? Theme.of(context)
         : MornyeTheme.fromContext(context);
+    final dark = theme.brightness == Brightness.dark;
     final visibleGroups = groups.where((group) => group.isNotEmpty).toList();
     final shortcuts = quickActions.isEmpty
         ? null
@@ -193,11 +256,14 @@ class MornyeContextMenu extends StatelessWidget {
             if (i > 0 || quickActions.isNotEmpty)
               Padding(
                 padding: EdgeInsets.symmetric(vertical: i == 0 ? 0 : 8),
-                child: const Divider(
+                child: Divider(
                   height: 0.5,
                   thickness: 0.5,
                   indent: 20,
                   endIndent: 20,
+                  color: theme.colorScheme.onSurface.withValues(
+                    alpha: dark ? 0.18 : 0.12,
+                  ),
                 ),
               ),
             for (final action in visibleGroups[i]) _action(theme, action),
@@ -211,8 +277,11 @@ class MornyeContextMenu extends StatelessWidget {
         radius: 28,
         // Keep one local, clipped backdrop. A second screen-space lens pass
         // can shift its outline inside an offset/scaled popover on Impeller.
+        // Soften artwork colors and bright lyrics before the neutral tint,
+        // keeping white menu text readable even over a near-white cover.
+        backdropFilter: dark ? _darkBackdrop : _lightBackdrop,
         tintColor: Colors.white,
-        tintOpacity: theme.brightness == Brightness.dark ? 0.12 : 0.50,
+        tintOpacity: dark ? 0.025 : 0.72,
         child: LayoutBuilder(
           builder: (context, constraints) {
             // Let the entire menu scroll when pinning the shortcuts would
@@ -249,16 +318,16 @@ class MornyeContextMenu extends StatelessWidget {
         : action.destructive || action.selected
         ? theme.colorScheme.primary
         : theme.colorScheme.onSurface;
-    final icon = Icon(action.icon, size: compact ? 23 : 21, color: color);
+    final icon = Icon(action.icon, size: compact ? 24 : 22, color: color);
     final label = Text(
       action.label,
       textAlign: compact ? TextAlign.center : TextAlign.start,
       style: theme.textTheme.bodyLarge?.copyWith(
         color: color,
         fontSize: compact
-            ? 13
+            ? 14
             : dense
-            ? 15
+            ? 16
             : 17,
         fontWeight: compact ? FontWeight.w600 : FontWeight.w400,
       ),
@@ -289,8 +358,9 @@ class MornyeContextMenu extends StatelessWidget {
                           Text(
                             action.subtitle!,
                             style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 14,
                               color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.78,
+                                alpha: 0.96,
                               ),
                             ),
                           ),

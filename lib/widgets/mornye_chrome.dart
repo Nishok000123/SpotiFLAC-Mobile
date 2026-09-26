@@ -131,6 +131,7 @@ class MornyeGlassPanel extends ConsumerWidget {
     this.strongTint = false,
     this.tintOpacity,
     this.tintColor,
+    this.backdropFilter,
     this.liquidGlass = false,
     this.blurEnabled = true,
   });
@@ -144,6 +145,7 @@ class MornyeGlassPanel extends ConsumerWidget {
     this.lastInGroup = true,
     this.tintOpacity = 0.78,
     this.tintColor,
+    this.backdropFilter,
     this.liquidGlass = false,
     this.blurEnabled = true,
   }) : strongTint = false;
@@ -155,6 +157,7 @@ class MornyeGlassPanel extends ConsumerWidget {
   final bool strongTint;
   final double? tintOpacity;
   final Color? tintColor;
+  final ImageFilter? backdropFilter;
   final bool liquidGlass;
 
   /// Disable backdrop sampling for surfaces that scroll over a plain page.
@@ -172,6 +175,7 @@ class MornyeGlassPanel extends ConsumerWidget {
         radius: radius,
         tintOpacity: tintOpacity,
         tintColor: tintColor,
+        backdropFilter: backdropFilter,
         blurEnabled: blur,
         child: Material(color: Colors.transparent, child: child),
       );
@@ -183,6 +187,7 @@ class MornyeGlassPanel extends ConsumerWidget {
       strongTint: strongTint,
       tintOpacity: tintOpacity,
       tintColor: tintColor,
+      backdropFilter: backdropFilter,
       blurEnabled: blur,
       child: Material(
         color: strongTint
@@ -203,6 +208,7 @@ class MornyeGlass extends StatelessWidget {
     this.strongTint = false,
     this.tintOpacity,
     this.tintColor,
+    this.backdropFilter,
   }) : _useLens = true,
        firstInGroup = true,
        lastInGroup = true;
@@ -218,6 +224,7 @@ class MornyeGlass extends StatelessWidget {
     this.strongTint = false,
     this.tintOpacity,
     this.tintColor,
+    this.backdropFilter,
   }) : _useLens = false;
 
   final Widget child;
@@ -233,6 +240,7 @@ class MornyeGlass extends StatelessWidget {
   /// Uses a single tint instead of layered highlights for translucent surfaces.
   final double? tintOpacity;
   final Color? tintColor;
+  final ImageFilter? backdropFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -248,6 +256,7 @@ class MornyeGlass extends StatelessWidget {
       strongTint: strongTint,
       tintOpacity: tintOpacity,
       tintColor: tintColor,
+      backdropFilter: backdropFilter,
       child: useGlass
           ? NativeGlassMetrics(
               child: LiquidGlassLens(
@@ -299,6 +308,7 @@ class _MornyeGlassSurface extends StatelessWidget {
     this.strongTint = false,
     this.tintOpacity,
     this.tintColor,
+    this.backdropFilter,
   });
 
   final Widget child;
@@ -309,6 +319,7 @@ class _MornyeGlassSurface extends StatelessWidget {
   final bool strongTint;
   final double? tintOpacity;
   final Color? tintColor;
+  final ImageFilter? backdropFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -321,7 +332,7 @@ class _MornyeGlassSurface extends StatelessWidget {
     );
     final rim = BorderSide(
       color: dark
-          ? Colors.white.withValues(alpha: 0.16)
+          ? Colors.white.withValues(alpha: tintColor == null ? 0.16 : 0.28)
           : Colors.black.withValues(alpha: 0.17),
       width: 0.75,
     );
@@ -390,7 +401,10 @@ class _MornyeGlassSurface extends StatelessWidget {
         child: ClipRRect(
           borderRadius: shape,
           child: useBlur
-              ? BackdropFilter(filter: _backdropBlur, child: surface)
+              ? BackdropFilter(
+                  filter: backdropFilter ?? _backdropBlur,
+                  child: surface,
+                )
               : surface,
         ),
       ),

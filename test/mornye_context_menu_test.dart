@@ -137,46 +137,60 @@ void main() {
   }))!;
 
   for (final brightness in Brightness.values) {
-    testWidgets('menu glass lightens its backdrop evenly ($brightness)', (
-      tester,
-    ) async {
-      final originalDisableShadows = debugDisableShadows;
-      debugDisableShadows = false;
-      try {
-        final capture = GlobalKey();
-        await openMenu(
-          tester,
-          anchor: const Rect.fromLTWH(330, 144, 44, 44),
-          brightness: brightness,
-          backgroundColor: const Color(0xff6c3a22),
-          capture: capture,
-          onResult: (_) {},
-        );
-        final menu = tester.getRect(find.byType(MornyeContextMenu));
-        final pixels = await samplePixels(tester, capture, [
-          const Offset(8, 80),
-          for (final x in [menu.left + 8, menu.right - 8])
-            for (final fraction in [0.25, 0.5, 0.75])
-              Offset(x, menu.top + menu.height * fraction),
-        ]);
-        final outside = pixels.first;
-        for (final inside in pixels.skip(1)) {
-          // The white wash lightens all channels while retaining the backdrop's
-          // warm hue. Sampling both sides catches an extra, offset glass panel.
-          expect(inside.r, greaterThan(outside.r + 0.04));
-          expect(inside.g, greaterThan(outside.g + 0.04));
-          expect(inside.b, greaterThan(outside.b + 0.04));
-          expect(inside.r, greaterThan(inside.g + 0.04));
-          expect(inside.g, greaterThan(inside.b + 0.02));
-          expect(inside.r, closeTo(pixels[1].r, 0.015));
-          expect(inside.g, closeTo(pixels[1].g, 0.015));
-          expect(inside.b, closeTo(pixels[1].b, 0.015));
+    for (final background in [
+      Colors.white,
+      Colors.black,
+      const Color(0xff6c3a22),
+    ]) {
+      testWidgets('menu labels stay readable over $background ($brightness)', (
+        tester,
+      ) async {
+        final originalDisableShadows = debugDisableShadows;
+        debugDisableShadows = false;
+        try {
+          final capture = GlobalKey();
+          await openMenu(
+            tester,
+            anchor: const Rect.fromLTWH(330, 144, 44, 44),
+            brightness: brightness,
+            backgroundColor: background,
+            capture: capture,
+            onResult: (_) {},
+          );
+          final menu = tester.getRect(find.byType(MornyeContextMenu));
+          final pixels = await samplePixels(tester, capture, [
+            for (final x in [menu.left + 8, menu.right - 8])
+              for (final fraction in [0.25, 0.5, 0.75])
+                Offset(x, menu.top + menu.height * fraction),
+          ]);
+          final foreground = MornyeTheme.build(
+            brightness,
+          ).colorScheme.onSurface;
+          for (final inside in pixels) {
+            // Busy lyrics and bright artwork must not wash out either label.
+            for (final textColor in [
+              foreground,
+              Color.alphaBlend(foreground.withValues(alpha: 0.96), inside),
+            ]) {
+              final luminances = [
+                inside.computeLuminance(),
+                textColor.computeLuminance(),
+              ]..sort();
+              final contrast =
+                  (luminances.last + 0.05) / (luminances.first + 0.05);
+              expect(contrast, greaterThanOrEqualTo(4.5));
+            }
+            // The panel remains even at both edges without an offset lens.
+            expect(inside.r, closeTo(pixels.first.r, 0.015));
+            expect(inside.g, closeTo(pixels.first.g, 0.015));
+            expect(inside.b, closeTo(pixels.first.b, 0.015));
+          }
+          expect(tester.takeException(), isNull);
+        } finally {
+          debugDisableShadows = originalDisableShadows;
         }
-        expect(tester.takeException(), isNull);
-      } finally {
-        debugDisableShadows = originalDisableShadows;
-      }
-    });
+      });
+    }
 
     testWidgets('menu stays on screen near a bottom edge ($brightness)', (
       tester,
@@ -202,6 +216,34 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('frosted glass still carries the artwork color', (tester) async {
+    final colors = <Color>[];
+    for (final background in [
+      const Color(0xff804020),
+      const Color(0xff204080),
+    ]) {
+      final capture = GlobalKey();
+      await openMenu(
+        tester,
+        anchor: const Rect.fromLTWH(330, 144, 44, 44),
+        brightness: Brightness.dark,
+        backgroundColor: background,
+        capture: capture,
+        onResult: (_) {},
+      );
+      final rect = tester.getRect(find.byType(MornyeContextMenu));
+      colors.addAll(
+        await samplePixels(tester, capture, [
+          Offset(rect.left + 8, rect.center.dy),
+        ]),
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+    }
+    expect(colors.first.r, greaterThan(colors.last.r + 0.03));
+    expect(colors.last.b, greaterThan(colors.first.b + 0.03));
+    expect(tester.takeException(), isNull);
+  });
 
   for (final highContrast in [false, true]) {
     testWidgets('menu stays readable without blur (contrast: $highContrast)', (

@@ -92,7 +92,6 @@ class MornyePlayerActionsSheet extends ConsumerWidget {
       ),
     );
     return MornyeContextMenu(
-      dense: true,
       quickActions: [
         _action(
           context,
