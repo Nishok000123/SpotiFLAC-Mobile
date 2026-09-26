@@ -13,7 +13,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 pub const MAX_ENTRIES: usize = 500;
 pub const TTL: Duration = Duration::from_secs(24 * 60 * 60);
 const MAX_PERSISTED_BYTES: u64 = 64 << 20;
-const SNAPSHOT_VERSION: u32 = 3;
+const SNAPSHOT_VERSION: u32 = 4;
 
 #[derive(Clone)]
 struct Entry {
@@ -152,7 +152,8 @@ impl LyricsCache {
                 let Some(response) = entry.response else {
                     continue;
                 };
-                // Older versions discarded Apple text or romanization timing.
+                // Older versions lost Apple supplements or collapsed group vocals
+                // into the second singer instead of preserving the vocal side.
                 // Refetch once, preserving other providers' caches.
                 if loaded.version < SNAPSHOT_VERSION && response.provider == "Apple Music" {
                     continue;

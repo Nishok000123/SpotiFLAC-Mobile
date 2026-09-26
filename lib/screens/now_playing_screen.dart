@@ -3680,7 +3680,7 @@ TextAlign _lyricTextAlign(BuildContext context, LyricLine line) {
   if (voice == null) {
     return context.isMornye ? TextAlign.start : TextAlign.center;
   }
-  if (voice.isGroup) return TextAlign.center;
+  if (voice.isGroup) return TextAlign.left;
   return voice.index.isEven ? TextAlign.left : TextAlign.right;
 }
 

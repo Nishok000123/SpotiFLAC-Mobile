@@ -2593,6 +2593,51 @@ void main() {
   }
 
   for (final mornye in [false, true]) {
+    testWidgets('TTML group vocals keep the primary side ($mornye)', (
+      tester,
+    ) async {
+      metadataOverrides['lyrics'] = '''
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:m="http://www.w3.org/ns/ttml#metadata">
+<head><metadata><m:agent xml:id="v1" type="person"/><m:agent xml:id="v2" type="person"/><m:agent xml:id="v3" type="group"/></metadata></head>
+<body><p begin="1s" end="3s" m:agent="v2">Guest</p><p begin="3s" end="6s" m:agent="v3">Together</p><p begin="6s" end="9s" m:agent="v2">Guest returns</p></body></tt>
+''';
+      final playback = StreamController<PlaybackState>.broadcast();
+      addTearDown(playback.close);
+      await pumpNowPlaying(
+        tester,
+        theme: mornye ? MornyeTheme.build(Brightness.dark) : null,
+        size: const Size(390, 1100),
+        playbackEvents: playback.stream,
+      );
+      mediaItems.add(item('first'));
+      await tester.pumpAndSettle();
+      if (mornye) {
+        await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
+      } else {
+        await tester.drag(find.byType(PageView), const Offset(-350, 0));
+      }
+      await tester.pumpAndSettle();
+      for (final seconds in [0, 2, 4, 7, 4]) {
+        playback.add(
+          PlaybackState(
+            playing: false,
+            processingState: AudioProcessingState.ready,
+            updatePosition: Duration(seconds: seconds),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<Text>(find.text('Together')).textAlign,
+          TextAlign.left,
+        );
+        expect(
+          tester.widget<Text>(find.text('Guest returns')).textAlign,
+          TextAlign.right,
+        );
+      }
+      expect(tester.takeException(), isNull);
+    });
+
     for (final ttml in [false, true]) {
       testWidgets(
         'backing vocals stay smaller under the lead with independent timing (Mornye: $mornye, TTML: $ttml)',
