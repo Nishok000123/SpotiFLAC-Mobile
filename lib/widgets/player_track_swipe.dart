@@ -24,8 +24,11 @@ class PlayerTrackSwipe extends StatefulWidget {
 
 class _PlayerTrackSwipeState extends State<PlayerTrackSwipe>
     with SingleTickerProviderStateMixin {
+  static const _titleGap = 32.0;
+
   late final _offset = AnimationController.unbounded(vsync: this);
   double _width = 240;
+  double get _pageExtent => _width + _titleGap;
   double _drag = 0;
   bool _settling = false;
   int _generation = 0;
@@ -63,7 +66,7 @@ class _PlayerTrackSwipeState extends State<PlayerTrackSwipe>
     _drag += details.primaryDelta ?? 0;
     _offset.value = _neighbor(_drag) == null
         ? _drag * 0.18 / (1 + _drag.abs() / _width)
-        : _drag.clamp(-_width, _width);
+        : _drag.clamp(-_pageExtent, _pageExtent);
   }
 
   Future<void> _finish([DragEndDetails? details]) async {
@@ -81,7 +84,7 @@ class _PlayerTrackSwipeState extends State<PlayerTrackSwipe>
     try {
       await _offset
           .animateTo(
-            commit ? _width * offset.sign : 0,
+            commit ? _pageExtent * offset.sign : 0,
             duration: MediaQuery.disableAnimationsOf(context)
                 ? Duration.zero
                 : const Duration(milliseconds: 280),
@@ -165,7 +168,7 @@ class PlayerTrackSwipeTitles extends StatelessWidget {
           return ClipRect(
             child: AnimatedBuilder(
               animation: state._offset,
-              child: builder(current),
+              child: ClipRect(child: builder(current)),
               builder: (context, child) {
                 final offset = state._offset.value;
                 final next = state._neighbor(offset);
@@ -178,11 +181,13 @@ class PlayerTrackSwipeTitles extends StatelessWidget {
                     ),
                     if (offset != 0 && next != null)
                       Positioned(
-                        left: offset - width * offset.sign,
+                        left: offset - state._pageExtent * offset.sign,
                         top: 0,
                         width: width,
                         child: ExcludeSemantics(
-                          child: IgnorePointer(child: builder(next)),
+                          child: IgnorePointer(
+                            child: ClipRect(child: builder(next)),
+                          ),
                         ),
                       ),
                   ],
