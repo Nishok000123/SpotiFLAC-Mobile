@@ -270,6 +270,128 @@ void main() {
   });
 
   test(
+    'shuffle plays the published queue and off restores the original order',
+    () async {
+      final tracks = [
+        for (var i = 0; i < 8; i++)
+          PlayableMedia(
+            id: '$i',
+            source: '/$i.flac',
+            title: '$i',
+            artist: 'Artist',
+          ),
+      ];
+      await handler.setQueueAndPlay(tracks, initialIndex: 3);
+      await handler.setShuffleMode(AudioServiceShuffleMode.all);
+      final planned = handler.queue.value.map((item) => item.id).toList();
+      expect(planned.first, '3');
+      expect(planned.toSet(), tracks.map((item) => item.id).toSet());
+      for (var i = 1; i < planned.length; i++) {
+        await handler.skipToNext();
+        expect(handler.mediaItem.value?.id, planned[i]);
+        expect(native.sources['music-player'], '/${planned[i]}.flac');
+        expect(handler.queue.value.map((item) => item.id), planned);
+      }
+      final last = handler.mediaItem.value;
+      final resumes = native.resumedSources.length;
+      await handler.setShuffleMode(AudioServiceShuffleMode.none);
+      expect(
+        handler.queue.value.map((item) => item.id),
+        tracks.map((item) => item.id),
+      );
+      expect(handler.mediaItem.value, last);
+      expect(handler.playbackState.value.queueIndex, int.parse(planned.last));
+      expect(native.resumedSources.length, resumes);
+      await handler.setShuffleMode(AudioServiceShuffleMode.all);
+      expect(handler.queue.value.first.id, planned.last);
+      expect(handler.mediaItem.value, last);
+    },
+  );
+
+  test(
+    'automatic completion follows shuffle order and respects repeat off',
+    () async {
+      await handler.setQueueAndPlay(_tracks);
+      await handler.setShuffleMode(AudioServiceShuffleMode.all);
+      final planned = handler.queue.value.map((item) => item.id).toList();
+      for (var i = 1; i < planned.length; i++) {
+        await native.event('music-player', 'audio.onComplete');
+        await _until(
+          () =>
+              handler.mediaItem.value?.id == planned[i] &&
+              handler.playbackState.value.processingState ==
+                  AudioProcessingState.ready,
+        );
+      }
+      await native.event('music-player', 'audio.onComplete');
+      await _until(
+        () =>
+            handler.playbackState.value.processingState ==
+            AudioProcessingState.completed,
+      );
+      expect(handler.mediaItem.value?.id, planned.last);
+      expect(handler.queue.value.map((item) => item.id), planned);
+    },
+  );
+
+  test(
+    'shuffle restoration retains duplicate entries and explicit queue edits',
+    () async {
+      await handler.setQueueAndPlay([
+        _tracks[0],
+        _tracks[0],
+        _tracks[1],
+        _tracks[2],
+      ]);
+      await handler.setShuffleMode(AudioServiceShuffleMode.all);
+      await handler.enqueue(
+        const PlayableMedia(
+          id: 'next',
+          source: '/next.flac',
+          title: 'Next',
+          artist: '',
+        ),
+        playNext: true,
+      );
+      await handler.enqueueAll([
+        const PlayableMedia(
+          id: 'last',
+          source: '/last.flac',
+          title: 'Last',
+          artist: '',
+        ),
+      ]);
+      expect(handler.queue.value[1].id, 'next');
+      await handler.onSourceDeleted('/two.flac');
+      await handler.setShuffleMode(AudioServiceShuffleMode.none);
+      expect(handler.queue.value.map((item) => item.id), [
+        'one',
+        'next',
+        'one',
+        'three',
+        'last',
+      ]);
+      expect(handler.playbackState.value.queueIndex, 0);
+    },
+  );
+
+  test('restored shuffle can return to the saved original order', () async {
+    await handler.restoreSession(
+      items: [_tracks[1], _tracks[2], _tracks[0]],
+      index: 1,
+      position: const Duration(seconds: 12),
+      shuffle: true,
+      originalOrder: [1, 2, 0],
+    );
+    await handler.setShuffleMode(AudioServiceShuffleMode.none);
+    expect(handler.queue.value.map((item) => item.id), ['one', 'two', 'three']);
+    expect(handler.mediaItem.value?.id, 'three');
+    expect(handler.playbackState.value.queueIndex, 2);
+    expect(handler.playbackState.value.position.inSeconds, 12);
+    expect(native.resumedSources, isEmpty);
+  });
+
+  test(
     'notification favorite retains clicked track and ignores double taps',
     () async {
       final save = Completer<void>();
@@ -310,6 +432,21 @@ void main() {
     await _until(() => (native.lastVolume(incoming) ?? 0) > 0);
     return incoming;
   }
+
+  test(
+    'AutoMix prepares and plays the next entry in the shuffled queue',
+    () async {
+      await handler.setShuffleMode(AudioServiceShuffleMode.all);
+      await prepare();
+      final planned = handler.queue.value.map((item) => item.id).toList();
+      final incoming = native.prepared;
+      expect(native.sources[incoming], '/${planned[1]}.flac');
+      native.positions['music-player'] = 55000;
+      await _until(() => handler.mediaItem.value?.id == planned[1]);
+      expect(handler.queue.value.map((item) => item.id), planned);
+      expect(handler.playbackState.value.queueIndex, 1);
+    },
+  );
 
   test(
     'disabled AutoMix uses only the ordinary player and no analysis',

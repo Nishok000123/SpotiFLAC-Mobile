@@ -84,9 +84,7 @@ class _MusicAutoMix {
     _playGeneration = handler._playRequestGeneration;
     _queueRevision = handler._sessionQueueRevision;
     final index = handler._index;
-    final nextIndex = handler._shuffle
-        ? handler._pickNextShuffle()
-        : index + 1 < handler._media.length
+    final nextIndex = index + 1 < handler._media.length
         ? index + 1
         : handler._repeatMode == AudioServiceRepeatMode.all
         ? 0

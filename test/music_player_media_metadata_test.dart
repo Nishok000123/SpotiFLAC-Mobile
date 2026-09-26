@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spotiflac_android/services/music_player_service.dart';
 
@@ -164,25 +166,48 @@ void main() {
     expect(metadata['title'], 'Instrumental');
   });
 
-  test('shuffle candidate selection excludes recent tracks', () {
+  test('shuffle plans the whole queue once with the current song first', () {
+    final order = buildShuffledQueueOrder(
+      mediaCount: 12,
+      currentIndex: 4,
+      random: Random(42),
+    );
+    expect(order.first, 4);
+    expect(order.toSet(), {for (var i = 0; i < 12; i++) i});
+    expect(order.length, 12);
     expect(
-      buildShuffleCandidatePool(
-        mediaCount: 6,
-        currentIndex: 2,
-        recentIndices: const [0, 1, 3],
-      ),
-      [4, 5],
+      order.skip(1),
+      isNot(orderedEquals([0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11])),
     );
   });
 
-  test('shuffle candidate selection resets after exhausting the pool', () {
-    expect(
-      buildShuffleCandidatePool(
-        mediaCount: 4,
-        currentIndex: 2,
-        recentIndices: const [0, 1, 3],
-      ),
-      [0, 1, 3],
-    );
-  });
+  test(
+    'new shuffle draws a new permutation and handles empty/single queues',
+    () {
+      final random = Random(42);
+      final first = buildShuffledQueueOrder(
+        mediaCount: 12,
+        currentIndex: 4,
+        random: random,
+      );
+      final second = buildShuffledQueueOrder(
+        mediaCount: 12,
+        currentIndex: 4,
+        random: random,
+      );
+      expect(first, isNot(orderedEquals(second)));
+      expect(
+        buildShuffledQueueOrder(
+          mediaCount: 0,
+          currentIndex: -1,
+          random: random,
+        ),
+        isEmpty,
+      );
+      expect(
+        buildShuffledQueueOrder(mediaCount: 1, currentIndex: 0, random: random),
+        [0],
+      );
+    },
+  );
 }

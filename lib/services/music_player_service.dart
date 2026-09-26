@@ -102,22 +102,19 @@ void refreshPlaybackNormalization(String source) {
   if (handler != null) unawaited(handler._refreshNormalizationSource(source));
 }
 
-List<int> buildShuffleCandidatePool({
+List<int> buildShuffledQueueOrder({
   required int mediaCount,
   required int currentIndex,
-  required Iterable<int> recentIndices,
+  required Random random,
 }) {
-  final recent = recentIndices.toSet();
-  final pool = <int>[];
-  for (var index = 0; index < mediaCount; index++) {
-    if (index != currentIndex && !recent.contains(index)) pool.add(index);
-  }
-  if (pool.isEmpty) {
-    for (var index = 0; index < mediaCount; index++) {
-      if (index != currentIndex) pool.add(index);
-    }
-  }
-  return pool;
+  final rest = [
+    for (var i = 0; i < mediaCount; i++)
+      if (i != currentIndex) i,
+  ]..shuffle(random);
+  return [
+    if (currentIndex >= 0 && currentIndex < mediaCount) currentIndex,
+    ...rest,
+  ];
 }
 
 final AudioContext _musicAudioContext = AudioContext(
@@ -369,9 +366,10 @@ class MusicPlayerHandler extends BaseAudioHandler
   DateTime? _sleepTimerEndsAt;
 
   bool _shuffle = false;
+  List<MediaItem>? _originalQueueOrder;
+  int _shuffleRequestGeneration = 0;
   AudioServiceRepeatMode _repeatMode = AudioServiceRepeatMode.none;
   final Random _random = Random();
-  final List<int> _recent = [];
   final List<int> _playHistory = [];
 
   // True when playback was paused because another app took audio focus.
@@ -905,6 +903,62 @@ class MusicPlayerHandler extends BaseAudioHandler
     _sessionQueueRevision++;
   }
 
+  List<Map<String, dynamic>> _sessionMedia() {
+    final original = _originalQueueOrder;
+    final ranks = Map<MediaItem, int>.identity();
+    if (original != null) {
+      for (var i = 0; i < original.length; i++) {
+        ranks[original[i]] = i;
+      }
+    }
+    return [
+      for (var i = 0; i < _media.length; i++)
+        {
+          ..._media[i].toJson(),
+          'queueOriginalIndex': ranks[_queueItems[i]] ?? i,
+        },
+    ];
+  }
+
+  void _applyQueueOrder(List<MediaItem> order) {
+    final current = _index >= 0 && _index < _queueItems.length
+        ? _queueItems[_index]
+        : null;
+    final media = Map<MediaItem, PlayableMedia>.identity();
+    for (var i = 0; i < _media.length; i++) {
+      media[_queueItems[i]] = _media[i];
+    }
+    _queueItems
+      ..clear()
+      ..addAll(order);
+    _media
+      ..clear()
+      ..addAll(order.map((item) => media[item]!));
+    _index = current == null
+        ? -1
+        : order.indexWhere((item) => identical(item, current));
+    _playHistory.clear();
+    if (_index >= 0) _playHistory.add(_index);
+  }
+
+  void _shuffleQueue() {
+    _originalQueueOrder ??= List.of(_queueItems);
+    final order = buildShuffledQueueOrder(
+      mediaCount: _media.length,
+      currentIndex: _index,
+      random: _random,
+    );
+    _applyQueueOrder(order.map((index) => _queueItems[index]).toList());
+  }
+
+  void _rememberEnqueued(List<MediaItem> items, {required bool playNext}) {
+    final original = _originalQueueOrder;
+    if (original == null) return;
+    final current = _queueItems[_index];
+    final at = original.indexWhere((item) => identical(item, current));
+    original.insertAll(playNext && at >= 0 ? at + 1 : original.length, items);
+  }
+
   /// Persists the queue only when it changed. Periodic position updates write
   /// fixed-size scalar columns, avoiding full queue JSON serialization every
   /// ten seconds for large playback sessions.
@@ -924,7 +978,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     final repeatMode = _repeatMode.name;
 
     if (_scheduledSessionQueueRevision != queueRevision) {
-      final media = _media.map((item) => item.toJson()).toList(growable: false);
+      final media = _sessionMedia();
       _scheduledSessionQueueRevision = queueRevision;
       return _enqueueSessionWrite(() async {
         try {
@@ -964,7 +1018,7 @@ class MusicPlayerHandler extends BaseAudioHandler
       // intentionally the only state-only path that serializes the queue.
       await AppStateDatabase.instance.savePlaybackSession({
         'version': 2,
-        'media': _media.map((item) => item.toJson()).toList(growable: false),
+        'media': _sessionMedia(),
         'index': index,
         'positionMs': positionMs,
         'shuffle': shuffle,
@@ -1004,6 +1058,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     required int index,
     required Duration position,
     required bool shuffle,
+    List<int>? originalOrder,
     bool queueNeedsRewrite = false,
     AudioServiceRepeatMode repeatMode = AudioServiceRepeatMode.none,
   }) async {
@@ -1020,6 +1075,13 @@ class MusicPlayerHandler extends BaseAudioHandler
         ..addAll(items.map((m) => m.toMediaItem()));
       _index = index.clamp(0, items.length - 1);
       _shuffle = shuffle;
+      if (shuffle) {
+        final order = [for (var i = 0; i < items.length; i++) i];
+        if (originalOrder?.length == items.length) {
+          order.sort((a, b) => originalOrder![a].compareTo(originalOrder[b]));
+        }
+        _originalQueueOrder = order.map((i) => _queueItems[i]).toList();
+      }
       _repeatMode = repeatMode;
       _pendingRestorePosition = position > Duration.zero ? position : null;
       _sourceReady = false;
@@ -1069,11 +1131,13 @@ class MusicPlayerHandler extends BaseAudioHandler
     _queueItems
       ..clear()
       ..addAll(items.map((m) => m.toMediaItem()));
+    _originalQueueOrder = null;
+    _index = initialIndex.clamp(0, items.length - 1);
+    if (_shuffle) _shuffleQueue();
     _markSessionQueueChanged();
-    _recent.clear();
     _playHistory.clear();
     queue.add(List<MediaItem>.unmodifiable(_queueItems));
-    await _playIndex(initialIndex.clamp(0, items.length - 1));
+    await _playIndex(_index);
   }
 
   Future<void> enqueue(PlayableMedia item, {bool playNext = false}) async {
@@ -1085,12 +1149,11 @@ class MusicPlayerHandler extends BaseAudioHandler
         ? (_index + 1).clamp(0, _media.length)
         : _media.length;
     _media.insert(insertAt, item);
-    _queueItems.insert(insertAt, item.toMediaItem());
+    final queueItem = item.toMediaItem();
+    _queueItems.insert(insertAt, queueItem);
+    _rememberEnqueued([queueItem], playNext: playNext);
     _markSessionQueueChanged();
 
-    for (var i = 0; i < _recent.length; i++) {
-      if (_recent[i] >= insertAt) _recent[i]++;
-    }
     for (var i = 0; i < _playHistory.length; i++) {
       if (_playHistory[i] >= insertAt) _playHistory[i]++;
     }
@@ -1110,17 +1173,18 @@ class MusicPlayerHandler extends BaseAudioHandler
       return;
     }
     var at = playNext ? (_index + 1).clamp(0, _media.length) : _media.length;
+    final queued = <MediaItem>[];
     for (final item in items) {
       _media.insert(at, item);
-      _queueItems.insert(at, item.toMediaItem());
-      for (var i = 0; i < _recent.length; i++) {
-        if (_recent[i] >= at) _recent[i]++;
-      }
+      final queueItem = item.toMediaItem();
+      _queueItems.insert(at, queueItem);
+      queued.add(queueItem);
       for (var i = 0; i < _playHistory.length; i++) {
         if (_playHistory[i] >= at) _playHistory[i]++;
       }
       at++;
     }
+    _rememberEnqueued(queued, playNext: playNext);
     _markSessionQueueChanged();
     queue.add(List<MediaItem>.unmodifiable(_queueItems));
     _broadcastState();
@@ -1151,7 +1215,6 @@ class MusicPlayerHandler extends BaseAudioHandler
       }
     }
 
-    _recent.clear();
     _playHistory.clear();
 
     queue.add(List<MediaItem>.unmodifiable(_queueItems));
@@ -1411,27 +1474,9 @@ class MusicPlayerHandler extends BaseAudioHandler
     }
   }
 
-  int _pickNextShuffle() {
-    if (_media.length <= 1) return _index;
-    final pool = buildShuffleCandidatePool(
-      mediaCount: _media.length,
-      currentIndex: _index,
-      recentIndices: _recent,
-    );
-    return pool[_random.nextInt(pool.length)];
-  }
-
   void _recordPlayHistory(int index) {
     _playHistory.add(index);
     if (_playHistory.length > 200) _playHistory.removeAt(0);
-    _recent.add(index);
-    final maxRecent = ((_media.length - 1) * 0.6).floor().clamp(
-      1,
-      _media.length > 1 ? _media.length - 1 : 1,
-    );
-    while (_recent.length > maxRecent) {
-      _recent.removeAt(0);
-    }
   }
 
   Future<void> _onComplete() async {
@@ -1439,17 +1484,6 @@ class MusicPlayerHandler extends BaseAudioHandler
         _index >= 0 &&
         _index < _media.length) {
       await _playIndex(_index, recordHistory: false);
-      return;
-    }
-    if (_shuffle) {
-      if (_media.length > 1) {
-        await _playIndex(_pickNextShuffle());
-      } else if (_repeatMode == AudioServiceRepeatMode.all &&
-          _media.isNotEmpty) {
-        await _playIndex(_index, recordHistory: false);
-      } else {
-        _broadcastState(playerState: PlayerState.completed);
-      }
       return;
     }
     if (_index >= 0 && _index < _media.length - 1) {
@@ -1557,8 +1591,24 @@ class MusicPlayerHandler extends BaseAudioHandler
 
   @override
   Future<void> setShuffleMode(AudioServiceShuffleMode shuffleMode) async {
+    final generation = ++_shuffleRequestGeneration;
+    final enabled = shuffleMode == AudioServiceShuffleMode.all;
     await _autoMix.cancel();
-    _shuffle = shuffleMode == AudioServiceShuffleMode.all;
+    if (generation != _shuffleRequestGeneration ||
+        _disposed ||
+        enabled == _shuffle) {
+      return;
+    }
+    _shuffle = enabled;
+    if (enabled) {
+      _shuffleQueue();
+    } else {
+      final original = _originalQueueOrder;
+      if (original != null) _applyQueueOrder(List.of(original));
+      _originalQueueOrder = null;
+    }
+    _markSessionQueueChanged();
+    queue.add(List<MediaItem>.unmodifiable(_queueItems));
     _broadcastState();
     if (_media.isNotEmpty && _index >= 0) {
       unawaited(_persistSession(position: playbackState.value.position));
@@ -1600,7 +1650,6 @@ class MusicPlayerHandler extends BaseAudioHandler
     _pausedByInterruption = false;
     _interruptionActive = false;
     _userPaused = false;
-    _recent.clear();
     _playHistory.clear();
     _pendingRestorePosition = null;
     _scheduledSessionQueueRevision = -1;
@@ -1616,10 +1665,6 @@ class MusicPlayerHandler extends BaseAudioHandler
 
   @override
   Future<void> skipToNext() async {
-    if (_shuffle) {
-      if (_media.length > 1) await _playIndex(_pickNextShuffle());
-      return;
-    }
     if (_index < _media.length - 1) await _playIndex(_index + 1);
   }
 
@@ -1700,12 +1745,14 @@ class MusicPlayerHandler extends BaseAudioHandler
 
     var removedBeforeCurrent = 0;
     final kept = <PlayableMedia>[];
+    final keptQueue = <MediaItem>[];
     for (var i = 0; i < _media.length; i++) {
       if (_media[i].source == target) {
         if (i < _index) removedBeforeCurrent++;
         continue;
       }
       kept.add(_media[i]);
+      keptQueue.add(_queueItems[i]);
     }
 
     if (kept.length == _media.length) return;
@@ -1715,9 +1762,10 @@ class MusicPlayerHandler extends BaseAudioHandler
       ..addAll(kept);
     _queueItems
       ..clear()
-      ..addAll(kept.map((m) => m.toMediaItem()));
+      ..addAll(keptQueue);
+    final keptSet = Set<MediaItem>.identity()..addAll(keptQueue);
+    _originalQueueOrder?.removeWhere((item) => !keptSet.contains(item));
     _markSessionQueueChanged();
-    _recent.clear();
     _playHistory.clear();
     queue.add(List<MediaItem>.unmodifiable(_queueItems));
 
@@ -1904,6 +1952,10 @@ Future<void> _restorePersistedPlaybackSession() async {
       index: index,
       position: position,
       shuffle: session['shuffle'] == true,
+      originalOrder: [
+        for (final i in keptOriginalIndices)
+          ((rawMedia[i] as Map)['queueOriginalIndex'] as num?)?.toInt() ?? i,
+      ],
       queueNeedsRewrite: items.length != rawMedia.length || artworkRelocated,
       repeatMode: AudioServiceRepeatMode.values.firstWhere(
         (mode) => mode.name == session['repeat'],
