@@ -34,7 +34,7 @@ void main() {
 
       expect(english.tutorialWelcomeDesc, contains('extensions'));
       expect(english.tutorialLibraryTip2, contains('built-in player'));
-      expect(indonesian.tutorialWelcomeDesc, contains('extension'));
+      expect(indonesian.tutorialWelcomeDesc, contains('ekstensi'));
       expect(indonesian.tutorialLibraryTip2, contains('pemutar bawaan'));
     });
   });
