@@ -364,6 +364,7 @@ class MusicPlayerHandler extends BaseAudioHandler
   bool _initialized = false;
   bool _sourceReady = false;
   Future<void>? _activePlayOperation;
+  Future<void> _sourceChangeTail = Future<void>.value();
   Timer? _sleepTimer;
   DateTime? _sleepTimerEndsAt;
 
@@ -442,7 +443,7 @@ class MusicPlayerHandler extends BaseAudioHandler
         if (identical(player, _player)) _handlePositionChanged(position);
       }),
       player.onDurationChanged.listen((duration) {
-        if (!identical(player, _player)) return;
+        if (!identical(player, _player) || !_sourceReady) return;
         final current = mediaItem.value;
         if (current != null && duration > Duration.zero) {
           mediaItem.add(current.copyWith(duration: duration));
@@ -693,6 +694,7 @@ class MusicPlayerHandler extends BaseAudioHandler
   }
 
   void _handlePositionChanged(Duration position) {
+    if (!_sourceReady || _switchingGeneration != 0) return;
     _broadcastPosition(position);
     _autoMix.onPosition(position);
     if (_restoringSession ||
@@ -1047,7 +1049,8 @@ class MusicPlayerHandler extends BaseAudioHandler
   }
 
   bool _isCurrentPlayRequest(int generation, PlayableMedia media) {
-    return generation == _playRequestGeneration &&
+    return !_disposed &&
+        generation == _playRequestGeneration &&
         _index >= 0 &&
         _index < _media.length &&
         _media[_index].id == media.id &&
@@ -1161,7 +1164,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     bool recordHistory = true,
     Duration startPosition = Duration.zero,
   }) async {
-    if (index < 0 || index >= _media.length) return;
+    if (_disposed || index < 0 || index >= _media.length) return;
     // A normal track change supersedes a pending restore. A restored start
     // keeps it until the source is actually ready so a transient failure can
     // be retried from the same position.
@@ -1170,16 +1173,71 @@ class MusicPlayerHandler extends BaseAudioHandler
     }
     final generation = ++_playRequestGeneration;
     _sourceReady = false;
-    await _autoMix.cancel();
-    if (generation != _playRequestGeneration || _disposed) return;
+    // Advance the requested index synchronously so consecutive Next taps do
+    // not all target the same song while AutoMix/source preparation awaits.
     _index = index;
+    final media = _media[index];
+    _switchingGeneration = generation;
+    await _serializeSourceChange(() async {
+      try {
+        if (!_isCurrentPlayRequest(generation, media)) return;
+        await _autoMix.cancel();
+        if (!_isCurrentPlayRequest(generation, media)) return;
+        // Retire the audible source before publishing another song's title.
+        await _player.stop();
+        if (!_isCurrentPlayRequest(generation, media)) return;
+        await _loadIndex(
+          index,
+          generation,
+          media,
+          recordHistory: recordHistory,
+          startPosition: startPosition,
+        );
+      } finally {
+        if (_switchingGeneration == generation) _switchingGeneration = 0;
+      }
+    });
+  }
+
+  Future<void> _serializeSourceChange(Future<void> Function() action) {
+    final operation = _sourceChangeTail.then((_) => action());
+    // A failed operation must not poison later transport requests.
+    _sourceChangeTail = operation.catchError((Object _) {});
+    return operation;
+  }
+
+  Future<void> _startResolvedSource(
+    String path,
+    int generation,
+    PlayableMedia media,
+    Duration? position,
+  ) async {
+    // AudioPlayer.play combines prepare/seek/resume without a cancellation
+    // boundary. A late prepare from an old request could resume the wrong
+    // source. Serialize preparation and recheck before making it audible.
+    await _player.setSource(DeviceFileSource(path));
+    if (!_isCurrentPlayRequest(generation, media)) return;
+    if (position != null) {
+      await _player.seek(position);
+      if (!_isCurrentPlayRequest(generation, media)) return;
+    }
+    await _player.resume();
+    if (!_isCurrentPlayRequest(generation, media)) await _player.pause();
+  }
+
+  Future<void> _loadIndex(
+    int index,
+    int generation,
+    PlayableMedia media, {
+    required bool recordHistory,
+    required Duration startPosition,
+  }) async {
     _pausedByInterruption = false;
     _interruptionActive = false;
     _userPaused = false;
 
     if (recordHistory) _recordPlayHistory(index);
 
-    final media = _media[index];
     final effectiveStartPosition = normalizedPlaybackResumePosition(
       startPosition,
       duration: media.duration,
@@ -1257,7 +1315,7 @@ class MusicPlayerHandler extends BaseAudioHandler
           ? effectiveStartPosition
           : null;
       try {
-        await _player.play(DeviceFileSource(resolved), position: startAt);
+        await _startResolvedSource(resolved, generation, media, startAt);
         if (playbackLease != null) {
           await PlatformBridge.closeContentUriPlaybackLease(
             playbackLease.token,
@@ -1285,15 +1343,18 @@ class MusicPlayerHandler extends BaseAudioHandler
           fallback,
           cacheKey: media.source,
         );
+        if (!_isCurrentPlayRequest(generation, media)) return;
         await _player.setVolume(normalizationVolume);
+        if (!_isCurrentPlayRequest(generation, media)) return;
         _normalizationVolume = normalizationVolume;
-        await _player.play(DeviceFileSource(fallback), position: startAt);
+        await _startResolvedSource(fallback, generation, media, startAt);
       }
       if (!_isCurrentPlayRequest(generation, media)) return;
       _sourceReady = true;
       _pendingRestorePosition = null;
       _activeResolvedPath = usingLocalSafCopy ? resolved : null;
       await _cleanupPendingResolvedPaths();
+      if (!_isCurrentPlayRequest(generation, media)) return;
       // Plain file paths were already published before loading. Re-publishing
       // them with an identical resolved path made Now Playing clear and probe
       // the same metadata twice on every Next. SAF needs this second event so
@@ -1473,14 +1534,18 @@ class MusicPlayerHandler extends BaseAudioHandler
 
   @override
   Future<void> pause() async {
-    _playRequestGeneration++;
+    final generation = ++_playRequestGeneration;
     _switchingGeneration = 0;
     _userPaused = true;
     _pausedByInterruption = false;
     await _autoMix.cancel();
-    await _player.pause();
-    _broadcastState(playerState: PlayerState.paused);
-    await _persistSession(position: await _currentPositionForPersist());
+    await _serializeSourceChange(() async {
+      if (generation != _playRequestGeneration || _disposed) return;
+      await _player.pause();
+      if (generation != _playRequestGeneration || _disposed) return;
+      _broadcastState(playerState: PlayerState.paused);
+      await _persistSession(position: await _currentPositionForPersist());
+    });
   }
 
   @override
@@ -1516,14 +1581,21 @@ class MusicPlayerHandler extends BaseAudioHandler
   @override
   Future<void> stop() async {
     cancelSleepTimer();
-    _playRequestGeneration++;
+    final generation = ++_playRequestGeneration;
     _switchingGeneration = 0;
     _userPaused = true;
     await _autoMix.cancel();
+    await _serializeSourceChange(() => _stopSession(generation));
+  }
+
+  Future<void> _stopSession(int generation) async {
+    if (generation != _playRequestGeneration || _disposed) return;
     await _player.stop();
+    if (generation != _playRequestGeneration || _disposed) return;
     _sourceReady = false;
     _activeResolvedPath = null;
     await _cleanupPendingResolvedPaths();
+    if (generation != _playRequestGeneration || _disposed) return;
     _index = -1;
     _pausedByInterruption = false;
     _interruptionActive = false;
@@ -1535,6 +1607,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     _persistedSessionQueueRevision = -1;
     // An explicit stop ends the session for good; nothing to restore later.
     await _enqueueSessionWrite(AppStateDatabase.instance.clearPlaybackSession);
+    if (generation != _playRequestGeneration || _disposed) return;
     // A stopped session has no current item; this also hides the mini player.
     mediaItem.add(null);
     _broadcastState(playerState: PlayerState.stopped);
@@ -1670,6 +1743,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     }
     cancelSleepTimer();
     _playRequestGeneration++;
+    await _sourceChangeTail;
     await _autoMix.dispose();
     for (final sub in _subscriptions) {
       await sub.cancel();

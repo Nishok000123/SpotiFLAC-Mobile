@@ -38,6 +38,9 @@ class _AudioNative {
   final positions = <String, int>{};
   final live = <String>{};
   final playing = <String>{};
+  final sources = <String, String>{};
+  final sourceGates = <String, Completer<void>>{};
+  final resumedSources = <String>[];
 
   void install() {
     for (final name in [
@@ -64,6 +67,9 @@ class _AudioNative {
               (_) async => null,
             );
           case 'setSourceUrl':
+            final source = args['url']! as String;
+            await sourceGates[source]?.future;
+            sources[id] = source;
             unawaited(event(id, 'audio.onPrepared', true));
             unawaited(event(id, 'audio.onDuration', 60000));
           case 'seek':
@@ -71,6 +77,7 @@ class _AudioNative {
             unawaited(event(id, 'audio.onSeekComplete'));
           case 'resume':
             playing.add(id);
+            resumedSources.add(sources[id]!);
           case 'pause' || 'stop':
             playing.remove(id);
           case 'dispose':
@@ -152,6 +159,56 @@ void main() {
     expect(native.live, isEmpty);
     expect(native.playing, isEmpty);
   });
+
+  test(
+    'rapid Next keeps the final audible source and displayed title together',
+    () async {
+      final gate = Completer<void>();
+      native.sourceGates['/one.flac'] = gate;
+      final first = handler.setQueueAndPlay(_tracks);
+      await _until(() => native.calls.any((c) => c.$2 == 'setSourceUrl'));
+      final second = handler.skipToNext();
+      final third = handler.skipToNext();
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      gate.complete();
+      await Future.wait([first, second, third]);
+      expect(handler.mediaItem.value?.id, 'three');
+      expect(native.sources['music-player'], '/three.flac');
+      expect(native.resumedSources, ['/three.flac']);
+    },
+  );
+
+  test('replacing a queue during preparation drops the old request', () async {
+    final gate = Completer<void>();
+    native.sourceGates['/one.flac'] = gate;
+    final first = handler.setQueueAndPlay(_tracks);
+    await _until(() => native.calls.any((c) => c.$2 == 'setSourceUrl'));
+    final replacement = handler.setQueueAndPlay([_tracks[1]]);
+    gate.complete();
+    await Future.wait([first, replacement]);
+    expect(handler.mediaItem.value?.id, 'two');
+    expect(native.sources['music-player'], '/two.flac');
+    expect(native.resumedSources, ['/two.flac']);
+  });
+
+  for (final stop in [false, true]) {
+    test(
+      'a pending prepare cannot resume after ${stop ? 'stop' : 'pause'}',
+      () async {
+        final gate = Completer<void>();
+        native.sourceGates['/one.flac'] = gate;
+        final first = handler.setQueueAndPlay(_tracks);
+        await _until(() => native.calls.any((c) => c.$2 == 'setSourceUrl'));
+        final cancel = stop ? handler.stop() : handler.pause();
+        gate.complete();
+        await Future.wait([first, cancel]);
+        expect(native.resumedSources, isEmpty);
+        expect(native.playing, isEmpty);
+        expect(handler.playbackState.value.playing, isFalse);
+        if (stop) expect(handler.mediaItem.value, isNull);
+      },
+    );
+  }
 
   test('Mornye notification follows theme and keeps transport state', () async {
     await handler.restoreSession(
