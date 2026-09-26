@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 /// A continuous player track with no thumb in either gesture state.
 class MornyePlayerSlider extends StatelessWidget {
+  static const horizontalInset = 8.0;
+
   const MornyePlayerSlider({
     super.key,
     required this.value,
@@ -34,7 +36,7 @@ class MornyePlayerSlider extends StatelessWidget {
         showValueIndicator: ShowValueIndicator.never,
       ),
       child: Slider(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(horizontal: horizontalInset),
         value: value,
         max: max,
         activeColor: activeColor,

@@ -51,6 +51,7 @@ import 'package:spotiflac_android/widgets/mornye_player_background.dart';
 import 'package:spotiflac_android/widgets/mornye_artwork_contrast.dart';
 import 'package:spotiflac_android/widgets/mornye_playback_button.dart';
 import 'package:spotiflac_android/widgets/mornye_playback_time.dart';
+import 'package:spotiflac_android/widgets/mornye_player_slider.dart';
 import 'package:spotiflac_android/widgets/mornye_player_actions_sheet.dart';
 import 'package:spotiflac_android/widgets/mornye_context_menu.dart';
 import 'package:spotiflac_android/widgets/mornye_landscape_player.dart';
@@ -66,6 +67,11 @@ final _log = AppLogger('NowPlaying');
 const kNowPlayingArtworkHeroTag = 'now-playing-artwork';
 
 const _mornyeLyricFontSize = 34.0;
+const _mornyeTimelinePadding = 28.0;
+const _mornyeContentInset =
+    _mornyeTimelinePadding + MornyePlayerSlider.horizontalInset;
+const _mornyeHeaderButtonSize = 48.0;
+const _mornyeCompactIconSize = 28.0;
 
 /// Slide-up route for the full player. Supports live drag-to-dismiss: the
 /// page follows the finger (via [startDrag]/[updateDrag]/[endDrag]) and
@@ -1329,7 +1335,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                             fullBleed ? motionHeight : artHeight * scale,
                           ),
                           const Rect.fromLTWH(
-                            28,
+                            _mornyeContentInset,
                             8,
                             compactCoverSize,
                             compactCoverSize,
@@ -1497,7 +1503,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                     delegate: _PlayerHeaderLayout(
                       progress: progress,
                       compactHeight: compactHeaderHeight,
-                      compactLeft: 28 + compactCoverSize + 12,
+                      compactLeft: _mornyeContentInset + compactCoverSize + 12,
                     ),
                     children: [
                       LayoutId(
@@ -1577,8 +1583,8 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   }) {
     final progress = compactProgress ?? (compact ? 1.0 : 0.0);
     final actionSize = compactProgress == null
-        ? (_currentPage == 0 ? 24.0 : 28.0)
-        : 24 + 4 * progress;
+        ? (_currentPage == 0 ? 24.0 : _mornyeCompactIconSize)
+        : 24 + (_mornyeCompactIconSize - 24) * progress;
     return Builder(
       builder: (context) => Row(
         children: [
@@ -1640,17 +1646,20 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             color: colorScheme.onSurface,
           ),
           Builder(
-            builder: (buttonContext) => IconButton(
-              tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
-              color: colorScheme.onSurface,
-              iconSize: actionSize,
-              icon: const Icon(CupertinoIcons.ellipsis),
-              onPressed: () => _showMoreActions(
-                context: context,
-                mediaItem: mediaItem,
-                source: mediaItem.extras?['source']?.toString() ?? '',
-                colorScheme: colorScheme,
-                anchor: mornyeMenuAnchor(buttonContext),
+            builder: (buttonContext) => SizedBox.square(
+              dimension: _mornyeHeaderButtonSize,
+              child: IconButton(
+                tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+                color: colorScheme.onSurface,
+                iconSize: actionSize,
+                icon: const Icon(CupertinoIcons.ellipsis),
+                onPressed: () => _showMoreActions(
+                  context: context,
+                  mediaItem: mediaItem,
+                  source: mediaItem.extras?['source']?.toString() ?? '',
+                  colorScheme: colorScheme,
+                  anchor: mornyeMenuAnchor(buttonContext),
+                ),
               ),
             ),
           ),
@@ -1791,7 +1800,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           ),
           if (options != null)
             Positioned(
-              left: 24,
+              left: context.isMornye ? _mornyeContentInset : 24,
               bottom: 8,
               child: _autoHidingLyricsControls(options),
             ),
@@ -2581,11 +2590,17 @@ class _PlayerHeaderLayout extends MultiChildLayoutDelegate {
   @override
   void performLayout(Size size) {
     final left = 28 + (compactLeft - 28) * progress;
+    // Align the visible ellipsis with the timeline while leaving its touch
+    // target wider than the glyph and interpolating the same live header.
+    const compactRight =
+        _mornyeContentInset -
+        (_mornyeHeaderButtonSize - _mornyeCompactIconSize) / 2;
+    final right = 28 + (compactRight - 28) * progress;
     final header = layoutChild(
       _PlayerHeaderSlot.header,
       BoxConstraints(
-        minWidth: size.width - left - 28,
-        maxWidth: size.width - left - 28,
+        minWidth: size.width - left - right,
+        maxWidth: size.width - left - right,
         minHeight: compactHeight * progress,
       ),
     );
@@ -2664,7 +2679,9 @@ class _PlaybackControls extends ConsumerWidget {
               final position = ref.watch(playbackPositionProvider);
               final elapsedSeconds = (preview ?? position).inSeconds;
               return Padding(
-                padding: EdgeInsets.symmetric(horizontal: mornye ? 28 : 16),
+                padding: EdgeInsets.symmetric(
+                  horizontal: mornye ? _mornyeTimelinePadding : 16,
+                ),
                 child: Column(
                   children: [
                     SliderTheme(
@@ -2698,7 +2715,9 @@ class _PlaybackControls extends ConsumerWidget {
                     ),
                     Padding(
                       padding: EdgeInsets.symmetric(
-                        horizontal: mornye ? 8 : 12,
+                        horizontal: mornye
+                            ? MornyePlayerSlider.horizontalInset
+                            : 12,
                       ),
                       child: Row(
                         children: [
@@ -3342,20 +3361,39 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       },
       child: LayoutBuilder(
         builder: (context, constraints) {
+          final inset = mornye ? _mornyeContentInset : 24.0;
+          final contentWidth = (constraints.maxWidth - inset * 2).clamp(
+            0.0,
+            double.infinity,
+          );
+          // Lay out at the existing lyric width, then fit the whole line to
+          // the timeline. Scaling text, phrase gaps and supplements together
+          // preserves wrapping instead of pushing extra words onto a new row.
+          final layoutWidth = (constraints.maxWidth - 48).clamp(
+            0.0,
+            double.infinity,
+          );
+          final lyricScale = mornye && layoutWidth > 0
+              ? contentWidth / layoutWidth
+              : 1.0;
           if (mornye) {
             final previousExtents = _lineExtents;
-            _measureMornyeLines(
-              (constraints.maxWidth - 48).clamp(0, double.infinity),
-            );
+            _measureMornyeLines(layoutWidth);
             // Reuse text measurements; only interpolate row heights as the
             // supplements fade. Scrolling follows the same animation clock.
-            _lineExtents = [
-              for (final (primary, pronunciation, translation)
-                  in _lineMeasurements)
-                primary +
-                    pronunciation * visibility.dx +
-                    translation * visibility.dy,
-            ];
+            _lineExtents = List.generate(_lineMeasurements.length, (row) {
+              final (primary, pronunciation, translation) =
+                  _lineMeasurements[row];
+              final index = _displayLayout.lineOrder[row];
+              if (_lines[index].text.isEmpty) return primary;
+              final padding = _linePadding(index).vertical;
+              return padding +
+                  (primary -
+                          padding +
+                          pronunciation * visibility.dx +
+                          translation * visibility.dy) *
+                      lyricScale;
+            });
             if (previousExtents != null &&
                 _layoutVisibility != null &&
                 _layoutVisibility != visibility &&
@@ -3410,12 +3448,14 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
             itemExtentBuilder: mornye
                 ? (index, _) => index < lines.length
                       ? _lineExtents![index]
-                      : widget.credits!.heightFor(
-                          context,
-                          constraints.maxWidth - 48,
-                        )
+                      : widget.credits!.heightFor(context, contentWidth)
                 : null,
-            padding: EdgeInsets.fromLTRB(24, topPadding, 24, bottomPadding),
+            padding: EdgeInsets.fromLTRB(
+              inset,
+              topPadding,
+              inset,
+              bottomPadding,
+            ),
             itemCount: lines.length + (widget.credits == null ? 0 : 1),
             itemBuilder: (context, row) {
               if (row == lines.length) return widget.credits!;
@@ -3556,6 +3596,11 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                     imageFilter: ImageFilter.blur(sigmaX: value, sigmaY: value),
                     child: child,
                   ),
+                );
+                content = FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.topLeft,
+                  child: SizedBox(width: layoutWidth, child: content),
                 );
               }
 

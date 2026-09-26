@@ -6,7 +6,8 @@ import 'dart:ui' as ui;
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
+import 'package:flutter/rendering.dart'
+    show RenderParagraph, RenderRepaintBoundary;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -95,6 +96,29 @@ void main() {
     duration: const Duration(minutes: 3),
     extras: {'source': 'content://library/$id.flac'},
   );
+
+  Rect seekTrackBounds(WidgetTester tester) {
+    final track = find.descendant(
+      of: find.descendant(
+        of: find.byType(PlaybackSeekSlider),
+        matching: find.byType(Slider),
+      ),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is LeafRenderObjectWidget,
+      ),
+    );
+    final box = tester.renderObject<RenderBox>(track);
+    final theme = SliderTheme.of(tester.element(track));
+    final rect = theme.trackShape!.getPreferredRect(
+      parentBox: box,
+      sliderTheme: theme,
+      isEnabled: true,
+    );
+    return Rect.fromPoints(
+      box.localToGlobal(rect.topLeft),
+      box.localToGlobal(rect.bottomRight),
+    );
+  }
 
   Future<void> pumpNowPlaying(
     WidgetTester tester, {
@@ -437,6 +461,61 @@ void main() {
     }
     expect(tester.takeException(), isNull);
   });
+
+  for (final width in [393.0, 768.0]) {
+    testWidgets('Mornye lyrics fit the timeline without rewrapping ($width)', (
+      tester,
+    ) async {
+      const original =
+          'A longer lyric with words that already wrap onto another row';
+      const pronunciation = 'Pronunciation follows the same layout as before';
+      const translation =
+          'The translated words also keep their existing line breaks';
+      metadataOverrides['lyrics'] =
+          '[x-romaji:1000:${base64.encode(utf8.encode(pronunciation))}]\n'
+          '[x-translation:1000:${base64.encode(utf8.encode(translation))}]\n'
+          '[00:01.000]$original\n[00:15.000]Next line';
+      await pumpNowPlaying(
+        tester,
+        theme: MornyeTheme.build(Brightness.dark),
+        size: Size(width, 1024),
+        playback: PlaybackState(updatePosition: const Duration(seconds: 2)),
+      );
+      mediaItems.add(item('first'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
+      await tester.pumpAndSettle();
+
+      final track = seekTrackBounds(tester);
+      for (final text in [original, pronunciation, translation]) {
+        final finder = find.text(text);
+        final paragraph = tester.renderObject<RenderParagraph>(finder);
+        final previousLayout = TextPainter(
+          text: paragraph.text,
+          textDirection: paragraph.textDirection,
+          textAlign: paragraph.textAlign,
+          textScaler: paragraph.textScaler,
+          locale: paragraph.locale,
+        )..layout(maxWidth: width - 48);
+        final selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: text.length,
+        );
+        expect(
+          paragraph.getBoxesForSelection(selection).map((box) => box.toRect()),
+          previousLayout
+              .getBoxesForSelection(selection)
+              .map((box) => box.toRect()),
+        );
+        final bounds = tester.getRect(finder);
+        expect(bounds.left, closeTo(track.left, 0.01));
+        expect(bounds.right, closeTo(track.right, 0.01));
+        expect(bounds.height, lessThan(previousLayout.height));
+        previousLayout.dispose();
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   for (final size in [const Size(393, 852), const Size(768, 1024)]) {
     for (final reducedMotion in [false, true]) {
@@ -1496,10 +1575,7 @@ void main() {
       expect(activeText.style?.fontWeight, FontWeight.bold);
       expect(activeText.style?.fontSize, 34);
       expect(tester.getTopLeft(active).dx, tester.getTopLeft(inactive).dx);
-      expect(
-        tester.getTopLeft(active).dx,
-        tester.getTopLeft(find.byType(ListView)).dx + 24,
-      );
+      expect(tester.getTopLeft(active).dx, seekTrackBounds(tester).left);
       final activeFilters = tester.widgetList<ImageFiltered>(
         find.ancestor(of: active, matching: find.byType(ImageFiltered)),
       );
@@ -2140,6 +2216,18 @@ void main() {
           final compactBounds = tester.getRect(header);
           expect(compactBounds.left, cover.right + 12);
           expect(compactBounds.center.dy, cover.center.dy);
+          final track = seekTrackBounds(tester);
+          expect(cover.left, closeTo(track.left, 0.01));
+          final more = find.descendant(
+            of: header,
+            matching: find.byIcon(CupertinoIcons.ellipsis),
+          );
+          expect(tester.getRect(more).right, closeTo(track.right, 0.01));
+          final moreButton = find.ancestor(
+            of: more,
+            matching: find.byType(IconButton),
+          );
+          expect(tester.getSize(moreButton), const Size(48, 48));
           await tester.tap(toggle);
           await tester.pump();
           expect(tester.getRect(header), compactBounds);
