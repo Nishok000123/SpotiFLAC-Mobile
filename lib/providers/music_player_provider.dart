@@ -218,6 +218,8 @@ class MusicPlayerController {
   void moveQueueItem(int oldIndex, int newIndex) {
     _handler?.moveQueueItem(oldIndex, newIndex);
   }
+
+  void removeQueuedItem(MediaItem item) => _handler?.removeQueuedItem(item);
 }
 
 final musicPlayerControllerProvider = Provider<MusicPlayerController>(

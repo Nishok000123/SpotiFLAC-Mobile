@@ -375,6 +375,37 @@ void main() {
     },
   );
 
+  test(
+    'queue removal preserves duplicates, current audio and unshuffled order',
+    () async {
+      await handler.setQueueAndPlay([
+        _tracks[0],
+        _tracks[0],
+        _tracks[1],
+        _tracks[2],
+      ]);
+      final original = List.of(handler.queue.value);
+      await handler.setShuffleMode(AudioServiceShuffleMode.all);
+      handler.removeQueuedItem(original[1]);
+      handler.removeQueuedItem(original[1]); // A stale swipe is harmless.
+      handler.removeQueuedItem(
+        original[0],
+      ); // The playing occurrence is protected.
+      await handler.setShuffleMode(AudioServiceShuffleMode.none);
+      expect(handler.queue.value.map((item) => item.id), [
+        'one',
+        'two',
+        'three',
+      ]);
+      expect(native.resumedSources, ['/one.flac']);
+      await handler.skipToNext();
+      handler.removeQueuedItem(original[0]);
+      expect(handler.playbackState.value.queueIndex, 0);
+      expect(handler.mediaItem.value?.id, 'two');
+      expect(native.sources['music-player'], '/two.flac');
+    },
+  );
+
   test('restored shuffle can return to the saved original order', () async {
     await handler.restoreSession(
       items: [_tracks[1], _tracks[2], _tracks[0]],

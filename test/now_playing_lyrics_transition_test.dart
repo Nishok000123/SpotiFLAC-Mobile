@@ -105,6 +105,7 @@ void main() {
     Widget Function(Widget)? wrapPlayer,
     MotionArtwork? motionArtwork,
     MusicPlayerController? controller,
+    List<MediaItem> queue = const [],
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -141,7 +142,7 @@ void main() {
                     ? const Stream.empty()
                     : Stream.value(playback)),
           ),
-          playQueueProvider.overrideWith((ref) => const Stream.empty()),
+          playQueueProvider.overrideWith((ref) => Stream.value(queue)),
           systemVolumeProvider.overrideWith((ref) => Stream.value(0.5)),
           systemVolumeWriterProvider.overrideWith(
             (ref) =>
@@ -158,6 +159,56 @@ void main() {
         ),
       ),
     );
+  }
+
+  for (final page in ['player', 'lyrics', 'queue']) {
+    testWidgets('cover swipe changes the track in the Mornye $page', (
+      tester,
+    ) async {
+      final queue = [item('first'), item('second')];
+      final controller = _QueueController(
+        (index) => mediaItems.add(queue[index]),
+      );
+      await pumpNowPlaying(
+        tester,
+        theme: MornyeTheme.build(Brightness.dark),
+        size: const Size(393, 852),
+        queue: queue,
+        controller: controller,
+        playback: PlaybackState(queueIndex: 0),
+      );
+      mediaItems.add(queue.first);
+      await tester.pumpAndSettle();
+      if (page != 'player') {
+        await tester.tap(
+          find.byIcon(
+            page == 'lyrics'
+                ? CupertinoIcons.quote_bubble
+                : CupertinoIcons.list_bullet,
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+      final cover = find
+          .byKey(
+            ValueKey(
+              page == 'player'
+                  ? 'full-player-artwork'
+                  : 'compact-player-artwork',
+            ),
+          )
+          .hitTestable();
+      final rect = tester.getRect(cover);
+      final gesture = await tester.startGesture(rect.center);
+      await gesture.moveBy(const Offset(110, 0));
+      await tester.pump();
+      expect(tester.getRect(cover), rect);
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(controller.selected, [1]);
+      expect(find.text('Second').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   }
 
   testWidgets(
@@ -3137,6 +3188,18 @@ void main() {
     expect(find.text('60 minutes'), findsOneWidget);
     expect(find.text('Turn off sleep timer'), findsNothing);
   });
+}
+
+class _QueueController extends MusicPlayerController {
+  _QueueController(this.onSelected);
+  final void Function(int) onSelected;
+  final selected = <int>[];
+
+  @override
+  Future<void> jumpTo(int index) async {
+    selected.add(index);
+    onSelected(index);
+  }
 }
 
 class _SeekController extends MusicPlayerController {

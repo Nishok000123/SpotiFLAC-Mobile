@@ -1222,6 +1222,29 @@ class MusicPlayerHandler extends BaseAudioHandler
     unawaited(_persistSession(position: playbackState.value.position));
   }
 
+  /// Removes one queued occurrence, including when the same song is queued
+  /// twice. The current source is protected if playback advances mid-gesture.
+  void removeQueuedItem(MediaItem item) {
+    final at = _queueItems.indexWhere((entry) => identical(entry, item));
+    if (_disposed || at < 0 || at == _index) return;
+    _queueItems.removeAt(at);
+    _media.removeAt(at);
+    _originalQueueOrder?.removeWhere((entry) => identical(entry, item));
+    if (at < _index) _index--;
+    final history = [
+      for (final index in _playHistory)
+        if (index != at) index > at ? index - 1 : index,
+    ];
+    _playHistory
+      ..clear()
+      ..addAll(history);
+    _markSessionQueueChanged();
+    unawaited(_autoMix.cancel());
+    queue.add(List<MediaItem>.unmodifiable(_queueItems));
+    _broadcastState();
+    unawaited(_persistSession(position: playbackState.value.position));
+  }
+
   Future<void> _playIndex(
     int index, {
     bool recordHistory = true,

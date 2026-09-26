@@ -39,6 +39,8 @@ import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
 import 'package:spotiflac_android/widgets/audio_output_button.dart';
 import 'package:spotiflac_android/widgets/lyric_gap_indicator.dart';
 import 'package:spotiflac_android/widgets/player_artwork.dart';
+import 'package:spotiflac_android/widgets/player_queue_dismissible.dart';
+import 'package:spotiflac_android/widgets/player_track_swipe.dart';
 import 'package:spotiflac_android/widgets/overflow_marquee.dart';
 import 'package:spotiflac_android/widgets/playback_seek_slider.dart';
 import 'package:spotiflac_android/widgets/playlist_picker_sheet.dart';
@@ -929,14 +931,17 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   /// the route-level drag region — so the artwork hooks the route directly.
   Widget _artworkDragRegion(BuildContext context, Widget child) {
     final route = ModalRoute.of(context);
-    if (route is! NowPlayingRoute) return child;
+    if (route is! NowPlayingRoute) return PlayerTrackSwipeRegion(child: child);
     final pageHeight = MediaQuery.sizeOf(context).height;
-    return GestureDetector(
-      onVerticalDragStart: (_) => route.startDrag(),
-      onVerticalDragUpdate: (details) => route.updateDrag(details, pageHeight),
-      onVerticalDragEnd: (details) => route.endDrag(details, pageHeight),
-      onVerticalDragCancel: route.cancelDrag,
-      child: child,
+    return PlayerTrackSwipeRegion(
+      child: GestureDetector(
+        onVerticalDragStart: (_) => route.startDrag(),
+        onVerticalDragUpdate: (details) =>
+            route.updateDrag(details, pageHeight),
+        onVerticalDragEnd: (details) => route.endDrag(details, pageHeight),
+        onVerticalDragCancel: route.cancelDrag,
+        child: child,
+      ),
     );
   }
 
@@ -1158,7 +1163,18 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     final motion = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : const Duration(milliseconds: 380);
-    return NotificationListener<ScrollUpdateNotification>(
+    final queue = ref.watch(playQueueProvider).value ?? const <MediaItem>[];
+    final reportedIndex = ref.watch(
+      playbackStateProvider.select((state) => state.value?.queueIndex),
+    );
+    final currentIndex =
+        reportedIndex != null &&
+            reportedIndex >= 0 &&
+            reportedIndex < queue.length &&
+            queue[reportedIndex].id == mediaItem.id
+        ? reportedIndex
+        : queue.indexWhere((item) => item.id == mediaItem.id);
+    final page = NotificationListener<ScrollUpdateNotification>(
       onNotification: (notification) {
         if (!showLyrics ||
             _landscape ||
@@ -1167,7 +1183,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           return false;
         }
         final delta = notification.scrollDelta ?? 0;
-        if (delta.sign != _lyricsScrollDistance.sign) _lyricsScrollDistance = 0;
+        if (delta.sign != _lyricsScrollDistance.sign) {
+          _lyricsScrollDistance = 0;
+        }
         _lyricsScrollDistance += delta;
         if (_lyricsScrollDistance.abs() >= 16) {
           final hidden = _lyricsScrollDistance > 0;
@@ -1216,6 +1234,15 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: compact ? compactHeaderHeight + 8 : stage.maxHeight,
+                    child: const PlayerTrackSwipeRegion(
+                      child: SizedBox.expand(),
+                    ),
+                  ),
                   Positioned.fill(
                     top: 8 + compactHeaderHeight + 16,
                     child: IgnorePointer(
@@ -1515,6 +1542,16 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         },
       ),
     );
+    return PlayerTrackSwipe(
+      queue: queue,
+      currentIndex: currentIndex,
+      onSelected: (item) async {
+        final latest = ref.read(playQueueProvider).value ?? const <MediaItem>[];
+        final index = latest.indexWhere((entry) => identical(entry, item));
+        if (index >= 0) await controller.jumpTo(index);
+      },
+      child: page,
+    );
   }
 
   Widget _trackHeader(
@@ -1531,46 +1568,51 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       builder: (context) => Row(
         children: [
           Expanded(
-            child: Builder(
-              builder: (titleContext) => InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap:
-                    (mediaItem.artist ?? '').trim().isEmpty &&
-                        (mediaItem.album ?? '').trim().isEmpty
-                    ? null
-                    : () => _showTrackNavigationMenu(titleContext, mediaItem),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    OverflowMarquee(
-                      resetKey: (mediaItem.id, mediaItem.title),
-                      child: ExplicitTrackTitle(
-                        title: mediaItem.title,
-                        explicit: _isExplicit(mediaItem),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 22 - 4 * progress,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurface,
+            child: PlayerTrackSwipeTitles(
+              current: mediaItem,
+              builder: (mediaItem) => Builder(
+                builder: (titleContext) => InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap:
+                      (mediaItem.artist ?? '').trim().isEmpty &&
+                          (mediaItem.album ?? '').trim().isEmpty
+                      ? null
+                      : () => _showTrackNavigationMenu(titleContext, mediaItem),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      OverflowMarquee(
+                        resetKey: (mediaItem.id, mediaItem.title),
+                        child: ExplicitTrackTitle(
+                          title: mediaItem.title,
+                          explicit: _isExplicit(mediaItem),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 22 - 4 * progress,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    OverflowMarquee(
-                      resetKey: (mediaItem.id, mediaItem.artist),
-                      child: Text(
-                        mediaItem.artist ?? '',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 20 - 4 * progress,
-                          color: colorScheme.onSurface.withValues(alpha: 0.72),
+                      const SizedBox(height: 4),
+                      OverflowMarquee(
+                        resetKey: (mediaItem.id, mediaItem.artist),
+                        child: Text(
+                          mediaItem.artist ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 20 - 4 * progress,
+                            color: colorScheme.onSurface.withValues(
+                              alpha: 0.72,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -2384,50 +2426,56 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                           itemBuilder: (context, i) {
                             final item = queue[i];
                             final isCurrent = current?.id == item.id;
-                            return ListTile(
-                              key: ValueKey('${item.id}_$i'),
-                              contentPadding: const EdgeInsets.only(
-                                left: 16,
-                                right: 4,
-                              ),
-                              leading: Icon(
-                                isCurrent ? Icons.equalizer : Icons.music_note,
-                                color: isCurrent
-                                    ? colorScheme.primary
-                                    : colorScheme.onSurfaceVariant,
-                              ),
-                              title: Text(
-                                item.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: textTheme.bodyLarge?.copyWith(
-                                  fontWeight: isCurrent
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
+                            return PlayerQueueDismissible(
+                              key: ObjectKey(item),
+                              enabled: !isCurrent,
+                              onRemove: () => controller.removeQueuedItem(item),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.only(
+                                  left: 16,
+                                  right: 4,
+                                ),
+                                leading: Icon(
+                                  isCurrent
+                                      ? Icons.equalizer
+                                      : Icons.music_note,
                                   color: isCurrent
                                       ? colorScheme.primary
-                                      : colorScheme.onSurface,
+                                      : colorScheme.onSurfaceVariant,
                                 ),
-                              ),
-                              subtitle: Text(
-                                item.artist ?? '',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
+                                title: Text(
+                                  item.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: textTheme.bodyLarge?.copyWith(
+                                    fontWeight: isCurrent
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: isCurrent
+                                        ? colorScheme.primary
+                                        : colorScheme.onSurface,
+                                  ),
                                 ),
-                              ),
-                              trailing: ReorderableDragStartListener(
-                                index: i,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Icon(
-                                    Icons.drag_handle,
+                                subtitle: Text(
+                                  item.artist ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: textTheme.bodySmall?.copyWith(
                                     color: colorScheme.onSurfaceVariant,
                                   ),
                                 ),
+                                trailing: ReorderableDragStartListener(
+                                  index: i,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Icon(
+                                      Icons.drag_handle,
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                                onTap: () => controller.jumpTo(i),
                               ),
-                              onTap: () => controller.jumpTo(i),
                             );
                           },
                         ),

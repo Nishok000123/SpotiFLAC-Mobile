@@ -6,6 +6,7 @@ import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/widgets/player_artwork.dart';
+import 'package:spotiflac_android/widgets/player_queue_dismissible.dart';
 import 'package:spotiflac_android/widgets/mornye_context_menu.dart';
 
 /// Upcoming tracks share the player's artwork backdrop and transport controls.
@@ -193,48 +194,51 @@ class MornyePlayerQueue extends ConsumerWidget {
               ),
               itemBuilder: (context, index) {
                 final item = queue[start + index];
-                return ListTile(
-                  key: ValueKey('${item.id}_${start + index}'),
-                  contentPadding: const EdgeInsets.only(left: 12),
-                  minVerticalPadding: 6,
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(5),
-                    child: SizedBox.square(
-                      dimension: 40,
-                      child: PlayerArtwork(
-                        artUri: item.artUri?.toString(),
-                        colorScheme: colorScheme,
-                        cacheWidth: 120,
-                        iconSize: 22,
-                      ),
-                    ),
-                  ),
-                  title: Text(
-                    item.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: type.bodyLarge?.copyWith(color: Colors.white),
-                  ),
-                  subtitle: Text(
-                    item.artist ?? '',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: type.bodySmall?.copyWith(color: Colors.white70),
-                  ),
-                  trailing: ReorderableDragStartListener(
-                    index: index,
-                    child: const ColoredBox(
-                      color: Colors.transparent,
+                return PlayerQueueDismissible(
+                  key: ObjectKey(item),
+                  onRemove: () => controller.removeQueuedItem(item),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.only(left: 12),
+                    minVerticalPadding: 6,
+                    leading: ClipRRect(
+                      borderRadius: BorderRadius.circular(5),
                       child: SizedBox.square(
-                        dimension: 44,
-                        child: Icon(
-                          CupertinoIcons.line_horizontal_3,
-                          color: Colors.white38,
+                        dimension: 40,
+                        child: PlayerArtwork(
+                          artUri: item.artUri?.toString(),
+                          colorScheme: colorScheme,
+                          cacheWidth: 120,
+                          iconSize: 22,
                         ),
                       ),
                     ),
+                    title: Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: type.bodyLarge?.copyWith(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      item.artist ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: type.bodySmall?.copyWith(color: Colors.white70),
+                    ),
+                    trailing: ReorderableDragStartListener(
+                      index: index,
+                      child: const ColoredBox(
+                        color: Colors.transparent,
+                        child: SizedBox.square(
+                          dimension: 44,
+                          child: Icon(
+                            CupertinoIcons.line_horizontal_3,
+                            color: Colors.white38,
+                          ),
+                        ),
+                      ),
+                    ),
+                    onTap: () => controller.jumpTo(start + index),
                   ),
-                  onTap: () => controller.jumpTo(start + index),
                 );
               },
             ),
