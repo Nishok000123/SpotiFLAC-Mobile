@@ -14,6 +14,7 @@ import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/app_search_field.dart';
 import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 import 'package:spotiflac_android/widgets/cached_cover_image.dart';
+import 'package:spotiflac_android/widgets/library_search_results.dart';
 
 enum MornyeLibraryPage { overview, albums, artists }
 
@@ -161,7 +162,10 @@ class _MornyeLibraryScreenState extends ConsumerState<MornyeLibraryScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final result = ref.watch(libraryBrowseProvider(_request));
+    final searchingLibrary = _overview && _query.isNotEmpty;
+    final result = searchingLibrary
+        ? const AsyncData<List<LibraryBrowseEntry>>([])
+        : ref.watch(libraryBrowseProvider(_request));
     _loading = result.isLoading;
     if (result.hasValue) _rows = result.requireValue;
     final title =
@@ -205,6 +209,7 @@ class _MornyeLibraryScreenState extends ConsumerState<MornyeLibraryScreen> {
     ];
     return RefreshIndicator(
       onRefresh: () async {
+        if (searchingLibrary) return;
         ref.invalidate(libraryBrowseProvider(_request));
         await ref.read(libraryBrowseProvider(_request).future);
       },
@@ -233,190 +238,200 @@ class _MornyeLibraryScreenState extends ConsumerState<MornyeLibraryScreen> {
                 ),
               ),
             ),
-          if (_overview && _query.isEmpty)
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-              sliver: SliverList.list(
-                children: [
-                  for (final category in [
-                    (
-                      Icons.queue_music,
-                      context.l10n.searchPlaylists,
-                      () => widget.onOpenSection('playlists'),
-                    ),
-                    (
-                      Icons.mic_none,
-                      context.l10n.searchArtists,
-                      () => _openPage(MornyeLibraryPage.artists),
-                    ),
-                    (
-                      Icons.album_outlined,
-                      context.l10n.searchAlbums,
-                      () => _openPage(MornyeLibraryPage.albums),
-                    ),
-                    (
-                      Icons.music_note_outlined,
-                      context.l10n.searchSongs,
-                      () => widget.onOpenSection('all'),
-                    ),
-                  ]) ...[
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      minVerticalPadding: 12,
-                      leading: Icon(
-                        category.$1,
-                        color: colors.primary,
-                        size: 28,
-                      ),
-                      title: Text(
-                        category.$2,
-                        style: const TextStyle(fontSize: 22),
-                      ),
-                      trailing: Icon(
-                        Icons.chevron_right,
-                        color: colors.onSurfaceVariant,
-                      ),
-                      onTap: category.$3,
-                    ),
-                    const Divider(height: 1, indent: 48),
-                  ],
-                ],
-              ),
+          if (searchingLibrary)
+            LibrarySearchResults(
+              query: _query,
+              onOpenArtist: (artist) =>
+                  _openPage(MornyeLibraryPage.albums, artist: artist),
             ),
-          if (_overview)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-                child: Text(
-                  _query.isEmpty
-                      ? context.l10n.libraryRecentlyAdded
-                      : context.l10n.searchAlbums,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
+          if (!searchingLibrary) ...[
+            if (_overview && _query.isEmpty)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                sliver: SliverList.list(
+                  children: [
+                    for (final category in [
+                      (
+                        Icons.queue_music,
+                        context.l10n.searchPlaylists,
+                        () => widget.onOpenSection('playlists'),
+                      ),
+                      (
+                        Icons.mic_none,
+                        context.l10n.searchArtists,
+                        () => _openPage(MornyeLibraryPage.artists),
+                      ),
+                      (
+                        Icons.album_outlined,
+                        context.l10n.searchAlbums,
+                        () => _openPage(MornyeLibraryPage.albums),
+                      ),
+                      (
+                        Icons.music_note_outlined,
+                        context.l10n.searchSongs,
+                        () => widget.onOpenSection('all'),
+                      ),
+                    ]) ...[
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        minVerticalPadding: 12,
+                        leading: Icon(
+                          category.$1,
+                          color: colors.primary,
+                          size: 28,
+                        ),
+                        title: Text(
+                          category.$2,
+                          style: const TextStyle(fontSize: 22),
+                        ),
+                        trailing: Icon(
+                          Icons.chevron_right,
+                          color: colors.onSurfaceVariant,
+                        ),
+                        onTap: category.$3,
+                      ),
+                      const Divider(height: 1, indent: 48),
+                    ],
+                  ],
+                ),
+              ),
+            if (_overview)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                  child: Text(
+                    _query.isEmpty
+                        ? context.l10n.libraryRecentlyAdded
+                        : context.l10n.searchAlbums,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            ),
-          if (_rows.isNotEmpty)
-            if (_artists)
-              SliverList.builder(
-                itemCount: _rows.length,
-                itemBuilder: (context, index) {
-                  final entry = _rows[index];
-                  return Column(
-                    children: [
-                      ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 8,
-                        ),
-                        leading: ClipOval(
-                          child: SizedBox.square(
-                            dimension: 56,
-                            child: _LibraryBrowseArtwork(entry: entry),
+            if (_rows.isNotEmpty)
+              if (_artists)
+                SliverList.builder(
+                  itemCount: _rows.length,
+                  itemBuilder: (context, index) {
+                    final entry = _rows[index];
+                    return Column(
+                      children: [
+                        ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 8,
                           ),
-                        ),
-                        title: Text(entry.artist),
-                        subtitle: Text(
-                          context.l10n.queueTrackCount(entry.trackCount),
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => _openPage(
-                          MornyeLibraryPage.albums,
-                          artist: entry.artist,
-                        ),
-                      ),
-                      const Divider(height: 1, indent: 96, endIndent: 24),
-                    ],
-                  );
-                },
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                sliver: SliverLayoutBuilder(
-                  builder: (context, constraints) {
-                    final columns = (constraints.crossAxisExtent / 200)
-                        .floor()
-                        .clamp(2, 6);
-                    final width =
-                        (constraints.crossAxisExtent - 20 * (columns - 1)) /
-                        columns;
-                    final textHeight =
-                        MediaQuery.textScalerOf(context).scale(16) * 3.2 + 24;
-                    return SliverGrid.builder(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: columns,
-                        crossAxisSpacing: 20,
-                        mainAxisSpacing: 16,
-                        mainAxisExtent: width + textHeight,
-                      ),
-                      itemCount: _rows.length,
-                      itemBuilder: (context, index) {
-                        final entry = _rows[index];
-                        return Semantics(
-                          button: true,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => _openAlbum(entry),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                AspectRatio(
-                                  aspectRatio: 1,
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: _LibraryBrowseArtwork(entry: entry),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  entry.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                                Text(
-                                  entry.artist,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: colors.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
+                          leading: ClipOval(
+                            child: SizedBox.square(
+                              dimension: 56,
+                              child: _LibraryBrowseArtwork(entry: entry),
                             ),
                           ),
-                        );
-                      },
+                          title: Text(entry.artist),
+                          subtitle: Text(
+                            context.l10n.queueTrackCount(entry.trackCount),
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => _openPage(
+                            MornyeLibraryPage.albums,
+                            artist: entry.artist,
+                          ),
+                        ),
+                        const Divider(height: 1, indent: 96, endIndent: 24),
+                      ],
                     );
                   },
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  sliver: SliverLayoutBuilder(
+                    builder: (context, constraints) {
+                      final columns = (constraints.crossAxisExtent / 200)
+                          .floor()
+                          .clamp(2, 6);
+                      final width =
+                          (constraints.crossAxisExtent - 20 * (columns - 1)) /
+                          columns;
+                      final textHeight =
+                          MediaQuery.textScalerOf(context).scale(16) * 3.2 + 24;
+                      return SliverGrid.builder(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columns,
+                          crossAxisSpacing: 20,
+                          mainAxisSpacing: 16,
+                          mainAxisExtent: width + textHeight,
+                        ),
+                        itemCount: _rows.length,
+                        itemBuilder: (context, index) {
+                          final entry = _rows[index];
+                          return Semantics(
+                            button: true,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _openAlbum(entry),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  AspectRatio(
+                                    aspectRatio: 1,
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: _LibraryBrowseArtwork(
+                                        entry: entry,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    entry.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                  Text(
+                                    entry.artist,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: colors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
-              ),
-          if (result.hasError)
-            SliverToBoxAdapter(
-              child: Center(
-                child: TextButton.icon(
-                  onPressed: () =>
-                      ref.invalidate(libraryBrowseProvider(_request)),
-                  icon: const Icon(Icons.refresh),
-                  label: Text(context.l10n.dialogRetry),
+            if (result.hasError)
+              SliverToBoxAdapter(
+                child: Center(
+                  child: TextButton.icon(
+                    onPressed: () =>
+                        ref.invalidate(libraryBrowseProvider(_request)),
+                    icon: const Icon(Icons.refresh),
+                    label: Text(context.l10n.dialogRetry),
+                  ),
                 ),
+              )
+            else if (_loading)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator.adaptive()),
+                ),
+              )
+            else if (_rows.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: Text(context.l10n.libraryEmptyCollection)),
               ),
-            )
-          else if (_loading)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: CircularProgressIndicator.adaptive()),
-              ),
-            )
-          else if (_rows.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: Text(context.l10n.libraryEmptyCollection)),
-            ),
+          ],
           const NavBarSliverSpacer(),
         ],
       ),

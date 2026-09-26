@@ -9,6 +9,7 @@ import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/ios_container_paths.dart';
 import 'package:spotiflac_android/services/history_database.dart';
 import 'package:spotiflac_android/services/library_cleanup.dart';
+import 'package:spotiflac_android/services/library_search.dart';
 import 'package:spotiflac_android/services/sqlite_helpers.dart' as sqlite;
 
 part 'library_database_models.dart';
@@ -63,6 +64,28 @@ class LibraryDatabase {
   }
 
   bool get searchFtsAvailable => _searchFtsAvailable ?? false;
+
+  Future<List<LibrarySearchHit>> searchLibrary({
+    required String query,
+    required LibrarySearchKind kind,
+    required bool includeLocal,
+    int limit = 40,
+    int offset = 0,
+  }) async {
+    final db = await database;
+    await _ensureHistoryAttached(db);
+    return LibrarySearchStore(
+      db,
+      historyFts: HistoryDatabase.instance.searchFtsAvailable,
+      localFts: searchFtsAvailable,
+    ).search(
+      query: query,
+      kind: kind,
+      includeLocal: includeLocal,
+      limit: limit,
+      offset: offset,
+    );
+  }
 
   Future<void> _migrateIosContainerPaths(Database db) async {
     if (!Platform.isIOS) return;

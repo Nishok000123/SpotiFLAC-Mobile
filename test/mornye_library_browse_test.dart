@@ -6,6 +6,7 @@ import 'package:spotiflac_android/models/download_item.dart';
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/providers/download_queue_provider.dart';
 import 'package:spotiflac_android/providers/library_browse_provider.dart';
+import 'package:spotiflac_android/providers/library_search_provider.dart';
 import 'package:spotiflac_android/screens/mornye_library_screen.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 
@@ -28,6 +29,7 @@ void main() {
       addTearDown(tester.view.reset);
       final opened = <String>[];
       final requests = <LibraryBrowseRequest>[];
+      final searches = <LibrarySearchRequest>[];
       final queue = DownloadQueueLookup.fromItems([
         for (final status in [DownloadStatus.queued, DownloadStatus.completed])
           DownloadItem(
@@ -51,6 +53,10 @@ void main() {
             libraryBrowseProvider.overrideWith((ref, request) async {
               requests.add(request);
               return [_album(0), _album(1)];
+            }),
+            librarySearchProvider.overrideWith((ref, request) async {
+              searches.add(request);
+              return [];
             }),
           ],
           child: MaterialApp(
@@ -78,6 +84,17 @@ void main() {
       await tester.tap(find.text('Songs'));
       await tester.tap(find.text('Playlists'));
       expect(opened, ['downloads', 'all', 'playlists']);
+
+      await tester.tap(find.byTooltip('Search your library'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'green lilac');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      expect(searches, hasLength(4));
+      expect(find.byType(TextField), findsOneWidget);
+      await tester.tap(find.byTooltip('Clear'));
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Artists'));
       await tester.pumpAndSettle();

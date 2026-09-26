@@ -14,6 +14,7 @@ import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 import 'package:spotiflac_android/widgets/app_search_field.dart';
+import 'package:spotiflac_android/widgets/library_search_results.dart';
 import 'package:spotiflac_android/widgets/mornye_chrome.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1376,7 +1377,19 @@ class _QueueTabState extends ConsumerState<QueueTab> {
       filterMetadata: _filterMetadata,
       localLibraryEnabled: localLibraryEnabled,
     );
-    final countsValue = ref.watch(_queueLibraryCountsProvider(countsRequest));
+    final searchingLibrary =
+        _searchQuery.isNotEmpty &&
+        !_isSelectionMode &&
+        !_isPlaylistSelectionMode;
+    final countsValue = searchingLibrary
+        ? const AsyncData(
+            QueueLibraryCounts(
+              allTrackCount: 0,
+              albumCount: 0,
+              singleTrackCount: 0,
+            ),
+          )
+        : ref.watch(_queueLibraryCountsProvider(countsRequest));
     final historySnapshotFallbackEnabled =
         hasQueueItems &&
         inMemoryHistoryItems.isNotEmpty &&
@@ -1428,9 +1441,9 @@ class _QueueTabState extends ConsumerState<QueueTab> {
     }
 
     final activePageRequest = pageRequest(historyFilterMode);
-    final activePageValue = ref.watch(
-      _queueLibraryPageProvider(activePageRequest),
-    );
+    final activePageValue = searchingLibrary
+        ? const AsyncData(_QueueLibraryPageData())
+        : ref.watch(_queueLibraryPageProvider(activePageRequest));
 
     _QueueLibraryPageData pageData(String filterMode) {
       final request = filterMode == historyFilterMode
@@ -1489,12 +1502,14 @@ class _QueueTabState extends ConsumerState<QueueTab> {
         _searchQuery.isNotEmpty || _searchController.text.trim().isNotEmpty;
     final shouldShowLibraryControls =
         hasLibraryContent || hasAnyLibraryItems || hasActiveSearch;
-    _scheduleBlankLibraryRepair(
-      hasQueueItems: hasQueueItems,
-      hasLibraryContent: hasLibraryContent,
-      hasAnyLibraryItems: hasAnyLibraryItems,
-      isLibraryPageLoading: isLibraryPageLoading,
-    );
+    if (!searchingLibrary) {
+      _scheduleBlankLibraryRepair(
+        hasQueueItems: hasQueueItems,
+        hasLibraryContent: hasLibraryContent,
+        hasAnyLibraryItems: hasAnyLibraryItems,
+        isLibraryPageLoading: isLibraryPageLoading,
+      );
+    }
 
     final selectionItems = getFilterData(
       historyFilterMode,
@@ -1556,9 +1571,7 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                         child: AppSearchField(
                           controller: _searchController,
                           focusNode: _searchFocusNode,
-                          hintText: widget.librarySection == null
-                              ? context.l10n.historySearchHint
-                              : context.l10n.librarySearchHint,
+                          hintText: context.l10n.librarySearchHint,
                           clearTooltip: context.l10n.dialogClear,
                           onChanged: _onSearchChanged,
                           onClear: () {
@@ -1570,7 +1583,9 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                     ),
                   ),
 
-                if (shouldShowLibraryControls && widget.librarySection == null)
+                if (!searchingLibrary &&
+                    shouldShowLibraryControls &&
+                    widget.librarySection == null)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -1639,7 +1654,28 @@ class _QueueTabState extends ConsumerState<QueueTab> {
                     ),
                   ),
               ],
-              body: widget.librarySection != null
+              body: searchingLibrary
+                  ? CustomScrollView(
+                      key: const ValueKey('library-search-results'),
+                      slivers: [
+                        LibrarySearchResults(
+                          query: _searchQuery,
+                          onOpenArtist: (artist) => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => Scaffold(
+                                body: MornyeLibraryScreen(
+                                  page: MornyeLibraryPage.albums,
+                                  artist: artist,
+                                  onOpenSection: (_) {},
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const NavBarSliverSpacer(),
+                      ],
+                    )
+                  : widget.librarySection != null
                   ? _buildFilterContent(
                       context: context,
                       colorScheme: colorScheme,
