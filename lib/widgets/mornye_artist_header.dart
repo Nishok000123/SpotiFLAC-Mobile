@@ -90,16 +90,19 @@ class _MornyeArtistSurfaceState extends State<MornyeArtistSurface> {
               final logoColor = logo == null
                   ? null
                   : CoverPalette.sourceColor(logo, Brightness.dark);
+              // Keep the artwork accent for colorful portraits. A neutral
+              // portrait can acquire a blue Material accent; use white there,
+              // while allowing an explicit logo color to take precedence.
               final primary = widget.neutralActions
                   ? Colors.white
-                  : logoColor ?? palette.primary;
+                  : logoColor ?? (useAccent ? palette.primary : Colors.white);
               final primaryLuminance = primary.computeLuminance();
               final surfaceContrast =
                   (primaryLuminance + 0.05) /
                   (surface.computeLuminance() + 0.05);
               final onPrimary = widget.neutralActions
                   ? Colors.black
-                  : logoColor == null
+                  : logoColor == null && useAccent
                   ? palette.onPrimary
                   : surfaceContrast >= 4.5
                   ? surface

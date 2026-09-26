@@ -88,7 +88,7 @@ extension _ArtistScreenSections on _ArtistScreenState {
                   icon: CupertinoIcons.square_arrow_up,
                   buttonSize: 50,
                   iconSize: 24,
-                  iconColor: Colors.white,
+                  iconColor: colorScheme.primary,
                   glassTintColor: Colors.white,
                   glassTintOpacity: 0.10,
                   tooltip: context.l10n.openInOtherServices,
@@ -102,7 +102,7 @@ extension _ArtistScreenSections on _ArtistScreenState {
                   CupertinoButton(
                     padding: EdgeInsets.zero,
                     borderRadius: BorderRadius.circular(37),
-                    color: Colors.white,
+                    color: colorScheme.primary,
                     onPressed: () =>
                         _showDiscographyOptions(context, colorScheme, albums),
                     child: SizedBox.square(
@@ -112,7 +112,7 @@ extension _ArtistScreenSections on _ArtistScreenState {
                         child: Icon(
                           CupertinoIcons.arrow_down,
                           size: 34,
-                          color: colorScheme.surface,
+                          color: colorScheme.onPrimary,
                         ),
                       ),
                     ),
@@ -123,7 +123,7 @@ extension _ArtistScreenSections on _ArtistScreenState {
                       : CupertinoIcons.star,
                   buttonSize: 50,
                   iconSize: 24,
-                  iconColor: Colors.white,
+                  iconColor: colorScheme.primary,
                   glassTintColor: Colors.white,
                   glassTintOpacity: 0.10,
                   tooltip: isFavoriteArtist

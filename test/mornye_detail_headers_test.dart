@@ -12,6 +12,78 @@ import 'package:spotiflac_android/widgets/collection_scaffold.dart';
 import 'package:spotiflac_android/widgets/mornye_artist_header.dart';
 
 void main() {
+  testWidgets('artist actions preserve artwork and logo accents', (
+    tester,
+  ) async {
+    final directory = Directory.systemTemp.createTempSync('artist-palette-');
+    addTearDown(() => directory.deleteSync(recursive: true));
+    final neutralCover = File('${directory.path}/neutral.png');
+    final coloredCover = File('${directory.path}/colored.png');
+    final whiteLogo = File('${directory.path}/white-logo.png');
+    final coloredLogo = File('${directory.path}/colored-logo.png');
+    await tester.runAsync(() async {
+      for (final (file, color, isLogo) in [
+        (neutralCover, const Color(0xff9da4a9), false),
+        (coloredCover, Colors.deepOrange, false),
+        (whiteLogo, Colors.white, true),
+        (coloredLogo, Colors.amber, true),
+      ]) {
+        final recorder = ui.PictureRecorder();
+        final canvas = Canvas(recorder);
+        canvas.drawRect(
+          isLogo
+              ? const Rect.fromLTWH(20, 40, 60, 20)
+              : const Rect.fromLTWH(0, 0, 100, 100),
+          Paint()..color = color,
+        );
+        final picture = recorder.endRecording();
+        final image = await picture.toImage(100, 100);
+        final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+        image.dispose();
+        picture.dispose();
+        await file.writeAsBytes(bytes!.buffer.asUint8List());
+        await CoverPalette.resolve(file.path, Brightness.dark);
+      }
+    });
+    final artworkAccent = CoverPalette.peek(
+      coloredCover.path,
+      Brightness.dark,
+    )!.primary;
+    expect(artworkAccent, isNot(Colors.white));
+    for (final brightness in Brightness.values) {
+      for (final (cover, logo, expected) in [
+        (neutralCover, null, Colors.white),
+        (coloredCover, null, artworkAccent),
+        (coloredCover, whiteLogo, Colors.white),
+        (neutralCover, coloredLogo, Colors.amber),
+      ]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: MornyeTheme.build(brightness),
+            home: MornyeArtistSurface(
+              imageSource: cover.path,
+              logoSource: logo?.path,
+              child: const Text('Artist action'),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final scheme = Theme.of(
+          tester.element(find.text('Artist action')),
+        ).colorScheme;
+        expect(scheme.primary.toARGB32(), expected.toARGB32());
+        final foreground = scheme.onPrimary.computeLuminance();
+        final background = scheme.primary.computeLuminance();
+        final contrast = foreground > background
+            ? (foreground + 0.05) / (background + 0.05)
+            : (background + 0.05) / (foreground + 0.05);
+        expect(contrast, greaterThanOrEqualTo(4.5));
+        expect(tester.takeException(), isNull);
+      }
+    }
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets(
     'local and online album actions share the neutral cover surface',
     (tester) async {
