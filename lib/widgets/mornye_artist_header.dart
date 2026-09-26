@@ -157,9 +157,10 @@ class MornyeArtistHeader extends StatelessWidget {
   final String? logoUrl;
   final Widget? badge;
 
+  // A SliverMainAxisGroup clamps negative overlap, preventing this header from
+  // receiving the overscroll used for its stretch animation.
   @override
-  Widget build(BuildContext context) =>
-      SliverMainAxisGroup(slivers: buildSlivers(context));
+  Widget build(BuildContext context) => buildSlivers(context).single;
 
   List<Widget> buildSlivers(BuildContext context) {
     final surface = Theme.of(context).colorScheme.surface;
@@ -206,6 +207,7 @@ class MornyeArtistHeader extends StatelessWidget {
               32;
           return SliverAppBar(
             pinned: true,
+            stretch: !MediaQuery.disableAnimationsOf(context),
             expandedHeight: expandedHeight - MediaQuery.paddingOf(context).top,
             backgroundColor: surface,
             surfaceTintColor: Colors.transparent,
@@ -233,6 +235,7 @@ class MornyeArtistHeader extends StatelessWidget {
             ),
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.pin,
+              stretchModes: const [StretchMode.zoomBackground],
               background: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -366,7 +369,30 @@ class _ArtistCollapsingArtwork extends ConsumerWidget {
                 sigmaY: blur,
                 tileMode: TileMode.clamp,
               ),
-              child: RepaintBoundary(child: child),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final height = settings?.maxExtent ?? constraints.maxHeight;
+                  final zoom = height > 0
+                      ? (constraints.maxHeight / height).clamp(
+                          1.0,
+                          double.infinity,
+                        )
+                      : 1.0;
+                  // Stretch the photograph uniformly around its top edge.
+                  // Identity and actions remain outside this transform, moving
+                  // down with the sliver without growing along with the image.
+                  return OverflowBox(
+                    alignment: Alignment.topCenter,
+                    minHeight: height,
+                    maxHeight: height,
+                    child: Transform.scale(
+                      scale: zoom,
+                      alignment: Alignment.topCenter,
+                      child: RepaintBoundary(child: child),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
           if (blurEnabled && fade < 1)

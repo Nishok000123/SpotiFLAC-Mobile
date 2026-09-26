@@ -222,6 +222,67 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('pulling the artist header zooms only the artwork', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.view.padding = FakeViewPadding(top: 59, bottom: 34);
+    addTearDown(tester.view.reset);
+    const artworkKey = ValueKey('stretch-artwork');
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: MornyeTheme.build(Brightness.dark),
+          home: Scaffold(
+            body: CustomScrollView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              slivers: const [
+                MornyeArtistHeader(
+                  name: 'Artist',
+                  artwork: ColoredBox(key: artworkKey, color: Colors.orange),
+                  actions: [Text('Artist action')],
+                  showTitle: false,
+                ),
+                SliverToBoxAdapter(child: Text('Album list')),
+                SliverToBoxAdapter(child: SizedBox(height: 2000)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final artwork = find.byKey(artworkKey);
+    final action = find.text('Artist action');
+    final albums = find.text('Album list');
+    final originalArt = tester.getRect(artwork);
+    final originalAction = tester.getRect(action);
+    final originalAlbums = tester.getRect(albums);
+    final element = tester.element(artwork);
+    final gesture = await tester.startGesture(const Offset(195, 350));
+    await gesture.moveBy(const Offset(0, 150));
+    await tester.pump();
+    final stretchedArt = tester.getRect(artwork);
+    expect(stretchedArt.width, greaterThan(originalArt.width));
+    expect(
+      stretchedArt.width / originalArt.width,
+      closeTo(stretchedArt.height / originalArt.height, 0.001),
+    );
+    expect(stretchedArt.top, closeTo(originalArt.top, 0.01));
+    expect(tester.getSize(action), originalAction.size);
+    expect(tester.getRect(action).top, greaterThan(originalAction.top));
+    expect(tester.getRect(albums).top, greaterThan(originalAlbums.top));
+    expect(tester.element(artwork), same(element));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(tester.getRect(artwork), originalArt);
+    expect(tester.getRect(action), originalAction);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final brightness in Brightness.values) {
     for (final scale in [1.0, 2.0]) {
       testWidgets(
