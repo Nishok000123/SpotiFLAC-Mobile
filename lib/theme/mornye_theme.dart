@@ -66,7 +66,9 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
       MornyeAccent.purple => CupertinoColors.systemPurple,
       MornyeAccent.pink => CupertinoColors.systemPink,
     };
-    return dark ? color.darkColor : color.color;
+    // Accents also label links and small controls on white surfaces.
+    if (!dark && accent == MornyeAccent.green) return const Color(0xff24863d);
+    return dark ? color.darkColor : color.highContrastColor;
   }
 
   static final tokens = AppTokens.standard.copyWith(
@@ -169,7 +171,11 @@ class MornyeTheme extends ThemeExtension<MornyeTheme> {
           brightness: brightness,
         ).copyWith(
           primary: accent,
-          onPrimary: Colors.white,
+          onPrimary:
+              selectedAccent == MornyeAccent.red ||
+                  accent.computeLuminance() < 0.179
+              ? Colors.white
+              : Colors.black,
           primaryContainer: grouped,
           onPrimaryContainer: accent,
           secondary: accent,

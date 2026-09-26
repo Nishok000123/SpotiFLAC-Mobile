@@ -10,6 +10,35 @@ import 'package:spotiflac_android/theme/dynamic_color_wrapper.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 
 void main() {
+  test('custom accents keep text readable in both appearances', () {
+    double contrast(Color first, Color second) {
+      final a = first.computeLuminance();
+      final b = second.computeLuminance();
+      return a > b ? (a + 0.05) / (b + 0.05) : (b + 0.05) / (a + 0.05);
+    }
+
+    for (final brightness in Brightness.values) {
+      for (final accent in MornyeAccent.values.where(
+        (accent) => accent != MornyeAccent.red,
+      )) {
+        final scheme = MornyeTheme.build(
+          brightness,
+          accent: accent,
+        ).colorScheme;
+        expect(
+          contrast(scheme.primary, scheme.surface),
+          greaterThanOrEqualTo(4.5),
+          reason: '$accent on $brightness',
+        );
+        expect(
+          contrast(scheme.onPrimary, scheme.primary),
+          greaterThanOrEqualTo(4.5),
+          reason: 'Button text for $accent on $brightness',
+        );
+      }
+    }
+  });
+
   Future<void> openSettings(
     WidgetTester tester,
     SharedPreferences prefs,
