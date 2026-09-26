@@ -66,6 +66,7 @@ AGENTS.md
 /ios/Flutter/Flutter.podspec
 *.xcarchive
 DerivedData/
+.build/
 
 # Credentials and machine-local configuration
 .env
