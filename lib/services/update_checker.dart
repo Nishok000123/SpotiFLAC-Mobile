@@ -50,6 +50,21 @@ class UpdateInfo {
 }
 
 class UpdateChecker {
+  final http.Client? _client;
+  final String _installedVersion;
+  final bool _isAndroid;
+  final List<String>? _supportedAbis;
+
+  UpdateChecker({
+    http.Client? client,
+    String installedVersion = AppInfo.version,
+    bool? isAndroid,
+    List<String>? supportedAbis,
+  }) : _client = client,
+       _installedVersion = installedVersion,
+       _isAndroid = isAndroid ?? Platform.isAndroid,
+       _supportedAbis = supportedAbis;
+
   static const String _allReleasesApiUrl =
       'https://api.github.com/repos/${AppInfo.githubRepo}/releases';
 
@@ -57,67 +72,86 @@ class UpdateChecker {
   /// update before continuing to use the app.
   static const int forceUpdateThreshold = 3;
 
-  // The releases payload is tens of KB and update cadence is days, not
-  // minutes: serve from cache within the TTL and revalidate with ETag after,
-  // instead of re-downloading the full list on every cold start.
-  static const Duration _cacheTtl = Duration(hours: 6);
+  // Revalidate on every check. A local TTL can hide a newly published release;
+  // ETag still avoids downloading the release list when it has not changed.
   static const String _cachedBodyKey = 'update_checker_releases_json';
   static const String _cachedAtKey = 'update_checker_releases_fetched_at';
   static const String _cachedEtagKey = 'update_checker_releases_etag';
 
-  static Future<String?> _fetchReleasesBody() async {
+  Future<({String body, bool verified})?> _fetchReleasesBody() async {
     final prefs = await SharedPreferences.getInstance();
-    final cachedBody = prefs.getString(_cachedBodyKey);
-    final cachedAt = prefs.getInt(_cachedAtKey) ?? 0;
-    final ageMs = DateTime.now().millisecondsSinceEpoch - cachedAt;
-    if (cachedBody != null && ageMs < _cacheTtl.inMilliseconds) {
-      return cachedBody;
+    var cachedBody = prefs.getString(_cachedBodyKey);
+    if (cachedBody != null) {
+      try {
+        _parseReleases(cachedBody);
+      } on FormatException {
+        cachedBody = null;
+        _log.w('Ignoring invalid cached release list');
+      }
     }
 
     final cachedEtag = prefs.getString(_cachedEtagKey);
-    final response = await http
-        .get(
-          Uri.parse('$_allReleasesApiUrl?per_page=30'),
-          headers: {
-            'Accept': 'application/vnd.github.v3+json',
-            if (cachedBody != null && cachedEtag != null)
-              'If-None-Match': cachedEtag,
-          },
-        )
-        .timeout(const Duration(seconds: 10));
+    try {
+      final response = await (_client?.get ?? http.get)(
+        Uri.parse('$_allReleasesApiUrl?per_page=30'),
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'Cache-Control': 'no-cache',
+          if (cachedBody != null && cachedEtag != null)
+            'If-None-Match': cachedEtag,
+        },
+      ).timeout(const Duration(seconds: 10));
 
-    if (response.statusCode == 304 && cachedBody != null) {
+      if (response.statusCode == 304 && cachedBody != null) {
+        _log.i('Release list revalidated by GitHub (304)');
+        await prefs.setInt(_cachedAtKey, DateTime.now().millisecondsSinceEpoch);
+        return (body: cachedBody, verified: true);
+      }
+      if (response.statusCode != 200) {
+        throw http.ClientException(
+          'GitHub API returned ${response.statusCode}',
+        );
+      }
+
+      // Invalid responses must not overwrite a usable offline snapshot.
+      _parseReleases(response.body);
+      await prefs.setString(_cachedBodyKey, response.body);
+      final etag = response.headers['etag'];
+      if (etag != null) {
+        await prefs.setString(_cachedEtagKey, etag);
+      } else {
+        await prefs.remove(_cachedEtagKey);
+      }
       await prefs.setInt(_cachedAtKey, DateTime.now().millisecondsSinceEpoch);
-      return cachedBody;
+      _log.i('Fetched current release list from GitHub (200)');
+      return (body: response.body, verified: true);
+    } catch (error) {
+      _log.w('Could not refresh releases: $error');
+      return cachedBody == null ? null : (body: cachedBody, verified: false);
     }
-    if (response.statusCode != 200) {
-      _log.w('GitHub API returned ${response.statusCode}');
-      return cachedBody; // stale is better than none for the update prompt
-    }
-
-    await prefs.setString(_cachedBodyKey, response.body);
-    final etag = response.headers['etag'];
-    if (etag != null) {
-      await prefs.setString(_cachedEtagKey, etag);
-    }
-    await prefs.setInt(_cachedAtKey, DateTime.now().millisecondsSinceEpoch);
-    return response.body;
   }
 
-  static Future<UpdateInfo?> checkForUpdate({String channel = 'stable'}) async {
-    if (!Platform.isAndroid) {
+  static List<Map<String, dynamic>> _parseReleases(String body) {
+    final decoded = jsonDecode(body);
+    if (decoded is! List<dynamic> ||
+        decoded.any((release) => release is! Map<String, dynamic>)) {
+      throw const FormatException('Invalid GitHub release list');
+    }
+    return decoded.cast<Map<String, dynamic>>();
+  }
+
+  Future<UpdateInfo?> checkForUpdate({String channel = 'stable'}) async {
+    if (!_isAndroid) {
       return null;
     }
 
     try {
-      final releasesJson = await _fetchReleasesBody();
-      if (releasesJson == null) {
+      final snapshot = await _fetchReleasesBody();
+      if (snapshot == null) {
         return null;
       }
 
-      final releases = (jsonDecode(releasesJson) as List<dynamic>)
-          .whereType<Map<String, dynamic>>()
-          .toList();
+      final releases = _parseReleases(snapshot.body);
       if (releases.isEmpty) {
         _log.i('No releases found');
         return null;
@@ -150,15 +184,22 @@ class UpdateChecker {
           'v',
           '',
         );
-        if (version.isNotEmpty && _isNewerVersion(version, AppInfo.version)) {
+        if (version.isNotEmpty && _isNewerVersion(version, _installedVersion)) {
           releasesBehind++;
         }
       }
 
-      if (!_isNewerVersion(latestVersion, AppInfo.version)) {
-        _log.i(
-          'No update available (current: ${AppInfo.version}, latest: $latestVersion, channel: $channel)',
-        );
+      if (!_isNewerVersion(latestVersion, _installedVersion)) {
+        if (snapshot.verified) {
+          _log.i(
+            'No update available (current: $_installedVersion, latest: $latestVersion, channel: $channel)',
+          );
+        } else {
+          _log.w(
+            'Update availability could not be verified '
+            '(current: $_installedVersion, cached latest: $latestVersion, channel: $channel)',
+          );
+        }
         return null;
       }
 
@@ -293,9 +334,7 @@ class UpdateChecker {
     return null;
   }
 
-  static Future<_ApkAsset?> _selectApkForCurrentDevice(
-    List<_ApkAsset> assets,
-  ) async {
+  Future<_ApkAsset?> _selectApkForCurrentDevice(List<_ApkAsset> assets) async {
     if (assets.isEmpty) {
       return null;
     }
@@ -317,7 +356,7 @@ class UpdateChecker {
       }
     }
 
-    final supportedAbis = await _getSupportedAndroidAbis();
+    final supportedAbis = _supportedAbis ?? await _getSupportedAndroidAbis();
     final hasArm64 = supportedAbis.any(_isArm64Abi);
     final hasArm32 = supportedAbis.any(_isArm32Abi);
 
