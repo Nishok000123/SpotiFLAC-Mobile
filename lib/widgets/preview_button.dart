@@ -39,8 +39,12 @@ class PreviewButton extends ConsumerWidget {
 
     // When the built-in player is currently on this track, mirror and control
     // it (consistent with the mini player) rather than the preview snippet.
-    final mainItem = ref.watch(currentMediaItemProvider).value;
-    if (_isCurrentMainTrack(mainItem)) {
+    final isCurrentMainTrack = ref.watch(
+      currentMediaItemProvider.select(
+        (item) => _isCurrentMainTrack(item.value),
+      ),
+    );
+    if (isCurrentMainTrack) {
       final isPlaying = ref.watch(playbackPlayingProvider);
       return IconButton(
         iconSize: size,
@@ -62,9 +66,13 @@ class PreviewButton extends ConsumerWidget {
 
     if (!track.hasPreview) return const SizedBox.shrink();
 
-    final previewState = ref.watch(previewPlayerProvider);
-    final isActive = previewState.isActiveUrl(track.previewUrl);
-    final status = isActive ? previewState.status : PreviewStatus.idle;
+    final status = ref.watch(
+      previewPlayerProvider.select(
+        (state) => state.isActiveUrl(track.previewUrl)
+            ? state.status
+            : PreviewStatus.idle,
+      ),
+    );
 
     final Widget icon;
     final String tooltip;

@@ -7,6 +7,7 @@ import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/models/track.dart';
 import 'package:spotiflac_android/providers/library_collections_provider.dart';
 import 'package:spotiflac_android/providers/music_player_provider.dart';
+import 'package:spotiflac_android/providers/preview_player_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/widgets/preview_button.dart';
 import 'package:spotiflac_android/widgets/track_collection_quick_actions.dart';
@@ -77,6 +78,69 @@ void main() {
       ),
     );
     expectCenteredHitbox(tester, Icons.play_circle_fill_rounded);
+  });
+
+  testWidgets('preview progress does not rebuild track buttons', (
+    tester,
+  ) async {
+    final player = _TestPreviewPlayer();
+    var builds = 0;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentMediaItemProvider.overrideWith((ref) => Stream.value(null)),
+          previewPlayerProvider.overrideWith(() => player),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: _CountingPreviewButton(track: track, onBuild: () => builds++),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    player.emit(
+      PreviewPlayerState(
+        activeUrl: track.previewUrl,
+        status: PreviewStatus.playing,
+      ),
+    );
+    await tester.pump();
+    expect(find.byIcon(Icons.pause_circle_filled_rounded), findsOneWidget);
+    final playingBuilds = builds;
+    for (var second = 1; second <= 3; second++) {
+      player.emit(
+        PreviewPlayerState(
+          activeUrl: track.previewUrl,
+          status: PreviewStatus.playing,
+          position: Duration(seconds: second),
+          duration: const Duration(seconds: 30),
+        ),
+      );
+      await tester.pump();
+    }
+    expect(builds, playingBuilds);
+
+    player.emit(
+      PreviewPlayerState(
+        activeUrl: track.previewUrl,
+        status: PreviewStatus.paused,
+      ),
+    );
+    await tester.pump();
+    expect(find.byIcon(Icons.play_circle_fill_rounded), findsOneWidget);
+    expect(builds, playingBuilds + 1);
+
+    player.emit(
+      const PreviewPlayerState(
+        activeUrl: 'https://example.com/another-preview.mp3',
+        status: PreviewStatus.playing,
+      ),
+    );
+    await tester.pump();
+    expect(find.byIcon(Icons.play_circle_outline_rounded), findsOneWidget);
   });
 
   testWidgets('overflow menu icon is centered in its adjacent hitbox', (
@@ -155,6 +219,25 @@ void main() {
 class _TestSettingsNotifier extends SettingsNotifier {
   @override
   AppSettings build() => const AppSettings();
+}
+
+class _TestPreviewPlayer extends PreviewPlayerController {
+  @override
+  PreviewPlayerState build() => const PreviewPlayerState();
+
+  void emit(PreviewPlayerState next) => state = next;
+}
+
+class _CountingPreviewButton extends PreviewButton {
+  const _CountingPreviewButton({required super.track, required this.onBuild});
+
+  final VoidCallback onBuild;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    onBuild();
+    return super.build(context, ref);
+  }
 }
 
 class _TestLibraryCollectionsNotifier extends LibraryCollectionsNotifier {
