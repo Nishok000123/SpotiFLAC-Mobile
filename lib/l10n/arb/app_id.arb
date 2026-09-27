@@ -10,7 +10,7 @@
   "usbFixedVolumeWarning": "Aplikasi tidak bisa menurunkan volume keluaran ini. Suara bisa mulai pada tingkat penuh dan slider volume HP tidak akan membantu. Lanjutkan hanya setelah menurunkan volume pada DAC atau amplifier eksternal. Jangan aktifkan untuk headset tanpa kontrol volume sendiri.",
   "dapExclusive": "Hi-res DAP (AAudio eksklusif)",
   "dapExclusiveDescription": "Gunakan Oboe/AAudio pada laju sampel dan presisi asli lagu PCM FLAC/WAV. Memerlukan Android 8.1 atau lebih baru dan perangkat kompatibel. Akses eksklusif diperiksa; format yang tidak didukung memakai pemutaran biasa. DSD memerlukan driver USB langsung. Berlaku mulai lagu berikutnya.",
-  "dapExclusiveUnavailable": "Perangkat ini tidak bisa membuka AAudio eksklusif pada laju sampel asli lagu. Memakai pemutaran biasa.",
+  "dapExclusiveUnavailable": "Akses AAudio eksklusif tidak tersedia untuk lagu dan keluaran saat ini. Memakai pemutaran biasa. Untuk DAC USB, coba driver USB langsung.",
   "usbDirect": "Driver USB langsung",
   "usbDirectDescription": "Gunakan audio USB eksklusif untuk FLAC/WAV, DSF/DFF dan WavPack DSD, dengan izin USB Android. Native DSD memerlukan DAC kompatibel yang dikenali. Format PCM lainnya memakai pemutaran biasa. Berlaku mulai lagu berikutnya.",
   "usbDsdOverPcm": "DSD melalui PCM (DoP)",

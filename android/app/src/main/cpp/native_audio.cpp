@@ -9,6 +9,7 @@
 #include <memory>
 #include <limits>
 #include <mutex>
+#include <sstream>
 #include <stdexcept>
 #include <unordered_map>
 #include <vector>
@@ -72,6 +73,9 @@ public:
         if (precision <= 24) formats.push_back(oboe::AudioFormat::I24);
         formats.push_back(oboe::AudioFormat::I32);
         if (precision <= 24) formats.push_back(oboe::AudioFormat::Float);
+        std::ostringstream attempts;
+        attempts << "requested=" << rate << "Hz/" << channels << "ch/" << precision
+                 << "bit, device=" << device;
         for (auto format : formats) {
             oboe::AudioStreamBuilder builder;
             builder.setDirection(oboe::Direction::Output)
@@ -84,7 +88,12 @@ public:
                 ->setDeviceId(device)->setDataCallback(this)
                 ->setChannelConversionAllowed(false)->setFormatConversionAllowed(false)
                 ->setSampleRateConversionQuality(oboe::SampleRateConversionQuality::None);
-            if (builder.openStream(stream) != oboe::Result::OK) continue;
+            const auto result = builder.openStream(stream);
+            attempts << "; format=" << oboe::convertToText(format);
+            if (result != oboe::Result::OK) {
+                attempts << " open=" << oboe::convertToText(result);
+                continue;
+            }
             // Exclusive is a request: Android can silently return Shared. Reject
             // that stream instead of displaying a misleading exclusive badge.
             if (stream->getAudioApi() == oboe::AudioApi::AAudio &&
@@ -97,10 +106,15 @@ public:
                 ring.resize(static_cast<size_t>(rate / 4) * frameBytes);
                 return;
             }
+            attempts << " actual=" << oboe::convertToText(stream->getSharingMode())
+                     << "/" << stream->getSampleRate() << "Hz/" << stream->getChannelCount()
+                     << "ch/" << oboe::convertToText(stream->getFormat())
+                     << ", api=" << oboe::convertToText(stream->getAudioApi())
+                     << ", device=" << stream->getDeviceId();
             stream->close();
             stream.reset();
         }
-        throw std::runtime_error("Exact-rate AAudio exclusive output unavailable");
+        throw std::runtime_error("Exact-rate AAudio exclusive output unavailable: " + attempts.str());
     }
     ~ExclusiveOutput() override { if (stream) stream->close(); }
 

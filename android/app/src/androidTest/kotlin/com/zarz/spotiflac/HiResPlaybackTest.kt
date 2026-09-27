@@ -97,11 +97,33 @@ class HiResPlaybackTest {
     }
 
     @Test
+    fun invalidFileIsNotReportedAsExclusiveAccessFailure() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val file = File.createTempFile("invalid-pcm-", ".wav", context.cacheDir)
+        file.writeBytes(ByteArray(64))
+        val playback = HiResPlayback(context) {}
+        try {
+            val done = CountDownLatch(1)
+            var reply: Any? = null
+            var error: String? = null
+            playback.command(MethodCall("prepare", mapOf("path" to file.path, "token" to 1))) { value, failure ->
+                reply = value; error = failure; done.countDown()
+            }
+            assertTrue(done.await(10, TimeUnit.SECONDS))
+            assertNull(error)
+            assertEquals("format", (reply as Map<*, *>)["reason"])
+            assertEquals(false, (reply as Map<*, *>)["fatal"])
+        } finally { playback.dispose(); file.delete() }
+    }
+
+    @Test
     fun exclusiveOutputEitherVerifiesExactFormatOrRejectsSharedFallback() {
         assertThrows(IllegalStateException::class.java) { NativeAudio.openOboe(1, 2, 24, 0) }
         val handle = try { NativeAudio.openOboe(48000, 2, 16, 0) }
         catch (error: IllegalStateException) {
             assertTrue(error.message.orEmpty().contains("exclusive output unavailable"))
+            assertTrue(error.message.orEmpty().contains("requested=48000Hz/2ch/16bit"))
+            assertTrue(error.message.orEmpty().contains("format="))
             return
         }
         try {

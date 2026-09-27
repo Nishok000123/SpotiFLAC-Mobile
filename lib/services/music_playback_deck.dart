@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:spotiflac_android/utils/logger.dart';
+
+final _log = AppLogger('AudioOutput');
 
 /// Only verified native playback reports active. File metadata alone never does.
 final usbAudioStatus = ValueNotifier<UsbAudioStatus>(const UsbAudioStatus());
@@ -213,6 +216,10 @@ class MusicPlaybackDeck {
         usbAudioStatus.value = UsbAudioStatus(
           reason: response?['reason'] as String? ?? 'unsupported',
         );
+        final detail = response?['detail'] as String?;
+        if (detail != null && detail.isNotEmpty) {
+          _log.w('Native output ${usbAudioStatus.value.reason}: $detail');
+        }
         if (response?['fatal'] == true) {
           throw UsbDsdUnavailable();
         }

@@ -70,6 +70,7 @@ internal class HiResPlayback(context: Context, private val emit: (Map<String, An
         if (Build.VERSION.SDK_INT < 27) return mapOf("reason" to "exclusive_unavailable")
         token = call.argument<Int>("token") ?: 0
         var isDsd = call.argument<Boolean>("requiresDsd") == true
+        var failureReason = "format"
         try {
             val path = requireNotNull(call.argument<String>("path"))
             isDsd = isDsd || DsdSource.isDsd(path)
@@ -78,9 +79,11 @@ internal class HiResPlayback(context: Context, private val emit: (Map<String, An
             val pcm = UsbPcmSource(path).also { source = it }
             val devices = manager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
             val wired = devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET }
+            failureReason = "exclusive_unavailable"
             output = NativeAudio.openOboe(pcm.rate, pcm.channels, pcm.bits, wired?.id ?: 0)
             bits = NativeAudio.bitsOboe(output)
             device = NativeAudio.deviceOboe(output)
+            failureReason = "format"
             val deadline = android.os.SystemClock.elapsedRealtime() + 5000
             while (pending == null && !pcm.ended) {
                 require(expected == revision) { "AAudio prepare cancelled" }
@@ -93,9 +96,12 @@ internal class HiResPlayback(context: Context, private val emit: (Map<String, An
                 "sampleRate" to pcm.rate, "bitDepth" to pcm.bits, "duration" to pcm.durationUs / 1000,
                 "device" to (devices.firstOrNull { it.id == device }?.productName?.toString() ?: "AAudio"))
         } catch (error: Exception) {
-            android.util.Log.i("HiResPlayback", "Exclusive output unavailable: ${error.message}")
             close()
-            return mapOf("reason" to if (isDsd) "dsd_unsupported" else "exclusive_unavailable", "fatal" to isDsd)
+            if (expected != revision) return mapOf("reason" to "cancelled")
+            val reason = if (isDsd) "dsd_unsupported" else failureReason
+            val detail = error.message.orEmpty().take(3000)
+            android.util.Log.i("HiResPlayback", "$reason: $detail")
+            return mapOf("reason" to reason, "fatal" to isDsd, "detail" to detail)
         }
     }
 
