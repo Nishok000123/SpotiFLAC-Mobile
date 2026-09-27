@@ -44,7 +44,6 @@ void main() {
     'upcoming queue maps taps and reorders to the complete playback queue',
     (tester) async {
       final player = _Player();
-      var libraryShuffles = 0;
       final queue = [
         for (final name in ['Previous', 'Current', 'Next', 'Last'])
           MediaItem(id: name, title: name, artist: 'Artist'),
@@ -68,10 +67,7 @@ void main() {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
-              body: MornyePlayerQueue(
-                colorScheme: theme.colorScheme,
-                onShuffleLibrary: () => libraryShuffles++,
-              ),
+              body: MornyePlayerQueue(colorScheme: theme.colorScheme),
             ),
           ),
         ),
@@ -108,14 +104,10 @@ void main() {
       expect(player.shuffled, isTrue);
       await tester.tap(find.byIcon(CupertinoIcons.repeat));
       expect(player.repeat, AudioServiceRepeatMode.all);
-      await tester.tap(find.byIcon(CupertinoIcons.ellipsis));
-      await tester.pumpAndSettle();
+      expect(find.byIcon(CupertinoIcons.ellipsis), findsNothing);
       final shuffleLibrary = AppLocalizations.of(
         tester.element(find.byType(MornyePlayerQueue)),
       ).nowPlayingShuffleLibrary;
-      await tester.tap(find.text(shuffleLibrary));
-      await tester.pumpAndSettle();
-      expect(libraryShuffles, 1);
       expect(find.text(shuffleLibrary), findsNothing);
       expect(find.text('Next'), findsOneWidget);
       expect(tester.takeException(), isNull);

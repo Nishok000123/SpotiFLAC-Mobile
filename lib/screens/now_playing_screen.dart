@@ -1301,8 +1301,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                   child: showQueue
                                       ? MornyePlayerQueue(
                                           colorScheme: colorScheme,
-                                          onShuffleLibrary: () =>
-                                              _shuffleLibrary(controller),
                                         )
                                       : _lyricsSection(
                                           colorScheme,
@@ -1486,10 +1484,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               lyricsOptions: showLyrics
                   ? _lyricsOptionsButton(colorScheme)
                   : null,
-              queue: MornyePlayerQueue(
-                colorScheme: colorScheme,
-                onShuffleLibrary: () => _shuffleLibrary(controller),
-              ),
+              queue: MornyePlayerQueue(colorScheme: colorScheme),
               controls: controls(),
               volume: const MornyeVolumeControl(),
             );

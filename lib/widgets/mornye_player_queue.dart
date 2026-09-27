@@ -7,18 +7,12 @@ import 'package:spotiflac_android/providers/music_player_provider.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/widgets/player_artwork.dart';
 import 'package:spotiflac_android/widgets/player_queue_dismissible.dart';
-import 'package:spotiflac_android/widgets/mornye_context_menu.dart';
 
 /// Upcoming tracks share the player's artwork backdrop and transport controls.
 class MornyePlayerQueue extends ConsumerWidget {
-  const MornyePlayerQueue({
-    super.key,
-    required this.colorScheme,
-    required this.onShuffleLibrary,
-  });
+  const MornyePlayerQueue({super.key, required this.colorScheme});
 
   final ColorScheme colorScheme;
-  final VoidCallback onShuffleLibrary;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -89,6 +83,7 @@ class MornyePlayerQueue extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 28),
           sliver: SliverToBoxAdapter(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
@@ -140,59 +135,25 @@ class MornyePlayerQueue extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.l10n.mornyeContinuePlaying,
-                            style: type.titleLarge?.copyWith(
-                              color: Colors.white,
-                            ),
-                          ),
-                          if (autoplay &&
-                              playback.repeat == AudioServiceRepeatMode.none)
-                            Text(
-                              context.l10n.autoplayFromLibrary,
-                              style: type.bodySmall?.copyWith(
-                                color: Colors.white70,
-                              ),
-                            ),
-                        ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.mornyeContinuePlaying,
+                        style: type.titleLarge?.copyWith(color: Colors.white),
                       ),
-                    ),
-                    Builder(
-                      builder: (buttonContext) => IconButton(
-                        tooltip: MaterialLocalizations.of(
-                          context,
-                        ).moreButtonTooltip,
-                        icon: const Icon(
-                          CupertinoIcons.ellipsis,
-                          color: Colors.white,
-                        ),
-                        onPressed: () => showMornyeContextMenu<void>(
-                          context: buttonContext,
-                          builder: (menuContext) => MornyeContextMenu(
-                            groups: [
-                              [
-                                MornyeMenuAction(
-                                  icon: CupertinoIcons.shuffle,
-                                  label: context.l10n.nowPlayingShuffleLibrary,
-                                  onPressed: () {
-                                    Navigator.pop(menuContext);
-                                    onShuffleLibrary();
-                                  },
-                                ),
-                              ],
-                            ],
+                      if (autoplay &&
+                          playback.repeat == AudioServiceRepeatMode.none)
+                        Text(
+                          context.l10n.autoplayFromLibrary,
+                          style: type.bodySmall?.copyWith(
+                            color: Colors.white70,
                           ),
                         ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
