@@ -696,7 +696,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           actions: mornye
               ? null
               : [
-                  const AudioOutputButton(),
                   IconButton(
                     tooltip: context.l10n.nowPlayingUpNext,
                     icon: const Icon(Icons.queue_music),
@@ -787,23 +786,28 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       else if (!mornye)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 28),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: ExpressiveIconButton(
-                              key: const ValueKey('material-lyrics-toggle'),
-                              tooltip: _currentPage == 1
-                                  ? context.l10n.nowPlayingTabPlayer
-                                  : context.l10n.nowPlayingTabLyrics,
-                              selected: _currentPage == 1,
-                              foregroundColor: _currentPage == 1
-                                  ? colorScheme.onPrimaryContainer
-                                  : colorScheme.onSurfaceVariant,
-                              backgroundColor: _currentPage == 1
-                                  ? colorScheme.primaryContainer
-                                  : null,
-                              icon: const Icon(Icons.lyrics_outlined),
-                              onPressed: _toggleMaterialLyrics,
-                            ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              ExpressiveIconButton(
+                                key: const ValueKey('material-lyrics-toggle'),
+                                tooltip: _currentPage == 1
+                                    ? context.l10n.nowPlayingTabPlayer
+                                    : context.l10n.nowPlayingTabLyrics,
+                                selected: _currentPage == 1,
+                                foregroundColor: _currentPage == 1
+                                    ? colorScheme.onPrimaryContainer
+                                    : colorScheme.onSurfaceVariant,
+                                backgroundColor: _currentPage == 1
+                                    ? colorScheme.primaryContainer
+                                    : null,
+                                icon: const Icon(Icons.lyrics_outlined),
+                                onPressed: _toggleMaterialLyrics,
+                              ),
+                              AudioOutputButton(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ],
                           ),
                         ),
                       if (!_landscape) const SizedBox(height: 8),
