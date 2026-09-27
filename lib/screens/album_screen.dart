@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:spotiflac_android/theme/app_tokens.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
+import 'package:spotiflac_android/theme/cover_palette.dart';
 import 'package:spotiflac_android/screens/track_history_snapshot.dart';
 import 'package:spotiflac_android/widgets/collection_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +32,7 @@ import 'package:spotiflac_android/widgets/playlist_picker_sheet.dart';
 import 'package:spotiflac_android/utils/clickable_metadata.dart';
 import 'package:spotiflac_android/widgets/cross_extension_share_sheet.dart';
 import 'package:spotiflac_android/widgets/track_list_tile.dart';
+import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
 import 'package:spotiflac_android/widgets/motion_header_banner.dart';
 import 'package:spotiflac_android/widgets/track_detail_actions.dart';
 import 'package:spotiflac_android/widgets/selection_action_button.dart';
@@ -276,7 +278,14 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
 
     final items = <Widget>[];
     if (has(['atmos', 'dolby_atmos', 'dolby-atmos'])) {
-      items.add(HeaderMetaItem('Dolby Atmos', icon: Icons.surround_sound));
+      items.add(
+        Builder(
+          builder: (context) => DolbyAtmosLogo(
+            color: HeaderPalette.of(context).onSurface,
+            size: const Size(18, 12),
+          ),
+        ),
+      );
     } else if (has(['spatial'])) {
       items.add(HeaderMetaItem('Spatial Audio', icon: Icons.surround_sound));
     }

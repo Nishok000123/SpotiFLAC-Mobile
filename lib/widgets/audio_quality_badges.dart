@@ -129,32 +129,34 @@ class DolbyAtmosBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
       decoration: BoxDecoration(
         color: colorScheme.tertiaryContainer.withValues(alpha: 0.6),
         borderRadius: context.tokens.borderRadiusBadge,
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CustomPaint(
-            size: const Size(14, 10),
-            painter: DolbyLogoPainter(color: colorScheme.onTertiaryContainer),
-          ),
-          const SizedBox(width: 3),
-          Text(
-            'Atmos',
-            style: TextStyle(
-              fontSize: context.tokens.badgeFontSize,
-              fontWeight: FontWeight.w600,
-              color: colorScheme.onTertiaryContainer,
-              height: 1.3,
-            ),
-          ),
-        ],
-      ),
+      child: DolbyAtmosLogo(color: colorScheme.onTertiaryContainer),
     );
   }
+}
+
+class DolbyAtmosLogo extends StatelessWidget {
+  const DolbyAtmosLogo({
+    super.key,
+    required this.color,
+    this.size = const Size(14, 10),
+  });
+
+  final Color color;
+  final Size size;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: 'Dolby Atmos',
+    child: CustomPaint(
+      size: size,
+      painter: DolbyLogoPainter(color: color),
+    ),
+  );
 }
 
 class DolbyLogoPainter extends CustomPainter {

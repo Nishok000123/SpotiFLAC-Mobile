@@ -276,7 +276,8 @@ void main() {
     expect(albumTrack.totalTracks, 1);
     expect(albumTrack.audioQuality, '16-bit');
     expect(find.text('Lossless'), findsOneWidget);
-    expect(find.text('Dolby Atmos'), findsOneWidget);
+    expect(find.text('Dolby Atmos'), findsNothing);
+    expect(find.byTooltip('Dolby Atmos'), findsOneWidget);
     expect(find.byType(AudioQualityBadge), findsNothing);
     expect(find.byType(DolbyAtmosBadge), findsNothing);
     expect(find.byType(ExplicitBadge), findsOneWidget);
