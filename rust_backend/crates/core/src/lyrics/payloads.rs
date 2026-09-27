@@ -229,7 +229,11 @@ pub fn format_apple(raw: &str, multi_person: bool, word_timing: bool) -> Result<
             return Ok(apple_vocal_sides(value.elrc_multi_person.trim(), &value));
         }
         if word_timing && !value.elrc.trim().is_empty() {
-            return Ok(value.elrc.trim().into());
+            return Ok(if multi_person {
+                apple_vocal_sides(value.elrc.trim(), &value)
+            } else {
+                value.elrc.trim().into()
+            });
         }
         let content = value.content.as_deref().unwrap_or_default();
         if !value.plain.trim().is_empty() && content.is_empty() {
@@ -556,7 +560,7 @@ mod supplement_tests {
 
     #[test]
     fn apple_agents_restore_vocal_sides_without_reformatting_word_times() {
-        let raw = serde_json::json!({
+        let mut raw = serde_json::json!({
             "type": "Syllable",
             "elrcMultiPerson": "[00:01.01]v1: <00:01.009>Lead<00:02.00>\n[bg:<00:01.50>Echo<00:02.50>]\n[00:03.00]v2: <00:03.00>Guest<00:04.00>\n[00:05.00]v2: <00:05.00>Together<00:06.00>\n[00:07.00]v2: Third",
             "content": [
@@ -581,6 +585,19 @@ mod supplement_tests {
         let stored = lrc::with_metadata(&lyrics, "Track", "Artist");
         assert!(stored.contains("[00:05.00]v1: <00:05.00>Together<00:06.00>"));
         assert!(stored.contains("[bg:<00:01.50>Echo<00:02.50>]"));
+
+        // Some responses carry vocal labels only in the regular eLRC field.
+        // It must use the same agent correction as the multi-person field.
+        raw["elrc"] = raw
+            .as_object_mut()
+            .unwrap()
+            .remove("elrcMultiPerson")
+            .unwrap();
+        assert_eq!(format_apple(&raw.to_string(), true, true).unwrap(), text);
+        assert_eq!(
+            format_apple(&raw.to_string(), false, true).unwrap(),
+            raw["elrc"].as_str().unwrap()
+        );
     }
 
     #[test]

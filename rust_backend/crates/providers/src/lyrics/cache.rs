@@ -13,7 +13,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 pub const MAX_ENTRIES: usize = 500;
 pub const TTL: Duration = Duration::from_secs(24 * 60 * 60);
 const MAX_PERSISTED_BYTES: u64 = 64 << 20;
-const SNAPSHOT_VERSION: u32 = 4;
+const SNAPSHOT_VERSION: u32 = 5;
 
 #[derive(Clone)]
 struct Entry {
