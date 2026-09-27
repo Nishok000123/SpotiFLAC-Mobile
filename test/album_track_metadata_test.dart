@@ -12,6 +12,7 @@ import 'package:spotiflac_android/screens/home_tab.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/widgets/album_description.dart';
+import 'package:spotiflac_android/widgets/album_detail_header.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
 import 'package:spotiflac_android/widgets/disc_separator_chip.dart';
 import 'package:spotiflac_android/widgets/track_list_tile.dart';
@@ -186,6 +187,150 @@ void main() {
         await tester.pumpAndSettle();
       });
     }
+  }
+
+  for (final scenario
+      in <
+        ({
+          String name,
+          List<(String?, bool?)> qualities,
+          Set<int> badgedRows,
+          String? headerQuality,
+          bool headerAtmos,
+          bool catalogAtmos,
+        })
+      >[
+        (
+          name: 'uniform',
+          qualities: [('16-bit', true), ('16-bit', true), ('16-bit', true)],
+          badgedRows: {},
+          headerQuality: '16-bit',
+          headerAtmos: true,
+          catalogAtmos: false,
+        ),
+        (
+          name: 'bit depth exception first',
+          qualities: [('24-bit', true), ('16-bit', true), ('16 bit', true)],
+          badgedRows: {0},
+          headerQuality: '16-bit',
+          headerAtmos: true,
+          catalogAtmos: false,
+        ),
+        (
+          name: 'Atmos exception',
+          qualities: [('16-bit', false), ('16-bit', true), ('16-bit', false)],
+          badgedRows: {1},
+          headerQuality: '16-bit',
+          headerAtmos: false,
+          catalogAtmos: false,
+        ),
+        (
+          name: 'mixed without a majority',
+          qualities: [('16-bit', false), ('24-bit', true)],
+          badgedRows: {0, 1},
+          headerQuality: null,
+          headerAtmos: false,
+          catalogAtmos: false,
+        ),
+        (
+          name: 'mostly unknown',
+          qualities: [('16-bit', false), (null, false), (null, false)],
+          badgedRows: {0},
+          headerQuality: null,
+          headerAtmos: false,
+          catalogAtmos: false,
+        ),
+        (
+          name: 'album Atmos with unknown track modes',
+          qualities: [('16-bit', null), ('16-bit', null), ('16-bit', null)],
+          badgedRows: {},
+          headerQuality: '16-bit',
+          headerAtmos: true,
+          catalogAtmos: true,
+        ),
+      ]) {
+    testWidgets('Material album quality badges: ${scenario.name}', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(430, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: ThemeData(),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: AlbumScreen(
+              albumId: 'quality-${scenario.name}',
+              albumName: 'Example Album',
+              extensionId: 'example-metadata',
+              audioTraits: [
+                'lossless',
+                if (scenario.catalogAtmos) 'dolby_atmos',
+              ],
+              tracks: [
+                for (var i = 0; i < scenario.qualities.length; i++)
+                  Track(
+                    id: 'song-$i',
+                    name: 'Song $i',
+                    artistName: 'Example Artist',
+                    albumName: 'Example Album',
+                    duration: 180000,
+                    trackNumber: i + 1,
+                    audioQuality: scenario.qualities[i].$1,
+                    audioModes: switch (scenario.qualities[i].$2) {
+                      true => 'DOLBY_ATMOS',
+                      false => 'STEREO',
+                      null => null,
+                    },
+                    explicit: i == 0,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final rows = find.byType(TrackListTile);
+      expect(rows, findsNWidgets(scenario.qualities.length));
+      for (var i = 0; i < scenario.qualities.length; i++) {
+        final badges = find.descendant(
+          of: rows.at(i),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is AudioQualityBadge || widget is DolbyAtmosBadge,
+          ),
+        );
+        expect(
+          badges,
+          scenario.badgedRows.contains(i) ? findsWidgets : findsNothing,
+          reason: 'Song $i in ${scenario.name}',
+        );
+      }
+      final header = find.byType(HeaderMetaRow);
+      if (scenario.headerQuality != null) {
+        expect(
+          find.descendant(
+            of: header,
+            matching: find.text(scenario.headerQuality!),
+          ),
+          findsOneWidget,
+        );
+      } else {
+        expect(
+          find.descendant(of: header, matching: find.text('16-bit')),
+          findsNothing,
+        );
+      }
+      expect(
+        find.descendant(of: header, matching: find.byType(DolbyAtmosLogo)),
+        scenario.headerAtmos ? findsOneWidget : findsNothing,
+      );
+      expect(find.byType(ExplicitBadge), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    });
   }
 
   testWidgets('album tracks retain the extended tags supplied in search', (

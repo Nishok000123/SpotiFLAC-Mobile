@@ -267,17 +267,45 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
     return stripPrefixedResourceId(widget.albumId);
   }
 
-  List<Widget> _audioTraitInline() {
+  static final _qualitySeparators = RegExp(r'[\s_-]+');
+
+  static (String, bool?) _qualitySignature(Track track) => (
+    (track.audioQuality ?? '').trim().toLowerCase().replaceAll(
+      _qualitySeparators,
+      '',
+    ),
+    (track.audioModes?.trim().isEmpty ?? true) ? null : track.isDolbyAtmos,
+  );
+
+  Track? _commonQualityTrack(List<Track> tracks) {
+    final counts = <(String, bool?), int>{};
+    for (final track in tracks) {
+      final signature = _qualitySignature(track);
+      if (signature.$1.isEmpty && signature.$2 != true) continue;
+      counts.update(signature, (count) => count + 1, ifAbsent: () => 1);
+    }
+    // A strict majority avoids choosing an arbitrary baseline for mixed albums.
+    // Unknown metadata counts towards the total, but never implies a quality.
+    for (final track in tracks) {
+      if ((counts[_qualitySignature(track)] ?? 0) > tracks.length / 2) {
+        return track;
+      }
+    }
+    return null;
+  }
+
+  List<Widget> _audioTraitInline({Track? commonQualityTrack}) {
     final traits = _audioTraits
         .map((t) => t.toLowerCase().trim())
         .where((t) => t.isNotEmpty)
         .toSet();
-    if (traits.isEmpty) return const [];
-
     bool has(List<String> keys) => keys.any(traits.contains);
 
     final items = <Widget>[];
-    if (has(['atmos', 'dolby_atmos', 'dolby-atmos'])) {
+    if ((commonQualityTrack == null
+            ? null
+            : _qualitySignature(commonQualityTrack).$2) ??
+        has(['atmos', 'dolby_atmos', 'dolby-atmos'])) {
       items.add(
         Builder(
           builder: (context) => DolbyAtmosLogo(
@@ -296,10 +324,23 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
       items.add(HeaderMetaItem('Lossless', icon: Icons.graphic_eq));
     }
 
+    final quality = commonQualityTrack?.audioQuality?.trim();
+    if (quality != null &&
+        quality.isNotEmpty &&
+        !items.whereType<HeaderMetaItem>().any(
+          (item) => item.label.toLowerCase() == quality.toLowerCase(),
+        )) {
+      items.add(HeaderMetaItem(quality));
+    }
+
     return items;
   }
 
-  Widget _buildHeaderMeta(BuildContext context, String? releaseDate) {
+  Widget _buildHeaderMeta(
+    BuildContext context,
+    String? releaseDate,
+    Track? commonQualityTrack,
+  ) {
     final items = <Widget>[];
 
     final genre = _tracks?.firstOrNull?.genre?.trim();
@@ -308,7 +349,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
     }
     final year = _releaseYear(releaseDate);
     if (year != null) items.add(HeaderMetaItem(year));
-    items.addAll(_audioTraitInline());
+    items.addAll(_audioTraitInline(commonQualityTrack: commonQualityTrack));
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 20),
@@ -386,6 +427,9 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
   Widget _buildPage(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final tracks = _tracks ?? [];
+    final commonQualityTrack = context.isMornye
+        ? null
+        : _commonQualityTrack(tracks);
     final pageBackgroundColor = colorScheme.surface;
     final bottomPadding = isSelectionMode
         ? MediaQuery.paddingOf(context).bottom
@@ -407,7 +451,12 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
         tracks,
         bottomPadding,
       ),
-      appBar: _buildAppBar(context, colorScheme, pageBackgroundColor),
+      appBar: _buildAppBar(
+        context,
+        colorScheme,
+        pageBackgroundColor,
+        commonQualityTrack,
+      ),
       slivers: [
         if (_description != null)
           SliverToBoxAdapter(
@@ -437,7 +486,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
             ),
           ),
         if (!_isLoading && _error == null && tracks.isNotEmpty) ...[
-          _buildTrackList(context, colorScheme, tracks),
+          _buildTrackList(context, colorScheme, tracks, commonQualityTrack),
           _buildAlbumFooter(context, colorScheme, tracks),
         ],
       ],
@@ -448,6 +497,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
     BuildContext context,
     ColorScheme colorScheme,
     Color pageBackgroundColor,
+    Track? commonQualityTrack,
   ) {
     final tracks = _tracks ?? [];
     final artistName =
@@ -557,7 +607,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
               overflow: TextOverflow.ellipsis,
             )
           : null,
-      meta: _buildHeaderMeta(context, releaseDate),
+      meta: _buildHeaderMeta(context, releaseDate, commonQualityTrack),
       actions: isSelectionMode
           ? null
           : context.isMornye
@@ -632,6 +682,7 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
     BuildContext context,
     ColorScheme colorScheme,
     List<Track> tracks,
+    Track? commonQualityTrack,
   ) {
     _historySnapshot.update(tracks);
     final historyLookups = _historySnapshot.lookups;
@@ -669,11 +720,13 @@ class _AlbumScreenState extends ConsumerState<AlbumScreen>
                       forceQualityPicker: forceQualityPicker,
                     ),
                 clickableArtist: true,
-                showQualityBadges:
-                    !context.isMornye ||
-                    !_audioTraits.any(
-                      (trait) => trait.toLowerCase().contains('lossless'),
-                    ),
+                showQualityBadges: context.isMornye
+                    ? !_audioTraits.any(
+                        (trait) => trait.toLowerCase().contains('lossless'),
+                      )
+                    : commonQualityTrack == null ||
+                          _qualitySignature(track) !=
+                              _qualitySignature(commonQualityTrack),
                 isSelectionMode: isSelectionMode,
                 isSelected: selectedIds.contains(selectionId),
                 onToggleSelection: () => toggleSelection(selectionId),
