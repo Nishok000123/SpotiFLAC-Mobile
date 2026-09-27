@@ -2,6 +2,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.zarz.spotiflac">
 
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+
     <!-- Permissions -->
     <!-- Playback never records audio. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />

@@ -48,6 +48,12 @@ void main() {
         yield LicenseEntryWithLineBreaks(const [
           'Inter',
         ], await rootBundle.loadString('assets/fonts/Inter-LICENSE.txt'));
+        if (Platform.isAndroid) {
+          yield LicenseEntryWithLineBreaks(const [
+            'libusb',
+            'libusb1-sys',
+          ], await rootBundle.loadString('assets/licenses/usb.txt'));
+        }
       });
       _startupBenchmark?.observeFirstFrame();
 

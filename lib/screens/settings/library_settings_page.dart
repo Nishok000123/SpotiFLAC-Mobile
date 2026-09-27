@@ -907,7 +907,14 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
                         if (settings.usbBitPerfect)
                           switch (status.reason) {
                             'active' =>
-                              '${status.device} · ${status.bitDepth}-bit · ${(status.sampleRate! / 1000).toStringAsFixed(1)} kHz',
+                              '${status.device} · ${status.transport == 'pcm'
+                                  ? '${status.bitDepth}-bit PCM'
+                                  : status.transport == 'dop'
+                                  ? 'DSD (DoP)'
+                                  : 'DSD (Native)'} · ${(status.sampleRate! / 1000).toStringAsFixed(1)} kHz',
+                            'dsd_unsupported' => context.l10n.usbDsdUnsupported,
+                            'permission_denied' =>
+                              context.l10n.usbPermissionDenied,
                             'no_usb' => context.l10n.usbBitPerfectNoDevice,
                             'route_changed' =>
                               context.l10n.usbBitPerfectRouteChanged,
@@ -921,9 +928,31 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
                       onChanged: (value) => ref
                           .read(settingsProvider.notifier)
                           .setUsbBitPerfect(value),
-                      showDivider: false,
+                      showDivider: settings.usbBitPerfect,
                     ),
                   ),
+                if (Platform.isAndroid && settings.usbBitPerfect) ...[
+                  SettingsSwitchItem(
+                    icon: Icons.usb,
+                    title: context.l10n.usbDirect,
+                    subtitle: context.l10n.usbDirectDescription,
+                    value: settings.usbDirect,
+                    onChanged: (value) =>
+                        ref.read(settingsProvider.notifier).setUsbDirect(value),
+                    showDivider: settings.usbDirect,
+                  ),
+                  if (settings.usbDirect)
+                    SettingsSwitchItem(
+                      icon: Icons.graphic_eq,
+                      title: context.l10n.usbDsdOverPcm,
+                      subtitle: context.l10n.usbDsdOverPcmDescription,
+                      value: settings.usbDsdOverPcm,
+                      onChanged: (value) => ref
+                          .read(settingsProvider.notifier)
+                          .setUsbDsdOverPcm(value),
+                      showDivider: false,
+                    ),
+                ],
               ],
             ),
           ),

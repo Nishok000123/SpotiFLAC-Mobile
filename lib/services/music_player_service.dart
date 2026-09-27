@@ -44,6 +44,8 @@ void updateMusicPlayerStrings({
 bool _playbackNormalizationEnabled = false;
 bool _autoMixEnabled = false;
 bool _usbBitPerfectEnabled = false;
+bool _usbDirectEnabled = false;
+bool _usbDopEnabled = false;
 MusicPlayerHandler? _activeMusicPlayerHandler;
 PlaybackNotification _notificationPresentation = const PlaybackNotification();
 Future<void> Function(MediaItem)? _toggleNotificationFavorite;
@@ -107,6 +109,11 @@ void setUsbBitPerfectEnabled(bool enabled) {
   final handler = _activeMusicPlayerHandler;
   if (handler != null) unawaited(handler._autoMix.cancel());
   // Apply at the next source boundary; never raise a playing track's volume.
+}
+
+void setUsbOutputOptions({required bool direct, required bool allowDop}) {
+  _usbDirectEnabled = direct;
+  _usbDopEnabled = allowDop;
 }
 
 /// Refreshes gain tags after a successful file update, including SAF copies.
@@ -1329,6 +1336,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     unawaited(_autoplay.fill());
     final media = _media[index];
     _switchingGeneration = generation;
+    await _player.cancelPreparation();
     await _serializeSourceChange(() async {
       try {
         if (!_isCurrentPlayRequest(generation, media)) return;
@@ -1368,6 +1376,12 @@ class MusicPlayerHandler extends BaseAudioHandler
     await _player.setSource(
       DeviceFileSource(path),
       preferBitPerfect: _usbBitPerfectEnabled,
+      directUsb: _usbDirectEnabled,
+      allowDop: _usbDopEnabled,
+      requiresDsd:
+          const ['dsf', 'dff'].contains(media.format?.toLowerCase()) ||
+          media.source.toLowerCase().endsWith('.dsf') ||
+          media.source.toLowerCase().endsWith('.dff'),
     );
     if (!_isCurrentPlayRequest(generation, media)) return;
     if (position != null) {
@@ -1475,7 +1489,8 @@ class MusicPlayerHandler extends BaseAudioHandler
           playbackLease = null;
         }
       } catch (directError) {
-        if (playbackLease == null ||
+        if (directError is UsbDsdUnavailable ||
+            playbackLease == null ||
             !_isCurrentPlayRequest(generation, media)) {
           rethrow;
         }

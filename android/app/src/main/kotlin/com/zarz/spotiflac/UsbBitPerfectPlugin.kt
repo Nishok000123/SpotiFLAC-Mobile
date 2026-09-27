@@ -29,6 +29,9 @@ class UsbBitPerfectPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Even
     private lateinit var methods: MethodChannel
     private lateinit var events: EventChannel
     private var engine: UsbPcmPlayback? = null
+    private var direct: UsbDirectPlayback? = null
+    private var useDirect = false
+    private lateinit var appContext: Context
     private var sink: EventChannel.EventSink? = null
     private val main = Handler(Looper.getMainLooper())
 
@@ -37,6 +40,7 @@ class UsbBitPerfectPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Even
         events = EventChannel(binding.binaryMessenger, "com.zarz.spotiflac/usb_pcm/events")
         methods.setMethodCallHandler(this)
         events.setStreamHandler(this)
+        appContext = binding.applicationContext
         if (Build.VERSION.SDK_INT >= 34) {
             engine = UsbPcmPlayback(binding.applicationContext) { event ->
                 main.post { sink?.success(event) }
@@ -45,6 +49,25 @@ class UsbBitPerfectPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Even
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        if (call.method == "prepare") {
+            if (useDirect) direct?.command(MethodCall("stop", null)) { _, _ -> }
+            else if (Build.VERSION.SDK_INT >= 34) engine?.command(MethodCall("stop", null)) { _, _ -> }
+            useDirect = call.argument<Boolean>("direct") == true
+            if (useDirect && direct == null) {
+                direct = UsbDirectPlayback(appContext) { event ->
+                    main.post { sink?.success(event) }
+                }
+            }
+        }
+        if (useDirect) {
+            direct?.command(call) { value, error ->
+                main.post {
+                    if (error == null) result.success(value)
+                    else result.error("usb_direct", error, null)
+                }
+            }
+            return
+        }
         val playback = engine
         if (Build.VERSION.SDK_INT < 34 || playback == null) {
             result.success(if (call.method == "prepare") mapOf("reason" to "android_version") else null)
@@ -65,6 +88,8 @@ class UsbBitPerfectPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Even
         methods.setMethodCallHandler(null)
         events.setStreamHandler(null)
         sink = null
+        direct?.dispose()
+        direct = null
         if (Build.VERSION.SDK_INT >= 34) engine?.dispose()
         engine = null
     }

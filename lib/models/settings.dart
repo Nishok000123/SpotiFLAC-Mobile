@@ -33,6 +33,8 @@ class AppSettings {
   final bool playbackNormalization;
   final bool autoMix;
   final bool usbBitPerfect;
+  final bool usbDirect;
+  final bool usbDsdOverPcm;
   final bool autoplay;
   final bool isFirstLaunch;
   final bool checkForUpdates;
@@ -147,6 +149,8 @@ class AppSettings {
     this.playbackNormalization = false,
     this.autoMix = false,
     this.usbBitPerfect = false,
+    this.usbDirect = false,
+    this.usbDsdOverPcm = false,
     this.autoplay = false,
     this.isFirstLaunch = true,
     this.checkForUpdates = true,
@@ -236,6 +240,8 @@ class AppSettings {
     bool? playbackNormalization,
     bool? autoMix,
     bool? usbBitPerfect,
+    bool? usbDirect,
+    bool? usbDsdOverPcm,
     bool? autoplay,
     bool? isFirstLaunch,
     bool? checkForUpdates,
@@ -321,6 +327,8 @@ class AppSettings {
           playbackNormalization ?? this.playbackNormalization,
       autoMix: autoMix ?? this.autoMix,
       usbBitPerfect: usbBitPerfect ?? this.usbBitPerfect,
+      usbDirect: usbDirect ?? this.usbDirect,
+      usbDsdOverPcm: usbDsdOverPcm ?? this.usbDsdOverPcm,
       autoplay: autoplay ?? this.autoplay,
       isFirstLaunch: isFirstLaunch ?? this.isFirstLaunch,
       checkForUpdates: checkForUpdates ?? this.checkForUpdates,

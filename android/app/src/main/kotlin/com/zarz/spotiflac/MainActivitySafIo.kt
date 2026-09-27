@@ -100,6 +100,8 @@ internal fun MainActivity.extFromFileName(name: String): String {
             name.endsWith(".aiff") -> ".aiff"
             name.endsWith(".aifc") -> ".aifc"
             name.endsWith(".aif") -> ".aif"
+            name.endsWith(".dsf") -> ".dsf"
+            name.endsWith(".dff") -> ".dff"
             else -> ""
         }
     }
@@ -293,6 +295,21 @@ internal fun MainActivity.readAudioMetadataFromUri(
     uri, displayNameHint, fallbackExt,
     acceptDirect = { !it.optBoolean("metadataFromFilename", false) },
 ) { path, name ->
+    if (name.endsWith(".dsf", true) || name.endsWith(".dff", true)) {
+        DsdFile.open(path)?.use { source ->
+            return@readMetadataFromUri JSONObject().apply {
+                put("trackName", name.substringBeforeLast('.'))
+                put("artistName", "Unknown Artist")
+                put("albumName", "Unknown Album")
+                put("filePath", uri.toString())
+                put("format", name.substringAfterLast('.').lowercase(Locale.ROOT))
+                put("sampleRate", source.rate)
+                put("bitDepth", 1)
+                put("duration", source.durationUs / 1000000)
+                put("hasLyrics", false)
+            }
+        }
+    }
     val obj = JSONObject(coreBackend.readAudioMetadata(
         path, name, coverCacheKey,
     ))

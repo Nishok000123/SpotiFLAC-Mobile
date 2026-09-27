@@ -18,5 +18,9 @@ serde_json.workspace = true
 zeroize.workspace = true
 rustix.workspace = true
 
+[target.'cfg(target_os = "android")'.dependencies]
+libusb1-sys = { version = "=0.7.0", features = ["vendored"] }
+libc = "0.2"
+
 [lints]
 workspace = true

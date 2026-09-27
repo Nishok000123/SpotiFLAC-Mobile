@@ -1,6 +1,12 @@
 {
   "usbBitPerfect": "Audio USB bit-perfect",
-  "usbBitPerfectDescription": "Pertahankan PCM asli pada DAC USB yang kompatibel dengan Android 14 atau lebih baru. Berlaku mulai lagu berikutnya, tanpa AutoMix dan normalisasi. Atur volume melalui DAC; volume sistem mungkin tidak berlaku.",
+  "usbDirect": "Driver USB langsung",
+  "usbDirectDescription": "Gunakan audio USB eksklusif untuk FLAC/WAV dan DSF/DFF, dengan izin USB Android. Native DSD memerlukan DAC kompatibel yang dikenali. Format PCM lainnya memakai pemutaran biasa. Berlaku mulai lagu berikutnya.",
+  "usbDsdOverPcm": "DSD melalui PCM (DoP)",
+  "usbDsdOverPcmDescription": "Aktifkan hanya jika DAC Anda mendukung DoP. Mengirim DSF/DFF sebagai DSD di dalam pembawa PCM saat native DSD tidak tersedia. Perangkat yang tidak kompatibel dapat menghasilkan suara bising; biarkan mati untuk headset USB biasa.",
+  "usbDsdUnsupported": "Format DSD atau DAC yang tersambung tidak didukung. Pemutaran dihentikan.",
+  "usbPermissionDenied": "Izin USB tidak diberikan. Memakai pemutaran biasa.",
+  "usbBitPerfectDescription": "Pertahankan audio asli pada DAC USB yang kompatibel. Keluaran Android memerlukan Android 14 atau lebih baru; driver USB langsung juga tersedia di Android versi lama. Berlaku mulai lagu berikutnya, tanpa AutoMix dan normalisasi. Atur volume melalui DAC; volume sistem mungkin tidak berlaku.",
   "usbBitPerfectPending": "Menunggu lagu berikutnya dan keluaran USB yang kompatibel.",
   "usbBitPerfectNoDevice": "DAC USB tidak terhubung. Menggunakan keluaran audio biasa.",
   "usbBitPerfectFallback": "Perangkat atau format audio ini tidak mendukung keluaran bit-perfect. Menggunakan pemutaran biasa.",

@@ -1,6 +1,12 @@
 {
   "usbBitPerfect": "USB bit-perfect audio",
-  "usbBitPerfectDescription": "Preserve the original PCM audio on compatible USB DACs with Android 14 or later. Applies from the next track, bypassing AutoMix and normalization. Control volume on your DAC; system volume may not apply.",
+  "usbBitPerfectDescription": "Preserve the original audio on compatible USB DACs. Android output requires Android 14 or later; the direct USB driver also works on older Android versions. Applies from the next track, bypassing AutoMix and normalization. Control volume on your DAC; system volume may not apply.",
+  "usbDirect": "Direct USB driver",
+  "usbDirectDescription": "Use exclusive USB audio for FLAC/WAV and DSF/DFF, with Android USB permission. Native DSD requires a recognized compatible DAC. Other PCM formats use normal playback. Applies from the next track.",
+  "usbDsdOverPcm": "DSD over PCM (DoP)",
+  "usbDsdOverPcmDescription": "Enable only if your DAC explicitly supports DoP. Sends DSF/DFF as DSD inside a PCM carrier when native DSD is unavailable. An incompatible device may play noise; leave off for ordinary USB headsets.",
+  "usbDsdUnsupported": "This DSD format or connected DAC is not supported. Playback stopped.",
+  "usbPermissionDenied": "USB permission was not granted. Using normal playback.",
   "usbBitPerfectPending": "Waiting for the next track and a compatible USB output.",
   "usbBitPerfectNoDevice": "No USB DAC connected. Using normal audio output.",
   "usbBitPerfectFallback": "This device or audio format does not support bit-perfect output. Using normal playback.",

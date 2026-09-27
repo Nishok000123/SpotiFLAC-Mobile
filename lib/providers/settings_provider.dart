@@ -566,6 +566,16 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _saveSettings();
   }
 
+  void setUsbDirect(bool enabled) {
+    state = state.copyWith(usbDirect: enabled);
+    _saveSettings();
+  }
+
+  void setUsbDsdOverPcm(bool enabled) {
+    state = state.copyWith(usbDsdOverPcm: enabled);
+    _saveSettings();
+  }
+
   void setEmbedMetadata(bool enabled) {
     state = state.copyWith(embedMetadata: enabled);
     _saveSettings();

@@ -549,7 +549,7 @@ internal fun MainActivity.extractCueAudioFileName(cueTempPath: String): String? 
     // CUE files are handled separately.
     private val libraryScanAudioExtensions = setOf(
         ".flac", ".m4a", ".mp4", ".aac", ".mp3", ".opus", ".ogg",
-        ".ape", ".wv", ".mpc", ".wav", ".aiff", ".aif"
+        ".ape", ".wv", ".mpc", ".wav", ".aiff", ".aif", ".dsf", ".dff"
     )
 
 internal fun MainActivity.getSafChildFileLookup(

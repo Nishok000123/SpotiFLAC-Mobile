@@ -13,6 +13,7 @@ mod metadata;
 mod progress;
 mod repository;
 mod tags;
+mod usb_audio;
 
 uniffi::setup_scaffolding!();
 

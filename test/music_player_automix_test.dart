@@ -178,13 +178,19 @@ void main() {
     () {
       const defaults = AppSettings();
       expect(defaults.usbBitPerfect, isFalse);
+      expect(defaults.usbDirect, isFalse);
+      expect(defaults.usbDsdOverPcm, isFalse);
       final selected = defaults.copyWith(
         usbBitPerfect: true,
+        usbDirect: true,
+        usbDsdOverPcm: true,
         autoMix: true,
         playbackNormalization: true,
       );
       final restored = AppSettings.fromJson(selected.toJson());
       expect(restored.usbBitPerfect, isTrue);
+      expect(restored.usbDirect, isTrue);
+      expect(restored.usbDsdOverPcm, isTrue);
       expect(restored.autoMix, isTrue);
       expect(restored.playbackNormalization, isTrue);
     },
@@ -211,7 +217,11 @@ void main() {
     late int token;
     late String? fallbackReason;
     late bool failResume;
+    late bool fatal;
+    late String transport;
+    late Map<dynamic, dynamic> prepareArguments;
     Completer<void>? pauseReply;
+    Completer<Map<String, dynamic>>? prepareReply;
     var position = 0;
 
     Future<void> event(String name, {int? withToken}) =>
@@ -229,21 +239,30 @@ void main() {
       token = 0;
       fallbackReason = null;
       failResume = false;
+      fatal = false;
+      transport = 'pcm';
+      prepareArguments = {};
       pauseReply = null;
+      prepareReply = null;
       position = 0;
       native.messenger.setMockMethodCallHandler(events, (_) async => null);
       native.messenger.setMockMethodCallHandler(methods, (call) async {
         usbCalls.add(call.method);
         switch (call.method) {
           case 'prepare':
+            prepareArguments = call.arguments as Map;
             token = (call.arguments as Map)['token'] as int;
-            if (fallbackReason != null) return {'reason': fallbackReason};
+            if (prepareReply != null) return prepareReply!.future;
+            if (fallbackReason != null) {
+              return {'reason': fallbackReason, 'fatal': fatal};
+            }
             return {
               'ready': true,
               'duration': 60000,
               'device': 'Test DAC',
               'sampleRate': 96000,
               'bitDepth': 24,
+              'transport': transport,
             };
           case 'position':
             return position;
@@ -253,10 +272,88 @@ void main() {
             if (failResume) throw PlatformException(code: 'route_changed');
           case 'pause':
             await pauseReply?.future;
+          case 'stop':
+            if (prepareReply != null && !prepareReply!.isCompleted) {
+              prepareReply!.complete({'reason': 'cancelled'});
+            }
         }
         return null;
       });
       deck = MusicPlaybackDeck(playerId: 'usb-test', nativeAvailable: true);
+    });
+
+    test('direct driver and DoP are explicit and passed to native', () async {
+      await deck.setSource(
+        DeviceFileSource('/one.dsf'),
+        preferBitPerfect: true,
+        directUsb: true,
+        allowDop: true,
+      );
+      expect(prepareArguments['direct'], isTrue);
+      expect(prepareArguments['allowDop'], isTrue);
+    });
+
+    test(
+      'changing tracks cancels a pending USB permission without fallback',
+      () async {
+        prepareReply = Completer<Map<String, dynamic>>();
+        final preparing = deck.setSource(
+          DeviceFileSource('/one.flac'),
+          preferBitPerfect: true,
+          directUsb: true,
+        );
+        await _until(() => usbCalls.contains('prepare'));
+        await deck.cancelPreparation();
+        await preparing;
+        expect(usbCalls, ['prepare', 'stop']);
+        expect(native.sources['usb-test'], isNull);
+        expect(deck.isDirect, isFalse);
+      },
+    );
+
+    test(
+      'unsupported DSD never falls back through ordinary PCM output',
+      () async {
+        fallbackReason = 'dsd_unsupported';
+        fatal = true;
+        await expectLater(
+          deck.setSource(
+            DeviceFileSource('/one.dsf'),
+            preferBitPerfect: true,
+            directUsb: true,
+          ),
+          throwsStateError,
+        );
+        expect(native.sources['usb-test'], isNull);
+        expect(usbAudioStatus.value.reason, 'dsd_unsupported');
+      },
+    );
+
+    test('failed first DSD start does not switch to normal playback', () async {
+      transport = 'dop';
+      await deck.setSource(
+        DeviceFileSource('/one.dsf'),
+        preferBitPerfect: true,
+        directUsb: true,
+      );
+      failResume = true;
+      await expectLater(deck.resume(), throwsA(isA<UsbDsdUnavailable>()));
+      expect(native.sources['usb-test'], isNull);
+      expect(deck.needsSourceReload, isTrue);
+    });
+
+    test('DSD without a DAC never loads a normal audio source', () async {
+      fallbackReason = 'no_usb';
+      await expectLater(
+        deck.setSource(
+          DeviceFileSource('/one.dsf'),
+          preferBitPerfect: true,
+          directUsb: true,
+          requiresDsd: true,
+        ),
+        throwsA(isA<UsbDsdUnavailable>()),
+      );
+      expect(native.sources['usb-test'], isNull);
     });
 
     tearDown(() async {

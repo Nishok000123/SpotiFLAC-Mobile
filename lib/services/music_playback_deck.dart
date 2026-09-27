@@ -8,18 +8,26 @@ import 'package:flutter/services.dart';
 /// Only verified native playback reports active. File metadata alone never does.
 final usbAudioStatus = ValueNotifier<UsbAudioStatus>(const UsbAudioStatus());
 
+class UsbDsdUnavailable extends StateError {
+  UsbDsdUnavailable() : super('DSD requires a compatible direct USB output');
+}
+
 class UsbAudioStatus {
   const UsbAudioStatus({
     this.reason = 'idle',
     this.device,
     this.sampleRate,
     this.bitDepth,
+    this.transport = 'pcm',
+    this.driver = 'android',
   });
 
   final String reason;
   final String? device;
   final int? sampleRate;
   final int? bitDepth;
+  final String transport;
+  final String driver;
 }
 
 /// Keeps the existing transport and AutoMix API while adding a local USB path.
@@ -57,6 +65,7 @@ class MusicPlaybackDeck {
   Timer? _timer;
   bool _polling = false;
   bool _direct = false;
+  bool _preparing = false;
   bool _disposed = false;
   int _token = 0;
   Duration? _duration;
@@ -68,6 +77,10 @@ class MusicPlaybackDeck {
 
   bool get isDirect => _direct;
   bool get needsSourceReload => _direct && _routeLost;
+  Future<void> cancelPreparation() async {
+    if (_preparing) await stop();
+  }
+
   PlayerState get state => _direct ? _directState : _ordinary.state;
   Stream<PlayerState> get onPlayerStateChanged => _states.stream;
   Stream<Duration> get onDurationChanged => _durations.stream;
@@ -97,6 +110,9 @@ class MusicPlaybackDeck {
   Future<void> setSource(
     DeviceFileSource source, {
     bool preferBitPerfect = false,
+    bool directUsb = false,
+    bool allowDop = false,
+    bool requiresDsd = false,
   }) async {
     await stop();
     _source = source;
@@ -104,6 +120,8 @@ class MusicPlaybackDeck {
     _nativeStarted = false;
     if (preferBitPerfect && _nativeAvailable) {
       _token = ++_nextToken;
+      final preparingToken = _token;
+      _preparing = true;
       _nativeSubscription ??=
           (_nativeEvents ??= _events.receiveBroadcastStream()).listen(
             _onNativeEvent,
@@ -118,10 +136,14 @@ class MusicPlaybackDeck {
             },
           );
       try {
-        final response = await _channel.invokeMapMethod<String, dynamic>(
-          'prepare',
-          {'path': source.path, 'token': _token},
-        );
+        final response = await _channel
+            .invokeMapMethod<String, dynamic>('prepare', {
+              'path': source.path,
+              'token': _token,
+              'direct': directUsb,
+              'allowDop': allowDop,
+            });
+        if (_disposed || preparingToken != _token) return;
         if (response?['ready'] == true) {
           _direct = true;
           _directState = PlayerState.stopped;
@@ -133,6 +155,8 @@ class MusicPlaybackDeck {
             device: response?['device'] as String?,
             sampleRate: (response?['sampleRate'] as num?)?.toInt(),
             bitDepth: (response?['bitDepth'] as num?)?.toInt(),
+            transport: response?['transport'] as String? ?? 'pcm',
+            driver: response?['driver'] as String? ?? 'android',
           );
           usbAudioStatus.value = const UsbAudioStatus(reason: 'ready');
           _durations.add(_duration!);
@@ -141,11 +165,22 @@ class MusicPlaybackDeck {
         usbAudioStatus.value = UsbAudioStatus(
           reason: response?['reason'] as String? ?? 'unsupported',
         );
+        if (response?['fatal'] == true) {
+          throw UsbDsdUnavailable();
+        }
       } on PlatformException {
+        if (_disposed || preparingToken != _token) return;
         usbAudioStatus.value = const UsbAudioStatus(reason: 'unsupported');
       } on MissingPluginException {
+        if (_disposed || preparingToken != _token) return;
         usbAudioStatus.value = const UsbAudioStatus(reason: 'unsupported');
+      } finally {
+        if (preparingToken == _token) _preparing = false;
       }
+    }
+    if (requiresDsd) {
+      usbAudioStatus.value = const UsbAudioStatus(reason: 'dsd_unsupported');
+      throw UsbDsdUnavailable();
     }
     await _ordinary.setSource(source);
   }
@@ -189,6 +224,12 @@ class MusicPlaybackDeck {
         _setState(PlayerState.paused);
         usbAudioStatus.value = const UsbAudioStatus(reason: 'route_changed');
         rethrow;
+      }
+      if (_preparedStatus.transport != 'pcm') {
+        _routeLost = true;
+        _setState(PlayerState.paused);
+        usbAudioStatus.value = const UsbAudioStatus(reason: 'dsd_unsupported');
+        throw UsbDsdUnavailable();
       }
       final source = _source;
       final position = await getCurrentPosition() ?? Duration.zero;
@@ -250,8 +291,9 @@ class MusicPlaybackDeck {
 
   Future<void> stop() async {
     _timer?.cancel();
-    if (_direct) {
+    if (_direct || _preparing) {
       _token = ++_nextToken;
+      _preparing = false;
       await _channel.invokeMethod<void>('stop');
       _setState(PlayerState.stopped);
       _direct = false;

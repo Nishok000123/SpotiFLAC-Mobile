@@ -561,6 +561,8 @@ fn supported(path: &str) -> bool {
             | "wav"
             | "aiff"
             | "aif"
+            | "dsf"
+            | "dff"
             | "cue"
     )
 }
