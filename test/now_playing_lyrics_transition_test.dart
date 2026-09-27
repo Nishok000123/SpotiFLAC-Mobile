@@ -24,6 +24,7 @@ import 'package:spotiflac_android/screens/now_playing_screen.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/theme/app_theme.dart';
 import 'package:spotiflac_android/widgets/expressive_icon_button.dart';
+import 'package:spotiflac_android/widgets/expressive_seek_track.dart';
 import 'package:spotiflac_android/widgets/mornye_volume_control.dart';
 import 'package:spotiflac_android/widgets/lyric_gap_indicator.dart';
 import 'package:spotiflac_android/widgets/mornye_player_queue.dart';
@@ -186,6 +187,42 @@ void main() {
       ),
     );
   }
+
+  testWidgets('Material seek wave follows playback, buffering and pause', (
+    tester,
+  ) async {
+    final playback = StreamController<PlaybackState>.broadcast();
+    addTearDown(playback.close);
+    await pumpNowPlaying(tester, playbackEvents: playback.stream);
+    mediaItems.add(item('first'));
+    await tester.pumpAndSettle();
+
+    for (final state in [
+      PlaybackState(playing: true, processingState: AudioProcessingState.ready),
+      PlaybackState(
+        playing: true,
+        processingState: AudioProcessingState.buffering,
+      ),
+      PlaybackState(playing: true, processingState: AudioProcessingState.ready),
+      PlaybackState(
+        playing: false,
+        processingState: AudioProcessingState.ready,
+      ),
+    ]) {
+      playback.add(state);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      final track = tester.widget<ExpressiveSeekTrack>(
+        find.byType(ExpressiveSeekTrack),
+      );
+      expect(
+        track.playing,
+        state.playing && state.processingState == AudioProcessingState.ready,
+      );
+    }
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
 
   for (final page in ['player', 'lyrics', 'queue']) {
     testWidgets('cover swipe changes the track in the Mornye $page', (

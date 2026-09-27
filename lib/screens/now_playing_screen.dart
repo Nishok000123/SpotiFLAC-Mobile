@@ -2724,6 +2724,7 @@ class _PlaybackControls extends ConsumerWidget {
                         duration: duration,
                         onSeek: controller.seek,
                         preview: seekPreview,
+                        playing: isPlaying && !isLoading,
                       ),
                     ),
                     Padding(

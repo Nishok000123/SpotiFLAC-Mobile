@@ -18,6 +18,7 @@ void main() {
       home: Scaffold(
         body: PlaybackSeekSlider(
           preview: sharedPreview,
+          playing: true,
           position: position,
           duration: const Duration(seconds: 100),
           onSeek: (target) {
