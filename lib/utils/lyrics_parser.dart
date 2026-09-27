@@ -111,7 +111,7 @@ class LyricsParser {
         match.end,
         match.group(1)!.replaceAll(RegExp(r'\s+'), ''),
       ),
-      LyricVoice(id: id, index: (number ?? 1) - 1),
+      LyricVoice(id: id, index: (number ?? 1) - 1, isGroup: id == 'v3'),
     );
   }
 
@@ -525,7 +525,8 @@ class LyricsParser {
           namespaceUri: 'http://www.w3.org/XML/1998/namespace',
         );
         if (id == null || id.isEmpty) continue;
-        final group = agent.getAttribute('type') == 'group';
+        final group =
+            agent.getAttribute('type') == 'group' || id.toLowerCase() == 'v3';
         voices[id] = LyricVoice(id: id, index: individualIndex, isGroup: group);
         if (!group) individualIndex++;
       }
@@ -538,7 +539,11 @@ class LyricsParser {
         if (id == null || id.isEmpty) return inherited;
         return voices.putIfAbsent(
           id,
-          () => LyricVoice(id: id, index: individualIndex++),
+          () => LyricVoice(
+            id: id,
+            index: individualIndex++,
+            isGroup: id.toLowerCase() == 'v3',
+          ),
         );
       }
 

@@ -50,6 +50,20 @@ ${_tag('translation', 2000, 'Second translation')}
     expect(backing.vocalGroup, lyrics.lines.first.vocalGroup);
   });
 
+  test('V3 is a collaboration even without TTML group metadata', () {
+    for (final source in [
+      '[00:01.00]V1:Lead\n[00:02.00]V3:Together\n[00:03.00]V2:Guest',
+      '<tt xmlns:m="http://www.w3.org/ns/ttml#metadata"><body>'
+          '<p begin="1s" m:agent="v1">Lead</p>'
+          '<p begin="2s" m:agent="v3">Together</p>'
+          '<p begin="3s" m:agent="v2">Guest</p></body></tt>',
+    ]) {
+      final lyrics = LyricsParser.parse(source);
+      expect(lyrics.lines[1].voice?.isGroup, isTrue);
+      expect(lyrics.lines[2].voice?.isGroup, isFalse);
+    }
+  });
+
   test(
     'backing groups survive sorting, offsets and repeated backing parts',
     () {

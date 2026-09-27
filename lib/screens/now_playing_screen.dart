@@ -3855,6 +3855,15 @@ TextAlign _lyricTextAlign(BuildContext context, LyricLine line) {
     return context.isMornye ? TextAlign.start : TextAlign.center;
   }
   if (voice.isGroup) return TextAlign.left;
+  // Provider declarations can be missing or ordered by first appearance.
+  // The standard V labels retain their meaning regardless of that order.
+  switch (voice.id.toLowerCase()) {
+    case 'v1':
+    case 'v3':
+      return TextAlign.left;
+    case 'v2':
+      return TextAlign.right;
+  }
   return voice.index.isEven ? TextAlign.left : TextAlign.right;
 }
 

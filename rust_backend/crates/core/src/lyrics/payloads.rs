@@ -80,17 +80,36 @@ fn apple_vocal_sides(text: &str, payload: &ApplePayload) -> String {
     let mut voices = BTreeMap::new();
     let mut person = 0;
     for agent in agents {
-        let voice = match agent.kind.as_str() {
-            "person" => {
+        let voice = match (agent.id.to_ascii_lowercase().as_str(), agent.kind.as_str()) {
+            ("v1", _) | ("v3", _) | (_, "group") => 1,
+            ("v2", _) => {
+                person = person.max(2);
+                2
+            }
+            (_, "person") => {
                 person += 1;
                 person
             }
-            "group" => 1,
             _ => continue,
         };
+        if agent.id.eq_ignore_ascii_case("v1") {
+            person = person.max(1);
+        }
         voices.insert(agent.id.as_str(), format!("v{voice}"));
     }
     let lines = payload.content.as_deref().unwrap_or_default();
+    // A proxy may omit agent declarations but retain standard IDs on lines.
+    // Correct oppositeTurn before it turns a V3 collaboration into V2.
+    for line in lines {
+        let voice = match line.agent.to_ascii_lowercase().as_str() {
+            "v1" | "v3" => "v1",
+            "v2" => "v2",
+            _ => continue,
+        };
+        voices
+            .entry(line.agent.as_str())
+            .or_insert_with(|| voice.into());
+    }
     if voices.is_empty() || lines.is_empty() {
         return text.into();
     }
@@ -598,6 +617,29 @@ mod supplement_tests {
             format_apple(&raw.to_string(), false, true).unwrap(),
             raw["elrc"].as_str().unwrap()
         );
+    }
+
+    #[test]
+    fn apple_v3_does_not_depend_on_agent_order_or_group_metadata() {
+        for agents in [
+            serde_json::Value::Null,
+            serde_json::json!([
+                {"id": "v1", "type": "person"},
+                {"id": "v3", "type": "person"},
+                {"id": "v2", "type": "person"}
+            ]),
+        ] {
+            let raw = serde_json::json!({
+                "type": "Syllable",
+                "elrcMultiPerson": "[00:01.00]v2:Together\n[00:02.00]v1:Guest",
+                "content": [{"timestamp": 1000, "agent": "v3"}, {"timestamp": 2000, "agent": "v2"}],
+                "metadata": {"agents": agents}
+            });
+            assert_eq!(
+                format_apple(&raw.to_string(), true, true).unwrap(),
+                "[00:01.00]v1:Together\n[00:02.00]v2:Guest"
+            );
+        }
     }
 
     #[test]
