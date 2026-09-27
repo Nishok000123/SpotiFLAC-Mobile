@@ -3,7 +3,7 @@
 Android USB host transport for local FLAC/WAV PCM, uncompressed DSF/DSDIFF and
 lossless WavPack DSD.
 The existing Android 14 preferred-mixer path remains available. Direct USB is
-opt-in under Settings > Library > Playback > Hi-res and bit-perfect audio.
+opt-in under Settings > Playback > Hi-res and bit-perfect audio.
 
 ## Ownership and playback
 
@@ -39,7 +39,7 @@ opt-in under Settings > Library > Playback > Hi-res and bit-perfect audio.
   on the same attached device, respecting a hardware knob lowered externally.
   Remove remembered levels on detach. This is attenuation, not a guarantee of
   safe acoustic output for every amplifier/headphone combination.
-- The Mornye player slider and Library playback settings control verified DAC
+- The Mornye player slider and Playback settings control verified DAC
   volume. They never modify DSD/DoP samples or apply software gain. Phone volume
   buttons may not affect direct USB output.
 - Warn before enabling the mode. A DAC without verified hardware volume stays

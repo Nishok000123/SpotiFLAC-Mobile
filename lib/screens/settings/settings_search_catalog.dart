@@ -50,7 +50,7 @@ class SettingsSearchQuery {
 
 /// Localized index of controls found inside every first-level settings page.
 class SettingsSearchCatalog {
-  SettingsSearchCatalog(AppLocalizations l10n)
+  SettingsSearchCatalog(AppLocalizations l10n, {bool androidAudio = false})
     : extensions = [
         SettingsSearchEntry(
           icon: Icons.low_priority,
@@ -224,6 +224,8 @@ class SettingsSearchCatalog {
           subtitle: l10n.libraryClearSubtitle,
           keywords: const ['reset local library'],
         ),
+      ],
+      playback = [
         SettingsSearchEntry(
           icon: Icons.open_in_new,
           title: l10n.libraryExternalPlayer,
@@ -242,6 +244,27 @@ class SettingsSearchCatalog {
           subtitle: l10n.libraryPlaybackNormalizationSubtitle,
           keywords: const ['replaygain', 'volume'],
         ),
+        SettingsSearchEntry(
+          icon: Icons.compare_arrows,
+          title: 'AutoMix',
+          subtitle: l10n.autoMixDescription,
+          keywords: const ['crossfade', 'beat matching'],
+        ),
+        if (androidAudio) ...[
+          SettingsSearchEntry(
+            icon: Icons.usb,
+            title: l10n.usbBitPerfect,
+            subtitle: l10n.usbBitPerfectDescription,
+            keywords: const ['usb', 'dac', 'dsd', 'dop', 'hardware volume'],
+          ),
+          SettingsSearchEntry(
+            icon: Icons.headphones,
+            title: l10n.dapExclusive,
+            subtitle: l10n.dapExclusiveDescription,
+            keywords: const ['oboe', 'aaudio', 'exclusive', 'hi-res'],
+            targetLabel: l10n.usbBitPerfect,
+          ),
+        ],
       ],
       metadata = [
         SettingsSearchEntry(
@@ -694,6 +717,7 @@ class SettingsSearchCatalog {
   final List<SettingsSearchEntry> extensions;
   final List<SettingsSearchEntry> appearance;
   final List<SettingsSearchEntry> library;
+  final List<SettingsSearchEntry> playback;
   final List<SettingsSearchEntry> metadata;
   final List<SettingsSearchEntry> lyrics;
   final List<SettingsSearchEntry> download;

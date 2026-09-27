@@ -1,4 +1,8 @@
 {
+  "settingsPlaybackSubtitle": "Pemutar, volume, AutoMix, dan keluaran audio",
+  "sectionPlayer": "Pemutar",
+  "sectionVolumeAndTransitions": "Volume dan transisi",
+  "sectionAudioOutput": "Keluaran audio",
   "usbBitPerfect": "Audio hi-res dan bit-perfect",
   "usbHardwareVolume": "Volume hardware DAC",
   "usbVolumeWarningTitle": "Periksa volume sebelum memutar",

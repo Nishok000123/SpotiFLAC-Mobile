@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:spotiflac_android/constants/app_info.dart';
@@ -17,6 +19,7 @@ import 'package:spotiflac_android/screens/settings/library_settings_page.dart';
 import 'package:spotiflac_android/screens/settings/log_screen.dart';
 import 'package:spotiflac_android/screens/settings/lyrics_settings_page.dart';
 import 'package:spotiflac_android/screens/settings/metadata_settings_page.dart';
+import 'package:spotiflac_android/screens/settings/playback_settings_page.dart';
 import 'package:spotiflac_android/screens/settings/settings_search_catalog.dart';
 import 'package:spotiflac_android/theme/app_tokens.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
@@ -101,7 +104,10 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
       return _cachedGroups!;
     }
 
-    final searchCatalog = SettingsSearchCatalog(l10n);
+    final searchCatalog = SettingsSearchCatalog(
+      l10n,
+      androidAudio: Platform.isAndroid,
+    );
     final groups = [
       _Group(
         destinations: [
@@ -142,13 +148,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             iconColor: Colors.blue,
             title: l10n.settingsLocalLibrary,
             subtitle: l10n.settingsLocalLibrarySubtitle,
-            keywords: const [
-              'scan',
-              'local',
-              'player',
-              'playback',
-              'duplicate',
-            ],
+            keywords: const ['scan', 'local', 'duplicate'],
             searchEntries: searchCatalog.library,
             pageBuilder: () => const LibrarySettingsPage(),
           ),
@@ -169,6 +169,15 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             keywords: const ['lrc', 'synced', 'provider'],
             searchEntries: searchCatalog.lyrics,
             pageBuilder: () => const LyricsSettingsPage(),
+          ),
+          _Destination(
+            icon: Icons.play_circle_outline,
+            iconColor: Colors.indigo,
+            title: l10n.libraryPlayback,
+            subtitle: l10n.settingsPlaybackSubtitle,
+            keywords: const ['player', 'audio', 'playback', 'pemutaran'],
+            searchEntries: searchCatalog.playback,
+            pageBuilder: () => const PlaybackSettingsPage(),
           ),
         ],
       ),

@@ -11,7 +11,6 @@ import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/providers/settings_provider.dart';
 import 'package:spotiflac_android/providers/local_library_provider.dart';
 import 'package:spotiflac_android/services/library_database.dart';
-import 'package:spotiflac_android/services/music_playback_deck.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 import 'package:spotiflac_android/widgets/duplicate_review_sheet.dart';
@@ -19,7 +18,6 @@ import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 import 'package:spotiflac_android/widgets/ios_library_folder_sheet.dart';
-import 'package:spotiflac_android/widgets/mornye_volume_control.dart';
 
 class LibrarySettingsPage extends ConsumerStatefulWidget {
   const LibrarySettingsPage({super.key});
@@ -204,27 +202,6 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
 
   Future<void> _cancelScan() async {
     await ref.read(localLibraryProvider.notifier).cancelScan();
-  }
-
-  Future<bool> _confirmAudioVolume(String message) async {
-    return await showAppDialog<bool>(
-          context: context,
-          builder: (context) => AppAlertDialog(
-            title: Text(context.l10n.usbVolumeWarningTitle),
-            content: Text(message),
-            actions: [
-              AppDialogAction(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(context.l10n.dialogCancel),
-              ),
-              AppDialogAction(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(context.l10n.usbVolumeAccept),
-              ),
-            ],
-          ),
-        ) ??
-        false;
   }
 
   Future<void> _clearLibrary() async {
@@ -870,199 +847,6 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
             ),
           ),
 
-          SliverToBoxAdapter(
-            child: SettingsSectionHeader(title: context.l10n.libraryPlayback),
-          ),
-          SliverToBoxAdapter(
-            child: SettingsGroup(
-              children: [
-                SettingsItem(
-                  icon: Icons.open_in_new,
-                  title: context.l10n.libraryExternalPlayer,
-                  subtitle: context.l10n.libraryExternalPlayerSubtitle,
-                  trailing: settings.playerMode == 'external'
-                      ? Icon(Icons.check, color: colorScheme.primary)
-                      : null,
-                  onTap: () => ref
-                      .read(settingsProvider.notifier)
-                      .setPlayerMode('external'),
-                ),
-                SettingsItem(
-                  icon: Icons.play_circle_outline,
-                  title: context.l10n.libraryBuiltInPreviewPlayer,
-                  subtitle: context.l10n.libraryBuiltInPreviewPlayerSubtitle,
-                  trailing: settings.playerMode == 'internal'
-                      ? Icon(Icons.check, color: colorScheme.primary)
-                      : null,
-                  onTap: () => ref
-                      .read(settingsProvider.notifier)
-                      .setPlayerMode('internal'),
-                ),
-                SettingsSwitchItem(
-                  icon: Icons.graphic_eq,
-                  title: context.l10n.libraryPlaybackNormalization,
-                  subtitle: context.l10n.libraryPlaybackNormalizationSubtitle,
-                  value: settings.playbackNormalization,
-                  enabled: !settings.usbBitPerfect,
-                  onChanged: (v) => ref
-                      .read(settingsProvider.notifier)
-                      .setPlaybackNormalization(v),
-                ),
-                SettingsSwitchItem(
-                  icon: Icons.compare_arrows,
-                  title: 'AutoMix',
-                  subtitle: context.l10n.autoMixDescription,
-                  value: settings.autoMix,
-                  enabled: !settings.usbBitPerfect,
-                  onChanged: (value) =>
-                      ref.read(settingsProvider.notifier).setAutoMix(value),
-                  showDivider: Platform.isAndroid,
-                ),
-                if (Platform.isAndroid)
-                  ValueListenableBuilder<UsbAudioStatus>(
-                    valueListenable: usbAudioStatus,
-                    builder: (context, status, _) => SettingsSwitchItem(
-                      icon: Icons.usb,
-                      title: context.l10n.usbBitPerfect,
-                      subtitle: [
-                        context.l10n.usbBitPerfectDescription,
-                        if (settings.usbBitPerfect)
-                          switch (status.reason) {
-                            'active' =>
-                              '${status.device} · ${status.transport == 'pcm'
-                                  ? '${status.bitDepth}-bit PCM'
-                                  : status.transport == 'dop'
-                                  ? 'DSD (DoP)'
-                                  : 'DSD (Native)'} · ${(status.sampleRate! / 1000).toStringAsFixed(1)} kHz',
-                            'dsd_unsupported' => context.l10n.usbDsdUnsupported,
-                            'volume_unavailable' =>
-                              context.l10n.usbVolumeUnavailable,
-                            'exclusive_unavailable' =>
-                              context.l10n.dapExclusiveUnavailable,
-                            'permission_denied' =>
-                              context.l10n.usbPermissionDenied,
-                            'no_usb' => context.l10n.usbBitPerfectNoDevice,
-                            'route_changed' =>
-                              context.l10n.usbBitPerfectRouteChanged,
-                            'android_version' ||
-                            'unsupported' ||
-                            'format' => context.l10n.usbBitPerfectFallback,
-                            _ => context.l10n.usbBitPerfectPending,
-                          },
-                      ].join('\n\n'),
-                      value: settings.usbBitPerfect,
-                      onChanged: (value) async {
-                        if (value &&
-                            !await _confirmAudioVolume(
-                              context.l10n.usbVolumeWarning,
-                            )) {
-                          return;
-                        }
-                        if (mounted) {
-                          ref
-                              .read(settingsProvider.notifier)
-                              .setUsbBitPerfect(value);
-                        }
-                      },
-                      showDivider: settings.usbBitPerfect,
-                    ),
-                  ),
-                if (Platform.isAndroid && settings.usbBitPerfect) ...[
-                  SettingsSwitchItem(
-                    icon: Icons.usb,
-                    title: context.l10n.usbDirect,
-                    subtitle: context.l10n.usbDirectDescription,
-                    value: settings.usbDirect,
-                    onChanged: (value) async {
-                      if (value &&
-                          !await _confirmAudioVolume(
-                            context.l10n.usbVolumeWarning,
-                          )) {
-                        return;
-                      }
-                      if (mounted) {
-                        ref.read(settingsProvider.notifier).setUsbDirect(value);
-                      }
-                    },
-                    showDivider: true,
-                  ),
-                  if (settings.usbDirect)
-                    SettingsSwitchItem(
-                      icon: Icons.graphic_eq,
-                      title: context.l10n.usbDsdOverPcm,
-                      subtitle: context.l10n.usbDsdOverPcmDescription,
-                      value: settings.usbDsdOverPcm,
-                      onChanged: (value) => ref
-                          .read(settingsProvider.notifier)
-                          .setUsbDsdOverPcm(value),
-                      showDivider: true,
-                    ),
-                  if (settings.usbDirect) ...[
-                    SettingsSwitchItem(
-                      icon: Icons.volume_up_outlined,
-                      title: context.l10n.usbFixedVolume,
-                      subtitle: context.l10n.usbFixedVolumeDescription,
-                      value: settings.usbAllowFixedVolume,
-                      onChanged: (value) async {
-                        if (value &&
-                            !await _confirmAudioVolume(
-                              context.l10n.usbFixedVolumeWarning,
-                            )) {
-                          return;
-                        }
-                        if (mounted) {
-                          ref
-                              .read(settingsProvider.notifier)
-                              .setUsbAllowFixedVolume(value);
-                        }
-                      },
-                    ),
-                    ValueListenableBuilder<UsbVolumeState?>(
-                      valueListenable: usbHardwareVolume,
-                      builder: (context, volume, _) => Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              context.l10n.usbHardwareVolume,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            Text(
-                              volume == null
-                                  ? context.l10n.usbBitPerfectPending
-                                  : volume.available
-                                  ? '${volume.currentDb.toStringAsFixed(1)} dB'
-                                  : context.l10n.usbVolumeUnavailable,
-                            ),
-                            if (volume?.available == true)
-                              MornyeVolumeControl(
-                                foreground: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface,
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                  SettingsSwitchItem(
-                    icon: Icons.headphones,
-                    title: context.l10n.dapExclusive,
-                    subtitle: context.l10n.dapExclusiveDescription,
-                    value: settings.dapExclusive,
-                    onChanged: (value) => ref
-                        .read(settingsProvider.notifier)
-                        .setDapExclusive(value),
-                    showDivider: false,
-                  ),
-                ],
-              ],
-            ),
-          ),
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
       ),
