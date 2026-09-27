@@ -2356,6 +2356,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                   ),
                 );
                 final textTheme = Theme.of(context).textTheme;
+                final autoplay = ref.watch(
+                  settingsProvider.select((s) => s.autoplay),
+                );
 
                 return Column(
                   children: [
@@ -2371,6 +2374,17 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                             ),
                           ),
                           const Spacer(),
+                          IconButton(
+                            tooltip: autoplay
+                                ? context.l10n.autoplayOn
+                                : context.l10n.autoplayOff,
+                            isSelected: autoplay,
+                            icon: const Icon(Icons.all_inclusive),
+                            color: autoplay ? colorScheme.primary : null,
+                            onPressed: () => ref
+                                .read(settingsProvider.notifier)
+                                .setAutoplay(!autoplay),
+                          ),
                           IconButton(
                             tooltip: switch (repeatMode) {
                               AudioServiceRepeatMode.one =>

@@ -556,6 +556,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _saveSettings();
   }
 
+  void setAutoplay(bool enabled) {
+    state = state.copyWith(autoplay: enabled);
+    _saveSettings();
+  }
+
   void setEmbedMetadata(bool enabled) {
     state = state.copyWith(embedMetadata: enabled);
     _saveSettings();

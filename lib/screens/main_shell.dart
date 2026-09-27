@@ -92,6 +92,10 @@ class _MainShellState extends ConsumerState<MainShell>
       ref.read(settingsProvider).playbackNormalization,
     );
     setAutoMixEnabled(ref.read(settingsProvider).autoMix);
+    setAutoplayEnabled(
+      ref.read(settingsProvider).autoplay,
+      includeLocal: ref.read(settingsProvider).localLibraryEnabled,
+    );
     // Deezer & co. localize artist/genre names by IP unless told the app's
     // language (issue #480).
     unawaited(
@@ -738,6 +742,10 @@ class _MainShellState extends ConsumerState<MainShell>
     ref.listen(settingsProvider.select((s) => s.autoMix), (_, enabled) {
       setAutoMixEnabled(enabled);
     });
+    ref.listen(
+      settingsProvider.select((s) => (s.autoplay, s.localLibraryEnabled)),
+      (_, value) => setAutoplayEnabled(value.$1, includeLocal: value.$2),
+    );
     final queueState = ref.watch(
       downloadQueueProvider.select((s) => s.queuedCount),
     );

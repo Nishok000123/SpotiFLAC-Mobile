@@ -47,6 +47,7 @@ class MornyePlayerQueue extends ConsumerWidget {
     final count = queue.length - start;
     final controller = ref.read(musicPlayerControllerProvider);
     final autoMix = ref.watch(settingsProvider.select((s) => s.autoMix));
+    final autoplay = ref.watch(settingsProvider.select((s) => s.autoplay));
     final type = Theme.of(context).textTheme;
     final repeatLabel = switch (playback.repeat) {
       AudioServiceRepeatMode.one => context.l10n.nowPlayingRepeatOne,
@@ -71,6 +72,7 @@ class MornyePlayerQueue extends ConsumerWidget {
               ),
               foregroundColor: Colors.white,
               minimumSize: const Size(0, 44),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               shape: const StadiumBorder(),
             ),
             onPressed: onPressed,
@@ -125,15 +127,41 @@ class MornyePlayerQueue extends ConsumerWidget {
                             _ => AudioServiceRepeatMode.none,
                           }),
                     ),
+                    const SizedBox(width: 12),
+                    modeButton(
+                      icon: CupertinoIcons.infinite,
+                      label: autoplay
+                          ? context.l10n.autoplayOn
+                          : context.l10n.autoplayOff,
+                      selected: autoplay,
+                      onPressed: () => ref
+                          .read(settingsProvider.notifier)
+                          .setAutoplay(!autoplay),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        context.l10n.mornyeContinuePlaying,
-                        style: type.titleLarge?.copyWith(color: Colors.white),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.l10n.mornyeContinuePlaying,
+                            style: type.titleLarge?.copyWith(
+                              color: Colors.white,
+                            ),
+                          ),
+                          if (autoplay &&
+                              playback.repeat == AudioServiceRepeatMode.none)
+                            Text(
+                              context.l10n.autoplayFromLibrary,
+                              style: type.bodySmall?.copyWith(
+                                color: Colors.white70,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                     Builder(

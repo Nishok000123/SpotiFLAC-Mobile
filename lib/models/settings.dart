@@ -32,6 +32,7 @@ class AppSettings {
   // Apply ReplayGain/R128 tags as volume normalization in the built-in player.
   final bool playbackNormalization;
   final bool autoMix;
+  final bool autoplay;
   final bool isFirstLaunch;
   final bool checkForUpdates;
   final String updateChannel;
@@ -144,6 +145,7 @@ class AppSettings {
     this.embedReplayGain = false,
     this.playbackNormalization = false,
     this.autoMix = false,
+    this.autoplay = false,
     this.isFirstLaunch = true,
     this.checkForUpdates = true,
     this.updateChannel = 'stable',
@@ -231,6 +233,7 @@ class AppSettings {
     bool? embedReplayGain,
     bool? playbackNormalization,
     bool? autoMix,
+    bool? autoplay,
     bool? isFirstLaunch,
     bool? checkForUpdates,
     String? updateChannel,
@@ -314,6 +317,7 @@ class AppSettings {
       playbackNormalization:
           playbackNormalization ?? this.playbackNormalization,
       autoMix: autoMix ?? this.autoMix,
+      autoplay: autoplay ?? this.autoplay,
       isFirstLaunch: isFirstLaunch ?? this.isFirstLaunch,
       checkForUpdates: checkForUpdates ?? this.checkForUpdates,
       updateChannel: updateChannel ?? this.updateChannel,

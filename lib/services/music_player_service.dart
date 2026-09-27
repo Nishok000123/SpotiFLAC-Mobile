@@ -12,6 +12,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:spotiflac_android/services/app_state_database.dart';
 import 'package:spotiflac_android/services/library_database.dart';
+import 'package:spotiflac_android/services/sqlite_helpers.dart'
+    show normalizeLookupText;
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/services/playback_normalization.dart';
 import 'package:spotiflac_android/services/automix_analysis.dart';
@@ -23,6 +25,7 @@ import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 
 part 'music_player_automix.dart';
+part 'music_player_autoplay.dart';
 
 final _log = AppLogger('MusicPlayer');
 
@@ -139,6 +142,8 @@ class PlayableMedia {
   final int? bitrate;
   final String? format;
   final bool explicit;
+  final String? genre;
+  final bool autoplay;
 
   const PlayableMedia({
     required this.id,
@@ -153,6 +158,8 @@ class PlayableMedia {
     this.bitrate,
     this.format,
     this.explicit = false,
+    this.genre,
+    this.autoplay = false,
   });
 
   bool get isContentUri => source.startsWith('content://');
@@ -170,6 +177,8 @@ class PlayableMedia {
     if (bitrate != null && bitrate! > 0) 'bitrate': bitrate,
     if (format != null && format!.trim().isNotEmpty) 'format': format,
     if (explicit) 'explicit': true,
+    if (genre != null) 'genre': genre,
+    if (autoplay) 'autoplay': true,
   };
 
   static PlayableMedia? fromJson(
@@ -210,6 +219,8 @@ class PlayableMedia {
       bitrate: readPositiveInt(json['bitrate']),
       format: json['format']?.toString(),
       explicit: parseExplicitFlag(json['explicit']) == true,
+      genre: json['genre'] as String?,
+      autoplay: json['autoplay'] == true,
     );
   }
 
@@ -233,6 +244,7 @@ class PlayableMedia {
         if (format != null && format!.trim().isNotEmpty)
           'format': format!.trim(),
         if (explicit) 'explicit': true,
+        if (autoplay) 'autoplay': true,
       },
     );
   }
@@ -342,6 +354,8 @@ class MusicPlayerHandler extends BaseAudioHandler
     with QueueHandler, SeekHandler {
   AudioPlayer _player = AudioPlayer(playerId: 'music-player');
   late final _MusicAutoMix _autoMix;
+  late final _MusicAutoplay _autoplay;
+  bool _completing = false;
   double _normalizationVolume = 1;
   final _playerSubscriptions =
       <AudioPlayer, List<StreamSubscription<dynamic>>>{};
@@ -396,8 +410,15 @@ class MusicPlayerHandler extends BaseAudioHandler
 
   DateTime? get sleepTimerEndsAt => _sleepTimerEndsAt;
 
-  MusicPlayerHandler({AutoMixAnalyzer? autoMixAnalyzer}) {
+  MusicPlayerHandler({
+    AutoMixAnalyzer? autoMixAnalyzer,
+    AutoplayLibraryLoader? autoplayLibraryLoader,
+  }) {
     _autoMix = _MusicAutoMix(this, autoMixAnalyzer ?? AutoMixAnalyzer());
+    _autoplay = _MusicAutoplay(
+      this,
+      autoplayLibraryLoader ?? _loadAutoplayLibrary,
+    );
     _activeMusicPlayerHandler = this;
     _init();
   }
@@ -695,6 +716,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     if (!_sourceReady || _switchingGeneration != 0) return;
     _broadcastPosition(position);
     _autoMix.onPosition(position);
+    unawaited(_autoplay.fill());
     if (_restoringSession ||
         _player.state != PlayerState.playing ||
         _media.isEmpty ||
@@ -943,12 +965,20 @@ class MusicPlayerHandler extends BaseAudioHandler
 
   void _shuffleQueue() {
     _originalQueueOrder ??= List.of(_queueItems);
+    final manual = [
+      for (var i = 0; i < _media.length; i++)
+        if (i == _index || !_media[i].autoplay) i,
+    ];
     final order = buildShuffledQueueOrder(
-      mediaCount: _media.length,
-      currentIndex: _index,
+      mediaCount: manual.length,
+      currentIndex: manual.indexOf(_index),
       random: _random,
     );
-    _applyQueueOrder(order.map((index) => _queueItems[index]).toList());
+    _applyQueueOrder([
+      ...order.map((index) => _queueItems[manual[index]]),
+      for (var i = 0; i < _media.length; i++)
+        if (i != _index && _media[i].autoplay) _queueItems[i],
+    ]);
   }
 
   void _rememberEnqueued(List<MediaItem> items, {required bool playNext}) {
@@ -956,7 +986,18 @@ class MusicPlayerHandler extends BaseAudioHandler
     if (original == null) return;
     final current = _queueItems[_index];
     final at = original.indexWhere((item) => identical(item, current));
-    original.insertAll(playNext && at >= 0 ? at + 1 : original.length, items);
+    final firstAutoplay = original.indexWhere(
+      (item) => item.extras?['autoplay'] == true && !identical(item, current),
+      max(0, at + 1),
+    );
+    original.insertAll(
+      playNext && at >= 0
+          ? at + 1
+          : firstAutoplay >= 0
+          ? firstAutoplay
+          : original.length,
+      items,
+    );
   }
 
   /// Persists the queue only when it changed. Periodic position updates write
@@ -1108,6 +1149,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     if (queueNeedsRewrite) {
       await _persistSession(position: position);
     }
+    _autoplay.updateMode();
   }
 
   bool _isCurrentPlayRequest(int generation, PlayableMedia media) {
@@ -1124,6 +1166,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     int initialIndex = 0,
   }) async {
     if (items.isEmpty) return;
+    _autoplay.reset();
     _playRequestGeneration++;
     _media
       ..clear()
@@ -1147,7 +1190,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     }
     final insertAt = playNext
         ? (_index + 1).clamp(0, _media.length)
-        : _media.length;
+        : _autoplay.manualInsertIndex;
     _media.insert(insertAt, item);
     final queueItem = item.toMediaItem();
     _queueItems.insert(insertAt, queueItem);
@@ -1172,7 +1215,9 @@ class MusicPlayerHandler extends BaseAudioHandler
       await setQueueAndPlay(items);
       return;
     }
-    var at = playNext ? (_index + 1).clamp(0, _media.length) : _media.length;
+    var at = playNext
+        ? (_index + 1).clamp(0, _media.length)
+        : _autoplay.manualInsertIndex;
     final queued = <MediaItem>[];
     for (final item in items) {
       _media.insert(at, item);
@@ -1227,6 +1272,7 @@ class MusicPlayerHandler extends BaseAudioHandler
   void removeQueuedItem(MediaItem item) {
     final at = _queueItems.indexWhere((entry) => identical(entry, item));
     if (_disposed || at < 0 || at == _index) return;
+    _autoplay.dismiss(_media[at]);
     _queueItems.removeAt(at);
     _media.removeAt(at);
     _originalQueueOrder?.removeWhere((entry) => identical(entry, item));
@@ -1262,6 +1308,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     // Advance the requested index synchronously so consecutive Next taps do
     // not all target the same song while AutoMix/source preparation awaits.
     _index = index;
+    unawaited(_autoplay.fill());
     final media = _media[index];
     _switchingGeneration = generation;
     await _serializeSourceChange(() async {
@@ -1507,6 +1554,16 @@ class MusicPlayerHandler extends BaseAudioHandler
       await _playIndex(_index, recordHistory: false);
       return;
     }
+    if (_index == _media.length - 1 &&
+        _repeatMode == AudioServiceRepeatMode.none) {
+      final generation = _playRequestGeneration;
+      await _autoplay.fill();
+      if (_disposed ||
+          generation != _playRequestGeneration ||
+          _shouldIgnoreComplete) {
+        return;
+      }
+    }
     if (_index >= 0 && _index < _media.length - 1) {
       await _playIndex(_index + 1);
     } else if (_repeatMode == AudioServiceRepeatMode.all && _media.isNotEmpty) {
@@ -1517,6 +1574,7 @@ class MusicPlayerHandler extends BaseAudioHandler
   }
 
   Future<void> _handlePlayerComplete() async {
+    if (_completing) return;
     if (_shouldIgnoreComplete) {
       if (_userPaused || _interruptionActive) {
         _broadcastState(playerState: PlayerState.paused);
@@ -1524,7 +1582,12 @@ class MusicPlayerHandler extends BaseAudioHandler
       return;
     }
 
-    await _onComplete();
+    _completing = true;
+    try {
+      await _onComplete();
+    } finally {
+      _completing = false;
+    }
   }
 
   @override
@@ -1643,6 +1706,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     _repeatMode = repeatMode == AudioServiceRepeatMode.group
         ? AudioServiceRepeatMode.all
         : repeatMode;
+    _autoplay.updateMode();
     _broadcastState();
     if (_media.isNotEmpty && _index >= 0) {
       unawaited(_persistSession(position: playbackState.value.position));
@@ -1651,6 +1715,7 @@ class MusicPlayerHandler extends BaseAudioHandler
 
   @override
   Future<void> stop() async {
+    _autoplay.reset();
     cancelSleepTimer();
     final generation = ++_playRequestGeneration;
     _switchingGeneration = 0;
@@ -1686,6 +1751,11 @@ class MusicPlayerHandler extends BaseAudioHandler
 
   @override
   Future<void> skipToNext() async {
+    if (_index >= 0 && _index == _media.length - 1) {
+      final generation = _playRequestGeneration;
+      await _autoplay.fill();
+      if (_disposed || generation != _playRequestGeneration) return;
+    }
     if (_index < _media.length - 1) await _playIndex(_index + 1);
   }
 
@@ -1806,6 +1876,7 @@ class MusicPlayerHandler extends BaseAudioHandler
   }
 
   Future<void> dispose() async {
+    _autoplay.reset();
     _disposed = true;
     if (identical(_activeMusicPlayerHandler, this)) {
       _activeMusicPlayerHandler = null;

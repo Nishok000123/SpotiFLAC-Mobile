@@ -140,12 +140,18 @@ void main() {
   late _AudioNative native;
   late _Analyzer analyzer;
   late MusicPlayerHandler handler;
+  late AutoplayLibraryLoader autoplayLoader;
 
   setUp(() {
     setAutoMixEnabled(false);
+    setAutoplayEnabled(false);
     native = _AudioNative()..install();
     analyzer = _Analyzer();
-    handler = MusicPlayerHandler(autoMixAnalyzer: analyzer);
+    autoplayLoader = (_) async => _tracks;
+    handler = MusicPlayerHandler(
+      autoMixAnalyzer: analyzer,
+      autoplayLibraryLoader: (seed) => autoplayLoader(seed),
+    );
   });
 
   tearDown(() async {
@@ -156,9 +162,156 @@ void main() {
     );
     analyzer.pending?.complete(null);
     setAutoMixEnabled(false);
+    setAutoplayEnabled(false);
     await Future<void>.delayed(const Duration(milliseconds: 30));
     expect(native.live, isEmpty);
     expect(native.playing, isEmpty);
+  });
+
+  test(
+    'Autoplay fills a single-track queue and follows its visible order',
+    () async {
+      setAutoplayEnabled(true);
+      await handler.setQueueAndPlay([_tracks.first]);
+      await _until(() => handler.queue.value.length == 3);
+      final planned = handler.queue.value.toList();
+      expect(planned.first.id, 'one');
+      expect(
+        planned.skip(1).every((item) => item.extras?['autoplay'] == true),
+        isTrue,
+      );
+      await native.event('music-player', 'audio.onComplete');
+      await _until(() => handler.mediaItem.value?.id == planned[1].id);
+      expect(native.sources['music-player'], planned[1].extras?['source']);
+      setAutoplayEnabled(false);
+      expect(handler.queue.value.map((item) => item.id), [
+        'one',
+        planned[1].id,
+      ]);
+      expect(handler.playbackState.value.playing, isTrue);
+    },
+  );
+
+  test(
+    'manual additions precede Autoplay and survive disabling or repeat',
+    () async {
+      setAutoplayEnabled(true);
+      await handler.setQueueAndPlay([_tracks.first]);
+      await _until(() => handler.queue.value.length == 3);
+      const manual = PlayableMedia(
+        id: 'manual',
+        source: '/manual.flac',
+        title: 'Manual',
+        artist: 'Other',
+      );
+      await handler.enqueue(manual);
+      expect(handler.queue.value[1].id, 'manual');
+      await handler.setShuffleMode(AudioServiceShuffleMode.all);
+      expect(handler.queue.value[1].id, 'manual');
+      await handler.setShuffleMode(AudioServiceShuffleMode.none);
+      expect(handler.queue.value[1].id, 'manual');
+      await handler.setRepeatMode(AudioServiceRepeatMode.all);
+      expect(handler.queue.value.map((item) => item.id), ['one', 'manual']);
+      await handler.setRepeatMode(AudioServiceRepeatMode.none);
+      await _until(() => handler.queue.value.length == 4);
+      setAutoplayEnabled(false);
+      expect(handler.queue.value.map((item) => item.id), ['one', 'manual']);
+    },
+  );
+
+  test(
+    'pending Autoplay is discarded after disabling or replacing the queue',
+    () async {
+      final pending = Completer<List<PlayableMedia>>();
+      autoplayLoader = (_) => pending.future;
+      setAutoplayEnabled(true);
+      await handler.setQueueAndPlay([_tracks.first]);
+      setAutoplayEnabled(false);
+      await handler.setQueueAndPlay([_tracks.last]);
+      pending.complete(_tracks);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(handler.queue.value.map((item) => item.id), ['three']);
+      expect(native.sources['music-player'], '/three.flac');
+    },
+  );
+
+  test('pause during an Autoplay refill prevents automatic resume', () async {
+    final pending = Completer<List<PlayableMedia>>();
+    autoplayLoader = (_) => pending.future;
+    setAutoplayEnabled(true);
+    await handler.setQueueAndPlay([_tracks.first]);
+    await native.event('music-player', 'audio.onComplete');
+    await handler.pause();
+    pending.complete(_tracks);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(handler.mediaItem.value?.id, 'one');
+    expect(handler.playbackState.value.playing, isFalse);
+    expect(native.resumedSources, ['/one.flac']);
+  });
+
+  test(
+    'replacing a queue invalidates an in-flight recommendation batch',
+    () async {
+      final pending = Completer<List<PlayableMedia>>();
+      autoplayLoader = (seed) =>
+          seed.id == 'one' ? pending.future : Future.value([]);
+      setAutoplayEnabled(true);
+      await handler.setQueueAndPlay([_tracks.first]);
+      await handler.setQueueAndPlay([_tracks.last]);
+      pending.complete(_tracks);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(handler.queue.value.map((item) => item.id), ['three']);
+      expect(native.sources['music-player'], '/three.flac');
+    },
+  );
+
+  test(
+    'duplicate completion while recommendations load advances only once',
+    () async {
+      final pending = Completer<List<PlayableMedia>>();
+      autoplayLoader = (_) => pending.future;
+      setAutoplayEnabled(true);
+      await handler.setQueueAndPlay([_tracks.first]);
+      await native.event('music-player', 'audio.onComplete');
+      await native.event('music-player', 'audio.onComplete');
+      pending.complete(_tracks);
+      await _until(() => handler.playbackState.value.queueIndex == 1);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(handler.playbackState.value.queueIndex, 1);
+      expect(handler.mediaItem.value?.id, handler.queue.value[1].id);
+    },
+  );
+
+  test(
+    'Autoplay never adds a song dismissed from the current queue again',
+    () async {
+      setAutoplayEnabled(true);
+      await handler.setQueueAndPlay([_tracks.first]);
+      await _until(() => handler.queue.value.length == 3);
+      final removed = handler.queue.value[1];
+      handler.removeQueuedItem(removed);
+      await handler.skipToNext();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(handler.queue.value.any((item) => item.id == removed.id), isFalse);
+    },
+  );
+
+  test('empty Library ends playback and does not repeatedly refill', () async {
+    var loads = 0;
+    autoplayLoader = (_) async {
+      loads++;
+      return [];
+    };
+    setAutoplayEnabled(true);
+    await handler.setQueueAndPlay([_tracks.first]);
+    await native.event('music-player', 'audio.onComplete');
+    await _until(
+      () =>
+          handler.playbackState.value.processingState ==
+          AudioProcessingState.completed,
+    );
+    expect(handler.queue.value, hasLength(1));
+    expect(loads, 1);
   });
 
   test(

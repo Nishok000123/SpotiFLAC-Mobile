@@ -34,6 +34,9 @@ class _Settings extends SettingsNotifier {
 
   @override
   void setAutoMix(bool enabled) => state = state.copyWith(autoMix: enabled);
+
+  @override
+  void setAutoplay(bool enabled) => state = state.copyWith(autoplay: enabled);
 }
 
 void main() {
@@ -76,6 +79,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Previous'), findsNothing);
       expect(find.text('Current'), findsNothing);
+      await tester.tap(find.byTooltip('Autoplay off'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Autoplay on'), findsOneWidget);
+      expect(find.text('Autoplay from your Library'), findsOneWidget);
+      await tester.tap(find.byTooltip('Autoplay on'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Autoplay off'), findsOneWidget);
       await tester.tap(find.byTooltip('AutoMix off'));
       await tester.pumpAndSettle();
       expect(find.byTooltip('AutoMix on'), findsOneWidget);
