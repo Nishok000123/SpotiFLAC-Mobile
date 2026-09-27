@@ -355,6 +355,106 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final squareArtwork in [true, false]) {
+    for (final reduceMotion in [false, true]) {
+      testWidgets(
+        'album pull preserves controls (square: $squareArtwork, reduced motion: $reduceMotion)',
+        (tester) async {
+          tester.view.physicalSize = const Size(390, 844);
+          tester.view.devicePixelRatio = 1;
+          tester.view.padding = FakeViewPadding(top: 59, bottom: 34);
+          addTearDown(tester.view.reset);
+          final controller = ScrollController();
+          addTearDown(controller.dispose);
+          const artworkKey = ValueKey('stretch-album-artwork');
+          var plays = 0;
+          await tester.pumpWidget(
+            ProviderScope(
+              child: MaterialApp(
+                theme: MornyeTheme.build(Brightness.dark),
+                scrollBehavior: const MaterialScrollBehavior().copyWith(
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                ),
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(disableAnimations: reduceMotion),
+                  child: child!,
+                ),
+                home: CollectionScaffold(
+                  scrollController: controller,
+                  isSelectionMode: false,
+                  onExitSelectionMode: () {},
+                  bottomInset: 0,
+                  appBar: AlbumDetailHeader(
+                    immersive: true,
+                    squareArtwork: squareArtwork,
+                    title: 'Album',
+                    expandedHeight: 400,
+                    showTitleInAppBar: false,
+                    background: const ColoredBox(
+                      key: artworkKey,
+                      color: Colors.orange,
+                    ),
+                    actions: AlbumPlayActions(
+                      playLabel: 'Play',
+                      shuffleTooltip: 'Shuffle',
+                      onPlay: () => plays++,
+                      onShuffle: () {},
+                    ),
+                  ),
+                  slivers: const [
+                    SliverToBoxAdapter(child: Text('Track list')),
+                    SliverToBoxAdapter(child: SizedBox(height: 2000)),
+                  ],
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final artwork = find.byKey(artworkKey);
+          final play = find.text('Play');
+          final tracks = find.text('Track list');
+          final originalArt = tester.getRect(artwork);
+          final originalPlay = tester.getRect(play);
+          final originalTracks = tester.getRect(tracks);
+          final originalBack = tester.getRect(find.byTooltip('Back'));
+          final element = tester.element(artwork);
+          final gesture = await tester.startGesture(const Offset(195, 250));
+          await gesture.moveBy(const Offset(0, 150));
+          await tester.pump();
+          final stretchedArt = tester.getRect(artwork);
+          expect(controller.offset, lessThan(0));
+          if (reduceMotion) {
+            expect(stretchedArt.size, originalArt.size);
+          } else {
+            expect(stretchedArt.width, greaterThan(originalArt.width));
+            expect(
+              stretchedArt.width / originalArt.width,
+              closeTo(stretchedArt.height / originalArt.height, 0.001),
+            );
+            expect(stretchedArt.top, closeTo(originalArt.top, 0.01));
+          }
+          expect(tester.getSize(play), originalPlay.size);
+          expect(tester.getRect(play).top, greaterThan(originalPlay.top));
+          expect(tester.getRect(tracks).top, greaterThan(originalTracks.top));
+          expect(tester.getRect(find.byTooltip('Back')), originalBack);
+          expect(play.hitTestable(), findsOneWidget);
+          expect(tester.element(artwork), same(element));
+          await gesture.up();
+          await tester.pumpAndSettle();
+          expect(tester.getRect(artwork), originalArt);
+          expect(tester.getRect(play), originalPlay);
+          await tester.tap(play);
+          expect(plays, 1);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+
   for (final brightness in Brightness.values) {
     for (final scale in [1.0, 2.0]) {
       testWidgets(

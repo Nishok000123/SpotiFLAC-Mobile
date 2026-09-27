@@ -201,10 +201,10 @@ class AlbumDetailHeader extends StatelessWidget {
                         alignment: Alignment.topCenter,
                         child: SizedBox.square(
                           dimension: artworkSize,
-                          child: artwork,
+                          child: _AlbumStretchArtwork(child: artwork),
                         ),
                       )
-                    : artwork,
+                    : _AlbumStretchArtwork(child: artwork),
               ),
               Column(
                 children: [
@@ -454,6 +454,44 @@ class AlbumDetailHeader extends StatelessWidget {
       ),
       actionsPadding: EdgeInsets.only(right: iosEdgeInset),
       actions: appBarActions,
+    );
+  }
+}
+
+class _AlbumStretchArtwork extends StatelessWidget {
+  const _AlbumStretchArtwork({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) return child;
+    final position = Scrollable.of(context).position;
+    return LayoutBuilder(
+      builder: (context, constraints) => AnimatedBuilder(
+        animation: position,
+        child: RepaintBoundary(child: child),
+        builder: (context, artwork) {
+          final overscroll = position.hasContentDimensions
+              ? (position.minScrollExtent - position.pixels).clamp(
+                  0.0,
+                  double.infinity,
+                )
+              : 0.0;
+          final height = constraints.maxHeight;
+          final scale = height > 0 ? 1 + overscroll / height : 1.0;
+          // The viewport moves the details down during a pull. Keep the image
+          // at the top and enlarge it without changing the scrollable layout.
+          return Transform.translate(
+            offset: Offset(0, -overscroll),
+            child: Transform.scale(
+              scale: scale,
+              alignment: Alignment.topCenter,
+              child: artwork,
+            ),
+          );
+        },
+      ),
     );
   }
 }
