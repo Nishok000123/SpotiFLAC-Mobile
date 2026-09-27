@@ -567,12 +567,28 @@ class SettingsNotifier extends Notifier<AppSettings> {
   }
 
   void setUsbDirect(bool enabled) {
-    state = state.copyWith(usbDirect: enabled);
+    state = state.copyWith(
+      usbDirect: enabled,
+      dapExclusive: enabled ? false : null,
+    );
     _saveSettings();
   }
 
   void setUsbDsdOverPcm(bool enabled) {
     state = state.copyWith(usbDsdOverPcm: enabled);
+    _saveSettings();
+  }
+
+  void setUsbAllowFixedVolume(bool enabled) {
+    state = state.copyWith(usbAllowFixedVolume: enabled);
+    _saveSettings();
+  }
+
+  void setDapExclusive(bool enabled) {
+    state = state.copyWith(
+      dapExclusive: enabled,
+      usbDirect: enabled ? false : null,
+    );
     _saveSettings();
   }
 

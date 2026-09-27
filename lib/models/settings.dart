@@ -35,6 +35,8 @@ class AppSettings {
   final bool usbBitPerfect;
   final bool usbDirect;
   final bool usbDsdOverPcm;
+  final bool usbAllowFixedVolume;
+  final bool dapExclusive;
   final bool autoplay;
   final bool isFirstLaunch;
   final bool checkForUpdates;
@@ -151,6 +153,8 @@ class AppSettings {
     this.usbBitPerfect = false,
     this.usbDirect = false,
     this.usbDsdOverPcm = false,
+    this.usbAllowFixedVolume = false,
+    this.dapExclusive = false,
     this.autoplay = false,
     this.isFirstLaunch = true,
     this.checkForUpdates = true,
@@ -242,6 +246,8 @@ class AppSettings {
     bool? usbBitPerfect,
     bool? usbDirect,
     bool? usbDsdOverPcm,
+    bool? usbAllowFixedVolume,
+    bool? dapExclusive,
     bool? autoplay,
     bool? isFirstLaunch,
     bool? checkForUpdates,
@@ -329,6 +335,8 @@ class AppSettings {
       usbBitPerfect: usbBitPerfect ?? this.usbBitPerfect,
       usbDirect: usbDirect ?? this.usbDirect,
       usbDsdOverPcm: usbDsdOverPcm ?? this.usbDsdOverPcm,
+      usbAllowFixedVolume: usbAllowFixedVolume ?? this.usbAllowFixedVolume,
+      dapExclusive: dapExclusive ?? this.dapExclusive,
       autoplay: autoplay ?? this.autoplay,
       isFirstLaunch: isFirstLaunch ?? this.isFirstLaunch,
       checkForUpdates: checkForUpdates ?? this.checkForUpdates,

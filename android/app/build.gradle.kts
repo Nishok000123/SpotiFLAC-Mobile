@@ -36,6 +36,13 @@ android {
         buildConfig = true
     }
 
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
     sourceSets.getByName("main") {
         java.srcDir("src/rust/kotlin")
         java.srcDir(rustBackendDir.resolve("target/bindings/kotlin"))
@@ -76,6 +83,9 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
+        externalNativeBuild {
+            cmake { arguments += "-DANDROID_STL=c++_static" }
+        }
 
         ndk {
             abiFilters.clear()

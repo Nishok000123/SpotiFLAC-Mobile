@@ -7,6 +7,19 @@ import 'package:spotiflac_android/l10n/l10n.dart';
 import 'package:spotiflac_android/widgets/mornye_player_slider.dart';
 import 'package:spotiflac_android/utils/logger.dart';
 import 'package:volume_controller/volume_controller.dart';
+import 'package:spotiflac_android/services/music_playback_deck.dart';
+
+final usbVolumeProvider = StreamProvider.autoDispose<UsbVolumeState?>((ref) {
+  final events = StreamController<UsbVolumeState?>();
+  void changed() => events.add(usbHardwareVolume.value);
+  usbHardwareVolume.addListener(changed);
+  changed();
+  ref.onDispose(() {
+    usbHardwareVolume.removeListener(changed);
+    unawaited(events.close());
+  });
+  return events.stream;
+});
 
 /// A single shared subscription for the visible player, including hardware
 /// volume-button changes. This controls system volume, not ReplayGain gain.
@@ -29,6 +42,7 @@ final systemVolumeWriterProvider = Provider<Future<void> Function(double)>((
   ref,
 ) {
   return (value) {
+    if (usbHardwareVolume.value != null) return setUsbHardwareVolume(value);
     final volume = VolumeController.instance;
     volume.showSystemUI = false;
     return volume.setVolume(value.clamp(0, 1));
@@ -60,10 +74,15 @@ class _MornyeVolumeControlState extends ConsumerState<MornyeVolumeControl> {
   Future<void> _flushVolume() async {
     _writing = true;
     final write = ref.read(systemVolumeWriterProvider);
+    final usbToken = usbHardwareVolume.value?.token;
     try {
       // Send changes during the gesture. If the platform is still processing
       // a write, keep only the newest value instead of queuing stale positions.
       while (mounted && _pendingVolume != null) {
+        if (usbHardwareVolume.value?.token != usbToken) {
+          _pendingVolume = null;
+          break;
+        }
         final value = _pendingVolume!;
         _pendingVolume = null;
         try {
@@ -80,11 +99,18 @@ class _MornyeVolumeControlState extends ConsumerState<MornyeVolumeControl> {
 
   @override
   Widget build(BuildContext context) {
-    final volume = ref.watch(systemVolumeProvider).value;
+    final usb = ref.watch(usbVolumeProvider).value ?? usbHardwareVolume.value;
+    final volume = usb == null
+        ? ref.watch(systemVolumeProvider).value
+        : usb.available
+        ? usb.fraction
+        : null;
     final value = (_preview ?? volume ?? 0).clamp(0.0, 1.0);
     String percentage(double volume) => '${(volume * 100).round()}%';
     return Semantics(
-      label: context.l10n.nowPlayingVolume,
+      label: usb == null
+          ? context.l10n.nowPlayingVolume
+          : context.l10n.usbHardwareVolume,
       slider: true,
       enabled: volume != null,
       excludeSemantics: true,

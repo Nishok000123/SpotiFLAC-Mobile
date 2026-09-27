@@ -1,8 +1,9 @@
 //! All raw libusb pointers belong to one thread. Transfer buffers remain at
 //! stable addresses until callbacks complete, including cancellation on drop.
 use super::{
-    UsbOutputFormat,
+    UsbHardwareVolume, UsbOutputFormat,
     descriptors::{self, Alternate, Endpoint, PacketClock},
+    volume::{self, Volume},
 };
 use libusb1_sys as usb;
 use std::{
@@ -22,6 +23,13 @@ struct State {
     flush: u64,
     flushed: u64,
     error: Option<String>,
+    volume: UsbHardwareVolume,
+    volume_requests: VecDeque<VolumeRequest>,
+}
+struct VolumeRequest {
+    db: f64,
+    deadline: Instant,
+    reply: mpsc::SyncSender<Result<UsbHardwareVolume, String>>,
 }
 type Shared = Arc<(Mutex<State>, Condvar)>;
 
@@ -61,9 +69,14 @@ impl Output {
                 }
                 // SAF/device descriptors are opened by Android and stay owned by
                 // Kotlin until this worker has joined. No device discovery/root.
-                let result = Session::open(fd, candidates);
+                let result = Session::open(fd, candidates, &raw);
                 match result {
                     Ok(mut session) => {
+                        state.0.lock().unwrap().volume = session
+                            .volume
+                            .as_ref()
+                            .map(Volume::snapshot)
+                            .unwrap_or_default();
                         let _ = tx.send(Ok(session.format.clone()));
                         if let Err(error) = session.run(&state) {
                             let mut s = state.0.lock().unwrap();
@@ -156,6 +169,30 @@ impl Output {
         if let Some(t) = self.thread.lock().unwrap().take() {
             let _ = t.join();
         }
+    }
+    pub fn volume(&self) -> UsbHardwareVolume {
+        self.shared.0.lock().unwrap().volume.clone()
+    }
+    pub fn set_volume(&self, db: f64) -> Result<UsbHardwareVolume, String> {
+        let (reply, result) = mpsc::sync_channel(1);
+        {
+            let mut s = self.shared.0.lock().unwrap();
+            if s.closed || s.error.is_some() || !s.volume.available {
+                return Err("USB hardware volume unavailable".into());
+            }
+            if s.volume_requests.len() >= 8 {
+                return Err("USB volume requests busy".into());
+            }
+            s.volume_requests.push_back(VolumeRequest {
+                db,
+                deadline: Instant::now() + Duration::from_secs(2),
+                reply,
+            });
+            self.shared.1.notify_all();
+        }
+        result
+            .recv_timeout(Duration::from_secs(4))
+            .map_err(|_| "USB volume request timed out".to_string())?
     }
 }
 impl Drop for Output {
@@ -270,9 +307,26 @@ struct Session {
     slots: Vec<Box<Slot>>,
     feedback_slot: Option<Box<Slot>>,
     format: UsbOutputFormat,
+    volume: Option<Volume>,
+}
+impl volume::Control for Session {
+    fn transfer(
+        &self,
+        input: bool,
+        request: u8,
+        value: u16,
+        index: u16,
+        data: &mut [u8],
+    ) -> Result<(), String> {
+        self.control(input, request, value, index, data, false)
+    }
 }
 impl Session {
-    fn open(fd: i32, candidates: Vec<(Alternate, UsbOutputFormat)>) -> Result<Self, String> {
+    fn open(
+        fd: i32,
+        candidates: Vec<(Alternate, UsbOutputFormat)>,
+        raw: &[u8],
+    ) -> Result<Self, String> {
         let mut s = Self {
             context: ptr::null_mut(),
             handle: ptr::null_mut(),
@@ -285,6 +339,7 @@ impl Session {
             slots: vec![],
             feedback_slot: None,
             format: candidates[0].1.clone(),
+            volume: None,
         };
         unsafe {
             // NO_DEVICE_DISCOVERY is required on Android; the USB permission
@@ -313,6 +368,13 @@ impl Session {
             if let Some(ep) = &s.feedback {
                 s.feedback_slot = Some(Slot::new(1, ep.max_packet)?);
             }
+            s.volume = volume::feature(
+                raw,
+                s.alternate.control,
+                s.alternate.terminal,
+                s.format.channels,
+            )
+            .and_then(|feature| Volume::open(&s, feature).ok());
             return Ok(s);
         }
         Err(failure)
@@ -471,6 +533,28 @@ impl Session {
             let mut s = shared.0.lock().unwrap();
             if s.closed {
                 break;
+            }
+            if let Some(request) = s.volume_requests.pop_front() {
+                drop(s);
+                if Instant::now() > request.deadline {
+                    let _ = request.reply.send(Err("USB volume request expired".into()));
+                } else {
+                    let mut volume = self
+                        .volume
+                        .take()
+                        .ok_or("USB hardware volume unavailable")?;
+                    let result = volume.set(self, request.db);
+                    self.volume = Some(volume);
+                    if let Ok(snapshot) = &result {
+                        shared.0.lock().unwrap().volume = snapshot.clone();
+                    }
+                    let error = result.as_ref().err().cloned();
+                    let _ = request.reply.send(result);
+                    if let Some(error) = error {
+                        return Err(error);
+                    }
+                }
+                s = shared.0.lock().unwrap();
             }
             if s.flush != s.flushed {
                 drop(s);

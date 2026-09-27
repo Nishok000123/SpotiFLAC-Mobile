@@ -8,6 +8,8 @@ mod framing;
 #[cfg(target_os = "android")]
 #[allow(unsafe_code)] // libusb ownership is confined to this worker module.
 mod transport;
+#[cfg(any(test, target_os = "android"))]
+mod volume;
 
 use std::sync::Arc;
 
@@ -32,6 +34,17 @@ pub struct UsbOutputFormat {
     pub subslot: u8,
     /// pcm, dop, dsd_be or dsd_le. Native DSD is selected by exact device ID.
     pub encoding: String,
+}
+
+#[derive(uniffi::Record, Clone, Default)]
+pub struct UsbHardwareVolume {
+    pub available: bool,
+    pub min_db: f64,
+    pub max_db: f64,
+    pub current_db: f64,
+    /// Quietest channel before startup attenuation; restoring a previous UI
+    /// setting must respect a DAC volume knob that was lowered externally.
+    pub restore_limit_db: f64,
 }
 
 #[derive(uniffi::Object)]
@@ -117,5 +130,22 @@ impl UsbDirectOutput {
     pub fn shutdown(&self) {
         #[cfg(target_os = "android")]
         self.output.close();
+    }
+
+    pub fn volume(&self) -> UsbHardwareVolume {
+        #[cfg(target_os = "android")]
+        return self.output.volume();
+        #[cfg(not(target_os = "android"))]
+        unreachable!("Android-only constructor")
+    }
+
+    pub fn set_volume(&self, db: f64) -> Result<UsbHardwareVolume, UsbAudioError> {
+        #[cfg(target_os = "android")]
+        return self.output.set_volume(db).map_err(Into::into);
+        #[cfg(not(target_os = "android"))]
+        {
+            let _ = db;
+            unreachable!("Android-only constructor")
+        }
     }
 }

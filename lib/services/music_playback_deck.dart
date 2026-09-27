@@ -8,8 +8,43 @@ import 'package:flutter/services.dart';
 /// Only verified native playback reports active. File metadata alone never does.
 final usbAudioStatus = ValueNotifier<UsbAudioStatus>(const UsbAudioStatus());
 
-class UsbDsdUnavailable extends StateError {
+class UsbOutputUnavailable extends StateError {
+  UsbOutputUnavailable(super.message);
+}
+
+class UsbDsdUnavailable extends UsbOutputUnavailable {
   UsbDsdUnavailable() : super('DSD requires a compatible direct USB output');
+}
+
+/// Null outside direct USB; an unavailable control must not change phone volume.
+final usbHardwareVolume = ValueNotifier<UsbVolumeState?>(null);
+
+class UsbVolumeState {
+  UsbVolumeState(Map<dynamic, dynamic> data)
+    : available = data['available'] == true,
+      minDb = (data['minDb'] as num?)?.toDouble() ?? -90,
+      maxDb = (data['maxDb'] as num?)?.toDouble() ?? 0,
+      currentDb = (data['currentDb'] as num?)?.toDouble() ?? 0,
+      token = (data['token'] as num?)?.toInt() ?? 0;
+  final bool available;
+  final double minDb, maxDb, currentDb;
+  final int token;
+  double get fraction => available && maxDb > minDb
+      ? ((currentDb - minDb) / (maxDb - minDb)).clamp(0, 1)
+      : 0;
+}
+
+Future<void> setUsbHardwareVolume(double fraction) async {
+  final state = usbHardwareVolume.value;
+  if (state == null || !state.available) return;
+  final result = await MusicPlaybackDeck._channel
+      .invokeMapMethod<String, dynamic>('volume', {
+        'token': state.token,
+        'db': state.minDb + fraction.clamp(0, 1) * (state.maxDb - state.minDb),
+      });
+  if (result != null && usbHardwareVolume.value?.token == state.token) {
+    usbHardwareVolume.value = UsbVolumeState(result);
+  }
 }
 
 class UsbAudioStatus {
@@ -72,6 +107,7 @@ class MusicPlaybackDeck {
   DeviceFileSource? _source;
   bool _routeLost = false;
   bool _nativeStarted = false;
+  bool _volumeBlocked = false;
   PlayerState _directState = PlayerState.stopped;
   UsbAudioStatus _preparedStatus = const UsbAudioStatus();
 
@@ -113,6 +149,8 @@ class MusicPlaybackDeck {
     bool directUsb = false,
     bool allowDop = false,
     bool requiresDsd = false,
+    bool allowFixedVolume = false,
+    bool dapExclusive = false,
   }) async {
     await stop();
     _source = source;
@@ -142,9 +180,17 @@ class MusicPlaybackDeck {
               'token': _token,
               'direct': directUsb,
               'allowDop': allowDop,
+              'allowFixedVolume': allowFixedVolume,
+              'dapExclusive': dapExclusive,
+              'requiresDsd': requiresDsd,
             });
         if (_disposed || preparingToken != _token) return;
         if (response?['ready'] == true) {
+          _volumeBlocked = response?['volumeBlocked'] == true;
+          final volume = response?['volume'];
+          usbHardwareVolume.value = volume is Map
+              ? UsbVolumeState(volume)
+              : null;
           _direct = true;
           _directState = PlayerState.stopped;
           _duration = Duration(
@@ -158,7 +204,9 @@ class MusicPlaybackDeck {
             transport: response?['transport'] as String? ?? 'pcm',
             driver: response?['driver'] as String? ?? 'android',
           );
-          usbAudioStatus.value = const UsbAudioStatus(reason: 'ready');
+          usbAudioStatus.value = UsbAudioStatus(
+            reason: _volumeBlocked ? 'volume_unavailable' : 'ready',
+          );
           _durations.add(_duration!);
           return;
         }
@@ -211,6 +259,12 @@ class MusicPlaybackDeck {
 
   Future<void> resume() async {
     if (!_direct) return _ordinary.resume();
+    if (_volumeBlocked) {
+      usbAudioStatus.value = const UsbAudioStatus(reason: 'volume_unavailable');
+      throw UsbOutputUnavailable(
+        'DAC hardware volume unavailable; check audio output settings',
+      );
+    }
     final token = _token;
     // Before first playback the SAF lease is still open. After playback starts,
     // reconnect through the handler to obtain a fresh lease for the same song.
@@ -219,6 +273,14 @@ class MusicPlaybackDeck {
       await _channel.invokeMethod<void>('resume');
     } on PlatformException {
       if (token != _token || !_direct || _disposed) return;
+      if (_preparedStatus.driver == 'usb_direct') {
+        _routeLost = true;
+        _setState(PlayerState.paused);
+        usbAudioStatus.value = const UsbAudioStatus(reason: 'route_changed');
+        throw UsbOutputUnavailable(
+          'Direct USB output changed; reconnect before playing',
+        );
+      }
       if (_nativeStarted) {
         _routeLost = true;
         _setState(PlayerState.paused);
@@ -297,6 +359,8 @@ class MusicPlaybackDeck {
       await _channel.invokeMethod<void>('stop');
       _setState(PlayerState.stopped);
       _direct = false;
+      _volumeBlocked = false;
+      usbHardwareVolume.value = null;
       usbAudioStatus.value = const UsbAudioStatus();
     }
     await _ordinary.stop();

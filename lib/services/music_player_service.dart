@@ -46,6 +46,8 @@ bool _autoMixEnabled = false;
 bool _usbBitPerfectEnabled = false;
 bool _usbDirectEnabled = false;
 bool _usbDopEnabled = false;
+bool _usbAllowFixedVolume = false;
+bool _dapExclusiveEnabled = false;
 MusicPlayerHandler? _activeMusicPlayerHandler;
 PlaybackNotification _notificationPresentation = const PlaybackNotification();
 Future<void> Function(MediaItem)? _toggleNotificationFavorite;
@@ -111,9 +113,16 @@ void setUsbBitPerfectEnabled(bool enabled) {
   // Apply at the next source boundary; never raise a playing track's volume.
 }
 
-void setUsbOutputOptions({required bool direct, required bool allowDop}) {
+void setUsbOutputOptions({
+  required bool direct,
+  required bool allowDop,
+  bool allowFixedVolume = false,
+  bool dapExclusive = false,
+}) {
   _usbDirectEnabled = direct;
   _usbDopEnabled = allowDop;
+  _usbAllowFixedVolume = allowFixedVolume;
+  _dapExclusiveEnabled = dapExclusive;
 }
 
 /// Refreshes gain tags after a successful file update, including SAF copies.
@@ -1377,8 +1386,11 @@ class MusicPlayerHandler extends BaseAudioHandler
       DeviceFileSource(path),
       preferBitPerfect: _usbBitPerfectEnabled,
       directUsb: _usbDirectEnabled,
+      allowFixedVolume: _usbAllowFixedVolume,
+      dapExclusive: _dapExclusiveEnabled,
       allowDop: _usbDopEnabled,
       requiresDsd:
+          media.bitDepth == 1 ||
           const ['dsf', 'dff'].contains(media.format?.toLowerCase()) ||
           media.source.toLowerCase().endsWith('.dsf') ||
           media.source.toLowerCase().endsWith('.dff'),
@@ -1489,7 +1501,7 @@ class MusicPlayerHandler extends BaseAudioHandler
           playbackLease = null;
         }
       } catch (directError) {
-        if (directError is UsbDsdUnavailable ||
+        if (directError is UsbOutputUnavailable ||
             playbackLease == null ||
             !_isCurrentPlayRequest(generation, media)) {
           rethrow;

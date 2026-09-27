@@ -26,6 +26,7 @@ import 'package:spotiflac_android/screens/settings/settings_tab.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/services/shell_navigation_service.dart';
 import 'package:spotiflac_android/services/share_intent_service.dart';
+import 'package:spotiflac_android/services/music_playback_deck.dart';
 import 'package:spotiflac_android/services/music_player_service.dart';
 import 'package:spotiflac_android/services/notification_service.dart';
 import 'package:spotiflac_android/services/app_remote_config_service.dart';
@@ -63,6 +64,7 @@ class _MainShellState extends ConsumerState<MainShell>
   bool _hasCheckedAppAnnouncement = false;
   bool _initialSafRepairComplete = false;
   bool _safRepairDialogVisible = false;
+  bool _usbVolumeWarningShown = false;
   StreamSubscription<String>? _shareSubscription;
   DateTime? _lastBackPress;
   final GlobalKey<NavigatorState> _homeTabNavigatorKey =
@@ -96,6 +98,8 @@ class _MainShellState extends ConsumerState<MainShell>
     setUsbOutputOptions(
       direct: ref.read(settingsProvider).usbDirect,
       allowDop: ref.read(settingsProvider).usbDsdOverPcm,
+      allowFixedVolume: ref.read(settingsProvider).usbAllowFixedVolume,
+      dapExclusive: ref.read(settingsProvider).dapExclusive,
     );
     setAutoplayEnabled(
       ref.read(settingsProvider).autoplay,
@@ -114,6 +118,7 @@ class _MainShellState extends ConsumerState<MainShell>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    usbAudioStatus.addListener(_onUsbAudioStatusChanged);
     _homePreviewStopObserver = _PreviewStopNavigatorObserver(
       () => ref.read(previewPlayerProvider.notifier).stop(),
     );
@@ -155,6 +160,28 @@ class _MainShellState extends ConsumerState<MainShell>
       if (!updateDialogShown) {
         await _checkAppAnnouncement();
       }
+    });
+  }
+
+  void _onUsbAudioStatusChanged() {
+    if (usbAudioStatus.value.reason == 'active') {
+      _usbVolumeWarningShown = false;
+    }
+    if (usbAudioStatus.value.reason != 'volume_unavailable' ||
+        _usbVolumeWarningShown) {
+      return;
+    }
+    _usbVolumeWarningShown = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || usbAudioStatus.value.reason != 'volume_unavailable') {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.usbVolumeUnavailable),
+          duration: const Duration(seconds: 8),
+        ),
+      );
     });
   }
 
@@ -509,6 +536,7 @@ class _MainShellState extends ConsumerState<MainShell>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    usbAudioStatus.removeListener(_onUsbAudioStatusChanged);
     ShellNavigationService.unregisterTabSelectionHandler(this);
     _shareSubscription?.cancel();
     _pageController.dispose();
@@ -751,8 +779,20 @@ class _MainShellState extends ConsumerState<MainShell>
       setUsbBitPerfectEnabled(enabled);
     });
     ref.listen(
-      settingsProvider.select((s) => (s.usbDirect, s.usbDsdOverPcm)),
-      (_, value) => setUsbOutputOptions(direct: value.$1, allowDop: value.$2),
+      settingsProvider.select(
+        (s) => (
+          s.usbDirect,
+          s.usbDsdOverPcm,
+          s.usbAllowFixedVolume,
+          s.dapExclusive,
+        ),
+      ),
+      (_, value) => setUsbOutputOptions(
+        direct: value.$1,
+        allowDop: value.$2,
+        allowFixedVolume: value.$3,
+        dapExclusive: value.$4,
+      ),
     );
     ref.listen(
       settingsProvider.select((s) => (s.autoplay, s.localLibraryEnabled)),

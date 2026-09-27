@@ -53,6 +53,12 @@ void main() {
             'libusb',
             'libusb1-sys',
           ], await rootBundle.loadString('assets/licenses/usb.txt'));
+          yield LicenseEntryWithLineBreaks(const [
+            'Oboe',
+          ], await rootBundle.loadString('assets/licenses/oboe.txt'));
+          yield LicenseEntryWithLineBreaks(const [
+            'WavPack',
+          ], await rootBundle.loadString('assets/licenses/wavpack.txt'));
         }
       });
       _startupBenchmark?.observeFirstFrame();

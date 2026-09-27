@@ -1,15 +1,14 @@
 package com.zarz.spotiflac
 
-import java.io.Closeable
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /** Bounded DSF/uncompressed DSDIFF reader. Samples are normalized to MSB first. */
-internal class DsdFile private constructor(private val file: RandomAccessFile) : Closeable {
-    var rate = 0
+internal class DsdFile private constructor(private val file: RandomAccessFile) : DsdSource {
+    override var rate = 0
         private set
-    var channels = 0
+    override var channels = 0
         private set
     private var dataOffset = 0L
     private var bytesPerChannel = 0L
@@ -18,7 +17,7 @@ internal class DsdFile private constructor(private val file: RandomAccessFile) :
     private var cursor = 0L
     private var cachedBlock = -1L
     private var block = ByteArray(0)
-    val durationUs: Long get() = bytesPerChannel * 8_000_000 / rate
+    override val durationUs: Long get() = bytesPerChannel * 8_000_000 / rate
 
     companion object {
         fun open(path: String): DsdFile? {
@@ -125,14 +124,15 @@ internal class DsdFile private constructor(private val file: RandomAccessFile) :
         }
     }
 
-    fun seek(positionUs: Long, encoding: String): Long {
+    override fun seek(positionUs: Long, encoding: String): Long {
         val group = if (encoding == "dop") 2 else 4
         cursor = (positionUs.coerceIn(0, durationUs) * rate / 8_000_000 / group * group)
             .coerceAtMost(bytesPerChannel)
         return cursor * 8_000_000 / rate
     }
 
-    fun readFrames(encoding: String, subslot: Int, maxFrames: Int = 4096): ByteArray? {
+    override fun readFrames(encoding: String, subslot: Int, maxFrames: Int): ByteArray? {
+        require(maxFrames in 1..4096)
         if (cursor >= bytesPerChannel) return null
         require(encoding in listOf("dop", "dsd_be", "dsd_le"))
         require(subslot in 3..4)

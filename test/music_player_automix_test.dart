@@ -180,10 +180,18 @@ void main() {
       expect(defaults.usbBitPerfect, isFalse);
       expect(defaults.usbDirect, isFalse);
       expect(defaults.usbDsdOverPcm, isFalse);
+      expect(defaults.usbAllowFixedVolume, isFalse);
+      expect(defaults.dapExclusive, isFalse);
+      final upgraded = AppSettings.fromJson({
+        'usbBitPerfect': true,
+        'usbDirect': true,
+      });
+      expect(upgraded.usbAllowFixedVolume, isFalse);
       final selected = defaults.copyWith(
         usbBitPerfect: true,
         usbDirect: true,
         usbDsdOverPcm: true,
+        usbAllowFixedVolume: true,
         autoMix: true,
         playbackNormalization: true,
       );
@@ -191,6 +199,13 @@ void main() {
       expect(restored.usbBitPerfect, isTrue);
       expect(restored.usbDirect, isTrue);
       expect(restored.usbDsdOverPcm, isTrue);
+      expect(restored.usbAllowFixedVolume, isTrue);
+      expect(
+        AppSettings.fromJson(
+          defaults.copyWith(dapExclusive: true).toJson(),
+        ).dapExclusive,
+        isTrue,
+      );
       expect(restored.autoMix, isTrue);
       expect(restored.playbackNormalization, isTrue);
     },
@@ -218,6 +233,8 @@ void main() {
     late String? fallbackReason;
     late bool failResume;
     late bool fatal;
+    late bool volumeBlocked;
+    Map<String, dynamic>? hardwareVolume;
     late String transport;
     late Map<dynamic, dynamic> prepareArguments;
     Completer<void>? pauseReply;
@@ -240,6 +257,8 @@ void main() {
       fallbackReason = null;
       failResume = false;
       fatal = false;
+      volumeBlocked = false;
+      hardwareVolume = null;
       transport = 'pcm';
       prepareArguments = {};
       pauseReply = null;
@@ -263,6 +282,19 @@ void main() {
               'sampleRate': 96000,
               'bitDepth': 24,
               'transport': transport,
+              'driver': prepareArguments['direct'] == true
+                  ? 'usb_direct'
+                  : 'android',
+              'volumeBlocked': volumeBlocked,
+              if (hardwareVolume != null)
+                'volume': {...hardwareVolume!, 'token': token},
+            };
+          case 'volume':
+            expect((call.arguments as Map)['token'], token);
+            return {
+              ...hardwareVolume!,
+              'token': token,
+              'currentDb': (call.arguments as Map)['db'],
             };
           case 'position':
             return position;
@@ -292,6 +324,69 @@ void main() {
       expect(prepareArguments['direct'], isTrue);
       expect(prepareArguments['allowDop'], isTrue);
     });
+
+    test('hardware volume changes the DAC, never PCM gain', () async {
+      hardwareVolume = {
+        'available': true,
+        'minDb': -90.0,
+        'maxDb': 0.0,
+        'currentDb': -40.0,
+      };
+      await deck.setSource(
+        DeviceFileSource('/one.flac'),
+        preferBitPerfect: true,
+        directUsb: true,
+      );
+      expect(usbHardwareVolume.value?.currentDb, -40);
+      await setUsbHardwareVolume(0.5);
+      expect(usbHardwareVolume.value?.currentDb, -45);
+      expect(usbCalls, ['prepare', 'volume']);
+      expect(native.calls.where((call) => call.$2 == 'setVolume'), isEmpty);
+      await deck.stop();
+      expect(usbHardwareVolume.value, isNull);
+    });
+
+    test(
+      'uncontrolled DAC is blocked without ordinary full-volume fallback',
+      () async {
+        volumeBlocked = true;
+        hardwareVolume = {'available': false};
+        await deck.setSource(
+          DeviceFileSource('/one.flac'),
+          preferBitPerfect: true,
+          directUsb: true,
+        );
+        await expectLater(deck.resume(), throwsA(isA<UsbOutputUnavailable>()));
+        expect(usbCalls, ['prepare']);
+        expect(usbAudioStatus.value.reason, 'volume_unavailable');
+        expect(native.sources['usb-test'], isNull);
+        await setUsbHardwareVolume(1);
+        expect(usbCalls, ['prepare']);
+      },
+    );
+
+    test(
+      'AAudio exclusive and fixed volume require explicit options',
+      () async {
+        await deck.setSource(
+          DeviceFileSource('/one.wav'),
+          preferBitPerfect: true,
+          dapExclusive: true,
+        );
+        expect(prepareArguments['dapExclusive'], isTrue);
+        expect(prepareArguments['allowFixedVolume'], isFalse);
+        expect(prepareArguments['direct'], isFalse);
+        fallbackReason = 'exclusive_unavailable';
+        await deck.setSource(
+          DeviceFileSource('/one.wav'),
+          preferBitPerfect: true,
+          dapExclusive: true,
+        );
+        expect(usbAudioStatus.value.reason, 'exclusive_unavailable');
+        expect(deck.isDirect, isFalse);
+        expect(native.sources['usb-test'], '/one.wav');
+      },
+    );
 
     test(
       'changing tracks cancels a pending USB permission without fallback',
@@ -337,7 +432,7 @@ void main() {
         directUsb: true,
       );
       failResume = true;
-      await expectLater(deck.resume(), throwsA(isA<UsbDsdUnavailable>()));
+      await expectLater(deck.resume(), throwsA(isA<UsbOutputUnavailable>()));
       expect(native.sources['usb-test'], isNull);
       expect(deck.needsSourceReload, isTrue);
     });
@@ -436,6 +531,22 @@ void main() {
       expect(native.playing, {'usb-test'});
       expect(usbAudioStatus.value.reason, 'unsupported');
     });
+
+    test(
+      'direct USB failure before first sound never redirects to speaker',
+      () async {
+        failResume = true;
+        await deck.setSource(
+          DeviceFileSource('/one.flac'),
+          preferBitPerfect: true,
+          directUsb: true,
+        );
+        await expectLater(deck.resume(), throwsA(isA<UsbOutputUnavailable>()));
+        expect(native.sources['usb-test'], isNull);
+        expect(native.playing, isEmpty);
+        expect(usbAudioStatus.value.reason, 'route_changed');
+      },
+    );
 
     test(
       'route loss pauses and never starts the speaker automatically',

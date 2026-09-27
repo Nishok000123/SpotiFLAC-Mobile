@@ -31,6 +31,8 @@ class UsbBitPerfectPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Even
     private var engine: UsbPcmPlayback? = null
     private var direct: UsbDirectPlayback? = null
     private var useDirect = false
+    private var hiRes: HiResPlayback? = null
+    private var useHiRes = false
     private lateinit var appContext: Context
     private var sink: EventChannel.EventSink? = null
     private val main = Handler(Looper.getMainLooper())
@@ -50,14 +52,28 @@ class UsbBitPerfectPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Even
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         if (call.method == "prepare") {
-            if (useDirect) direct?.command(MethodCall("stop", null)) { _, _ -> }
+            if (useHiRes) hiRes?.command(MethodCall("stop", null)) { _, _ -> }
+            else if (useDirect) direct?.command(MethodCall("stop", null)) { _, _ -> }
             else if (Build.VERSION.SDK_INT >= 34) engine?.command(MethodCall("stop", null)) { _, _ -> }
             useDirect = call.argument<Boolean>("direct") == true
+            useHiRes = !useDirect && call.argument<Boolean>("dapExclusive") == true
+            if (useHiRes && hiRes == null) {
+                hiRes = HiResPlayback(appContext) { event -> main.post { sink?.success(event) } }
+            }
             if (useDirect && direct == null) {
                 direct = UsbDirectPlayback(appContext) { event ->
                     main.post { sink?.success(event) }
                 }
             }
+        }
+        if (useHiRes) {
+            hiRes?.command(call) { value, error ->
+                main.post {
+                    if (error == null) result.success(value)
+                    else result.error("aaudio_exclusive", error, null)
+                }
+            }
+            return
         }
         if (useDirect) {
             direct?.command(call) { value, error ->
@@ -90,6 +106,8 @@ class UsbBitPerfectPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Even
         sink = null
         direct?.dispose()
         direct = null
+        hiRes?.dispose()
+        hiRes = null
         if (Build.VERSION.SDK_INT >= 34) engine?.dispose()
         engine = null
     }

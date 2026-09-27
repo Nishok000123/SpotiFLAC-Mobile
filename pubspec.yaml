@@ -112,6 +112,8 @@ flutter:
     - assets/images/
     - assets/fonts/Inter-LICENSE.txt
     - assets/licenses/usb.txt
+    - assets/licenses/oboe.txt
+    - assets/licenses/wavpack.txt
 
   fonts:
     - family: Inter

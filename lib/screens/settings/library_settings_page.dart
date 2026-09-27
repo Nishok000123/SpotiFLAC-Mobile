@@ -19,6 +19,7 @@ import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/app_sliver_header.dart';
 import 'package:spotiflac_android/widgets/ios_library_folder_sheet.dart';
+import 'package:spotiflac_android/widgets/mornye_volume_control.dart';
 
 class LibrarySettingsPage extends ConsumerStatefulWidget {
   const LibrarySettingsPage({super.key});
@@ -203,6 +204,27 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
 
   Future<void> _cancelScan() async {
     await ref.read(localLibraryProvider.notifier).cancelScan();
+  }
+
+  Future<bool> _confirmAudioVolume(String message) async {
+    return await showAppDialog<bool>(
+          context: context,
+          builder: (context) => AppAlertDialog(
+            title: Text(context.l10n.usbVolumeWarningTitle),
+            content: Text(message),
+            actions: [
+              AppDialogAction(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(context.l10n.dialogCancel),
+              ),
+              AppDialogAction(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(context.l10n.usbVolumeAccept),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   Future<void> _clearLibrary() async {
@@ -913,6 +935,10 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
                                   ? 'DSD (DoP)'
                                   : 'DSD (Native)'} · ${(status.sampleRate! / 1000).toStringAsFixed(1)} kHz',
                             'dsd_unsupported' => context.l10n.usbDsdUnsupported,
+                            'volume_unavailable' =>
+                              context.l10n.usbVolumeUnavailable,
+                            'exclusive_unavailable' =>
+                              context.l10n.dapExclusiveUnavailable,
                             'permission_denied' =>
                               context.l10n.usbPermissionDenied,
                             'no_usb' => context.l10n.usbBitPerfectNoDevice,
@@ -925,9 +951,19 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
                           },
                       ].join('\n\n'),
                       value: settings.usbBitPerfect,
-                      onChanged: (value) => ref
-                          .read(settingsProvider.notifier)
-                          .setUsbBitPerfect(value),
+                      onChanged: (value) async {
+                        if (value &&
+                            !await _confirmAudioVolume(
+                              context.l10n.usbVolumeWarning,
+                            )) {
+                          return;
+                        }
+                        if (mounted) {
+                          ref
+                              .read(settingsProvider.notifier)
+                              .setUsbBitPerfect(value);
+                        }
+                      },
                       showDivider: settings.usbBitPerfect,
                     ),
                   ),
@@ -937,9 +973,18 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
                     title: context.l10n.usbDirect,
                     subtitle: context.l10n.usbDirectDescription,
                     value: settings.usbDirect,
-                    onChanged: (value) =>
-                        ref.read(settingsProvider.notifier).setUsbDirect(value),
-                    showDivider: settings.usbDirect,
+                    onChanged: (value) async {
+                      if (value &&
+                          !await _confirmAudioVolume(
+                            context.l10n.usbVolumeWarning,
+                          )) {
+                        return;
+                      }
+                      if (mounted) {
+                        ref.read(settingsProvider.notifier).setUsbDirect(value);
+                      }
+                    },
+                    showDivider: true,
                   ),
                   if (settings.usbDirect)
                     SettingsSwitchItem(
@@ -950,8 +995,70 @@ class _LibrarySettingsPageState extends ConsumerState<LibrarySettingsPage> {
                       onChanged: (value) => ref
                           .read(settingsProvider.notifier)
                           .setUsbDsdOverPcm(value),
-                      showDivider: false,
+                      showDivider: true,
                     ),
+                  if (settings.usbDirect) ...[
+                    SettingsSwitchItem(
+                      icon: Icons.volume_up_outlined,
+                      title: context.l10n.usbFixedVolume,
+                      subtitle: context.l10n.usbFixedVolumeDescription,
+                      value: settings.usbAllowFixedVolume,
+                      onChanged: (value) async {
+                        if (value &&
+                            !await _confirmAudioVolume(
+                              context.l10n.usbFixedVolumeWarning,
+                            )) {
+                          return;
+                        }
+                        if (mounted) {
+                          ref
+                              .read(settingsProvider.notifier)
+                              .setUsbAllowFixedVolume(value);
+                        }
+                      },
+                    ),
+                    ValueListenableBuilder<UsbVolumeState?>(
+                      valueListenable: usbHardwareVolume,
+                      builder: (context, volume, _) => Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              context.l10n.usbHardwareVolume,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            Text(
+                              volume == null
+                                  ? context.l10n.usbBitPerfectPending
+                                  : volume.available
+                                  ? '${volume.currentDb.toStringAsFixed(1)} dB'
+                                  : context.l10n.usbVolumeUnavailable,
+                            ),
+                            if (volume?.available == true)
+                              MornyeVolumeControl(
+                                foreground: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  SettingsSwitchItem(
+                    icon: Icons.headphones,
+                    title: context.l10n.dapExclusive,
+                    subtitle: context.l10n.dapExclusiveDescription,
+                    value: settings.dapExclusive,
+                    onChanged: (value) => ref
+                        .read(settingsProvider.notifier)
+                        .setDapExclusive(value),
+                    showDivider: false,
+                  ),
                 ],
               ],
             ),

@@ -295,8 +295,8 @@ internal fun MainActivity.readAudioMetadataFromUri(
     uri, displayNameHint, fallbackExt,
     acceptDirect = { !it.optBoolean("metadataFromFilename", false) },
 ) { path, name ->
-    if (name.endsWith(".dsf", true) || name.endsWith(".dff", true)) {
-        DsdFile.open(path)?.use { source ->
+    if (name.endsWith(".dsf", true) || name.endsWith(".dff", true) || name.endsWith(".wv", true)) {
+        DsdSource.open(path)?.use { source ->
             return@readMetadataFromUri JSONObject().apply {
                 put("trackName", name.substringBeforeLast('.'))
                 put("artistName", "Unknown Artist")

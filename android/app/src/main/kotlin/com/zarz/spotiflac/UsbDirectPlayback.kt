@@ -15,6 +15,7 @@ import android.os.Looper
 import android.os.PowerManager
 import com.spotiflac.backend.UsbDirectOutput
 import com.spotiflac.backend.UsbOutputFormat
+import com.spotiflac.backend.UsbHardwareVolume
 import io.flutter.plugin.common.MethodCall
 import java.nio.ByteBuffer
 
@@ -35,7 +36,7 @@ internal class UsbDirectPlayback(private val context: Context, private val emit:
     @Volatile private var deviceId: Int? = null
     private var format: UsbOutputFormat? = null
     private var pcm: UsbPcmSource? = null
-    private var dsd: DsdFile? = null
+    private var dsd: DsdSource? = null
     private var pending: ByteBuffer? = null
     private var playing = false
     private var ended = false
@@ -46,13 +47,18 @@ internal class UsbDirectPlayback(private val context: Context, private val emit:
     private var writtenFrames = 0L
     private var pausedPositionUs = 0L
     private var needsSeek = false
+    private var allowFixedVolume = false
+    private val deviceVolumes = mutableMapOf<Int, Double>()
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             @Suppress("DEPRECATION")
             val device = intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE) ?: return
-            if (intent.action == UsbManager.ACTION_USB_DEVICE_DETACHED && device.deviceId == deviceId) {
-                worker.post { fail("USB disconnected") }
+            if (intent.action == UsbManager.ACTION_USB_DEVICE_DETACHED) {
+                worker.post {
+                    deviceVolumes.remove(device.deviceId)
+                    if (device.deviceId == deviceId) fail("USB disconnected")
+                }
             } else if (intent.action == permissionAction) {
                 val request = permission ?: return
                 if (request.device.deviceId != device.deviceId) return
@@ -109,6 +115,14 @@ internal class UsbDirectPlayback(private val context: Context, private val emit:
                     "pause" -> { pause(); null }
                     "seek" -> { seek((call.argument<Number>("position")?.toLong() ?: 0) * 1000); null }
                     "position" -> positionUs() / 1000
+                    "volume" -> {
+                        require(call.argument<Int>("token") == token) { "Stale volume request" }
+                        val audio = requireNotNull(output)
+                        val db = call.argument<Number>("db")?.toDouble()
+                        val value = if (db == null) audio.volume() else audio.setVolume(db)
+                        if (db != null && value.available) deviceId?.let { deviceVolumes[it] = value.currentDb }
+                        volumeMap(value)
+                    }
                     "stop" -> { closeSource(); null }
                     else -> error("Unknown USB command")
                 }
@@ -124,9 +138,12 @@ internal class UsbDirectPlayback(private val context: Context, private val emit:
                 if (request.revision != revision) { request.done(mapOf("reason" to "cancelled"), null); return@post }
                 closeSource()
                 token = request.call.argument<Int>("token") ?: 0
+                allowFixedVolume = request.call.argument<Boolean>("allowFixedVolume") == true
                 val path = requireNotNull(request.call.argument<String>("path"))
-                dsd = DsdFile.open(path)
-                isDsd = dsd != null
+                isDsd = DsdSource.isDsd(path)
+                dsd = DsdSource.open(path)
+                isDsd = isDsd || dsd != null
+                if (isDsd) requireNotNull(dsd) { "DSD decoder unavailable" }
                 if (!isDsd) pcm = UsbPcmSource(path)
                 val rate = dsd?.rate ?: requireNotNull(pcm).rate
                 val channels = dsd?.channels ?: requireNotNull(pcm).channels
@@ -138,6 +155,11 @@ internal class UsbDirectPlayback(private val context: Context, private val emit:
                 val audio = UsbDirectOutput.open(usb.fileDescriptor, usb.rawDescriptors, rate.toUInt(), channels.toUByte(), bits.toUByte(), isDsd, request.call.argument<Boolean>("allowDop") == true)
                 output = audio
                 format = audio.format()
+                if (audio.volume().available) {
+                    deviceVolumes[request.device.deviceId]?.let {
+                        audio.setVolume(minOf(it, audio.volume().restoreLimitDb))
+                    }
+                }
                 if (request.revision != revision) { closeSource(); request.done(mapOf("reason" to "cancelled"), null); return@post }
                 val deadline = android.os.SystemClock.elapsedRealtime() + 5000
                 while (pending == null && !ended) {
@@ -149,7 +171,9 @@ internal class UsbDirectPlayback(private val context: Context, private val emit:
                 val f = requireNotNull(format)
                 request.done(mapOf("ready" to true, "device" to (request.device.productName ?: "USB audio"),
                     "sampleRate" to rate, "bitDepth" to bits, "duration" to durationUs / 1000,
-                    "transport" to f.encoding, "carrierRate" to f.sampleRate.toLong(), "driver" to "usb_direct"), null)
+                    "transport" to f.encoding, "carrierRate" to f.sampleRate.toLong(), "driver" to "usb_direct",
+                    "volume" to volumeMap(audio.volume()),
+                    "volumeBlocked" to (!audio.volume().available && !allowFixedVolume)), null)
             } catch (error: Exception) {
                 android.util.Log.i("UsbDirect", "Direct output unavailable: ${error.message}")
                 closeSource()
@@ -174,6 +198,7 @@ internal class UsbDirectPlayback(private val context: Context, private val emit:
     private fun resume() {
         check(!failed) { "USB route changed; reopen track" }
         val audio = requireNotNull(output)
+        check(audio.volume().available || allowFixedVolume) { "volume_unavailable" }
         if (needsSeek) resetSource(pausedPositionUs)
         fill()
         audio.start()
@@ -183,6 +208,11 @@ internal class UsbDirectPlayback(private val context: Context, private val emit:
         worker.removeCallbacks(pump)
         worker.post(pump)
     }
+
+    private fun volumeMap(volume: UsbHardwareVolume): Map<String, Any> = mapOf(
+        "available" to volume.available, "minDb" to volume.minDb,
+        "maxDb" to volume.maxDb, "currentDb" to volume.currentDb, "token" to token,
+    )
 
     private fun fill() {
         val f = requireNotNull(format)
