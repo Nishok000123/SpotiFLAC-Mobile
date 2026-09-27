@@ -312,10 +312,11 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     });
   }
 
-  Color _iconColorFor(_Destination destination) =>
-      destination.iconColor[Theme.of(context).brightness == Brightness.dark
-          ? 300
-          : 800]!;
+  Color _iconColorFor(_Destination destination) => context.isMornye
+      ? destination.iconColor[Theme.of(context).brightness == Brightness.dark
+            ? 300
+            : 800]!
+      : Theme.of(context).colorScheme.onSurfaceVariant;
 
   Widget _itemFor(_Destination destination, {required bool showDivider}) {
     return SettingsItem(
