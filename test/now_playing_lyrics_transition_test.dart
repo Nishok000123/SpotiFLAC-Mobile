@@ -1384,6 +1384,32 @@ void main() {
         return (dot.decoration! as BoxDecoration).color!.a;
       });
 
+      if (layout != 'material') {
+        // Before playback, the countdown must reserve no blank row. Its
+        // entrance pushes the upcoming vocal down instead of jumping it.
+        expect(find.byType(LyricGapIndicator), findsNothing);
+        final firstVocal = find.text('First vocal');
+        final before = tester.getTopLeft(firstVocal).dy;
+        playback.add(
+          PlaybackState(
+            processingState: AudioProcessingState.ready,
+            updatePosition: const Duration(seconds: 3),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+        var previous = before;
+        for (var frame = 0; frame < 4; frame++) {
+          await tester.pump(const Duration(milliseconds: 80));
+          final top = tester.getTopLeft(firstVocal).dy;
+          expect(top, greaterThan(previous));
+          expect(top - before, lessThan(56));
+          previous = top;
+        }
+        await tester.pumpAndSettle();
+        expect(tester.getTopLeft(firstVocal).dy - before, closeTo(56, 0.1));
+      }
+
       for (final (seconds, expected) in [
         (3, [1.0, 0.25, 0.25]),
         (6, [1.0, 1.0, 0.25]),
@@ -2758,19 +2784,7 @@ void main() {
           }
           await tester.pumpAndSettle();
           final lead = tester.widget<Text>(find.text('Lead'));
-          final backing = tester.widget<Text>(find.text('Echo'));
-          expect(
-            backing.style!.fontSize,
-            lessThan(lead.style!.fontSize! * 0.85),
-          );
-          expect(backing.textAlign, TextAlign.right);
-          if (mornye) {
-            expect(
-              tester.getTopLeft(find.text('Echo')).dy -
-                  tester.getBottomLeft(find.text('Lead')).dy,
-              closeTo(6, 0.1),
-            );
-          }
+          expect(find.text('Echo'), findsNothing);
           expect(find.textContaining('[bg:'), findsNothing);
           expect(find.textContaining('v1:'), findsNothing);
 
@@ -2798,7 +2812,25 @@ void main() {
           await seek(2000);
           expect(timed('Lead'), findsOneWidget);
           expect(timed('Echo'), findsNothing);
+          expect(find.text('Echo'), findsNothing);
           final leadOffset = offset();
+          final leadTop = tester.getTopLeft(timed('Lead')).dy;
+          var nextTop = tester.getTopLeft(find.text('Next')).dy;
+          playback.add(
+            PlaybackState(
+              processingState: AudioProcessingState.ready,
+              updatePosition: const Duration(seconds: 3),
+            ),
+          );
+          await tester.pump();
+          await tester.pump();
+          for (var frame = 0; frame < 4; frame++) {
+            await tester.pump(const Duration(milliseconds: 80));
+            expect(tester.getTopLeft(timed('Lead')).dy, closeTo(leadTop, 0.1));
+            final top = tester.getTopLeft(find.text('Next')).dy;
+            expect(top, greaterThan(nextTop));
+            nextTop = top;
+          }
           await seek(4000);
           expect(timed('Lead'), findsOneWidget);
           expect(timed('Echo'), findsOneWidget);
@@ -2811,9 +2843,24 @@ void main() {
           expect(timed('Lead'), findsNothing);
           expect(timed('Echo'), findsOneWidget);
           expect(offset(), closeTo(leadOffset, 0.1));
+          await seek(7500);
+          final backing = tester.widget<Text>(find.text('Echo'));
+          expect(
+            backing.style!.fontSize,
+            lessThan(lead.style!.fontSize! * 0.85),
+          );
+          expect(backing.textAlign, TextAlign.right);
+          if (mornye) {
+            expect(
+              tester.getTopLeft(find.text('Echo')).dy -
+                  tester.getBottomLeft(find.text('Lead')).dy,
+              closeTo(6, 0.1),
+            );
+          }
           await seek(2000);
           expect(timed('Lead'), findsOneWidget);
           expect(timed('Echo'), findsNothing);
+          expect(find.text('Echo'), findsNothing);
           expect(tester.takeException(), isNull);
         },
       );

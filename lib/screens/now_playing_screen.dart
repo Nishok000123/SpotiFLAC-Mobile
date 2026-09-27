@@ -4,8 +4,8 @@ import 'dart:ui' show BoxHeightStyle, ImageFilter;
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
-import 'package:flutter/foundation.dart' show ValueListenable;
-import 'package:flutter/rendering.dart' show ScrollDirection;
+import 'package:flutter/foundation.dart' show ValueListenable, listEquals;
+import 'package:flutter/rendering.dart' show OverflowBoxFit, ScrollDirection;
 import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
@@ -2916,7 +2916,8 @@ class _SyncedLyricsView extends ConsumerStatefulWidget {
   ConsumerState<_SyncedLyricsView> createState() => _SyncedLyricsViewState();
 }
 
-class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
+class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView>
+    with SingleTickerProviderStateMixin {
   final ScrollController _scroll = ScrollController();
   ProviderSubscription<Duration>? _positionSubscription;
   ProviderSubscription<bool>? _playingSubscription;
@@ -2940,6 +2941,49 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   Object? _lineLayoutKey;
   double? _viewportHeight;
   Offset? _layoutVisibility;
+  late final AnimationController _rowReveal = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  )..addListener(_revealTick);
+  List<double> _revealFrom = [];
+  List<double> _revealTo = [];
+  List<double>? _layoutRowVisibility;
+  List<double>? _targetLineExtents;
+  bool _preserveRevealAnchor = false;
+
+  void _revealTick() {
+    if (mounted) setState(() {});
+  }
+
+  List<double> get _rowVisibility {
+    final progress = Curves.easeInOutCubic.transform(_rowReveal.value);
+    return List.generate(
+      _lines.length,
+      (index) =>
+          _revealFrom[index] +
+          (_revealTo[index] - _revealFrom[index]) * progress,
+    );
+  }
+
+  void _updateRowVisibility({bool immediate = false, bool sameFocus = false}) {
+    _preserveRevealAnchor = sameFocus;
+    final target = List.generate(_lines.length, (index) {
+      final line = _lines[index];
+      if (line.text.isEmpty) return _activeLines.contains(index) ? 1.0 : 0.0;
+      if (line.isBackground) return index <= _active ? 1.0 : 0.0;
+      return 1.0;
+    });
+    if (immediate || MediaQuery.disableAnimationsOf(context)) {
+      _rowReveal.stop();
+      _revealFrom = target;
+      _revealTo = target;
+      return;
+    }
+    if (listEquals(target, _revealTo)) return;
+    _revealFrom = _rowVisibility;
+    _revealTo = target;
+    _rowReveal.forward(from: 0);
+  }
 
   // The header stays fixed when controls collapse. Anchor lyrics to it, not
   // to a fraction of the growing viewport, including during the transition.
@@ -2990,6 +3034,13 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     _lineExtents = null;
     _lineLayoutKey = null;
     _lines = lyricsTimelineWithGaps(widget.lyrics.lines);
+    _rowReveal.stop();
+    _revealFrom = _revealTo = [
+      for (final line in _lines)
+        if (line.isBackground || line.text.isEmpty) 0.0 else 1.0,
+    ];
+    _layoutRowVisibility = null;
+    _targetLineExtents = null;
     _displayLayout = LyricDisplayLayout(_lines);
     _lineKeys = List<GlobalKey>.generate(
       _lines.length,
@@ -3015,6 +3066,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     _loading = ref.read(playbackLoadingProvider);
     _active = _activeIndexAt(position);
     _activeLines = activeLyricIndices(_lines, position, _active);
+    _updateRowVisibility(immediate: true);
     _activeTransitionPosition = position;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_maybeAutoScroll(_active, immediate: true));
@@ -3102,6 +3154,10 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
       _active = active;
       _activeLines = activeLines;
       _activeTransitionPosition = position;
+      _updateRowVisibility(
+        sameFocus:
+            active >= 0 && _displayLayout.focusForLine[active] == previousFocus,
+      );
     });
     if (!indexChanged ||
         (active >= 0 && _displayLayout.focusForLine[active] == previousFocus)) {
@@ -3161,6 +3217,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     _lineBoundaryTimer?.cancel();
     _userScrollIdleTimer?.cancel();
     _scroll.dispose();
+    _rowReveal.dispose();
     super.dispose();
   }
 
@@ -3247,7 +3304,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
     final duration = immediate || MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : Duration(milliseconds: widget.seekPreview.value != null ? 220 : 380);
-    final extents = _lineExtents;
+    final extents = _targetLineExtents;
     if (context.isMornye && extents != null && row < extents.length) {
       final position = _scroll.position;
       final target = extents.take(row).fold(0.0, (sum, extent) => sum + extent);
@@ -3336,6 +3393,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
   Widget _buildLyrics(BuildContext context, Offset visibility) {
     final lines = _lines;
     final active = _active;
+    final rowVisibility = _rowVisibility;
     final loading = ref.watch(playbackLoadingProvider);
     final mornye = context.isMornye;
     final highContrast = MediaQuery.highContrastOf(context);
@@ -3383,7 +3441,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
             _measureMornyeLines(layoutWidth);
             // Reuse text measurements; only interpolate row heights as the
             // supplements fade. Scrolling follows the same animation clock.
-            _lineExtents = List.generate(_lineMeasurements.length, (row) {
+            final fullExtents = List.generate(_lineMeasurements.length, (row) {
               final (primary, pronunciation, translation) =
                   _lineMeasurements[row];
               final index = _displayLayout.lineOrder[row];
@@ -3396,9 +3454,20 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                           translation * visibility.dy) *
                       lyricScale;
             });
+            _lineExtents = List.generate(fullExtents.length, (row) {
+              return fullExtents[row] *
+                  rowVisibility[_displayLayout.lineOrder[row]];
+            });
+            _targetLineExtents = List.generate(fullExtents.length, (row) {
+              return fullExtents[row] *
+                  _revealTo[_displayLayout.lineOrder[row]];
+            });
             if (previousExtents != null &&
-                _layoutVisibility != null &&
-                _layoutVisibility != visibility &&
+                ((_layoutVisibility != null &&
+                        _layoutVisibility != visibility) ||
+                    (_preserveRevealAnchor &&
+                        _layoutRowVisibility != null &&
+                        !listEquals(_layoutRowVisibility, rowVisibility))) &&
                 previousExtents.length == _lineExtents!.length &&
                 _scroll.hasClients) {
               var anchor = _active < 0
@@ -3423,6 +3492,7 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
             }
           }
           _layoutVisibility = visibility;
+          _layoutRowVisibility = rowVisibility;
           if (_viewportHeight != constraints.maxHeight) {
             _viewportHeight = constraints.maxHeight;
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -3465,6 +3535,8 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
               final line = lines[index];
               final leadIndex = _displayLayout.leadForLine[index];
               final textAlign = _lyricTextAlign(context, lines[leadIndex]);
+              final reveal = rowVisibility[index];
+              if (reveal == 0) return SizedBox.shrink(key: _lineKeys[index]);
               final isActive = _activeLines.contains(index);
               final isPast = index < active;
 
@@ -3477,33 +3549,37 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                   : widget.colorScheme.onSurfaceVariant.withValues(alpha: 0.8);
 
               if (line.text.isEmpty) {
-                return Padding(
-                  key: _lineKeys[index],
-                  padding: EdgeInsets.symmetric(
-                    vertical: context.tokens.lyricsLinePaddingV,
-                  ),
-                  child: SizedBox(
-                    height: 24,
-                    child: Align(
-                      alignment: mornye
-                          ? Alignment.centerLeft
-                          : Alignment.center,
-                      child:
-                          isActive &&
-                              widget.isActive &&
-                              (!loading || widget.seekPreview.value != null)
-                          ? ValueListenableBuilder<Duration?>(
-                              valueListenable: widget.seekPreview,
-                              builder: (context, preview, _) =>
-                                  LyricGapIndicator(
-                                    key: ValueKey(line.time),
-                                    start: line.time,
-                                    end: line.end!,
-                                    color: color,
-                                    position: preview,
-                                  ),
-                            )
-                          : null,
+                return _revealRow(
+                  index,
+                  reveal,
+                  textAlign,
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      vertical: context.tokens.lyricsLinePaddingV,
+                    ),
+                    child: SizedBox(
+                      height: 24,
+                      child: Align(
+                        alignment: mornye
+                            ? Alignment.centerLeft
+                            : Alignment.center,
+                        child:
+                            isActive &&
+                                widget.isActive &&
+                                (!loading || widget.seekPreview.value != null)
+                            ? ValueListenableBuilder<Duration?>(
+                                valueListenable: widget.seekPreview,
+                                builder: (context, preview, _) =>
+                                    LyricGapIndicator(
+                                      key: ValueKey(line.time),
+                                      start: line.time,
+                                      end: line.end!,
+                                      color: color,
+                                      position: preview,
+                                    ),
+                              )
+                            : null,
+                      ),
                     ),
                   ),
                 );
@@ -3606,23 +3682,27 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
                 );
               }
 
-              return Padding(
-                key: _lineKeys[index],
-                padding: _linePadding(index),
-                child: GestureDetector(
-                  onTap: () =>
-                      ref.read(musicPlayerControllerProvider).seek(line.time),
-                  child: AnimatedScale(
-                    scale: mornye || isActive ? 1.0 : 0.96,
-                    alignment: Alignment.center,
-                    duration: const Duration(milliseconds: 280),
-                    curve: Curves.easeOutCubic,
-                    child: AnimatedOpacity(
-                      opacity: mornye
-                          ? (isActive || highContrast ? 1 : 0.48)
-                          : (isActive ? 1.0 : (isPast ? 0.55 : 0.85)),
+              return _revealRow(
+                index,
+                reveal,
+                textAlign,
+                Padding(
+                  padding: _linePadding(index),
+                  child: GestureDetector(
+                    onTap: () =>
+                        ref.read(musicPlayerControllerProvider).seek(line.time),
+                    child: AnimatedScale(
+                      scale: mornye || isActive ? 1.0 : 0.96,
+                      alignment: Alignment.center,
                       duration: const Duration(milliseconds: 280),
-                      child: content,
+                      curve: Curves.easeOutCubic,
+                      child: AnimatedOpacity(
+                        opacity: mornye
+                            ? (isActive || highContrast ? 1 : 0.48)
+                            : (isActive ? 1.0 : (isPast ? 0.55 : 0.85)),
+                        duration: const Duration(milliseconds: 280),
+                        child: content,
+                      ),
                     ),
                   ),
                 ),
@@ -3631,6 +3711,39 @@ class _SyncedLyricsViewState extends ConsumerState<_SyncedLyricsView> {
           );
         },
       ),
+    );
+  }
+
+  Widget _revealRow(
+    int index,
+    double visibility,
+    TextAlign align,
+    Widget child,
+  ) {
+    return KeyedSubtree(
+      key: _lineKeys[index],
+      child: !_lines[index].isBackground && _lines[index].text.isNotEmpty
+          ? child
+          : IgnorePointer(
+              ignoring: visibility < 1,
+              child: LyricSupplementTransition(
+                visibility: visibility,
+                alignment: align == TextAlign.right
+                    ? Alignment.topRight
+                    : align == TextAlign.center
+                    ? Alignment.topCenter
+                    : Alignment.topLeft,
+                // A fixed-extent row is already shrinking. Measure its
+                // contents at full height so fitting does not scale it twice.
+                child: OverflowBox(
+                  minHeight: 0,
+                  maxHeight: double.infinity,
+                  fit: OverflowBoxFit.deferToChild,
+                  alignment: Alignment.topCenter,
+                  child: child,
+                ),
+              ),
+            ),
     );
   }
 
