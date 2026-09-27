@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
+import 'package:material_3_expressive/material_3_expressive.dart';
+import 'package:spotiflac_android/theme/material_expressive.dart';
 import 'package:spotiflac_android/widgets/app_switch.dart';
 import 'package:spotiflac_android/theme/app_tokens.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
@@ -232,6 +234,32 @@ class SettingsGroup extends StatelessWidget {
                 vertical: 4,
               ),
           child: MornyeGlassPanel(child: child),
+        ),
+      );
+    }
+
+    if (materialExpressiveEnabled(context)) {
+      return LayoutBuilder(
+        builder: (context, constraints) => Padding(
+          padding:
+              margin ??
+              EdgeInsets.symmetric(
+                horizontal:
+                    16 +
+                    (constraints.hasBoundedWidth
+                        ? wideInsetForWidth(constraints.maxWidth)
+                        : 0),
+                vertical: 4,
+              ),
+          child: MaterialExpressiveScope(
+            child: M3ECard(
+              variant: M3ECardVariant.filled,
+              color: cardColor,
+              padding: EdgeInsets.zero,
+              borderRadius: context.tokens.borderRadiusCard,
+              child: child,
+            ),
+          ),
         ),
       );
     }

@@ -10,6 +10,8 @@ import 'package:spotiflac_android/theme/cover_palette.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/theme/mornye_icons.dart';
 import 'package:spotiflac_android/widgets/mornye_chrome.dart';
+import 'package:spotiflac_android/widgets/expressive_button.dart';
+import 'package:spotiflac_android/widgets/expressive_icon_button.dart';
 import 'package:spotiflac_android/utils/adaptive_layout.dart';
 
 /// Collapsing album-detail header shared by the album, local-album, and
@@ -565,32 +567,30 @@ class AlbumPlayActions extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Flexible(
-          child: FilledButton.icon(
+          child: ExpressiveButton(
             onPressed: onPlay,
             icon: const Icon(Icons.play_arrow, size: 20),
-            label: Text(
-              playLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
             style: FilledButton.styleFrom(
               backgroundColor: scheme.primary,
               foregroundColor: scheme.onPrimary,
               minimumSize: Size(0, tokens.minTouchTarget),
               shape: const StadiumBorder(),
             ),
+            child: Text(
+              playLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ),
         SizedBox(width: tokens.gapMd),
-        IconButton.filledTonal(
+        ExpressiveIconButton(
           tooltip: shuffleTooltip,
           onPressed: onShuffle,
           icon: const Icon(Icons.shuffle),
-          style: IconButton.styleFrom(
-            minimumSize: Size.square(tokens.minTouchTarget),
-            backgroundColor: scheme.secondaryContainer.withValues(alpha: 0.8),
-            foregroundColor: scheme.onSecondaryContainer,
-          ),
+          size: tokens.minTouchTarget,
+          backgroundColor: scheme.secondaryContainer.withValues(alpha: 0.8),
+          foregroundColor: scheme.onSecondaryContainer,
         ),
       ],
     );
@@ -625,10 +625,9 @@ class HeaderFilledButton extends StatelessWidget {
         prominent: !tonal,
       );
     }
-    return FilledButton.icon(
+    return ExpressiveButton(
       onPressed: onPressed,
       icon: Icon(icon, size: 18),
-      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       style: FilledButton.styleFrom(
         backgroundColor: scheme.primary,
         foregroundColor: scheme.onPrimary,
@@ -637,6 +636,7 @@ class HeaderFilledButton extends StatelessWidget {
         minimumSize: Size(0, tokens.minTouchTarget),
         shape: const StadiumBorder(),
       ),
+      child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }
@@ -730,15 +730,13 @@ class HeaderCircleButton extends ConsumerWidget {
         ),
       );
     }
-    return IconButton.filledTonal(
+    return ExpressiveIconButton(
       onPressed: onPressed,
       icon: Icon(icon, size: iconSize),
       tooltip: tooltip,
-      style: IconButton.styleFrom(
-        minimumSize: Size.square(buttonSize ?? tokens.minTouchTarget),
-        backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.7),
-        foregroundColor: iconColor ?? scheme.onSurfaceVariant,
-      ),
+      size: buttonSize ?? tokens.minTouchTarget,
+      backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.7),
+      foregroundColor: iconColor ?? scheme.onSurfaceVariant,
     );
   }
 }

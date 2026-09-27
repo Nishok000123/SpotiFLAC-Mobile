@@ -7,8 +7,7 @@ import 'package:spotiflac_android/theme/app_tokens.dart';
 class AppTheme {
   static const Color defaultSeedColor = Color(kDefaultSeedColor);
 
-  /// Component radii resolve from the same tokens the widgets read, so the
-  /// scale cannot drift between `ThemeData` and hand-built containers.
+  /// Shared surfaces use one radius scale; actions use round Material shapes.
   static const AppTokens _tokens = AppTokens.standard;
 
   // Override Flutter's default page transitions. Recent Flutter defaults the
@@ -148,9 +147,7 @@ class AppTheme {
       ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_tokens.radiusControl),
-          ),
+          shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
       );
@@ -158,9 +155,7 @@ class AppTheme {
   static FilledButtonThemeData _filledButtonTheme(ColorScheme scheme) =>
       FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_tokens.radiusControl),
-          ),
+          shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
       );
@@ -168,9 +163,7 @@ class AppTheme {
   static OutlinedButtonThemeData _outlinedButtonTheme(ColorScheme scheme) =>
       OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_tokens.radiusControl),
-          ),
+          shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
       );

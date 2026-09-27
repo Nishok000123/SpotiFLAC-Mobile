@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoColors;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:spotiflac_android/providers/runtime_profile_provider.dart';
+import 'package:spotiflac_android/theme/material_expressive.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/widgets/native_glass_metrics.dart';
 
@@ -24,6 +26,15 @@ class AppSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (materialExpressiveEnabled(context)) {
+      return MaterialExpressiveScope(
+        child: M3ESwitch(
+          value: value,
+          onChanged: onChanged,
+          semanticLabel: semanticLabel,
+        ),
+      );
+    }
     if (!context.isMornye) {
       return adaptive
           ? Switch.adaptive(value: value, onChanged: onChanged)
@@ -132,7 +143,7 @@ class AppSwitchListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!context.isMornye) {
+    if (!context.isMornye && !materialExpressiveEnabled(context)) {
       return adaptive
           ? SwitchListTile.adaptive(
               value: value,

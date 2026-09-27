@@ -36,6 +36,7 @@ import 'package:spotiflac_android/widgets/update_dialog.dart';
 import 'package:spotiflac_android/widgets/animation_utils.dart';
 import 'package:spotiflac_android/widgets/settings_group.dart';
 import 'package:spotiflac_android/widgets/mini_player.dart';
+import 'package:spotiflac_android/widgets/expressive_navigation_bar.dart';
 import 'package:spotiflac_android/widgets/mornye_bottom_bar.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/widgets/selection_bottom_bar.dart';
@@ -1103,12 +1104,10 @@ class _MainShellState extends ConsumerState<MainShell>
                           ),
                         ),
                       ),
-                      child: NavigationBar(
+                      child: ExpressiveNavigationBar(
                         selectedIndex: _currentIndex.clamp(0, maxIndex),
                         onDestinationSelected: _onNavTap,
-                        animationDuration: const Duration(milliseconds: 500),
-                        elevation: 0,
-                        height: isTablet ? 72 : 64,
+                        isTablet: isTablet,
                         backgroundColor: settingsGroupColor(
                           context,
                         ).withValues(alpha: 0.72),

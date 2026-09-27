@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart';
+import 'package:spotiflac_android/theme/material_expressive.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 
 /// One inline surface, matching the metadata groups and dialog controls.
@@ -23,6 +25,30 @@ class AppContentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!context.isMornye) {
+      if (materialExpressiveEnabled(context) &&
+          (shape == null || shape is RoundedRectangleBorder)) {
+        return Padding(
+          padding: CardTheme.of(context).margin ?? const EdgeInsets.all(4),
+          child: MaterialExpressiveScope(
+            child: M3ECard(
+              variant: M3ECardVariant.filled,
+              padding: EdgeInsets.zero,
+              color: color,
+              elevation: elevation ?? 0,
+              border: shape is RoundedRectangleBorder
+                  ? (shape as RoundedRectangleBorder).side
+                  : null,
+              borderRadius: shape is RoundedRectangleBorder
+                  ? (shape as RoundedRectangleBorder).borderRadius.resolve(
+                      Directionality.of(context),
+                    )
+                  : BorderRadius.circular(20),
+              clipBehavior: clipBehavior,
+              child: Material(color: Colors.transparent, child: child),
+            ),
+          ),
+        );
+      }
       return Card(
         color: color,
         shape: shape,

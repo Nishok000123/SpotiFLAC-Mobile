@@ -22,6 +22,8 @@ import 'package:spotiflac_android/services/motion_artwork_store.dart';
 import 'package:video_player/video_player.dart';
 import 'package:spotiflac_android/screens/now_playing_screen.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
+import 'package:spotiflac_android/theme/app_theme.dart';
+import 'package:spotiflac_android/widgets/expressive_icon_button.dart';
 import 'package:spotiflac_android/widgets/mornye_volume_control.dart';
 import 'package:spotiflac_android/widgets/lyric_gap_indicator.dart';
 import 'package:spotiflac_android/widgets/mornye_player_queue.dart';
@@ -1707,6 +1709,26 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+  }
+
+  for (final width in [320.0, 430.0]) {
+    testWidgets('Material transport fits a $width dp phone', (tester) async {
+      await pumpNowPlaying(
+        tester,
+        theme: AppTheme.light(),
+        size: Size(width, 900),
+      );
+      mediaItems.add(item('first'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ExpressiveIconButton), findsNWidgets(5));
+      for (final element in find.byType(ExpressiveIconButton).evaluate()) {
+        final bounds = tester.getRect(find.byWidget(element.widget));
+        expect(bounds.left, greaterThanOrEqualTo(0));
+        expect(bounds.right, lessThanOrEqualTo(width));
+        expect(bounds.width, greaterThanOrEqualTo(48));
+      }
+      expect(tester.takeException(), isNull);
+    });
   }
 
   testWidgets('Mornye player renders Apple-style transport controls', (

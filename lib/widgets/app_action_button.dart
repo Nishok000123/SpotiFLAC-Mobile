@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:spotiflac_android/theme/mornye_icons.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/widgets/mornye_chrome.dart';
+import 'package:spotiflac_android/widgets/expressive_button.dart';
 
 /// Shared sheet actions follow the selected design on every platform.
 class AppActionButton extends StatelessWidget {
@@ -32,19 +33,14 @@ class AppActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!context.isMornye) {
-      return outlined
-          ? OutlinedButton.icon(
-              onPressed: onPressed,
-              icon: icon,
-              label: label,
-              style: style,
-            )
-          : FilledButton.icon(
-              onPressed: onPressed,
-              icon: icon,
-              label: label,
-              style: style,
-            );
+      return ExpressiveButton(
+        onPressed: onPressed,
+        icon: icon,
+        style: style,
+        outlined: outlined,
+        tonal: tonal,
+        child: label,
+      );
     }
     final scheme = Theme.of(context).colorScheme;
     final prominent = isDestructive || !outlined;

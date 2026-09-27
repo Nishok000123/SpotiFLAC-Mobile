@@ -33,6 +33,8 @@ import 'package:spotiflac_android/utils/logger.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/utils/synced_lyrics_scroll.dart';
 import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
+import 'package:spotiflac_android/widgets/app_loading_indicator.dart';
+import 'package:spotiflac_android/widgets/expressive_icon_button.dart';
 import 'package:spotiflac_android/widgets/aligned_lyric_pronunciation.dart';
 import 'package:spotiflac_android/widgets/lyric_supplement_transition.dart';
 import 'package:spotiflac_android/widgets/audio_quality_badges.dart';
@@ -2778,23 +2780,24 @@ class _PlaybackControls extends ConsumerWidget {
             horizontal: mornye ? (compact ? 16 : 32) : 0,
           ),
           child: Row(
-            mainAxisAlignment: mornye
-                ? MainAxisAlignment.spaceEvenly
-                : MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               if (!mornye)
-                IconButton(
+                ExpressiveIconButton(
                   iconSize: 24,
+                  selected: shuffleOn,
                   tooltip: shuffleOn
                       ? context.l10n.nowPlayingShuffleOn
                       : context.l10n.nowPlayingPlayInOrder,
-                  color: shuffleOn
+                  foregroundColor: shuffleOn
                       ? colorScheme.primary
                       : colorScheme.onSurfaceVariant,
+                  backgroundColor: shuffleOn
+                      ? colorScheme.primaryContainer
+                      : null,
                   icon: const Icon(Icons.shuffle),
                   onPressed: () => controller.setShuffle(!shuffleOn),
                 ),
-              if (!mornye) const SizedBox(width: 8),
               if (mornye)
                 MornyePlaybackButton(
                   icon: CupertinoIcons.backward_fill,
@@ -2803,14 +2806,13 @@ class _PlaybackControls extends ConsumerWidget {
                   onPressed: controller.previous,
                 )
               else
-                IconButton(
+                ExpressiveIconButton(
                   iconSize: 44,
-                  color: colorScheme.onSurface,
+                  foregroundColor: colorScheme.onSurface,
                   tooltip: context.l10n.nowPlayingPreviousTrack,
                   icon: const Icon(Icons.skip_previous),
                   onPressed: controller.previous,
                 ),
-              if (!mornye) SizedBox(width: context.tokens.playerControlGap),
               if (mornye)
                 MornyePlaybackButton(
                   icon: isPlaying
@@ -2828,30 +2830,22 @@ class _PlaybackControls extends ConsumerWidget {
                   onPressed: () => controller.togglePlayPause(isPlaying),
                 )
               else
-                Container(
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    iconSize: 44,
-                    padding: const EdgeInsets.all(12),
-                    color: colorScheme.onPrimary,
-                    tooltip: isPlaying
-                        ? context.l10n.actionPause
-                        : context.l10n.tooltipPlay,
-                    icon: isLoading
-                        ? const SizedBox.square(
-                            dimension: 32,
-                            child: CircularProgressIndicator(strokeWidth: 3),
-                          )
-                        : Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-                    onPressed: isLoading
-                        ? null
-                        : () => controller.togglePlayPause(isPlaying),
-                  ),
+                ExpressiveIconButton(
+                  size: 68,
+                  iconSize: 44,
+                  selected: isPlaying,
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  tooltip: isPlaying
+                      ? context.l10n.actionPause
+                      : context.l10n.tooltipPlay,
+                  icon: isLoading
+                      ? AppLoadingIndicator(color: colorScheme.onSurfaceVariant)
+                      : Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+                  onPressed: isLoading
+                      ? null
+                      : () => controller.togglePlayPause(isPlaying),
                 ),
-              if (!mornye) SizedBox(width: context.tokens.playerControlGap),
               if (mornye)
                 MornyePlaybackButton(
                   icon: CupertinoIcons.forward_fill,
@@ -2860,17 +2854,17 @@ class _PlaybackControls extends ConsumerWidget {
                   onPressed: controller.next,
                 )
               else
-                IconButton(
+                ExpressiveIconButton(
                   iconSize: 44,
-                  color: colorScheme.onSurface,
+                  foregroundColor: colorScheme.onSurface,
                   tooltip: context.l10n.nowPlayingNextTrack,
                   icon: const Icon(Icons.skip_next),
                   onPressed: controller.next,
                 ),
-              if (!mornye) const SizedBox(width: 8),
               if (!mornye)
-                IconButton(
+                ExpressiveIconButton(
                   iconSize: 24,
+                  selected: repeatMode != AudioServiceRepeatMode.none,
                   tooltip: switch (repeatMode) {
                     AudioServiceRepeatMode.one =>
                       context.l10n.nowPlayingRepeatOne,
@@ -2878,9 +2872,12 @@ class _PlaybackControls extends ConsumerWidget {
                       context.l10n.nowPlayingRepeatOff,
                     _ => context.l10n.nowPlayingRepeatAll,
                   },
-                  color: repeatMode == AudioServiceRepeatMode.none
+                  foregroundColor: repeatMode == AudioServiceRepeatMode.none
                       ? colorScheme.onSurfaceVariant
                       : colorScheme.primary,
+                  backgroundColor: repeatMode == AudioServiceRepeatMode.none
+                      ? null
+                      : colorScheme.primaryContainer,
                   icon: Icon(
                     repeatMode == AudioServiceRepeatMode.one
                         ? Icons.repeat_one

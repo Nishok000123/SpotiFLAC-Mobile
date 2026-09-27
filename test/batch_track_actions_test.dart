@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:spotiflac_android/l10n/app_localizations.dart';
 import 'package:spotiflac_android/models/unified_library_item.dart';
 import 'package:spotiflac_android/services/batch_track_actions.dart';
+import 'package:spotiflac_android/widgets/app_action_button.dart';
 
 void main() {
   testWidgets(
@@ -29,7 +30,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final convertButton = find.widgetWithText(
-        FilledButton,
+        AppActionButton,
         'Convert 1 track',
       );
       await tester.scrollUntilVisible(

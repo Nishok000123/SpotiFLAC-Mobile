@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_3_expressive/material_3_expressive.dart';
+import 'package:spotiflac_android/theme/material_expressive.dart';
 import 'package:spotiflac_android/theme/mornye_theme.dart';
 
 /// A single tonal selection inside a sheet, without a second glass layer.
@@ -21,6 +23,17 @@ class AppChoiceChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (materialExpressiveEnabled(context) && label is Text) {
+      final text = label as Text;
+      return MaterialExpressiveScope(
+        child: M3EChip(
+          label: text.data ?? text.textSpan?.toPlainText() ?? '',
+          type: M3EChipType.filter,
+          selected: selected,
+          onPressed: onSelected == null ? null : () => onSelected!(!selected),
+        ),
+      );
+    }
     if (!context.isMornye) {
       if (singleChoice) {
         return ChoiceChip(
