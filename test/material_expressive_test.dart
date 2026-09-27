@@ -1,5 +1,8 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -293,6 +296,91 @@ void main() {
     semantics.dispose();
     expect(tester.takeException(), isNull);
   });
+
+  for (final dark in [false, true]) {
+    for (final reduceMotion in [false, true]) {
+      testWidgets('navigation tint continues through system insets '
+          '(dark: $dark, reduced motion: $reduceMotion)', (tester) async {
+        final capture = GlobalKey();
+        const backdrop = Color(0xff725ca8);
+        final theme = dark ? AppTheme.dark() : AppTheme.light();
+        final tint = theme.colorScheme.surfaceContainer.withValues(alpha: 0.72);
+        for (final bottomInset in [24.0, 48.0]) {
+          await tester.pumpWidget(
+            _host(
+              Builder(
+                builder: (context) => MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(padding: EdgeInsets.only(bottom: bottomInset)),
+                  child: RepaintBoundary(
+                    key: capture,
+                    child: SizedBox(
+                      width: 320,
+                      child: ColoredBox(
+                        color: backdrop,
+                        child: ExpressiveNavigationBar(
+                          selectedIndex: 0,
+                          onDestinationSelected: (_) {},
+                          backgroundColor: tint,
+                          destinations: const [
+                            NavigationDestination(
+                              icon: Icon(Icons.home),
+                              label: 'Home',
+                            ),
+                            NavigationDestination(
+                              icon: Icon(Icons.settings),
+                              label: 'Settings',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              theme: theme,
+              reduceMotion: reduceMotion,
+            ),
+          );
+          await tester.pumpAndSettle();
+          final colors = await tester.runAsync(() async {
+            final boundary = tester.renderObject<RenderRepaintBoundary>(
+              find.byKey(capture),
+            );
+            final image = await boundary.toImage();
+            try {
+              final bytes = (await image.toByteData(
+                format: ui.ImageByteFormat.rawRgba,
+              ))!;
+              return [
+                // Sample between destinations and at the physical bottom.
+                for (final y in [32, image.height - 1])
+                  Color.fromARGB(
+                    bytes.getUint8((y * image.width + 160) * 4 + 3),
+                    bytes.getUint8((y * image.width + 160) * 4),
+                    bytes.getUint8((y * image.width + 160) * 4 + 1),
+                    bytes.getUint8((y * image.width + 160) * 4 + 2),
+                  ),
+              ];
+            } finally {
+              image.dispose();
+            }
+          });
+          expect(colors![0], colors[1]);
+          final expected = Color.alphaBlend(tint, backdrop);
+          expect(colors[0].r, closeTo(expected.r, 1 / 255));
+          expect(colors[0].g, closeTo(expected.g, 1 / 255));
+          expect(colors[0].b, closeTo(expected.b, 1 / 255));
+          expect(
+            tester.getSize(find.byType(ExpressiveNavigationBar)).height,
+            64 + bottomInset,
+          );
+          expect(tester.takeException(), isNull);
+        }
+      });
+    }
+  }
 
   testWidgets('reduced motion keeps interactive Material fallback', (
     tester,

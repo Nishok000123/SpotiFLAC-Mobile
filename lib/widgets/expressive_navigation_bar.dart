@@ -34,6 +34,7 @@ class ExpressiveNavigationBar extends StatelessWidget {
     return MaterialExpressiveScope(
       child: ColoredBox(
         color: backgroundColor,
+        // Paint the tint once across both the controls and system gesture area.
         // Use the app's scaled MediaQuery insets, rather than raw view metrics.
         child: SafeArea(
           top: false,
@@ -44,7 +45,7 @@ class ExpressiveNavigationBar extends StatelessWidget {
             autoLayout: false,
             safeArea: false,
             padding: EdgeInsets.zero,
-            backgroundColor: backgroundColor,
+            backgroundColor: Colors.transparent,
             destinations: [
               for (final destination in destinations)
                 _NavigationDestination(
