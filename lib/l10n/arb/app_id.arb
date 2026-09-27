@@ -1,4 +1,10 @@
 {
+  "usbBitPerfect": "Audio USB bit-perfect",
+  "usbBitPerfectDescription": "Pertahankan PCM asli pada DAC USB yang kompatibel dengan Android 14 atau lebih baru. Berlaku mulai lagu berikutnya, tanpa AutoMix dan normalisasi. Atur volume melalui DAC; volume sistem mungkin tidak berlaku.",
+  "usbBitPerfectPending": "Menunggu lagu berikutnya dan keluaran USB yang kompatibel.",
+  "usbBitPerfectNoDevice": "DAC USB tidak terhubung. Menggunakan keluaran audio biasa.",
+  "usbBitPerfectFallback": "Perangkat atau format audio ini tidak mendukung keluaran bit-perfect. Menggunakan pemutaran biasa.",
+  "usbBitPerfectRouteChanged": "Keluaran audio USB berubah. Pemutaran dijeda; pilih lagu untuk menyambungkan kembali.",
   "upgradeIntroWelcome": "Selamat datang di\nSpotiFLAC-Mobile 5.0",
   "upgradeIntroThemeTitle": "Pilih\ntampilanmu.",
   "upgradeIntroThemeBody": "Pilih tema yang kamu suka. Pilihan langsung diterapkan dan bisa diubah lagi lewat Tampilan.",

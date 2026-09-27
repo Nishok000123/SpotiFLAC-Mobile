@@ -16,6 +16,7 @@ import 'package:spotiflac_android/services/sqlite_helpers.dart'
     show normalizeLookupText;
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/services/playback_normalization.dart';
+import 'package:spotiflac_android/services/music_playback_deck.dart';
 import 'package:spotiflac_android/services/automix_analysis.dart';
 import 'package:spotiflac_android/services/automix_analyzer.dart';
 import 'package:spotiflac_android/utils/int_utils.dart';
@@ -42,6 +43,7 @@ void updateMusicPlayerStrings({
 
 bool _playbackNormalizationEnabled = false;
 bool _autoMixEnabled = false;
+bool _usbBitPerfectEnabled = false;
 MusicPlayerHandler? _activeMusicPlayerHandler;
 PlaybackNotification _notificationPresentation = const PlaybackNotification();
 Future<void> Function(MediaItem)? _toggleNotificationFavorite;
@@ -97,6 +99,14 @@ void setAutoMixEnabled(bool enabled) {
   _autoMixEnabled = enabled;
   final handler = _activeMusicPlayerHandler;
   if (handler != null) unawaited(handler._autoMix.cancel());
+}
+
+void setUsbBitPerfectEnabled(bool enabled) {
+  if (_usbBitPerfectEnabled == enabled) return;
+  _usbBitPerfectEnabled = enabled;
+  final handler = _activeMusicPlayerHandler;
+  if (handler != null) unawaited(handler._autoMix.cancel());
+  // Apply at the next source boundary; never raise a playing track's volume.
 }
 
 /// Refreshes gain tags after a successful file update, including SAF copies.
@@ -352,13 +362,13 @@ Duration normalizedPlaybackResumePosition(
 
 class MusicPlayerHandler extends BaseAudioHandler
     with QueueHandler, SeekHandler {
-  AudioPlayer _player = AudioPlayer(playerId: 'music-player');
+  MusicPlaybackDeck _player = MusicPlaybackDeck(playerId: 'music-player');
   late final _MusicAutoMix _autoMix;
   late final _MusicAutoplay _autoplay;
   bool _completing = false;
   double _normalizationVolume = 1;
   final _playerSubscriptions =
-      <AudioPlayer, List<StreamSubscription<dynamic>>>{};
+      <MusicPlaybackDeck, List<StreamSubscription<dynamic>>>{};
   AudioSession? _audioSession;
   final List<PlayableMedia> _media = [];
   final List<MediaItem> _queueItems = [];
@@ -433,7 +443,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     _listenToPlayer(_player);
   }
 
-  void _listenToPlayer(AudioPlayer player) {
+  void _listenToPlayer(MusicPlaybackDeck player) {
     // Position updates must continue with the display asleep. UI progress is
     // interpolated between updates; querying native playback every frame is
     // unnecessary and would stop preparing AutoMix when there are no frames.
@@ -444,6 +454,10 @@ class MusicPlayerHandler extends BaseAudioHandler
     _playerSubscriptions[player] = [
       player.onPlayerStateChanged.listen((state) {
         if (!identical(player, _player)) return;
+        if (state == PlayerState.paused && player.needsSourceReload) {
+          _userPaused = true;
+          _pausedByInterruption = false;
+        }
         if (_switchingGeneration != 0 &&
             (state == PlayerState.stopped ||
                 state == PlayerState.completed ||
@@ -474,7 +488,7 @@ class MusicPlayerHandler extends BaseAudioHandler
     ];
   }
 
-  Future<void> _disposeDeck(AudioPlayer player) async {
+  Future<void> _disposeDeck(MusicPlaybackDeck player) async {
     final subscriptions = _playerSubscriptions.remove(player);
     if (subscriptions == null) return;
     for (final subscription in subscriptions) {
@@ -764,7 +778,11 @@ class MusicPlayerHandler extends BaseAudioHandler
     String? cacheKey,
     String? displayName,
   }) async {
-    if (!_playbackNormalizationEnabled) return 1.0;
+    if (!_playbackNormalizationEnabled ||
+        _usbBitPerfectEnabled ||
+        _player.isDirect) {
+      return 1.0;
+    }
     return _normalizationCache.volumeFor(
       path,
       cacheKey: cacheKey,
@@ -1347,7 +1365,10 @@ class MusicPlayerHandler extends BaseAudioHandler
     // AudioPlayer.play combines prepare/seek/resume without a cancellation
     // boundary. A late prepare from an old request could resume the wrong
     // source. Serialize preparation and recheck before making it audible.
-    await _player.setSource(DeviceFileSource(path));
+    await _player.setSource(
+      DeviceFileSource(path),
+      preferBitPerfect: _usbBitPerfectEnabled,
+    );
     if (!_isCurrentPlayRequest(generation, media)) return;
     if (position != null) {
       await _player.seek(position);
@@ -1494,7 +1515,7 @@ class MusicPlayerHandler extends BaseAudioHandler
         mediaItem.add(media.toMediaItem(resolvedSource: resolved));
       }
       _broadcastPosition(effectiveStartPosition, force: true);
-      _broadcastState(playerState: PlayerState.playing);
+      _broadcastState();
       _lastPeriodicPersistAt = DateTime.now();
       unawaited(_persistSession(position: effectiveStartPosition));
       // Some files do not emit onDurationChanged reliably (stuck at 0:00);
@@ -1613,6 +1634,15 @@ class MusicPlayerHandler extends BaseAudioHandler
     _pausedByInterruption = false;
     _interruptionActive = false;
     _userPaused = false;
+    if (_player.needsSourceReload) {
+      final generation = _playRequestGeneration;
+      final index = _index;
+      final position =
+          await _player.getCurrentPosition() ?? playbackState.value.position;
+      if (generation != _playRequestGeneration || _disposed) return;
+      await _playIndex(index, recordHistory: false, startPosition: position);
+      return;
+    }
     if ((!_sourceReady ||
             _player.state == PlayerState.stopped ||
             _player.state == PlayerState.completed) &&
@@ -1627,7 +1657,13 @@ class MusicPlayerHandler extends BaseAudioHandler
     }
     await _activateAudioSession();
     await _claimHardwareMediaButtons();
-    await _player.resume();
+    try {
+      await _player.resume();
+    } on PlatformException {
+      if (!_player.needsSourceReload) rethrow;
+      _broadcastState(playerState: PlayerState.paused);
+      return;
+    }
     _broadcastState(playerState: PlayerState.playing);
   }
 

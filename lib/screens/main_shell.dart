@@ -92,6 +92,7 @@ class _MainShellState extends ConsumerState<MainShell>
       ref.read(settingsProvider).playbackNormalization,
     );
     setAutoMixEnabled(ref.read(settingsProvider).autoMix);
+    setUsbBitPerfectEnabled(ref.read(settingsProvider).usbBitPerfect);
     setAutoplayEnabled(
       ref.read(settingsProvider).autoplay,
       includeLocal: ref.read(settingsProvider).localLibraryEnabled,
@@ -741,6 +742,9 @@ class _MainShellState extends ConsumerState<MainShell>
     });
     ref.listen(settingsProvider.select((s) => s.autoMix), (_, enabled) {
       setAutoMixEnabled(enabled);
+    });
+    ref.listen(settingsProvider.select((s) => s.usbBitPerfect), (_, enabled) {
+      setUsbBitPerfectEnabled(enabled);
     });
     ref.listen(
       settingsProvider.select((s) => (s.autoplay, s.localLibraryEnabled)),

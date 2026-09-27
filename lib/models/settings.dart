@@ -32,6 +32,7 @@ class AppSettings {
   // Apply ReplayGain/R128 tags as volume normalization in the built-in player.
   final bool playbackNormalization;
   final bool autoMix;
+  final bool usbBitPerfect;
   final bool autoplay;
   final bool isFirstLaunch;
   final bool checkForUpdates;
@@ -145,6 +146,7 @@ class AppSettings {
     this.embedReplayGain = false,
     this.playbackNormalization = false,
     this.autoMix = false,
+    this.usbBitPerfect = false,
     this.autoplay = false,
     this.isFirstLaunch = true,
     this.checkForUpdates = true,
@@ -233,6 +235,7 @@ class AppSettings {
     bool? embedReplayGain,
     bool? playbackNormalization,
     bool? autoMix,
+    bool? usbBitPerfect,
     bool? autoplay,
     bool? isFirstLaunch,
     bool? checkForUpdates,
@@ -317,6 +320,7 @@ class AppSettings {
       playbackNormalization:
           playbackNormalization ?? this.playbackNormalization,
       autoMix: autoMix ?? this.autoMix,
+      usbBitPerfect: usbBitPerfect ?? this.usbBitPerfect,
       autoplay: autoplay ?? this.autoplay,
       isFirstLaunch: isFirstLaunch ?? this.isFirstLaunch,
       checkForUpdates: checkForUpdates ?? this.checkForUpdates,

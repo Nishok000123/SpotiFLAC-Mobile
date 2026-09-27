@@ -561,6 +561,11 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _saveSettings();
   }
 
+  void setUsbBitPerfect(bool enabled) {
+    state = state.copyWith(usbBitPerfect: enabled);
+    _saveSettings();
+  }
+
   void setEmbedMetadata(bool enabled) {
     state = state.copyWith(embedMetadata: enabled);
     _saveSettings();

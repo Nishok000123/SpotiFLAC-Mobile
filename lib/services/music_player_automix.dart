@@ -9,8 +9,8 @@ class _MusicAutoMix {
   final AutoMixAnalyzer analyzer;
   final _preparationPins = <int, Set<String>>{};
   final _mixPins = <String>{};
-  AudioPlayer? _prepared;
-  AudioPlayer? _outgoing;
+  MusicPlaybackDeck? _prepared;
+  MusicPlaybackDeck? _outgoing;
   AutoMixPlan? _plan;
   PlayableMedia? _next;
   String? _nextPath;
@@ -37,6 +37,8 @@ class _MusicAutoMix {
 
   bool get _canMix =>
       _autoMixEnabled &&
+      !_usbBitPerfectEnabled &&
+      !handler._player.isDirect &&
       !handler._disposed &&
       handler._sourceReady &&
       !handler._userPaused &&
@@ -91,7 +93,7 @@ class _MusicAutoMix {
         : -1;
     final pins = <String>{};
     _preparationPins[generation] = pins;
-    AudioPlayer? deck;
+    MusicPlaybackDeck? deck;
     try {
       if (nextIndex < 0 || nextIndex == index || index < 0) return;
       final current = handler._media[index];
@@ -102,7 +104,7 @@ class _MusicAutoMix {
       final nextPath = await handler._resolveSource(next);
       if (nextPath == null || !_current(generation)) return;
       pins.add(nextPath);
-      deck = AudioPlayer(
+      deck = MusicPlaybackDeck(
         playerId:
             'music-mix-$generation-${DateTime.now().microsecondsSinceEpoch}',
       );

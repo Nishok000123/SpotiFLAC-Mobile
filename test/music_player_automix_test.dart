@@ -1,12 +1,15 @@
 import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotiflac_android/services/automix_analysis.dart';
 import 'package:spotiflac_android/services/automix_analyzer.dart';
 import 'package:spotiflac_android/services/music_player_service.dart';
+import 'package:spotiflac_android/services/music_playback_deck.dart';
+import 'package:spotiflac_android/models/settings.dart';
 import 'package:spotiflac_android/services/playback_notification.dart';
 
 class _Analyzer extends AutoMixAnalyzer {
@@ -144,6 +147,7 @@ void main() {
 
   setUp(() {
     setAutoMixEnabled(false);
+    setUsbBitPerfectEnabled(false);
     setAutoplayEnabled(false);
     native = _AudioNative()..install();
     analyzer = _Analyzer();
@@ -162,10 +166,226 @@ void main() {
     );
     analyzer.pending?.complete(null);
     setAutoMixEnabled(false);
+    setUsbBitPerfectEnabled(false);
     setAutoplayEnabled(false);
     await Future<void>.delayed(const Duration(milliseconds: 30));
     expect(native.live, isEmpty);
     expect(native.playing, isEmpty);
+  });
+
+  test(
+    'USB preference is opt-in and persists with existing DSP preferences',
+    () {
+      const defaults = AppSettings();
+      expect(defaults.usbBitPerfect, isFalse);
+      final selected = defaults.copyWith(
+        usbBitPerfect: true,
+        autoMix: true,
+        playbackNormalization: true,
+      );
+      final restored = AppSettings.fromJson(selected.toJson());
+      expect(restored.usbBitPerfect, isTrue);
+      expect(restored.autoMix, isTrue);
+      expect(restored.playbackNormalization, isTrue);
+    },
+  );
+
+  test(
+    'USB mode prevents a second DSP deck even when AutoMix is enabled',
+    () async {
+      setAutoMixEnabled(true);
+      setUsbBitPerfectEnabled(true);
+      await handler.setQueueAndPlay(_tracks);
+      await Future<void>.delayed(const Duration(milliseconds: 450));
+      expect(native.live, {'music-player'});
+      expect(native.lastVolume('music-player'), 1);
+      expect(analyzer.calls, isEmpty);
+    },
+  );
+
+  group('USB playback transport', () {
+    const methods = MethodChannel('com.zarz.spotiflac/usb_pcm');
+    const events = MethodChannel('com.zarz.spotiflac/usb_pcm/events');
+    late MusicPlaybackDeck deck;
+    late List<String> usbCalls;
+    late int token;
+    late String? fallbackReason;
+    late bool failResume;
+    Completer<void>? pauseReply;
+    var position = 0;
+
+    Future<void> event(String name, {int? withToken}) =>
+        native.messenger.handlePlatformMessage(
+          events.name,
+          const StandardMethodCodec().encodeSuccessEnvelope({
+            'event': name,
+            'token': withToken ?? token,
+          }),
+          (_) {},
+        );
+
+    setUp(() {
+      usbCalls = [];
+      token = 0;
+      fallbackReason = null;
+      failResume = false;
+      pauseReply = null;
+      position = 0;
+      native.messenger.setMockMethodCallHandler(events, (_) async => null);
+      native.messenger.setMockMethodCallHandler(methods, (call) async {
+        usbCalls.add(call.method);
+        switch (call.method) {
+          case 'prepare':
+            token = (call.arguments as Map)['token'] as int;
+            if (fallbackReason != null) return {'reason': fallbackReason};
+            return {
+              'ready': true,
+              'duration': 60000,
+              'device': 'Test DAC',
+              'sampleRate': 96000,
+              'bitDepth': 24,
+            };
+          case 'position':
+            return position;
+          case 'seek':
+            position = (call.arguments as Map)['position'] as int;
+          case 'resume':
+            if (failResume) throw PlatformException(code: 'route_changed');
+          case 'pause':
+            await pauseReply?.future;
+        }
+        return null;
+      });
+      deck = MusicPlaybackDeck(playerId: 'usb-test', nativeAvailable: true);
+    });
+
+    tearDown(() async {
+      await deck.dispose();
+      native.messenger.setMockMethodCallHandler(methods, null);
+      native.messenger.setMockMethodCallHandler(events, null);
+    });
+
+    test(
+      'verified route plays, pauses and seeks without software gain or rate changes',
+      () async {
+        await deck.setSource(
+          DeviceFileSource('/one.flac'),
+          preferBitPerfect: true,
+        );
+        expect(usbAudioStatus.value.reason, 'ready');
+        await deck.resume();
+        await deck.setVolume(0.4);
+        await deck.setPlaybackRate(1.1);
+        expect(native.playing, isEmpty);
+        expect(usbAudioStatus.value.reason, 'active');
+        expect(usbAudioStatus.value.sampleRate, 96000);
+        await deck.seek(const Duration(seconds: 21));
+        expect(await deck.getCurrentPosition(), const Duration(seconds: 21));
+        await deck.pause();
+        expect(deck.state, PlayerState.paused);
+        expect(usbCalls, ['prepare', 'resume', 'seek', 'position', 'pause']);
+        expect(
+          native.calls.where(
+            (c) =>
+                c.$1 == 'usb-test' &&
+                ['setVolume', 'setPlaybackRate'].contains(c.$2),
+          ),
+          isEmpty,
+        );
+      },
+    );
+
+    test('late pause reply does not pause a newly prepared source', () async {
+      await deck.setSource(
+        DeviceFileSource('/one.flac'),
+        preferBitPerfect: true,
+      );
+      await deck.resume();
+      pauseReply = Completer<void>();
+      final pausing = deck.pause();
+      await _until(() => usbCalls.contains('pause'));
+      await deck.setSource(
+        DeviceFileSource('/two.flac'),
+        preferBitPerfect: true,
+      );
+      await deck.resume();
+      pauseReply!.complete();
+      await pausing;
+      expect(deck.state, PlayerState.playing);
+      expect(usbAudioStatus.value.reason, 'active');
+    });
+
+    test('missing support falls back without reporting bit-perfect', () async {
+      fallbackReason = 'no_usb';
+      await deck.setSource(
+        DeviceFileSource('/one.flac'),
+        preferBitPerfect: true,
+      );
+      await deck.resume();
+      expect(deck.isDirect, isFalse);
+      expect(native.playing, {'usb-test'});
+      expect(usbAudioStatus.value.reason, 'no_usb');
+    });
+
+    test('unverified route falls back before starting USB audio', () async {
+      failResume = true;
+      await deck.setSource(
+        DeviceFileSource('/one.flac'),
+        preferBitPerfect: true,
+      );
+      await deck.resume();
+      expect(deck.isDirect, isFalse);
+      expect(native.sources['usb-test'], '/one.flac');
+      expect(native.playing, {'usb-test'});
+      expect(usbAudioStatus.value.reason, 'unsupported');
+    });
+
+    test(
+      'route loss pauses and never starts the speaker automatically',
+      () async {
+        await deck.setSource(
+          DeviceFileSource('/one.flac'),
+          preferBitPerfect: true,
+        );
+        await deck.resume();
+        await event('paused');
+        await _until(() => deck.state == PlayerState.paused);
+        expect(native.playing, isEmpty);
+        expect(usbAudioStatus.value.reason, 'route_changed');
+        position = 19000;
+        expect(deck.needsSourceReload, isTrue);
+        await expectLater(deck.resume(), throwsA(isA<PlatformException>()));
+        expect(native.playing, isEmpty);
+        expect(await deck.getCurrentPosition(), const Duration(seconds: 19));
+      },
+    );
+
+    test(
+      'events from an old song cannot pause or complete the new song',
+      () async {
+        await deck.setSource(
+          DeviceFileSource('/one.flac'),
+          preferBitPerfect: true,
+        );
+        final oldToken = token;
+        await deck.setSource(
+          DeviceFileSource('/two.flac'),
+          preferBitPerfect: true,
+        );
+        await deck.resume();
+        var completed = 0;
+        final subscription = deck.onPlayerComplete.listen((_) => completed++);
+        await event('complete', withToken: oldToken);
+        await event('paused', withToken: oldToken);
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(deck.state, PlayerState.playing);
+        expect(completed, 0);
+        await event('complete');
+        await _until(() => completed == 1);
+        expect(deck.state, PlayerState.completed);
+        await subscription.cancel();
+      },
+    );
   });
 
   test(

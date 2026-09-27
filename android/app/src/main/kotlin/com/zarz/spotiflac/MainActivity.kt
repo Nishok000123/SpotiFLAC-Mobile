@@ -976,6 +976,9 @@ class MainActivity: FlutterFragmentActivity() {
         onBackPressedDispatcher.addCallback(this, flutterBackCallback!!)
 
         val messenger = flutterEngine.dartExecutor.binaryMessenger
+        if (!flutterEngine.plugins.has(UsbBitPerfectPlugin::class.java)) {
+            flutterEngine.plugins.add(UsbBitPerfectPlugin())
+        }
         concertCalendarChannel = MethodChannel(messenger, "com.zarz.spotiflac/concert_calendar").also { channel ->
             channel.setMethodCallHandler { call, result ->
                 if (call.method != "add") {
