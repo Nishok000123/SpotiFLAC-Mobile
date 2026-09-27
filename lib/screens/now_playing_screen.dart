@@ -2727,6 +2727,7 @@ class _PlaybackControls extends ConsumerWidget {
                         playing: isPlaying && !isLoading,
                       ),
                     ),
+                    if (!mornye) const SizedBox(height: 8),
                     Padding(
                       padding: EdgeInsets.symmetric(
                         horizontal: mornye
@@ -2775,7 +2776,7 @@ class _PlaybackControls extends ConsumerWidget {
             },
           ),
         ),
-        SizedBox(height: compact ? 8 : transportTopPadding),
+        SizedBox(height: compact ? 8 : transportTopPadding + (mornye ? 0 : 8)),
         Padding(
           padding: EdgeInsets.symmetric(
             horizontal: mornye ? (compact ? 16 : 32) : 0,
@@ -4743,26 +4744,34 @@ class _QualityBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = label;
     if (text == null || text.isEmpty) return const SizedBox.shrink();
+    final mornye = context.isMornye;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: context.isMornye
+      padding: EdgeInsets.symmetric(
+        horizontal: mornye ? 8 : 10,
+        vertical: mornye ? 2 : 5,
+      ),
+      decoration: mornye
           ? null
           : BoxDecoration(
               color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(20),
             ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.graphic_eq, size: 11, color: colorScheme.onSurfaceVariant),
-          const SizedBox(width: 5),
+          Icon(
+            Icons.graphic_eq,
+            size: mornye ? 11 : 14,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          SizedBox(width: mornye ? 5 : 6),
           Flexible(
             child: Text(
               text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontSize: 10.5,
+                fontSize: mornye ? 10.5 : 12,
                 color: colorScheme.onSurfaceVariant,
                 letterSpacing: 0.2,
               ),
