@@ -1390,7 +1390,7 @@ void main() {
       mediaItems.add(item('first'));
       await tester.pumpAndSettle();
       if (layout == 'material') {
-        await tester.drag(find.byType(PageView), const Offset(-350, 0));
+        await tester.tap(find.byKey(const ValueKey('material-lyrics-toggle')));
       } else {
         await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
       }
@@ -1757,7 +1757,7 @@ void main() {
       );
       mediaItems.add(item('first'));
       await tester.pumpAndSettle();
-      expect(find.byType(ExpressiveIconButton), findsNWidgets(5));
+      expect(find.byType(ExpressiveIconButton), findsNWidgets(6));
       for (final element in find.byType(ExpressiveIconButton).evaluate()) {
         final bounds = tester.getRect(find.byWidget(element.widget));
         expect(bounds.left, greaterThanOrEqualTo(0));
@@ -1766,6 +1766,86 @@ void main() {
       }
       expect(tester.takeException(), isNull);
     });
+  }
+
+  for (final size in [
+    const Size(320, 568),
+    const Size(430, 932),
+    const Size(852, 393),
+  ]) {
+    testWidgets(
+      'Material lyrics share the player and keep controls fixed ($size)',
+      (tester) async {
+        final controller = _SeekController();
+        metadataOverrides.addAll({
+          'format': 'flac',
+          'bit_depth': 16,
+          'sample_rate': 44100,
+        });
+        await pumpNowPlaying(
+          tester,
+          theme: AppTheme.dark(),
+          size: size,
+          controller: controller,
+          wrapPlayer: (player) => MediaQuery(
+            data: MediaQueryData(
+              size: size,
+              textScaler: TextScaler.linear(1.3),
+            ),
+            child: player,
+          ),
+        );
+        mediaItems.add(
+          item('first').copyWith(
+            title: 'A longer track title that needs more than one line',
+            extras: {'source': '/music/first.flac'},
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(PageView), findsNothing);
+        final slider = find.byType(PlaybackSeekSlider);
+        final play = find.byTooltip('Play');
+        final toggle = find.byKey(const ValueKey('material-lyrics-toggle'));
+        final sliderState = tester.state(slider);
+        final sliderBounds = tester.getRect(slider);
+        final playBounds = tester.getRect(play);
+        expect(sliderBounds.bottom, lessThan(size.height));
+        expect(play.hitTestable(), findsOneWidget);
+
+        await tester.tap(toggle);
+        await tester.pump();
+        for (var frame = 0; frame < 20; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(tester.getRect(slider), sliderBounds);
+          expect(tester.getRect(play), playBounds);
+          expect(tester.state(slider), same(sliderState));
+        }
+        await tester.pumpAndSettle();
+        expect(find.text('First lyric').hitTestable(), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('material-player-cover')),
+          findsNothing,
+        );
+        expect(play.hitTestable(), findsOneWidget);
+        await tester.tapAt(seekTrackBounds(tester).center);
+        await tester.pump();
+        expect(controller.seeks, hasLength(1));
+        expect(controller.seeks.single.inSeconds, closeTo(90, 1));
+        controller.completions.single.complete();
+        await tester.pumpAndSettle();
+
+        await tester.tap(toggle);
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('material-player-cover')),
+          findsOneWidget,
+        );
+        expect(find.text('First lyric').hitTestable(), findsNothing);
+        expect(tester.getRect(slider), sliderBounds);
+        expect(tester.getRect(play), playBounds);
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   testWidgets('Mornye player renders Apple-style transport controls', (
@@ -2576,7 +2656,7 @@ void main() {
 
       mediaItems.add(item('first'));
       await tester.pumpAndSettle();
-      await tester.drag(find.byType(PageView), const Offset(-700, 0));
+      await tester.tap(find.byKey(const ValueKey('material-lyrics-toggle')));
       await tester.pumpAndSettle();
       expect(find.text('First lyric'), findsOneWidget);
 
@@ -2787,7 +2867,9 @@ void main() {
         if (mornye) {
           await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
         } else {
-          await tester.drag(find.byType(PageView), const Offset(-350, 0));
+          await tester.tap(
+            find.byKey(const ValueKey('material-lyrics-toggle')),
+          );
         }
         await tester.pumpAndSettle();
         for (final seconds in [0, 2, 4, 7, 4]) {
@@ -2840,7 +2922,9 @@ void main() {
           if (mornye) {
             await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
           } else {
-            await tester.drag(find.byType(PageView), const Offset(-350, 0));
+            await tester.tap(
+              find.byKey(const ValueKey('material-lyrics-toggle')),
+            );
           }
           await tester.pumpAndSettle();
           final lead = tester.widget<Text>(find.text('Lead'));
@@ -2947,7 +3031,9 @@ void main() {
         if (mornye) {
           await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
         } else {
-          await tester.drag(find.byType(PageView), const Offset(-350, 0));
+          await tester.tap(
+            find.byKey(const ValueKey('material-lyrics-toggle')),
+          );
         }
         await tester.pumpAndSettle();
         expect(
@@ -3061,7 +3147,7 @@ void main() {
       if (mornye) {
         await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
       } else {
-        await tester.drag(find.byType(PageView), const Offset(-350, 0));
+        await tester.tap(find.byKey(const ValueKey('material-lyrics-toggle')));
       }
       await tester.pumpAndSettle();
       for (final text in ['Original text', 'Romanized text', 'English text']) {
@@ -3107,7 +3193,9 @@ void main() {
           if (mornye) {
             await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
           } else {
-            await tester.drag(find.byType(PageView), const Offset(-350, 0));
+            await tester.tap(
+              find.byKey(const ValueKey('material-lyrics-toggle')),
+            );
           }
           await tester.pumpAndSettle();
         }
@@ -3202,7 +3290,9 @@ void main() {
         if (mornye) {
           await tester.tap(find.byIcon(CupertinoIcons.quote_bubble));
         } else {
-          await tester.drag(find.byType(PageView), const Offset(-350, 0));
+          await tester.tap(
+            find.byKey(const ValueKey('material-lyrics-toggle')),
+          );
         }
         await tester.pumpAndSettle();
 
@@ -3506,7 +3596,7 @@ void main() {
 
     mediaItems.add(item('timed'));
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(PageView), const Offset(-700, 0));
+    await tester.tap(find.byKey(const ValueKey('material-lyrics-toggle')));
     await tester.pumpAndSettle();
 
     final lyric = find.bySemanticsLabel('Short');

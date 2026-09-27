@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' show BoxHeightStyle, ImageFilter;
 
 import 'package:audio_service/audio_service.dart';
@@ -336,7 +337,6 @@ class NowPlayingScreen extends ConsumerStatefulWidget {
 }
 
 class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
-  final PageController _pageController = PageController();
   ProviderSubscription<AsyncValue<MediaItem?>>? _mediaItemSub;
   ProviderSubscription<bool>? _lyricsPlayingSub;
   String? _loadedSource;
@@ -380,7 +380,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         _loadMetadataForItem(
           next.value,
           // When automatic playback advances while Lyrics is already visible,
-          // onPageChanged will not run again. Inspect an unresolved SAF URI now
+          // the lyrics toggle will not run again. Inspect an unresolved SAF URI now
           // instead of leaving the new track with an empty Lyrics page.
           inspectUnresolvedContentUri: _currentPage == 1,
         );
@@ -417,7 +417,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     _lyricsIdleTimer?.cancel();
     _mediaItemSub?.close();
     _lyricsPlayingSub?.close();
-    _pageController.dispose();
     _artworkColorsChanged.dispose();
     _seekPreview.dispose();
     super.dispose();
@@ -733,27 +732,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                         artworkAspectRatio: motionRatio,
                         insetArtwork: motionArtwork == null,
                       )
-                    : PageView(
-                        controller: _pageController,
-                        onPageChanged: (page) {
-                          if (_currentPage != page) {
-                            setState(() => _currentPage = page);
-                          }
-                          if (page == 1) {
-                            _loadMetadataForItem(
-                              ref.read(currentMediaItemProvider).value,
-                              inspectUnresolvedContentUri: true,
-                            );
-                          }
-                        },
-                        children: [
-                          _playerPage(mediaItem, controller, colorScheme),
-                          _lyricsSection(
-                            colorScheme,
-                            isActive: _currentPage == 1,
-                          ),
-                        ],
-                      ),
+                    : _playerPage(mediaItem, controller, colorScheme),
               ),
               _autoHidingLyricsControls(
                 _queueSwipeRegion(
@@ -806,13 +785,20 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                           ),
                         )
                       else if (!mornye)
-                        _PageTabBar(
-                          controller: _pageController,
-                          colorScheme: colorScheme,
-                          labels: [
-                            context.l10n.nowPlayingTabPlayer,
-                            context.l10n.nowPlayingTabLyrics,
-                          ],
+                        ExpressiveIconButton(
+                          key: const ValueKey('material-lyrics-toggle'),
+                          tooltip: _currentPage == 1
+                              ? context.l10n.nowPlayingTabPlayer
+                              : context.l10n.nowPlayingTabLyrics,
+                          selected: _currentPage == 1,
+                          foregroundColor: _currentPage == 1
+                              ? colorScheme.onPrimaryContainer
+                              : colorScheme.onSurfaceVariant,
+                          backgroundColor: _currentPage == 1
+                              ? colorScheme.primaryContainer
+                              : null,
+                          icon: const Icon(Icons.lyrics_outlined),
+                          onPressed: _toggleMaterialLyrics,
                         ),
                       if (!_landscape) const SizedBox(height: 8),
                     ],
@@ -900,7 +886,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     );
   }
 
-  /// Swipe up (player content or bottom tab strip) opens the queue sheet; a
+  /// Swipe up on the player footer opens the queue sheet; a
   /// downward drag is forwarded to the route's drag-to-dismiss instead.
   Widget _queueSwipeRegion(ColorScheme colorScheme, Widget child) {
     final route = ModalRoute.of(context);
@@ -1001,16 +987,40 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           ),
         );
 
+        Widget visual() => AnimatedSwitcher(
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 300),
+          switchInCurve: Curves.easeInOutCubic,
+          switchOutCurve: Curves.easeInOutCubic,
+          child: _currentPage == 1
+              ? KeyedSubtree(
+                  key: const ValueKey('material-player-lyrics'),
+                  child: _lyricsSection(colorScheme, isActive: true),
+                )
+              : LayoutBuilder(
+                  key: const ValueKey('material-player-cover'),
+                  builder: (context, area) => artworkAt(
+                    math.max(
+                      0.0,
+                      math.min(
+                        360.0,
+                        math.min(area.maxWidth - 64, area.maxHeight - 24),
+                      ),
+                    ),
+                  ),
+                ),
+        );
+
         // Tablet/landscape: artwork pane left, metadata and controls right,
         // instead of one narrow column in a sea of empty space.
         final twoPane =
             constraints.maxWidth >= 720 &&
             constraints.maxWidth > constraints.maxHeight;
         if (twoPane) {
-          final artSize = (constraints.maxHeight - 96).clamp(0.0, 420.0);
           return Row(
             children: [
-              Expanded(child: artworkAt(artSize)),
+              Expanded(child: visual()),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1024,6 +1034,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                         mediaItem,
                         controller,
                         colorScheme,
+                        compact: true,
                       ),
                     ),
                   ),
@@ -1033,31 +1044,38 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           );
         }
 
-        final artSize = (constraints.maxWidth - 64).clamp(0.0, 360.0);
-        // Not user-scrollable: a swipe up here opens the queue instead,
-        // and a swipe down still dismisses the player via the route.
-        return _queueSwipeRegion(
-          colorScheme,
-          SingleChildScrollView(
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: constraints.maxHeight - 32,
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Column(
+            children: [
+              Expanded(child: visual()),
+              const SizedBox(height: 12),
+              _queueSwipeRegion(
+                colorScheme,
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: _metadataAndControls(
+                    mediaItem,
+                    controller,
+                    colorScheme,
+                  ),
+                ),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  artworkAt(artSize),
-                  const SizedBox(height: 32),
-                  ..._metadataAndControls(mediaItem, controller, colorScheme),
-                ],
-              ),
-            ),
+            ],
           ),
         );
       },
     );
+  }
+
+  void _toggleMaterialLyrics() {
+    setState(() => _currentPage = _currentPage == 1 ? 0 : 1);
+    if (_currentPage == 1) {
+      _loadMetadataForItem(
+        ref.read(currentMediaItemProvider).value,
+        inspectUnresolvedContentUri: true,
+      );
+    }
   }
 
   void _toggleMornyeLyrics() {
@@ -1673,8 +1691,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   List<Widget> _metadataAndControls(
     MediaItem mediaItem,
     MusicPlayerController controller,
-    ColorScheme colorScheme,
-  ) {
+    ColorScheme colorScheme, {
+    bool compact = false,
+  }) {
     return [
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -1702,16 +1721,19 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                     ExplicitTrackTitle(
                       title: mediaItem.title,
                       explicit: _isExplicit(mediaItem),
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.onSurface,
-                          ),
+                      style:
+                          (compact
+                                  ? Theme.of(context).textTheme.titleLarge
+                                  : Theme.of(context).textTheme.headlineSmall)
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
+                              ),
                       textAlign: TextAlign.center,
-                      maxLines: 2,
+                      maxLines: compact ? 1 : 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: compact ? 4 : 6),
                     Consumer(
                       builder: (context, ref, _) {
                         final track = ref
@@ -1736,7 +1758,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           ),
         ),
       ),
-      const SizedBox(height: 24),
+      SizedBox(height: compact ? 12 : 24),
       _PlaybackControls(
         key: ValueKey(mediaItem.id),
         mediaId: mediaItem.id,
@@ -1745,6 +1767,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         seekPreview: _seekPreview,
         colorScheme: colorScheme,
         qualityLabel: _qualityLabel(),
+        compact: compact,
       ),
     ];
   }
@@ -4637,99 +4660,6 @@ class _MetadataList extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _PageTabBar extends StatelessWidget {
-  final PageController controller;
-  final ColorScheme colorScheme;
-  final List<String> labels;
-
-  const _PageTabBar({
-    required this.controller,
-    required this.colorScheme,
-    required this.labels,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        double page = 0;
-        if (controller.hasClients && controller.position.haveDimensions) {
-          page = controller.page ?? controller.initialPage.toDouble();
-        }
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final tabWidth = constraints.maxWidth / labels.length;
-            final indicatorWidth = (tabWidth * 0.5).clamp(28.0, 80.0);
-            final base =
-                Theme.of(context).textTheme.labelLarge ?? const TextStyle();
-
-            return SizedBox(
-              height: 38,
-              child: Stack(
-                children: [
-                  Row(
-                    children: List.generate(labels.length, (i) {
-                      // Distance of this tab from the current page position,
-                      // used to interpolate color/weight as the user swipes.
-                      final t = (1.0 - (page - i).abs()).clamp(0.0, 1.0);
-                      return Expanded(
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => controller.animateToPage(
-                            i,
-                            duration: const Duration(milliseconds: 320),
-                            curve: Curves.easeOutCubic,
-                          ),
-                          child: Center(
-                            child: Text(
-                              labels[i],
-                              style: base.copyWith(
-                                fontWeight: FontWeight.lerp(
-                                  FontWeight.w500,
-                                  FontWeight.bold,
-                                  t,
-                                ),
-                                color: Color.lerp(
-                                  colorScheme.onSurfaceVariant.withValues(
-                                    alpha: 0.55,
-                                  ),
-                                  colorScheme.primary,
-                                  t,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                  // Sliding underline that tracks the swipe in real time.
-                  Positioned(
-                    bottom: 0,
-                    left:
-                        page.clamp(0, (labels.length - 1).toDouble()) *
-                            tabWidth +
-                        (tabWidth - indicatorWidth) / 2,
-                    child: Container(
-                      width: indicatorWidth,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
     );
   }
 }
