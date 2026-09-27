@@ -15,22 +15,12 @@ class DiscSeparatorChip extends StatelessWidget {
     if (context.isMornye) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Divider(
-              height: 1,
-              color: MornyeTheme.metadataDividerColor(context),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              context.l10n.downloadedAlbumDiscHeader(discNumber),
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+        child: Text(
+          context.l10n.downloadedAlbumDiscHeader(discNumber),
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       );
     }
