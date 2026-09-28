@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:spotiflac_android/theme/material_expressive.dart';
+import 'package:spotiflac_android/theme/mornye_theme.dart';
 
 /// Indeterminate loading only. Downloads/analysis keep their real progress.
 class AppLoadingIndicator extends StatelessWidget {
@@ -16,22 +17,31 @@ class AppLoadingIndicator extends StatelessWidget {
   final String? semanticLabel;
 
   @override
-  Widget build(BuildContext context) => SizedBox.square(
-    dimension: size,
-    child: materialExpressiveEnabled(context)
-        ? MaterialExpressiveScope(
-            child: FittedBox(
-              child: M3ELoadingIndicator(
-                size: 48,
+  Widget build(BuildContext context) {
+    final animate =
+        !MediaQuery.disableAnimationsOf(context) &&
+        TickerMode.valuesOf(context).enabled;
+    return SizedBox.square(
+      dimension: size,
+      child: !context.isMornye
+          ? MaterialExpressiveScope(
+              child: FittedBox(
+                child: M3ELoadingIndicator(
+                  size: 48,
+                  color: color,
+                  rotationTurns: animate ? null : 0,
+                  semanticLabel: semanticLabel,
+                ),
+              ),
+            )
+          : TickerMode(
+              enabled: animate,
+              child: CircularProgressIndicator(
                 color: color,
-                semanticLabel: semanticLabel,
+                strokeWidth: 3,
+                semanticsLabel: semanticLabel,
               ),
             ),
-          )
-        : CircularProgressIndicator(
-            color: color,
-            strokeWidth: 3,
-            semanticsLabel: semanticLabel,
-          ),
-  );
+    );
+  }
 }

@@ -28,7 +28,11 @@ class StaggeredListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!animate || index >= maxAnimatedItems) return child;
+    if (!animate ||
+        index >= maxAnimatedItems ||
+        MediaQuery.disableAnimationsOf(context)) {
+      return child;
+    }
     final cappedIndex = index.clamp(0, maxAnimatedItems - 1);
     final delay = staggerDelay * cappedIndex;
     final totalDuration = duration + delay;
@@ -87,7 +91,18 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
-    )..repeat();
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context) ||
+        !TickerMode.valuesOf(context).enabled) {
+      _controller.stop();
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
   }
 
   @override
@@ -98,6 +113,7 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) return widget.child;
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

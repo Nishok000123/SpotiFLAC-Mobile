@@ -38,6 +38,7 @@ import 'package:spotiflac_android/widgets/disc_separator_chip.dart';
 import 'package:spotiflac_android/widgets/album_detail_header.dart';
 import 'package:spotiflac_android/widgets/mornye_artist_header.dart';
 import 'package:spotiflac_android/widgets/motion_header_banner.dart';
+import 'package:spotiflac_android/widgets/app_loading_indicator.dart';
 
 class DownloadedAlbumScreen extends ConsumerStatefulWidget {
   final String albumName;
@@ -270,7 +271,7 @@ class _DownloadedAlbumScreenState extends ConsumerState<DownloadedAlbumScreen>
     if (tracks.isEmpty && tracksValue.isLoading) {
       return Scaffold(
         appBar: AppBar(title: Text(widget.albumName)),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const Center(child: AppLoadingIndicator()),
       );
     }
 
