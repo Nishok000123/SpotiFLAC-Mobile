@@ -10,6 +10,7 @@ import 'package:flutter/cupertino.dart'
         CupertinoTextField,
         CupertinoActivityIndicator;
 import 'package:spotiflac_android/widgets/app_action_button.dart';
+import 'package:spotiflac_android/widgets/app_choice_chip.dart';
 import 'package:spotiflac_android/widgets/app_switch.dart';
 import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:flutter/services.dart';

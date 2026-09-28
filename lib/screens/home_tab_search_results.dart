@@ -226,10 +226,10 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
                           onTap: () => setSheetState(() => tempSort = option),
                         );
                       }
-                      return FilterChip(
+                      return AppChoiceChip(
                         label: Text(_sortOptionLabel(option)),
                         selected: tempSort == option,
-                        showCheckmark: false,
+                        singleChoice: true,
                         onSelected: (_) =>
                             setSheetState(() => tempSort = option),
                       );
@@ -238,7 +238,7 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
-                    child: FilledButton(
+                    child: ExpressiveButton(
                       onPressed: () {
                         Navigator.pop(ctx);
                         if (_searchSortOption != tempSort) {
@@ -731,12 +731,12 @@ extension _HomeTabSearchResultsUI on _HomeTabState {
                 onTap: select,
               ),
             )
-          : FilterChip(
+          : AppChoiceChip(
               label: Text(label),
               selected: selectedFilter == id,
               onSelected: (_) => select(),
-              showCheckmark: false,
-              avatar: icon == null ? null : Icon(icon, size: 18),
+              singleChoice: true,
+              icon: icon == null ? null : Icon(icon, size: 18),
             );
     }
 

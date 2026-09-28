@@ -12,6 +12,7 @@ import 'package:spotiflac_android/providers/download_history_provider.dart';
 import 'package:spotiflac_android/providers/extension_provider.dart';
 import 'package:spotiflac_android/screens/track_metadata_screen.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
+import 'package:spotiflac_android/widgets/app_choice_chip.dart';
 
 class _Extensions extends ExtensionNotifier {
   @override
@@ -171,7 +172,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('None'));
       await tester.pump();
-      await tester.tap(find.widgetWithText(FilterChip, 'Cover Art'));
+      await tester.tap(find.widgetWithText(AppChoiceChip, 'Cover Art'));
       await tester.pump();
       if (scenario == 'selected provider album') {
         await tester.tap(find.text('Automatic (provider priority)'));

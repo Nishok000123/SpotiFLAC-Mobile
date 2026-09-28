@@ -137,15 +137,12 @@ class _FilterChip extends ConsumerWidget {
       );
     }
 
-    return FilterChip(
-      label: content,
+    return AppChoiceChip(
+      label: Text(label),
+      count: count,
+      singleChoice: true,
       selected: isSelected,
       onSelected: (_) => onTap(),
-      showCheckmark: false,
-      backgroundColor: settingsGroupColor(context),
-      side: BorderSide(
-        color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-      ),
     );
   }
 }

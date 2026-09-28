@@ -13,6 +13,8 @@ class AppChoiceChip extends StatelessWidget {
     required this.onSelected,
     this.visualDensity,
     this.singleChoice = false,
+    this.icon,
+    this.count,
   });
 
   final Widget label;
@@ -20,6 +22,8 @@ class AppChoiceChip extends StatelessWidget {
   final ValueChanged<bool>? onSelected;
   final VisualDensity? visualDensity;
   final bool singleChoice;
+  final Widget? icon;
+  final int? count;
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +32,8 @@ class AppChoiceChip extends StatelessWidget {
       return MaterialExpressiveScope(
         child: M3EChip(
           label: text.data ?? text.textSpan?.toPlainText() ?? '',
+          leading: icon,
+          trailing: count == null ? null : Text('$count'),
           type: M3EChipType.filter,
           selected: selected,
           onPressed: onSelected == null ? null : () => onSelected!(!selected),
@@ -35,16 +41,24 @@ class AppChoiceChip extends StatelessWidget {
       );
     }
     if (!context.isMornye) {
+      final content = count == null
+          ? label
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [label, const SizedBox(width: 6), Text('$count')],
+            );
       if (singleChoice) {
         return ChoiceChip(
-          label: label,
+          label: content,
+          avatar: icon,
           selected: selected,
           onSelected: onSelected,
           visualDensity: visualDensity,
         );
       }
       return FilterChip(
-        label: label,
+        label: content,
+        avatar: icon,
         selected: selected,
         onSelected: onSelected,
         visualDensity: visualDensity,
@@ -74,11 +88,13 @@ class AppChoiceChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (icon != null) ...[icon!, const SizedBox(width: 8)],
               if (selected) ...[
                 Icon(CupertinoIcons.check_mark, size: 18, color: foreground),
                 const SizedBox(width: 8),
               ],
               Flexible(child: label),
+              if (count != null) ...[const SizedBox(width: 6), Text('$count')],
             ],
           ),
         ),

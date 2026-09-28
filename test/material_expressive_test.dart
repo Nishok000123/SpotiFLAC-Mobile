@@ -145,6 +145,8 @@ void main() {
         StatefulBuilder(
           builder: (context, setState) => AppChoiceChip(
             label: const Text('Albums'),
+            icon: const Icon(Icons.album_outlined),
+            count: 12,
             selected: selected,
             singleChoice: true,
             onSelected: (next) => setState(() => selected = next),
@@ -153,6 +155,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(find.text('12'), findsOneWidget);
+    expect(find.byIcon(Icons.album_outlined), findsOneWidget);
     await tester.tap(find.text('Albums'));
     await tester.pumpAndSettle();
     expect(selected, isTrue);

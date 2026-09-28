@@ -29,7 +29,7 @@ extension _HomeTabCsvImport on _HomeTabState {
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const CircularProgressIndicator(),
+                  const AppLoadingIndicator(),
                   const SizedBox(height: 16),
                   Text(
                     totalTracks > 0

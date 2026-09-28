@@ -20,6 +20,9 @@ import 'package:spotiflac_android/theme/mornye_theme.dart';
 import 'package:spotiflac_android/theme/mornye_icons.dart';
 import 'package:spotiflac_android/widgets/mornye_chrome.dart';
 import 'package:spotiflac_android/widgets/extension_repo_card.dart';
+import 'package:spotiflac_android/widgets/app_choice_chip.dart';
+import 'package:spotiflac_android/widgets/expressive_button.dart';
+import 'package:spotiflac_android/widgets/app_loading_indicator.dart';
 
 class RepoTab extends ConsumerStatefulWidget {
   const RepoTab({super.key});
@@ -703,18 +706,12 @@ class _CategoryChip extends ConsumerWidget {
         ),
       );
     }
-    return FilterChip(
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [Icon(icon, size: 16), const SizedBox(width: 6), Text(label)],
-      ),
+    return AppChoiceChip(
+      label: Text(label),
+      icon: Icon(icon, size: 18),
+      singleChoice: true,
       selected: isSelected,
       onSelected: (_) => onTap(),
-      showCheckmark: false,
-      backgroundColor: settingsGroupColor(context),
-      side: BorderSide(
-        color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-      ),
     );
   }
 }
@@ -830,9 +827,29 @@ class _ExtensionItem extends StatelessWidget {
       trailing: Padding(
         padding: EdgeInsets.only(left: tokens.gapMd),
         child: isDownloading
-            ? const SizedBox.square(
-                dimension: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
+            ? const AppLoadingIndicator(size: 24)
+            : !context.isMornye
+            ? ExpressiveButton(
+                onPressed: extension.hasUpdate
+                    ? onUpdate
+                    : extension.isInstalled
+                    ? null
+                    : onInstall,
+                outlined: extension.isInstalled && !extension.hasUpdate,
+                tonal: extension.hasUpdate,
+                icon: extension.isInstalled && !extension.hasUpdate
+                    ? const Icon(Icons.check, size: 16)
+                    : null,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+                child: Text(
+                  extension.hasUpdate
+                      ? context.l10n.storeUpdate
+                      : extension.isInstalled
+                      ? context.l10n.storeInstalled
+                      : context.l10n.storeInstall,
+                ),
               )
             : extension.hasUpdate
             ? FilledButton.tonal(

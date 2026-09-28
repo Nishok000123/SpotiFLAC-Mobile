@@ -34,14 +34,7 @@ class _SearchProviderDropdown extends ConsumerWidget {
           height: 28,
           child: Center(
             child: isProviderLoading
-                ? SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: colorScheme.primary,
-                    ),
-                  )
+                ? AppLoadingIndicator(size: 18, color: colorScheme.primary)
                 : Icon(
                     Icons.search_off,
                     size: 20,

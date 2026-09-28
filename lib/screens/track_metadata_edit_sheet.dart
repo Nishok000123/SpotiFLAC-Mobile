@@ -2462,7 +2462,7 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
                         }),
                 );
               }
-              return FilterChip(
+              return AppChoiceChip(
                 label: Text(_fieldLabel(key)),
                 selected: selected,
                 onSelected: _fetching
@@ -2477,12 +2477,6 @@ class _EditMetadataSheetState extends State<_EditMetadataSheet> {
                           }
                         });
                       },
-                backgroundColor: cs.surfaceContainerHigh,
-                selectedColor: cs.primaryContainer,
-                checkmarkColor: cs.onPrimaryContainer,
-                labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-                ),
               );
             }).toList(),
           ),
