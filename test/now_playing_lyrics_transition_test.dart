@@ -40,6 +40,7 @@ import 'package:spotiflac_android/widgets/mornye_player_artwork.dart';
 import 'package:spotiflac_android/widgets/mornye_artwork_contrast.dart';
 import 'package:spotiflac_android/widgets/mini_player.dart';
 import 'package:spotiflac_android/widgets/playback_seek_slider.dart';
+import 'package:spotiflac_android/widgets/player_artwork.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -1846,6 +1847,68 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+  }
+
+  for (final width in [320.0, 430.0]) {
+    testWidgets('Material queue shows covers and selected controls at $width', (
+      tester,
+    ) async {
+      final queue = [item('first'), item('second')];
+      final controller = _QueueController(
+        (index) => mediaItems.add(queue[index]),
+      );
+      await pumpNowPlaying(
+        tester,
+        theme: AppTheme.dark(),
+        size: Size(width, 852),
+        queue: queue,
+        controller: controller,
+        playback: PlaybackState(
+          queueIndex: 0,
+          shuffleMode: AudioServiceShuffleMode.all,
+          repeatMode: AudioServiceRepeatMode.all,
+        ),
+      );
+      mediaItems.add(queue.first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.queue_music));
+      await tester.pumpAndSettle();
+      final rows = find.descendant(
+        of: find.byType(ReorderableListView),
+        matching: find.byType(ListTile),
+      );
+      expect(rows, findsNWidgets(2));
+      expect(
+        find.descendant(of: rows, matching: find.byType(PlayerArtwork)),
+        findsNWidgets(2),
+      );
+      expect(tester.widgetList<ListTile>(rows).map((row) => row.selected), [
+        true,
+        false,
+      ]);
+      final toggles = tester.widgetList<ExpressiveIconButton>(
+        find.descendant(
+          of: find.byType(DraggableScrollableSheet),
+          matching: find.byType(ExpressiveIconButton),
+        ),
+      );
+      expect(
+        toggles.where((button) => button.selected == true).length,
+        greaterThanOrEqualTo(2),
+      );
+      expect(
+        toggles
+            .where((button) => button.selected == true)
+            .every((button) => button.backgroundColor != null),
+        isTrue,
+      );
+      await tester.tap(
+        find.descendant(of: rows, matching: find.text('Second')),
+      );
+      await tester.pumpAndSettle();
+      expect(controller.selected, [1]);
+      expect(tester.takeException(), isNull);
+    });
   }
 
   testWidgets('Mornye player renders Apple-style transport controls', (

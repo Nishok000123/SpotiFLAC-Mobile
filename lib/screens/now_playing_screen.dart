@@ -35,6 +35,7 @@ import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/utils/synced_lyrics_scroll.dart';
 import 'package:spotiflac_android/widgets/app_bottom_sheet.dart';
 import 'package:spotiflac_android/widgets/app_loading_indicator.dart';
+import 'package:spotiflac_android/widgets/expressive_button.dart';
 import 'package:spotiflac_android/widgets/expressive_icon_button.dart';
 import 'package:spotiflac_android/widgets/aligned_lyric_pronunciation.dart';
 import 'package:spotiflac_android/widgets/lyric_supplement_transition.dart';
@@ -1784,7 +1785,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
 
   Widget _lyricsSection(ColorScheme colorScheme, {required bool isActive}) {
     if (_loadingMeta) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
     if (_lyrics.isEmpty) {
       return Center(
@@ -2396,26 +2397,33 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       padding: const EdgeInsets.fromLTRB(24, 4, 16, 8),
                       child: Row(
                         children: [
-                          Text(
-                            context.l10n.nowPlayingUpNext,
-                            style: textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: colorScheme.onSurface,
+                          Expanded(
+                            child: Text(
+                              context.l10n.nowPlayingUpNext,
+                              style: textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurface,
+                              ),
                             ),
                           ),
-                          const Spacer(),
-                          IconButton(
+                          ExpressiveIconButton(
                             tooltip: autoplay
                                 ? context.l10n.autoplayOn
                                 : context.l10n.autoplayOff,
-                            isSelected: autoplay,
+                            selected: autoplay,
                             icon: const Icon(Icons.all_inclusive),
-                            color: autoplay ? colorScheme.primary : null,
+                            foregroundColor: autoplay
+                                ? colorScheme.onSecondaryContainer
+                                : colorScheme.onSurfaceVariant,
+                            backgroundColor: autoplay
+                                ? colorScheme.secondaryContainer
+                                : null,
                             onPressed: () => ref
                                 .read(settingsProvider.notifier)
                                 .setAutoplay(!autoplay),
                           ),
-                          IconButton(
+                          const SizedBox(width: 4),
+                          ExpressiveIconButton(
                             tooltip: switch (repeatMode) {
                               AudioServiceRepeatMode.one =>
                                 context.l10n.nowPlayingRepeatOne,
@@ -2423,15 +2431,19 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                 context.l10n.nowPlayingRepeatOff,
                               _ => context.l10n.nowPlayingRepeatAll,
                             },
-                            isSelected:
-                                repeatMode != AudioServiceRepeatMode.none,
+                            selected: repeatMode != AudioServiceRepeatMode.none,
                             icon: Icon(
                               repeatMode == AudioServiceRepeatMode.one
                                   ? Icons.repeat_one
                                   : Icons.repeat,
                             ),
-                            color: repeatMode != AudioServiceRepeatMode.none
-                                ? colorScheme.primary
+                            foregroundColor:
+                                repeatMode != AudioServiceRepeatMode.none
+                                ? colorScheme.onSecondaryContainer
+                                : colorScheme.onSurfaceVariant,
+                            backgroundColor:
+                                repeatMode != AudioServiceRepeatMode.none
+                                ? colorScheme.secondaryContainer
                                 : null,
                             onPressed: () =>
                                 controller.setRepeatMode(switch (repeatMode) {
@@ -2442,13 +2454,19 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                   _ => AudioServiceRepeatMode.none,
                                 }),
                           ),
-                          IconButton(
+                          const SizedBox(width: 4),
+                          ExpressiveIconButton(
                             tooltip: shuffleOn
                                 ? context.l10n.nowPlayingShuffleOn
                                 : context.l10n.nowPlayingPlayInOrder,
-                            isSelected: shuffleOn,
+                            selected: shuffleOn,
                             icon: const Icon(Icons.shuffle),
-                            color: shuffleOn ? colorScheme.primary : null,
+                            foregroundColor: shuffleOn
+                                ? colorScheme.onSecondaryContainer
+                                : colorScheme.onSurfaceVariant,
+                            backgroundColor: shuffleOn
+                                ? colorScheme.secondaryContainer
+                                : null,
                             onPressed: () => controller.setShuffle(!shuffleOn),
                           ),
                         ],
@@ -2458,10 +2476,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
                       child: SizedBox(
                         width: double.infinity,
-                        child: FilledButton.tonalIcon(
+                        child: ExpressiveButton(
+                          tonal: true,
                           onPressed: () => _shuffleLibrary(controller),
                           icon: const Icon(Icons.shuffle, size: 18),
-                          label: Text(context.l10n.nowPlayingShuffleLibrary),
+                          child: Text(context.l10n.nowPlayingShuffleLibrary),
                         ),
                       ),
                     ),
@@ -2501,17 +2520,25 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                               enabled: !isCurrent,
                               onRemove: () => controller.removeQueuedItem(item),
                               child: ListTile(
+                                selected: isCurrent,
+                                selectedTileColor: colorScheme
+                                    .secondaryContainer
+                                    .withValues(alpha: 0.55),
                                 contentPadding: const EdgeInsets.only(
                                   left: 16,
                                   right: 4,
                                 ),
-                                leading: Icon(
-                                  isCurrent
-                                      ? Icons.equalizer
-                                      : Icons.music_note,
-                                  color: isCurrent
-                                      ? colorScheme.primary
-                                      : colorScheme.onSurfaceVariant,
+                                leading: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: SizedBox.square(
+                                    dimension: 44,
+                                    child: PlayerArtwork(
+                                      artUri: item.artUri?.toString(),
+                                      colorScheme: colorScheme,
+                                      cacheWidth: 132,
+                                      iconSize: 22,
+                                    ),
+                                  ),
                                 ),
                                 title: Text(
                                   item.title,
