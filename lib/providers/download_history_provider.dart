@@ -82,6 +82,7 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
   bool _isAudioMetadataBackfillInProgress = false;
   bool _startupMaintenanceScheduled = false;
   Future<void> _historyWriteChain = Future<void>.value();
+  Future<void>? _reloadFuture;
   Timer? _indexBumpTimer;
   DateTime? _lastIndexBumpAt;
   static const _indexBumpWindow = Duration(seconds: 1);
@@ -97,7 +98,7 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
     if (_isLoaded) return;
     _isLoaded = true;
     Future.microtask(() async {
-      await _loadFromDatabase();
+      await reloadFromStorage();
     });
   }
 
@@ -137,9 +138,10 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
     }
   }
 
-  Future<void> reloadFromStorage() async {
-    await _loadFromDatabase();
-  }
+  Future<void> reloadFromStorage() => _reloadFuture ??=
+      _enqueueHistoryWrite(_loadFromDatabase).whenComplete(() {
+        _reloadFuture = null;
+      });
 
   void _bumpHistoryRevision() {
     state = state.copyWith(loadedIndexVersion: state.loadedIndexVersion + 1);

@@ -1261,40 +1261,20 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
       await persistBeforePublishingDownloadCompletion(
         persist: () async {
           if (!settings.saveDownloadHistory) return;
-          final historyItem = result['history_item'];
-          if (historyItem is Map) {
-            try {
-              await ref
-                  .read(downloadHistoryProvider.notifier)
-                  .adoptNativeHistoryItem(
-                    DownloadHistoryItem.fromJson(
-                      Map<String, dynamic>.from(historyItem),
-                    ),
-                    preserveTrackVariant: item.preserveQualityVariant,
-                  );
-            } catch (e) {
-              _log.w('Failed to adopt native history item: $e');
-              await _persistNativeFinalizedHistoryFallback(
-                context,
-                result,
-                nativeFinalizedFilePath,
-              );
-            }
-          } else if (result['history_written'] == true ||
-              result['already_exists'] == true) {
-            await ref
-                .read(downloadHistoryProvider.notifier)
-                .reloadFromStorage();
-          } else {
-            _log.w(
-              'Native finalizer completed without history; persisting Dart fallback',
-            );
-            await _persistNativeFinalizedHistoryFallback(
+          final history = ref.read(downloadHistoryProvider.notifier);
+          await reconcileNativeDownloadHistory(
+            result: result,
+            adopt: (json) => history.adoptNativeHistoryItem(
+              DownloadHistoryItem.fromJson(json),
+              preserveTrackVariant: item.preserveQualityVariant,
+            ),
+            reload: history.reloadFromStorage,
+            persistFallback: () => _persistNativeFinalizedHistoryFallback(
               context,
               result,
               nativeFinalizedFilePath,
-            );
-          }
+            ),
+          );
         },
         publish: () {
           _completedInSession++;

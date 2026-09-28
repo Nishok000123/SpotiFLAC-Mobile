@@ -394,6 +394,13 @@ class _EagerInitializationState extends ConsumerState<EagerInitialization>
     if (state == AppLifecycleState.resumed) {
       unawaited(_consumeVerificationNotification());
       CoverCacheManager.scheduleMaintenance();
+      // Native downloads can finish while Flutter is suspended. Refresh the
+      // persisted history even when no queued item remains to reconcile.
+      if (ref.exists(downloadHistoryProvider)) {
+        unawaited(
+          ref.read(downloadHistoryProvider.notifier).reloadFromStorage(),
+        );
+      }
       _maybeAutoScanLocalLibrary();
       if (ref.exists(localLibraryProvider)) {
         unawaited(
