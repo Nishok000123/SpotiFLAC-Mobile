@@ -35,7 +35,7 @@ import kotlin.math.pow
 
 // FFmpeg execution, probing, and container helpers for NativeDownloadFinalizer.
 
-internal fun NativeDownloadFinalizer.isMP4ContainerFile(path: String): Boolean {
+internal fun isMP4ContainerFile(path: String): Boolean {
     return try {
         File(path).inputStream().use { stream ->
             val header = ByteArray(12)

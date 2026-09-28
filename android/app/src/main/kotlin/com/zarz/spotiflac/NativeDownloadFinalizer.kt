@@ -760,6 +760,7 @@ object NativeDownloadFinalizer {
         if (!forceContainerConversion && requestedDecryptionExt.isNotBlank() && requestedDecryptionExt != ".flac") return
         val mayNeedContainerConversion = forceContainerConversion ||
             looksLikeM4a(state.filePath, state.fileName) ||
+            isMP4ContainerFile(state.filePath) ||
             state.filePath.startsWith("content://")
         if (!mayNeedContainerConversion) return
 
@@ -768,6 +769,7 @@ object NativeDownloadFinalizer {
         val output = buildOutputPath(localInput, ".flac")
         val stagedOutput = stagedConversionPath(output)
         var adoptedOutput = false
+        var createdOutput = false
         try {
             val codec = probePrimaryAudioCodec(localInput, shouldCancel)
             val isAlreadyNativeFlac = codec == "flac" && isNativeFlacFile(localInput)
@@ -794,6 +796,7 @@ object NativeDownloadFinalizer {
                     if (!promoteStagedConversion(stagedOutput, output)) {
                         throw IllegalStateException("failed to publish native FLAC output")
                     }
+                    createdOutput = true
                     output
                 }
                 embedBasicMetadata(context, nativeFlacOutput, input, "flac")
@@ -811,6 +814,7 @@ object NativeDownloadFinalizer {
             if (!promoteStagedConversion(stagedOutput, output)) {
                 throw IllegalStateException("failed to publish container conversion output")
             }
+            createdOutput = true
             // Keep metadata failures before adoption so the source survives
             // and the unsuccessful output is removed by the local cleanup.
             embedBasicMetadata(context, output, input, "flac")
@@ -819,7 +823,7 @@ object NativeDownloadFinalizer {
         } finally {
             if (!adoptedOutput) {
                 File(stagedOutput).delete()
-                File(output).delete()
+                if (createdOutput && output != localInput) File(output).delete()
             }
             if (deleteLocalInput) File(localInput).delete()
         }
@@ -846,14 +850,7 @@ object NativeDownloadFinalizer {
             codec == "opus" -> ".opus"
             else -> return
         }
-        val renamed = File(
-            currentFile.parentFile,
-            currentFile.name.dropLast(".flac".length) + newExt,
-        )
-        if (renamed.exists() && !renamed.delete()) {
-            Log.w(TAG, "Cannot adopt container extension; ${renamed.name} already exists")
-            return
-        }
+        val renamed = File(uniqueAutoConversionOutputPath(currentFile.path, newExt))
         if (!currentFile.renameTo(renamed)) {
             Log.w(TAG, "Failed to rename preserved container to ${renamed.name}")
             return
