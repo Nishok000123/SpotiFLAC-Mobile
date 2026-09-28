@@ -802,7 +802,7 @@ class LocalLibraryNotifier extends Notifier<LocalLibraryState> {
           }
         }
 
-        if (_scanCancelRequested) {
+        if (_scanCancelRequested || result['cancelled'] == true) {
           state = state.copyWith(
             isScanning: false,
             scanIsFinalizing: false,

@@ -556,7 +556,11 @@ import UniformTypeIdentifiers
                 throw invalidArgumentsError(call.method)
             }
             let count = try coreBackend.scanLibraryFolderToNdjsonFile(folder: folderPath, output: outputPath)
-            return ["path": outputPath, "count": count]
+            guard let progress = parseJsonPayload(try coreBackend.getLibraryScanProgress()) as? [String: Any],
+                  let errorCount = progress["error_count"] as? Int else {
+                throw invalidArgumentsError("scanLibraryFolderToNDJSONFile: missing scan summary")
+            }
+            return ["path": outputPath, "count": count, "error_count": errorCount]
 
         case "scanLibraryFolderIncremental":
             let args = call.arguments as! [String: Any]

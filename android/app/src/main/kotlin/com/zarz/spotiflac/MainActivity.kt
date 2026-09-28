@@ -1907,19 +1907,20 @@ class MainActivity: FlutterFragmentActivity() {
                         "scanLibraryFolderToNDJSONFile" -> {
                             val folderPath = call.argument<String>("folder_path") ?: ""
                             val outputPath = call.argument<String>("output_path") ?: ""
-                            val count = withContext(Dispatchers.IO) {
+                            val response = withContext(Dispatchers.IO) {
                                 safScanActive = false
-                                coreBackend.scanLibraryFolderToNdjsonFile(
+                                val count = coreBackend.scanLibraryFolderToNdjsonFile(
                                     folderPath,
                                     outputPath,
                                 )
-                            }
-                            result.success(
                                 mapOf(
                                     "path" to outputPath,
                                     "count" to count,
+                                    "error_count" to JSONObject(coreBackend.getLibraryScanProgress())
+                                        .getInt("error_count"),
                                 )
-                            )
+                            }
+                            result.success(response)
                         }
                         "scanLibraryFolderIncremental" -> {
                             val folderPath = call.argument<String>("folder_path") ?: ""

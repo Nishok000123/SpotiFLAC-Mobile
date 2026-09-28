@@ -68,7 +68,7 @@ void main() {
         resumed.add(hasCheckpoint);
         await output.writeAsString('{"id":"track"}\n');
         await checkpoint.writeAsString('track\t123\n');
-        return {'path': output.path, 'count': 1};
+        return {'path': output.path, 'count': 1, 'error_count': 0};
       });
 
       final first = await scan();
@@ -99,7 +99,7 @@ void main() {
           final output = File((call.arguments as Map)['output_path'] as String);
           await output.writeAsString('{"id":"old"}\n');
           await File('${output.path}.state').writeAsString('old\t123\n');
-          return {'path': output.path, 'count': 1};
+          return {'path': output.path, 'count': 1, 'error_count': 0};
         });
         final previous = await scan();
         await expectLater(
@@ -114,6 +114,64 @@ void main() {
         );
       },
     );
+  }
+
+  for (final saf in [false, true]) {
+    Future<LibraryScanNDJSONFile> scan() => saf
+        ? PlatformBridge.scanSafTreeToNDJSONFile('content://library/tree/music')
+        : PlatformBridge.scanLibraryFolderToNDJSONFile('/music');
+
+    for (final count in [0, 2]) {
+      test(
+        'partial scan cannot replace the index ($count rows, SAF=$saf)',
+        () async {
+          messenger.setMockMethodCallHandler(backend, (call) async {
+            final output = File(
+              (call.arguments as Map)['output_path'] as String,
+            );
+            await output.writeAsString('{"id":"readable"}\n' * count);
+            return {'path': output.path, 'count': count, 'error_count': 3};
+          });
+          await expectLater(
+            scan(),
+            throwsA(
+              isA<FormatException>().having(
+                (error) => error.message,
+                'reason',
+                contains('existing Library was kept'),
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+    test('a confirmed empty folder can clear its index (SAF=$saf)', () async {
+      messenger.setMockMethodCallHandler(backend, (call) async {
+        final output = File((call.arguments as Map)['output_path'] as String);
+        await output.writeAsString('');
+        return {'path': output.path, 'count': 0, 'error_count': 0};
+      });
+      final empty = await scan();
+      expect(empty.expectedCount, 0);
+      expect(await empty.rows().toList(), isEmpty);
+    });
+
+    for (final errors in [null, -1, 0.5, '0']) {
+      test(
+        'missing or invalid error summary is rejected ($errors, SAF=$saf)',
+        () async {
+          messenger.setMockMethodCallHandler(backend, (call) async {
+            final output = File(
+              (call.arguments as Map)['output_path'] as String,
+            );
+            await output.writeAsString('');
+            return {'path': output.path, 'count': 0, 'error_count': errors};
+          });
+          await expectLater(scan(), throwsFormatException);
+        },
+      );
+    }
   }
 
   test('cache setup failure stops forced scan before native reads', () async {

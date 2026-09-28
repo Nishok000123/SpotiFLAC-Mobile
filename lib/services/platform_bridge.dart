@@ -2328,6 +2328,18 @@ class PlatformBridge {
       if (result['cancelled'] == true) {
         throw FormatException('$method returned a cancelled partial scan');
       }
+      final errors = result['error_count'];
+      if (errors is! num ||
+          !errors.isFinite ||
+          errors < 0 ||
+          errors != errors.toInt()) {
+        throw FormatException('$method returned an invalid error count');
+      }
+      if (errors > 0) {
+        throw FormatException(
+          'Library scan could not read $errors files; the existing Library was kept',
+        );
+      }
       final pathValue = result['path'];
       final countValue = result['count'];
       if (pathValue is! String || pathValue.trim().isEmpty) {

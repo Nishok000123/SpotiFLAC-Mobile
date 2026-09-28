@@ -734,7 +734,7 @@ internal fun MainActivity.scanSafTree(
             }
             File(ndjsonOutputPath).writeText("", Charsets.UTF_8)
             try { File(safScanCheckpointPath(ndjsonOutputPath)).delete() } catch (_: Exception) {}
-            return mapOf("path" to ndjsonOutputPath, "count" to 0)
+            return mapOf("path" to ndjsonOutputPath, "count" to 0, "error_count" to 0)
         }
 
         fun cancelledResult(): Any {
@@ -1152,7 +1152,7 @@ internal fun MainActivity.scanSafTree(
         if (ndjsonWriter != null) {
             ndjsonWriter.close()
             checkpointWriter?.close()
-            return mapOf("path" to outputPath, "count" to resultCount)
+            return mapOf("path" to outputPath, "count" to resultCount, "error_count" to errors)
         }
         spill!!.raw(if (resultCount == 0) "[]" else "]")
         return spill.result()
