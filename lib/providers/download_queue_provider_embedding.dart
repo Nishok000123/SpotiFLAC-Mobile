@@ -22,6 +22,13 @@ class _DeezerExtendedMetadataFields {
 }
 
 extension _DownloadQueueEmbedding on DownloadQueueNotifier {
+  Future<Track> _prepareDownloadSourceTrack(Track track) async {
+    if (!track.id.startsWith('deezer:')) return track;
+    final id = track.id.substring('deezer:'.length);
+    final enriched = await enrichIncompleteDownloadTrack(track, 'deezer', id);
+    return identical(enriched, track) ? track : enriched.copyWith(deezerId: id);
+  }
+
   Future<Track> _resolveDownloadAlbumCredit(
     Track track,
     AppSettings settings,

@@ -1269,11 +1269,11 @@ object NativeDownloadFinalizer {
     }
 
     private fun replayGainDurationSeconds(input: FinalizeInput): Double {
-        val duration = input.request.optInt("duration_ms", 0).let {
-            if (it > 0) it else trackInt(input, "duration", 0)
-        }
-        if (duration <= 0) return 1.0
-        return if (duration > 10000) duration / 1000.0 else duration.toDouble()
+        val duration = NativeFinalizationPolicy.durationMilliseconds(
+            input.request.optLong("duration_ms", 0L),
+            trackInt(input, "duration", 0).toLong(),
+        )
+        return if (duration > 0L) duration / 1000.0 else 1.0
     }
 
     private fun buildHistoryRow(input: FinalizeInput, state: FinalizeState): ContentValues {

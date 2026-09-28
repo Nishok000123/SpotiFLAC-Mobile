@@ -3,6 +3,8 @@ package com.zarz.spotiflac
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
+import org.junit.After
+import org.junit.Before
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -12,6 +14,76 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class NativeDownloadContainerTest {
+    private lateinit var backend: CoreBackend
+    private lateinit var backendRoot: File
+
+    @Before
+    fun initializeBackend() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        backendRoot = File(context.filesDir, "finalizer-test-${System.nanoTime()}").apply { mkdirs() }
+        backend = createCoreBackend(context)
+        backend.invokeApplication("initExtensionSystem", mapOf(
+            "extensions_dir" to File(backendRoot, "sources").apply { mkdirs() }.path,
+            "data_dir" to File(backendRoot, "data").apply { mkdirs() }.path,
+            "master_key" to "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            "allowed_directories" to listOf(context.cacheDir.path),
+        ))
+    }
+
+    @After
+    fun closeBackend() {
+        backend.invokeApplication("cleanupExtensions", emptyMap<String, Any>())
+        backendRoot.deleteRecursively()
+    }
+
+    @Test
+    fun nativeFormatsPreserveTagsLyricsAndReplayGain() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val root = File(context.cacheDir, "finalizer-parity-${System.nanoTime()}").apply { mkdirs() }
+        try {
+            for ((extension, encoder) in listOf("mp3" to "libmp3lame", "opus" to "libopus", "flac" to "flac", "m4a" to "aac")) {
+                val input = File(root, "track.$extension")
+                val fixture = NativeDownloadFinalizer.runFFmpegArguments(arrayOf(
+                    "-v", "error", "-f", "lavfi", "-i", "sine=frequency=997:sample_rate=48000",
+                    "-t", "1.5", "-c:a", encoder, input.path,
+                ))
+                assertTrue(fixture.second, fixture.first)
+                val request = JSONObject()
+                    .put("contract_version", 1).put("item_id", "example-$extension")
+                    .put("service", "example-provider").put("track_name", "Parity test")
+                    .put("artist_name", "Example artist").put("album_name", "Example album")
+                    .put("album_artist", "Album Artist").put("track_number", 2).put("total_tracks", 10)
+                    .put("quality", "LOSSLESS").put("storage_mode", "app")
+                    .put("output_ext", ".$extension").put("embed_metadata", true)
+                    .put("embed_lyrics", true).put("lyrics_mode", "both")
+                    .put("embed_replaygain", true).put("duration_ms", 1500)
+                val result = NativeDownloadFinalizer.finalize(
+                    context, "example-$extension", request.toString(), "{}",
+                    JSONObject().put("success", true).put("file_path", input.path)
+                        .put("file_name", input.name).put("lyrics_lrc", "[00:00.00]Example line"),
+                    "{\"save_download_history\":false}",
+                )
+                assertTrue(result.toString(), result.getBoolean("success"))
+                assertFalse(result.toString(), result.has("replaygain_warning"))
+                assertEquals(1.5, result.getJSONObject("replaygain").getDouble("duration_secs"), 0.001)
+                val output = File(result.getString("file_path"))
+                assertEquals(extension, output.extension)
+                assertEquals("[00:00.00]Example line", File(root, "track.lrc").readText())
+                File(root, "track.lrc").delete()
+                val probe = NativeDownloadFinalizer.runFFmpegArguments(arrayOf(
+                    "-hide_banner", "-i", output.path, "-map", "0:a:0", "-f", "null", "-",
+                ))
+                assertTrue(probe.second, probe.first)
+                val gainTag = if (extension == "opus") "r128_track_gain" else "replaygain_track_gain"
+                for (tag in listOf("Parity test", "Album Artist", "Example line", gainTag)) {
+                    assertTrue("$extension: missing $tag\n${probe.second}", probe.second.contains(tag, ignoreCase = true))
+                }
+            }
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     @Test
     fun misnamedMp4IsTaggedAndPublishedAsM4aWithoutOverwritingExistingAudio() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext

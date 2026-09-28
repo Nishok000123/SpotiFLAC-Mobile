@@ -877,8 +877,9 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
       return null;
     }
 
+    final sourceTrack = await _prepareDownloadSourceTrack(item.track);
     item = item.copyWith(
-      track: await _resolveDownloadAlbumCredit(item.track, settings),
+      track: await _resolveDownloadAlbumCredit(sourceTrack, settings),
     );
 
     final isSafMode = _isSafMode(settings);
@@ -915,12 +916,6 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
     }
 
     final outputExt = _determineOutputExt(quality, item.service);
-    if (settings.embedReplayGain &&
-        outputExt != '.flac' &&
-        outputExt != '.m4a') {
-      return null;
-    }
-
     String? safFileName;
     final safOutputExt = isSafMode ? outputExt : '';
     final baseFilenameFormat = _shouldTreatAsSingleRelease(item.track)
@@ -992,7 +987,7 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
     ).withStrategy(useExtensions: true, useFallback: state.autoFallback);
 
     return _NativeWorkerRequestContext(
-      item: item,
+      item: item.copyWith(track: trackForPayload),
       requestJson: jsonEncode(payload.toJson()),
       outputDir: outputDir,
       quality: quality,

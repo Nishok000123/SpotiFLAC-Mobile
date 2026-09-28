@@ -8,6 +8,17 @@ import org.junit.Test
 
 class NativeFinalizationPolicyTest {
     @Test
+    fun durationUsesDeclaredUnitsForShortTracksAndLongPerformances() {
+        assertEquals(250L, NativeFinalizationPolicy.durationMilliseconds(250, 0))
+        assertEquals(8000L, NativeFinalizationPolicy.durationMilliseconds(8000, 8))
+        assertEquals(10000L, NativeFinalizationPolicy.durationMilliseconds(10000, 10))
+        assertEquals(180000L, NativeFinalizationPolicy.durationMilliseconds(180000, 0))
+        assertEquals(8000L, NativeFinalizationPolicy.durationMilliseconds(0, 8))
+        assertEquals(14400000L, NativeFinalizationPolicy.durationMilliseconds(0, 14400))
+        assertEquals(0L, NativeFinalizationPolicy.durationMilliseconds(0, -1))
+    }
+
+    @Test
     fun lateAlbumMetadataResolvesOnlyThePendingFolderLeaf() {
         assertEquals(
             "Playlist/Artist/[2024] Album",

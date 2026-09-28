@@ -44,6 +44,7 @@ import 'package:spotiflac_android/utils/progress_stream_poller.dart';
 
 import 'package:spotiflac_android/providers/download_history_provider.dart';
 import 'package:spotiflac_android/services/native_download_history.dart';
+import 'package:spotiflac_android/services/download_track_metadata.dart';
 
 export 'package:spotiflac_android/providers/download_history_provider.dart';
 export 'package:spotiflac_android/providers/download_queue_state.dart';

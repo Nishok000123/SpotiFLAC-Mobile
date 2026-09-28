@@ -11,6 +11,11 @@ import kotlin.math.roundToInt
  * finalizer's I/O-heavy orchestration.
  */
 internal object NativeFinalizationPolicy {
+    fun durationMilliseconds(requestMilliseconds: Long, trackSeconds: Long): Long {
+        if (requestMilliseconds > 0) return requestMilliseconds
+        return trackSeconds.coerceIn(0, Long.MAX_VALUE / 1000) * 1000
+    }
+
     fun resolvedAlbumRelativeDirectory(
         relativeDirectory: String,
         albumFolderTemplate: String,

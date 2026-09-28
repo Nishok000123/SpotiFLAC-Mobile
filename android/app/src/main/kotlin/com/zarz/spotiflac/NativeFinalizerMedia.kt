@@ -245,9 +245,7 @@ internal fun NativeDownloadFinalizer.resolveLyricsLrc(context: Context, input: N
 internal fun NativeDownloadFinalizer.lyricsDurationMs(input: NativeDownloadFinalizer.FinalizeInput): Long {
     val requestDuration = input.request.optLong("duration_ms", 0L)
     val trackDuration = trackInt(input, "duration", 0).toLong()
-    val duration = if (requestDuration > 0L) requestDuration else trackDuration
-    if (duration <= 0L) return 0L
-    return if (duration > 10000L) duration else duration * 1000L
+    return NativeFinalizationPolicy.durationMilliseconds(requestDuration, trackDuration)
 }
 
 internal fun nativeMetadataEditHandled(response: String): Boolean {
