@@ -126,6 +126,7 @@ class _PlaybackSettingsPageState extends ConsumerState<PlaybackSettingsPage> {
                     builder: (context, status, _) => SettingsSwitchItem(
                       icon: Icons.usb,
                       title: context.l10n.usbBitPerfect,
+                      titleTrailing: const _PlaybackBetaBadge(),
                       subtitle: [
                         context.l10n.usbBitPerfectDescription,
                         if (settings.usbBitPerfect)
@@ -251,6 +252,7 @@ class _PlaybackSettingsPageState extends ConsumerState<PlaybackSettingsPage> {
                     SettingsSwitchItem(
                       icon: Icons.headphones,
                       title: context.l10n.dapExclusive,
+                      titleTrailing: const _PlaybackBetaBadge(),
                       subtitle: context.l10n.dapExclusiveDescription,
                       value: settings.dapExclusive,
                       onChanged: (value) => ref
@@ -264,6 +266,29 @@ class _PlaybackSettingsPageState extends ConsumerState<PlaybackSettingsPage> {
             ),
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
+      ),
+    );
+  }
+}
+
+class _PlaybackBetaBadge extends StatelessWidget {
+  const _PlaybackBetaBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        'Beta',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: colors.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
