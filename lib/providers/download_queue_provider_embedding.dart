@@ -22,6 +22,41 @@ class _DeezerExtendedMetadataFields {
 }
 
 extension _DownloadQueueEmbedding on DownloadQueueNotifier {
+  Future<Track> _resolveDownloadAlbumCredit(
+    Track track,
+    AppSettings settings,
+  ) async {
+    if (!settings.embedMetadata ||
+        normalizeOptionalString(track.albumId) == null) {
+      return track;
+    }
+    final source =
+        normalizeOptionalString(track.source)?.toLowerCase() ??
+        (track.id.contains(':') ? track.id.split(':').first.toLowerCase() : '');
+    if (source.isEmpty) return track;
+    final providers = ref
+        .read(extensionProvider)
+        .extensions
+        .where(
+          (extension) => extension.enabled && extension.hasMetadataProvider,
+        );
+    final provider =
+        providers
+            .where((extension) => extension.id.toLowerCase() == source)
+            .firstOrNull ??
+        providers
+            .where(
+              (extension) =>
+                  extension.replacesBuiltInProviders.contains(source),
+            )
+            .firstOrNull;
+    // Never send an album ID to an unrelated provider selected as a fallback.
+    // This resolves the source release itself, even when the provider disables
+    // supplemental cross-provider enrichment (for example genre/label lookup).
+    if (provider == null) return track;
+    return resolveDownloadAlbumArtist(track, provider.id);
+  }
+
   String? _resolveAlbumArtistForMetadata(Track track, AppSettings settings) {
     var albumArtist = normalizeOptionalString(track.albumArtist);
     if (settings.filterContributingArtistsInAlbumArtist) {

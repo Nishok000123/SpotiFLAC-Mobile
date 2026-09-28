@@ -187,6 +187,12 @@ class _DownloadRun {
 
       if (!await _enrichDeezerTrackIfNeeded()) return;
 
+      trackToDownload = await n._resolveDownloadAlbumCredit(
+        trackToDownload,
+        settings,
+      );
+      if (await _shouldAbort('during album metadata lookup')) return;
+
       resolvedAlbumArtist = n._resolveAlbumArtistForMetadata(
         trackToDownload,
         settings,

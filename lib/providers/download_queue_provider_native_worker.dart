@@ -877,6 +877,10 @@ extension _DownloadQueueNativeWorker on DownloadQueueNotifier {
       return null;
     }
 
+    item = item.copyWith(
+      track: await _resolveDownloadAlbumCredit(item.track, settings),
+    );
+
     final isSafMode = _isSafMode(settings);
     final rawOutputDir = isSafMode
         ? _buildRelativeOutputDir(

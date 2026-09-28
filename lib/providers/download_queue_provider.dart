@@ -23,6 +23,7 @@ import 'package:spotiflac_android/providers/download_queue_state.dart';
 import 'package:spotiflac_android/services/app_state_database.dart';
 import 'package:spotiflac_android/services/platform_bridge.dart';
 import 'package:spotiflac_android/services/download_request_payload.dart';
+import 'package:spotiflac_android/services/download_album_metadata.dart';
 import 'package:spotiflac_android/services/download_motion_artwork_source.dart';
 import 'package:spotiflac_android/services/ffmpeg_service.dart';
 import 'package:spotiflac_android/services/hires_check_service.dart';
